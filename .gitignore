@@ -1,0 +1,17 @@
+# Ignore possible build & documentation
+doc/build/
+build/
+*egg-info/
+
+# Ignore temp files
+*.pyc
+*.save
+*.bak
+.*.swp
+*~
+
+# Ignore Cython'd files
+pyne/*.c
+pyne/*.cpp
+pyne/*/*.cpp
+
