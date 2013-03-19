@@ -43,27 +43,11 @@ try:
 except ImportError:
     import pickle
 
-from bright.apigen import typesystem as ts
-from bright.apigen.cythongen import gencpppxd, genpxd, genpyx
-from bright.apigen.autodescribe import describe, merge_descriptions
+import typesystem as ts
+import stlwrap
+from cythongen import gencpppxd, genpxd, genpyx
+from autodescribe import describe, merge_descriptions
 
-CLASSES = [
-    # classname, base filename, make cython bindings, make cyclus bindings
-    ('FCComp', 'fccomp', True, False),
-    ('EnrichmentParameters', 'enrichment_parameters', True, True),
-    ('Enrichment', 'bright_enrichment', True, True),
-    ('Reprocess', 'reprocess', True, True),
-    ('decay_nuc', 'storage', False, False),
-    ('from_nuc_struct', 'storage', False, False),
-    ('Storage', 'storage', True, True),
-    ('FluencePoint', 'fluence_point', True, True),
-    ('ReactorParameters', 'reactor_parameters', True, True),
-    ('Reactor1G', 'reactor1g', True, True),
-    ('LightWaterReactor1G', 'light_water_reactor1g', True, True),
-    ('FastReactor1G', 'fast_reactor1g', True, True),
-    ('FuelFabrication', 'fuel_fabrication', True, True),
-    ('ReactorMG', 'reactormg', True, True),
-    ]
 
 class DescriptionCache(object):
     """A quick persistent cache for descriptions from files.  
@@ -222,7 +206,46 @@ def newoverwrite(s, filename):
     with open(filename, 'w') as f:
         f.write(s)
 
-def genbindings(ns):
+def newcopyover(f1, f2):
+    """Useful for not forcing re-compiles and thus playing nicely with the 
+    build system.  This is acomplished by not writing the file if the existsing
+    contents are exactly the same as what would be written out.
+
+    Parameters
+    ----------
+    f1 : str
+        Path to file to copy from
+    f2 : str
+        Path to file to copy over
+
+    """
+    if os.path.isfile(f1):
+        with open(f1, 'r') as f:
+            s = f.read()
+        return newoverwrite(s, f2)
+
+def ensuredirs(f):
+    """For a file path, ensure that its directory path exists."""
+    d = os.path.split(f)[0]
+    if not os.path.isdir(d):
+        os.makedirs(d)
+
+def genstlcontainers(ns, rc):
+    print "generating C++ standard library wrappers & converters"
+    fname = os.path.join(rc.packagedir, rc.stlcontainers_module)
+    ensuredirs(fname)
+    testname = os.path.join(rc.packagedir, 'tests', 'test_' + rc.stlcontainers_module)
+    ensuredirs(testname)
+    stlwrap.genfiles(rc.stlcontainers, fname=fname, testname=testname)
+    d = os.path.split(__file__)[0]
+    xetsrc = [os.path.join(d, 'xdress_extra_types.pxd'), 
+              os.path.join(d, 'xdress_extra_types.pyx')]
+    xettar = [os.path.join(rc.packagedir, rc.extra_types + '.pxd'), 
+              os.path.join(rc.packagedir, rc.extra_types + '.pyx')]
+    for src, tar in zip(xetsrc, xettar):
+        newcopyover(src, tar)
+
+def genbindings(ns, rc):
     """Generates bidnings using the command line setting specified in ns.
     """
     ns.cyclus = False  # FIXME cyclus bindings don't exist yet!
@@ -304,25 +327,47 @@ def dumpdesc(ns):
     print str(DescriptionCache())
 
 
+defaultrc = dict(
+    package='<xdtest-pkg>',
+    packagedir='<xdtest-pkgdir>',
+    extra_types='xdress_extra_types',
+    stlcontainers=[],
+    stlcontainers_module='stlcontainers',
+    )
+
 def main():
-    """Entry point for Bright API generation."""
-    parser = argparse.ArgumentParser("Generates Bright API")
+    """Entry point for xdress API generation."""
+    parser = argparse.ArgumentParser("Generates xdress API")
+    parser.add_argument('--rc', default="xdressrc.py", 
+                        help="path to run control file.")
     parser.add_argument('--debug', action='store_true', default=False, 
-                        help='build with debugging flags')
+                        help='build with debugging flags')    
     parser.add_argument('--no-cython', action='store_false', dest='cython', 
                         default=True, help="don't make cython bindings")
     parser.add_argument('--no-cyclus', action='store_false', dest='cyclus', 
                         default=True, help="don't make cyclus bindings")
+    parser.add_argument('--no-stlcont', action='store_false', dest='stlcont', 
+                        default=True, help="don't make STL container wrappers")
     parser.add_argument('--dump-desc', action='store_true', dest='dumpdesc', 
                         default=False, help="print description cache")
     parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', 
                         default=False, help="print more output")
     ns = parser.parse_args()
 
+    rc = dict(defaultrc)
+    execfile(ns.rc, rc, rc)
+    rc = argparse.Namespace(**rc)
+
     if ns.dumpdesc:
         dumpdesc(ns)
-    else:
-        genbindings(ns)
+        return 
+
+    if ns.stlcont:
+        genstlcontainers(ns, rc)
+
+    if ns.cython or ns.cyclus:
+        genbindings(ns, rc)
+
 
 if __name__ == '__main__':
     main()

@@ -10,8 +10,8 @@ build/
 .*.swp
 *~
 
-# Ignore Cython'd files
-pyne/*.c
-pyne/*.cpp
-pyne/*/*.cpp
-
+tests/inst/
+tests/build/
+tests/xdtest/tests/
+tests/xdtest/stlcontainers.*
+tests/xdtest/xdress_extra_types.*

@@ -316,6 +316,21 @@ refined_types = {
 The parent types may either be base types, compound types, template 
 types, or other refined types!"""
 
+
+
+human_names = {
+    'str': 'string',
+    'int32': 'integer',
+    'uint32': 'unsigned integer',
+    'float32': 'float',
+    'float64': 'double',
+    'complex128': 'complex',
+    'set': 'set of integers',
+    'vector': 'vector [ndarray] of doubles',
+    }
+
+
+
 @_memoize
 def isdependent(t):
     """Returns whether t is a dependent type or not."""
@@ -424,10 +439,10 @@ _cython_c_base_types = {
     'char': 'char',
     'str': 'std_string',
     'int32': 'int',
-    'uint32': 'extra_types.uint',  # 'unsigned int'
+    'uint32': 'xdress_extra_types.uint',  # 'unsigned int'
     'float32': 'float',
     'float64': 'double',
-    'complex128': 'extra_types.complex_t',
+    'complex128': 'xdress_extra_types.complex_t',
     'bool': 'bint',
     'void': 'void', 
     }
@@ -474,10 +489,10 @@ _cython_cimport_base_types = {
     'char': (None,),
     'str': (('libcpp.string', 'string', 'std_string'),),
     'int32': (None,),
-    'uint32': (('pyne', 'extra_types'),),  # 'unsigned int'
+    'uint32': (('xdress_extra_types'),),  # 'unsigned int'
     'float32': (None,),
     'float64': (None,),
-    'complex128': (('pyne', 'extra_types'),),
+    'complex128': (('xdress_extra_types'),),
     'bool': (None,), 
     'void': (None,), 
     }
@@ -499,7 +514,7 @@ _cython_cyimport_base_types = {
     'uint32': (None,),
     'float32': (None,),
     'float64': (None,),
-    'complex128': (('pyne', 'stlconverters', 'conv'),),  # for py2c_complex()
+    'complex128': (('xdress_extra_types',),),  # for py2c_complex()
     'bool': (None,), 
     'void': (None,), 
     }
@@ -719,6 +734,27 @@ def _fill_cycyt(cycyt, t):
         d[key] = val
     return cycyt.format(**d), t
     
+@_memoize
+def cython_classname(t, cycyt=None):
+    """Computes classnames for cython types."""
+    if cycyt is None:
+        t = canon(t)
+        if isinstance(t, basestring):
+            return t, _cython_template_class_names[t]
+        elif t[0] in BASE_TYPES:
+            return t, _cython_template_class_names[t[0]]
+        return cython_classname(t, _cython_template_class_names[t[0]])
+    d = {}
+    for key, x in zip(template_types[t[0]], t[1:-1]):
+        if isinstance(x, basestring):
+            val = _cython_template_class_names[x]
+        elif x[0] in BASE_TYPES:
+            val = _cython_template_class_names[x[0]]
+        else: 
+            val, _ = _fill_cycyt(x, _cython_template_class_names[x[0]])
+        d[key] = val
+    return t, cycyt.format(**d)
+    
 
 @_memoize
 def cython_cytype(t):
@@ -823,6 +859,8 @@ def cython_pytype(t):
         return cypyt
 
 
+
+
 _numpy_types = {
     'char': 'np.NPY_BYTE',
     'str': 'np.NPY_STRING',
@@ -908,6 +946,19 @@ _cython_c2py_conv = {
     'nucname': ('nucname.name({var})',),
     }
 
+
+from_pytypes = {
+    'str': ['basestring'],
+    'int32': ['int', 'long'],
+    'uint32': ['int', 'long'],
+    'float32': ['float', 'int', 'long'],
+    'float64': ['float', 'int', 'long'],
+    'complex128': ['complex', 'float'],
+    'set': ['set', 'list', 'basestring', 'tuple'],
+    'vector': ['list', 'tuple', 'np.ndarray'],
+    }
+
+
 @_memoize
 def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None, 
                 cache_name=None, cache_prefix='self'):
@@ -961,10 +1012,10 @@ _cython_py2c_conv = {
     'char': ('<char{last}> {var}', False),
     'str': ('std_string(<char *> {var})', False),
     'int32': ('{var}', False),
-    'uint32': ('<extra_types.uint> long({var})', False),
+    'uint32': ('<xdress_extra_types.uint> long({var})', False),
     'float32': ('<float> {var}', False),
     'float64': ('<double> {var}', False),
-    'complex128': ('conv.py2c_complex({var})', False),
+    'complex128': ('xdress_extra_types.py2c_complex({var})', False),
     'bool': ('<bint> {var}', False),
     'void': ('NULL', False),
     # template types
