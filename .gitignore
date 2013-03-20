@@ -13,5 +13,6 @@ build/
 tests/inst/
 tests/build/
 tests/xdtest/tests/
+tests/xdtest/xdstlc.*
 tests/xdtest/stlcontainers.*
 tests/xdtest/xdtest_extra_types.*

@@ -20,4 +20,4 @@ stlcontainers = [
     ('map', 'int', 'complex'),
     ]
 
-#stlcontainers_module = 'stlcontainers'
+stlcontainers_module = 'xdstlc'

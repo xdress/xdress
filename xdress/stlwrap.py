@@ -652,6 +652,7 @@ def gentest(template, header=None, package='..'):
     testfuncs = dict([(k[8:], v) for k, v in globals().items() \
                     if k.startswith('gentest_') and callable(v)])
     test = _testheader if header is None else header
+    print ts.STLCONTAINERS
     test = test.format(stlcontainers=ts.STLCONTAINERS, package=package)
     for t in template:
         test += testfuncs[t[0]](*t[1:]) + "\n\n" 

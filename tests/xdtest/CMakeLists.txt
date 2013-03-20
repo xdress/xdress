@@ -11,7 +11,7 @@ set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/xdtest_extra_types.pyx
                             PROPERTIES CYTHON_IS_CXX TRUE)
 cython_add_module(xdtest_extra_types xdtest_extra_types.pyx)
 
-set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/stlcontainers.pyx
+set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/xdstlc.pyx
                             PROPERTIES CYTHON_IS_CXX TRUE)
-cython_add_module(stlcontainers stlcontainers.pyx)
+cython_add_module(xdstlc xdstlc.pyx)
 
