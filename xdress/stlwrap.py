@@ -3,6 +3,7 @@ containters to the associated python types.
 """
 
 import typesystem as ts
+import pprint
 
 testvals = {
     'str': ["Aha", "Take", "Me", "On"], 
@@ -236,14 +237,14 @@ cdef class _Map{tclsname}{uclsname}:
             for key, value in new_map.items():
                 {tpy2cbody}
                 {upy2cbody}
-                item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2cbody})
+                item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
                 self.map_ptr.insert(item)
         elif hasattr(new_map, '__len__'):
             self.map_ptr = new cpp_map[{tctype}, {uctype}]()
             for key, value in new_map:
                 {tpy2cbody}
                 {upy2cbody}
-                item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2cbody})
+                item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
                 self.map_ptr.insert(item)
         elif bool(new_map):
             self.map_ptr = new cpp_map[{tctype}, {uctype}]()
@@ -300,7 +301,7 @@ cdef class _Map{tclsname}{uclsname}:
         cdef pair[{tctype}, {uctype}] item
         {tpy2cbody}
         {upy2cbody}
-        item = pair[{tctype}, {uctype}]({tpy2crtn}, {tpy2crtn})
+        item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
         self.map_ptr.insert(item)
 
     def __delitem__(self, key):
