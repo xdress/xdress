@@ -17,7 +17,7 @@ stlcontainers = [
     ('map', 'int', 'int'),
     ('map', 'int', 'float'),
     ('map', 'uint', 'float'),
-    #('map', 'int', 'complex'),
+    ('map', 'int', 'complex'),
     ]
 
 #stlcontainers_module = 'stlcontainers'
