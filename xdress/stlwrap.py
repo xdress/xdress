@@ -2,101 +2,15 @@
 containters to the associated python types.
 """
 
-
-ctypes = {
-    'str': 'std_string',
-    'int': 'int',
-    'uint': 'extra_types.uint',  # 'unsigned int'
-    'float': 'float',
-    'double': 'double',
-    'complex': 'extra_types.complex_t',
-    'set[int]': 'set[int]',
-    'vector[double]': 'cpp_vector[double]',
-    }
-
-cytypes = {
-    'str': 'char *',
-    'int': 'int',
-    'uint': 'long',
-    'float': 'float',
-    'double': 'float',
-    'complex': 'object',
-    'set[int]': '_SetInt',
-    'vector[double]': 'np.ndarray[double]',
-    }
-
-pytypes = {
-    'str': ['basestring'],
-    'int': ['int'],
-    'uint': ['int', 'long'],
-    'float': ['float'],
-    'double': ['float'],
-    'complex': ['complex'],
-    'set[int]': ['set', 'list', 'basestring', 'tuple'],
-    'vector[double]': ['list', 'tuple', 'np.ndarray'],
-    }
-
-class_names = {
-    'str': 'Str',
-    'int': 'Int',
-    'uint': 'UInt',
-    'float': 'Float',
-    'double': 'Double',
-    'complex': 'Complex',
-    'set[int]': 'SetInt',
-    'vector[double]': 'VectorDouble',
-    }
-
-func_names = {
-    'str': 'str',
-    'int': 'int',
-    'uint': 'uint',
-    'float': 'flt',
-    'double': 'dbl',
-    'complex': 'complex',
-    'set[int]': 'set_int',
-    'vector[double]': 'vector_dbl',
-    }
-
-human_names = {
-    'str': 'string',
-    'int': 'integer',
-    'uint': 'unsigned integer',
-    'float': 'float',
-    'double': 'double',
-    'complex': 'complex',
-    'set[int]': 'set of integers',
-    'vector[double]': 'vector [ndarray] of doubles',
-    }
-
-c2py_exprs = {
-    'str': 'str(<char *> {var}.c_str())',
-    'int': 'int({var})',
-    'uint': 'int({var})',
-    'float': 'float({var})',
-    'double': 'float({var})',
-    'complex': 'complex(float({var}.re), float({var}.im))',
-    'vector[double]': 'c2py_vector_dbl(&{var})',
-    }
-
-py2c_exprs = {
-    'str': 'std_string(<char *> {var})',
-    'int': '{var}',
-    'uint': '<extra_types.uint> long({var})',
-    'float': '<float> {var}',
-    'double': '<double> {var}',
-    'complex': 'py2c_complex({var})',
-    'vector[double]': 'py2c_vector_dbl({var})',
-    }
+import typesystem as ts
 
 testvals = {
     'str': ["Aha", "Take", "Me", "On"], 
-    'int': [1, 42, -65, 18], 
-    'uint': [1, 65, 4043370667L, 42L],
-    'float': [1.0, 42.42, -65.5555, 18],
-    'double': [1.0, 42.42, -65.5555, 18],
-    'complex': [1.0, 42+42j, -65.55-1j, 0.18j],
-    'vector[double]': [range(10), (1,), [1, 2], range(6)],
+    'int32': [1, 42, -65, 18], 
+    'uint32': [1, 65, 4043370667L, 42L],
+    'float32': [1.0, 42.42, -65.5555, 18],
+    'float64': [1.0, 42.42, -65.5555, 18],
+    'complex128': [1.0, 42+42j, -65.55-1j, 0.18j],
     }
 
 #
@@ -104,7 +18,7 @@ testvals = {
 #
 
 _pyxset = '''# Set{clsname}
-cdef class SetIter{clsname}(object):
+cdef class _SetIter{clsname}(object):
     cdef void init(self, cpp_set[{ctype}] * set_ptr):
         cdef cpp_set[{ctype}].iterator * itn = <cpp_set[{ctype}].iterator *> malloc(sizeof(set_ptr.begin()))
         itn[0] = set_ptr.begin()
@@ -124,9 +38,10 @@ cdef class SetIter{clsname}(object):
     def __next__(self):
         cdef cpp_set[{ctype}].iterator inow = deref(self.iter_now)
         cdef cpp_set[{ctype}].iterator iend = deref(self.iter_end)
-
+        {c2pydecl}
         if inow != iend:
-            pyval = {iterval}
+            {c2pybody}
+            pyval = {c2pyrtn}
         else:
             raise StopIteration
 
@@ -137,6 +52,7 @@ cdef class SetIter{clsname}(object):
 cdef class _Set{clsname}:
     def __cinit__(self, new_set=True, bint free_set=True):
         cdef {ctype} s
+        {py2cdecl}
 
         # Decide how to init set, if at all
         if isinstance(new_set, _Set{clsname}):
@@ -146,7 +62,8 @@ cdef class _Set{clsname}:
                 hasattr(new_set, '__getitem__')):
             self.set_ptr = new cpp_set[{ctype}]()
             for value in new_set:
-                s = {initval}
+                {py2cbody}
+                s = {py2crtn}
                 self.set_ptr.insert(s)
         elif bool(new_set):
             self.set_ptr = new cpp_set[{ctype}]()
@@ -160,8 +77,10 @@ cdef class _Set{clsname}:
 
     def __contains__(self, value):
         cdef {ctype} s
+        {py2cdecl}
         if {isinst}:
-            s = {initval}
+            {py2cbody}
+            s = {py2crtn}
         else:
             return False
 
@@ -174,20 +93,24 @@ cdef class _Set{clsname}:
         return self.set_ptr.size()
 
     def __iter__(self):
-        cdef SetIter{clsname} si = SetIter{clsname}()
+        cdef _SetIter{clsname} si = _SetIter{clsname}()
         si.init(self.set_ptr)
         return si
 
     def add(self, {cytype} value):
         cdef {ctype} v
-        v = {initval}
+        {py2cdecl}
+        {py2cbody}
+        v = {py2crtn}
         self.set_ptr.insert(v)
         return
 
     def discard(self, value):
         cdef {ctype} v
+        {py2cdecl}
         if value in self:
-            v = {initval}
+            {py2cbody}
+            v = {py2crtn}
             self.set_ptr.erase(v)
         return
 
@@ -215,18 +138,25 @@ class Set{clsname}(_Set{clsname}, collections.Set):
 '''
 def genpyx_set(t):
     """Returns the pyx snippet for a set of type t."""
-    isinst = " or ".join(["isinstance(value, {0})".format(x) for x in pytypes[t]])
-    iterval = c2py_exprs[t].format(var="deref(inow)")
-    initval = py2c_exprs[t].format(var="value")
-    return _pyxset.format(clsname=class_names[t], humname=human_names[t], 
-                          ctype=ctypes[t], pytype=pytypes[t], cytype=cytypes[t], 
-                          iterval=iterval, initval=initval, isinst=isinst)
+    t = ts.canon(t)
+    kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.human_names[t], 
+              ctype=ts.cython_ctype(t), pytype=ts.cython_pytype(t), 
+              cytype=ts.cython_cytype(t),)
+    fpt = ts.from_pytypes[t]
+    kw['isinst'] = " or ".join(["isinstance(value, {0})".format(x) for x in fpt])
+    c2pykeys = ['c2pydecl', 'c2pybody', 'c2pyrtn']
+    c2py = ts.cython_c2py("deref(inow)", t, cached=False)
+    kw.update([(k, v or '') for k, v in zip(c2pykeys, c2py)])
+    py2ckeys = ['py2cdecl', 'py2cbody', 'py2crtn']
+    py2c = ts.cython_py2c("value", t)
+    kw.update([(k, v or '') for k, v in zip(py2ckeys, py2c)])
+    return _pyxset.format(**kw)
 
 _pxdset = """# Set{clsname}
-cdef class SetIter{clsname}(object):
+cdef class _SetIter{clsname}(object):
     cdef cpp_set[{ctype}].iterator * iter_now
     cdef cpp_set[{ctype}].iterator * iter_end
-    cdef void init(SetIter{clsname}, cpp_set[{ctype}] *)
+    cdef void init(_SetIter{clsname}, cpp_set[{ctype}] *)
 
 cdef class _Set{clsname}:
     cdef cpp_set[{ctype}] * set_ptr
@@ -236,7 +166,7 @@ cdef class _Set{clsname}:
 """
 def genpxd_set(t):
     """Returns the pxd snippet for a set of type t."""
-    return _pxdset.format(clsname=class_names[t], ctype=ctypes[t])
+    return _pxdset.format(clsname=ts.cython_classname(t)[1], ctype=ts.cython_ctype(t))
 
 
 _testset = """# Set{clsname}
@@ -253,14 +183,16 @@ def test_set_{fncname}():
 """
 def gentest_set(t):
     """Returns the test snippet for a set of type t."""
-    return _testset.format(*[repr(i) for i in testvals[t]], clsname=class_names[t],
-                           fncname=func_names[t])
+    t = ts.canon(t)
+    return _testset.format(*[repr(i) for i in testvals[t]], 
+                           clsname=ts.cython_classname(t)[1],
+                           fncname=t if isinstance(t, basestring) else t[0])
 
 #
 # Maps
 #
 _pyxmap = '''# Map({tclsname}, {uclsname})
-cdef class MapIter{tclsname}{uclsname}(object):
+cdef class _MapIter{tclsname}{uclsname}(object):
     cdef void init(self, cpp_map[{tctype}, {uctype}] * map_ptr):
         cdef cpp_map[{tctype}, {uctype}].iterator * itn = <cpp_map[{tctype}, {uctype}].iterator *> malloc(sizeof(map_ptr.begin()))
         itn[0] = map_ptr.begin()
@@ -280,9 +212,10 @@ cdef class MapIter{tclsname}{uclsname}(object):
     def __next__(self):
         cdef cpp_map[{tctype}, {uctype}].iterator inow = deref(self.iter_now)
         cdef cpp_map[{tctype}, {uctype}].iterator iend = deref(self.iter_end)
-
+        {tc2pydecl}
         if inow != iend:
-            pyval = {iterkey}
+            {tc2pybody}
+            pyval = {tc2pyrtn}
         else:
             raise StopIteration
 
@@ -292,6 +225,8 @@ cdef class MapIter{tclsname}{uclsname}(object):
 cdef class _Map{tclsname}{uclsname}:
     def __cinit__(self, new_map=True, bint free_map=True):
         cdef pair[{tctype}, {uctype}] item
+        {tpy2cdecl}
+        {upy2cdecl}
 
         # Decide how to init map, if at all
         if isinstance(new_map, _Map{tclsname}{uclsname}):
@@ -299,12 +234,16 @@ cdef class _Map{tclsname}{uclsname}:
         elif hasattr(new_map, 'items'):
             self.map_ptr = new cpp_map[{tctype}, {uctype}]()
             for key, value in new_map.items():
-                item = pair[{tctype}, {uctype}]({initkey}, {initval})
+                {tpy2cbody}
+                {upy2cbody}
+                item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2cbody})
                 self.map_ptr.insert(item)
         elif hasattr(new_map, '__len__'):
             self.map_ptr = new cpp_map[{tctype}, {uctype}]()
             for key, value in new_map:
-                item = pair[{tctype}, {uctype}]({initkey}, {initval})
+                {tpy2cbody}
+                {upy2cbody}
+                item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2cbody})
                 self.map_ptr.insert(item)
         elif bool(new_map):
             self.map_ptr = new cpp_map[{tctype}, {uctype}]()
@@ -318,9 +257,11 @@ cdef class _Map{tclsname}{uclsname}:
 
     def __contains__(self, key):
         cdef {tctype} k
+        {tpy2cdecl}
         if {tisnotinst}:
             return False
-        k = {initkey}
+        {tpy2cbody}
+        k = {tpy2crtn}
 
         if 0 < self.map_ptr.count(k):
             return True
@@ -331,32 +272,43 @@ cdef class _Map{tclsname}{uclsname}:
         return self.map_ptr.size()
 
     def __iter__(self):
-        cdef MapIter{tclsname}{uclsname} mi = MapIter{tclsname}{uclsname}()
+        cdef _MapIter{tclsname}{uclsname} mi = _MapIter{tclsname}{uclsname}()
         mi.init(self.map_ptr)
         return mi
 
     def __getitem__(self, key):
         cdef {tctype} k
         cdef {uctype} v
+        {tpy2cdecl}
+        {uc2pydecl}
 
         if {tisnotinst}:
             raise TypeError("Only {thumname} keys are valid.")
-        k = {initkey}
+        {tpy2cbody}
+        k = {tpy2crtn}
 
         if 0 < self.map_ptr.count(k):
             v = deref(self.map_ptr)[k]
-            return {convval}
+            {uc2pybody}
+            return {uc2pyrtn}
         else:
             raise KeyError
 
     def __setitem__(self, key, value):
-        cdef pair[{tctype}, {uctype}] item = pair[{tctype}, {uctype}]({initkey}, {initval})
+        {tpy2cdecl}
+        {upy2cdecl}
+        cdef pair[{tctype}, {uctype}] item
+        {tpy2cbody}
+        {upy2cbody}
+        item = pair[{tctype}, {uctype}]({tpy2crtn}, {tpy2crtn})
         self.map_ptr.insert(item)
 
     def __delitem__(self, key):
         cdef {tctype} k
+        {tpy2cdecl}
         if key in self:
-            k = {initkey}
+            {tpy2cbody}
+            k = {tpy2crtn}
             self.map_ptr.erase(k)
 
 
@@ -383,24 +335,35 @@ class Map{tclsname}{uclsname}(_Map{tclsname}{uclsname}, collections.MutableMappi
 '''
 def genpyx_map(t, u):
     """Returns the pyx snippet for a map of type <t, u>."""
-    tisnotinst = " and ".join(["not isinstance(key, {0})".format(x) for x in pytypes[t]])
-    iterkey = c2py_exprs[t].format(var="deref(inow).first")
-    convval = c2py_exprs[u].format(var="v")
-    initkey = py2c_exprs[t].format(var="key")
-    initval = py2c_exprs[u].format(var="value")
-    return _pyxmap.format(tclsname=class_names[t], uclsname=class_names[u],
-                          thumname=human_names[t], uhumname=human_names[u],
-                          tctype=ctypes[t], uctype=ctypes[u],
-                          tpytype=pytypes[t], upytype=pytypes[u],
-                          tcytype=cytypes[t], ucytype=cytypes[u],
-                          iterkey=iterkey, convval=convval, 
-                          initkey=initkey, initval=initval, tisnotinst=tisnotinst)
+    t = ts.canon(t)
+    u = ts.canon(u)
+    kw = dict(tclsname=ts.cython_classname(t)[1], uclsname=ts.cython_classname(u)[1],
+              thumname=ts.human_names[t], uhumname=ts.human_names[u],
+              tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),
+              tpytype=ts.cython_pytype(t), upytype=ts.cython_pytype(u),
+              tcytype=ts.cython_cytype(t), ucytype=ts.cython_cytype(u),)
+    tisnotinst = ["not isinstance(key, {0})".format(x) for x in ts.from_pytypes[t]]
+    kw['tisnotinst'] = " and ".join(tisnotinst)
+    tc2pykeys = ['tc2pydecl', 'tc2pybody', 'tc2pyrtn']
+    tc2py = ts.cython_c2py("deref(inow).first", t, cached=False)
+    kw.update([(k, v or '') for k, v in zip(tc2pykeys, tc2py)])
+    uc2pykeys = ['uc2pydecl', 'uc2pybody', 'uc2pyrtn']
+    uc2py = ts.cython_c2py("v", u, cached=False)
+    kw.update([(k, v or '') for k, v in zip(uc2pykeys, uc2py)])
+    tpy2ckeys = ['tpy2cdecl', 'tpy2cbody', 'tpy2crtn']
+    tpy2c = ts.cython_py2c("key", t)
+    kw.update([(k, v or '') for k, v in zip(tpy2ckeys, tpy2c)])
+    upy2ckeys = ['upy2cdecl', 'upy2cbody', 'upy2crtn']
+    upy2c = ts.cython_py2c("value", u)
+    kw.update([(k, v or '') for k, v in zip(upy2ckeys, upy2c)])
+    return _pyxmap.format(**kw)
+
 
 _pxdmap = """# Map{tclsname}{uclsname}
-cdef class MapIter{tclsname}{uclsname}(object):
+cdef class _MapIter{tclsname}{uclsname}(object):
     cdef cpp_map[{tctype}, {uctype}].iterator * iter_now
     cdef cpp_map[{tctype}, {uctype}].iterator * iter_end
-    cdef void init(MapIter{tclsname}{uclsname}, cpp_map[{tctype}, {uctype}] *)
+    cdef void init(_MapIter{tclsname}{uclsname}, cpp_map[{tctype}, {uctype}] *)
 
 cdef class _Map{tclsname}{uclsname}:
     cdef cpp_map[{tctype}, {uctype}] * map_ptr
@@ -410,9 +373,12 @@ cdef class _Map{tclsname}{uclsname}:
 """
 def genpxd_map(t, u):
     """Returns the pxd snippet for a set of type t."""
-    return _pxdmap.format(tclsname=class_names[t], uclsname=class_names[u],
-                          thumname=human_names[t], uhumname=human_names[u],
-                          tctype=ctypes[t], uctype=ctypes[u],)
+    t = ts.canon(t)
+    u = ts.canon(u)
+    return _pxdmap.format(tclsname=ts.cython_classname(t)[1], 
+                          uclsname=ts.cython_classname(u)[1],
+                          thumname=ts.human_names[t], uhumname=ts.human_names[u],
+                          tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),)
 
 
 _testmap = """# Map{tclsname}{uclsname}
@@ -439,10 +405,12 @@ def test_map_{tfncname}_{ufncname}():
 def gentest_map(t, u):
     """Returns the test snippet for a map of type t."""
     a = '_array_almost' if u.startswith('vector') else ''
+    t = ts.canon(t)
+    u = ts.canon(u)
     return _testmap.format(*[repr(i) for i in testvals[t] + testvals[u][::-1]], 
-                           tclsname=class_names[t], uclsname=class_names[u],
-                           tfncname=func_names[t], ufncname=func_names[u], 
-                           array=a)
+                           tclsname=ts.cython_classname(t)[1], 
+                           uclsname=ts.cython_classname(u)[1],
+                           tfncname=t, ufncname=u, array=a)
 
 
 #
@@ -470,11 +438,11 @@ def genpyx_py2c_map(t, u):
     iterval = c2py_exprs[u].format(var="deref(mapiter).second")
     initkey = py2c_exprs[t].format(var="key")
     initval = py2c_exprs[u].format(var="value")
-    return _pyxpy2cmap.format(tclsname=class_names[t], uclsname=class_names[u],
-                              thumname=human_names[t], uhumname=human_names[u],
-                              tctype=ctypes[t], uctype=ctypes[u],
-                              tpytype=pytypes[t], upytype=pytypes[u],
-                              tcytype=cytypes[t], ucytype=cytypes[u],
+    return _pyxpy2cmap.format(tclsname=ts.cython_classname(t)[1], uclsname=ts.cython_classname(u)[1],
+                              thumname=ts.human_names[t], uhumname=ts.human_names[u],
+                              tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),
+                              tpytype=ts.cython_pytype(t), upytype=ts.cython_pytype(u),
+                              tcytype=ts.cython_cytype(t), ucytype=ts.cython_cytype(u),
                               iterkey=iterkey, iterval=iterval, 
                               initkey=initkey, initval=initval,
                               tfncname=func_names[t], ufncname=func_names[u],
@@ -487,9 +455,9 @@ cdef dict map_to_dict_{tfncname}_{ufncname}(cpp_map[{tctype}, {uctype}])
 """
 def genpxd_py2c_map(t, u):
     """Returns the pxd snippet for a set of type t."""
-    return _pxdpy2cmap.format(tclsname=class_names[t], uclsname=class_names[u],
-                              thumname=human_names[t], uhumname=human_names[u],
-                              tctype=ctypes[t], uctype=ctypes[u],
+    return _pxdpy2cmap.format(tclsname=ts.cython_classname(t)[1], uclsname=ts.cython_classname(u)[1],
+                              thumname=ts.human_names[t], uhumname=ts.human_names[u],
+                              tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),
                               tfncname=func_names[t], ufncname=func_names[u])
 
 def gentest_py2c_map(t, u):
@@ -521,11 +489,11 @@ def genpyx_py2c_set(t):
     """Returns the pyx snippet for a set of type t."""
     iterval = c2py_exprs[t].format(var="deref(setiter)")
     initval = py2c_exprs[t].format(var="value")
-    return _pyxpy2cset.format(clsname=class_names[t], 
-                              humname=human_names[t], 
-                              ctype=ctypes[t], 
-                              pytype=pytypes[t], 
-                              cytype=cytypes[t],
+    return _pyxpy2cset.format(clsname=ts.cython_classname(t)[1], 
+                              humname=ts.human_names[t], 
+                              ctype=ts.cython_ctype(t), 
+                              pytype=ts.cython_pytype(t), 
+                              cytype=ts.cython_cytype(t),
                               iterval=iterval, 
                               initval=initval,
                               fncname=func_names[t], 
@@ -537,9 +505,9 @@ cdef set cpp_to_py_set_{fncname}(cpp_set[{ctype}])
 """
 def genpxd_py2c_set(t):
     """Returns the pxd snippet for a set of type t."""
-    return _pxdpy2cset.format(clsname=class_names[t],
-                              humname=human_names[t], 
-                              ctype=ctypes[t], 
+    return _pxdpy2cset.format(clsname=ts.cython_classname(t)[1],
+                              humname=ts.human_names[t], 
+                              ctype=ts.cython_ctype(t), 
                               fncname=func_names[t])
 
 def gentest_py2c_set(t):
@@ -562,6 +530,10 @@ from libcpp.vector cimport vector as cpp_vector
 from cython.operator cimport dereference as deref
 from cython.operator cimport preincrement as inc
 from libc.stdlib cimport malloc, free
+from libcpp.string cimport string as std_string
+from libcpp.utility cimport pair
+from libcpp.map cimport map as cpp_map
+from libcpp.vector cimport vector as cpp_vector
 
 # Python Imports
 import collections
@@ -571,27 +543,7 @@ import numpy as np
 
 np.import_array()
 
-# Local imports
-include "include/cython_version.pxi"
-IF CYTHON_VERSION_MAJOR == 0 and CYTHON_VERSION_MINOR >= 17:
-    from libcpp.string cimport string as std_string
-    from libcpp.utility cimport pair
-    from libcpp.map cimport map as cpp_map
-    from libcpp.vector cimport vector as cpp_vector
-ELSE:
-    from pyne._includes.libcpp.string cimport string as std_string
-    from pyne._includes.libcpp.utility cimport pair
-    from pyne._includes.libcpp.map cimport map as cpp_map
-    from pyne._includes.libcpp.vector cimport vector as cpp_vector
-cimport extra_types
-
-cdef extra_types.complex_t py2c_complex(object pyv):
-    cdef extra_types.complex_t cv
-    pyv = complex(pyv)
-    cv = extra_types.complex_t()
-    cv.re = pyv.real
-    cv.im = pyv.imag
-    return cv
+cimport xdress_extra_types
 
 cdef np.ndarray c2py_vector_dbl(cpp_vector[double] * v):
     cdef np.ndarray vview
@@ -639,27 +591,18 @@ from libcpp.set cimport set as cpp_set
 from libcpp.vector cimport vector as cpp_vector
 from cython.operator cimport dereference as deref
 from cython.operator cimport preincrement as inc
+from libcpp.string cimport string as std_string
+from libcpp.utility cimport pair
+from libcpp.map cimport map as cpp_map
+from libcpp.vector cimport vector as cpp_vector
 
 # Python Imports
 cimport numpy as np
 
 # Local imports
-include "include/cython_version.pxi"
-IF CYTHON_VERSION_MAJOR == 0 and CYTHON_VERSION_MINOR >= 17:
-    from libcpp.string cimport string as std_string
-    from libcpp.utility cimport pair
-    from libcpp.map cimport map as cpp_map
-    from libcpp.vector cimport vector as cpp_vector
-ELSE:
-    from pyne._includes.libcpp.string cimport string as std_string
-    from pyne._includes.libcpp.utility cimport pair
-    from pyne._includes.libcpp.map cimport map as cpp_map
-    from pyne._includes.libcpp.vector cimport vector as cpp_vector
-cimport extra_types
+cimport xdress_extra_types
 
 cimport numpy as np
-
-cdef extra_types.complex_t py2c_complex(object)
 
 cdef np.ndarray c2py_vector_dbl(cpp_vector[double] *)
 
