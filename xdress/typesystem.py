@@ -318,17 +318,39 @@ types, or other refined types!"""
 
 
 
-human_names = {
+_humannames = {
     'str': 'string',
     'int32': 'integer',
     'uint32': 'unsigned integer',
     'float32': 'float',
     'float64': 'double',
     'complex128': 'complex',
-    'set': 'set of integers',
-    'vector': 'vector [ndarray] of doubles',
+    'dict': 'map of ({key_type}, {value_type}) items',
+    'pair': '({key_type}, {value_type}) pair',
+    'set': 'set of {value_type}',
+    'vector': 'vector [ndarray] of {value_type}',
     }
 
+@_memoize
+def humanname(t, hnt=None):
+    """Computes human names for types."""
+    if hnt is None:
+        t = canon(t)
+        if isinstance(t, basestring):
+            return t, _humannames[t]
+        elif t[0] in base_types:
+            return t, _humannames[t[0]]
+        return humanname(t, _humannames[t[0]])
+    d = {}
+    for key, x in zip(template_types[t[0]], t[1:-1]):
+        if isinstance(x, basestring):
+            val = _humannames[x]
+        elif x[0] in base_types:
+            val = _humannames[x[0]]
+        else: 
+            val, _ = humanname(x, _humannames[x[0]])
+        d[key] = val
+    return t, hnt.format(**d)
 
 @_memoize
 def isdependent(t):
@@ -1093,8 +1115,9 @@ _cython_py2c_conv = _LazyConverterDict({
     'set': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))', 
             '{proxy_name}.set_ptr[0]'),
     'vector': (('cdef int i\n'
-                'cdef int {var}_size = len({var})\n'
+                'cdef int {var}_size\n'
                 'cdef {npctype} * {var}_data\n'
+                '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
                 '    {var}_data = <{npctype} *> np.PyArray_DATA(<np.ndarray> {var})\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 

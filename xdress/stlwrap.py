@@ -3,7 +3,7 @@ containters to the associated python types.
 """
 import pprint
 
-from utils import newoverwrite, newcopyover, ensuredirs
+from utils import newoverwrite, newcopyover, ensuredirs, indent, indentstr
 import typesystem as ts
 
 
@@ -41,9 +41,9 @@ cdef class _SetIter{clsname}(object):
     def __next__(self):
         cdef cpp_set[{ctype}].iterator inow = deref(self.iter_now)
         cdef cpp_set[{ctype}].iterator iend = deref(self.iter_end)
-        {c2pydecl}
+{c2pydecl.indent8}
         if inow != iend:
-            {c2pybody}
+{c2pybody.indent12}
             pyval = {c2pyrtn}
         else:
             raise StopIteration
@@ -55,7 +55,7 @@ cdef class _SetIter{clsname}(object):
 cdef class _Set{clsname}:
     def __cinit__(self, new_set=True, bint free_set=True):
         cdef {ctype} s
-        {py2cdecl}
+{py2cdecl.indent8}
 
         # Decide how to init set, if at all
         if isinstance(new_set, _Set{clsname}):
@@ -65,7 +65,7 @@ cdef class _Set{clsname}:
                 hasattr(new_set, '__getitem__')):
             self.set_ptr = new cpp_set[{ctype}]()
             for value in new_set:
-                {py2cbody}
+{py2cbody.indent16}
                 s = {py2crtn}
                 self.set_ptr.insert(s)
         elif bool(new_set):
@@ -80,9 +80,9 @@ cdef class _Set{clsname}:
 
     def __contains__(self, value):
         cdef {ctype} s
-        {py2cdecl}
+{py2cdecl.indent8}
         if {isinst}:
-            {py2cbody}
+{py2cbody.indent12}
             s = {py2crtn}
         else:
             return False
@@ -102,17 +102,17 @@ cdef class _Set{clsname}:
 
     def add(self, {cytype} value):
         cdef {ctype} v
-        {py2cdecl}
-        {py2cbody}
+{py2cdecl.indent8}
+{py2cbody.indent8}
         v = {py2crtn}
         self.set_ptr.insert(v)
         return
 
     def discard(self, value):
         cdef {ctype} v
-        {py2cdecl}
+{py2cdecl.indent8}
         if value in self:
-            {py2cbody}
+{py2cbody.indent12}
             v = {py2crtn}
             self.set_ptr.erase(v)
         return
@@ -142,17 +142,17 @@ class Set{clsname}(_Set{clsname}, collections.Set):
 def genpyx_set(t):
     """Returns the pyx snippet for a set of type t."""
     t = ts.canon(t)
-    kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.human_names[t], 
+    kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.humanname(t), 
               ctype=ts.cython_ctype(t), pytype=ts.cython_pytype(t), 
               cytype=ts.cython_cytype(t),)
     fpt = ts.from_pytypes[t]
     kw['isinst'] = " or ".join(["isinstance(value, {0})".format(x) for x in fpt])
     c2pykeys = ['c2pydecl', 'c2pybody', 'c2pyrtn']
     c2py = ts.cython_c2py("deref(inow)", t, cached=False)
-    kw.update([(k, v or '') for k, v in zip(c2pykeys, c2py)])
+    kw.update([(k, indentstr(v or '')) for k, v in zip(c2pykeys, c2py)])
     py2ckeys = ['py2cdecl', 'py2cbody', 'py2crtn']
     py2c = ts.cython_py2c("value", t)
-    kw.update([(k, v or '') for k, v in zip(py2ckeys, py2c)])
+    kw.update([(k, indentstr(v or '')) for k, v in zip(py2ckeys, py2c)])
     return _pyxset.format(**kw)
 
 _pxdset = """# Set{clsname}
@@ -216,9 +216,9 @@ cdef class _MapIter{tclsname}{uclsname}(object):
     def __next__(self):
         cdef cpp_map[{tctype}, {uctype}].iterator inow = deref(self.iter_now)
         cdef cpp_map[{tctype}, {uctype}].iterator iend = deref(self.iter_end)
-        {tc2pydecl}
+{tc2pydecl.indent8}
         if inow != iend:
-            {tc2pybody}
+{tc2pybody.indent12}
             pyval = {tc2pyrtn}
         else:
             raise StopIteration
@@ -229,8 +229,8 @@ cdef class _MapIter{tclsname}{uclsname}(object):
 cdef class _Map{tclsname}{uclsname}:
     def __cinit__(self, new_map=True, bint free_map=True):
         cdef pair[{tctype}, {uctype}] item
-        {tpy2cdecl}
-        {upy2cdecl}
+{tpy2cdecl.indent8}
+{upy2cdecl.indent8}
 
         # Decide how to init map, if at all
         if isinstance(new_map, _Map{tclsname}{uclsname}):
@@ -238,15 +238,15 @@ cdef class _Map{tclsname}{uclsname}:
         elif hasattr(new_map, 'items'):
             self.map_ptr = new cpp_map[{tctype}, {uctype}]()
             for key, value in new_map.items():
-                {tpy2cbody}
-                {upy2cbody}
+{tpy2cbody.indent16}
+{upy2cbody.indent16}
                 item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
                 self.map_ptr.insert(item)
         elif hasattr(new_map, '__len__'):
             self.map_ptr = new cpp_map[{tctype}, {uctype}]()
             for key, value in new_map:
-                {tpy2cbody}
-                {upy2cbody}
+{tpy2cbody.indent16}
+{upy2cbody.indent16}
                 item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
                 self.map_ptr.insert(item)
         elif bool(new_map):
@@ -261,10 +261,10 @@ cdef class _Map{tclsname}{uclsname}:
 
     def __contains__(self, key):
         cdef {tctype} k
-        {tpy2cdecl}
+{tpy2cdecl.indent8}
         if {tisnotinst}:
             return False
-        {tpy2cbody}
+{tpy2cbody.indent8}
         k = {tpy2crtn}
 
         if 0 < self.map_ptr.count(k):
@@ -283,35 +283,34 @@ cdef class _Map{tclsname}{uclsname}:
     def __getitem__(self, key):
         cdef {tctype} k
         cdef {uctype} v
-        {tpy2cdecl}
-        {uc2pydecl}
-
+{tpy2cdecl.indent8}
+{uc2pydecl.indent8}
         if {tisnotinst}:
             raise TypeError("Only {thumname} keys are valid.")
-        {tpy2cbody}
+{tpy2cbody.indent8}
         k = {tpy2crtn}
 
         if 0 < self.map_ptr.count(k):
             v = deref(self.map_ptr)[k]
-            {uc2pybody}
+{uc2pybody.indent12}
             return {uc2pyrtn}
         else:
             raise KeyError
 
     def __setitem__(self, key, value):
-        {tpy2cdecl}
-        {upy2cdecl}
+{tpy2cdecl.indent8}
+{upy2cdecl.indent8}
         cdef pair[{tctype}, {uctype}] item
-        {tpy2cbody}
-        {upy2cbody}
+{tpy2cbody.indent8}
+{upy2cbody.indent8}
         item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
         self.map_ptr.insert(item)
 
     def __delitem__(self, key):
         cdef {tctype} k
-        {tpy2cdecl}
+{tpy2cdecl.indent8}
         if key in self:
-            {tpy2cbody}
+{tpy2cbody.indent12}
             k = {tpy2crtn}
             self.map_ptr.erase(k)
 
@@ -342,7 +341,7 @@ def genpyx_map(t, u):
     t = ts.canon(t)
     u = ts.canon(u)
     kw = dict(tclsname=ts.cython_classname(t)[1], uclsname=ts.cython_classname(u)[1],
-              thumname=ts.human_names[t], uhumname=ts.human_names[u],
+              thumname=ts.humanname(t), uhumname=ts.humanname(u),
               tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),
               tpytype=ts.cython_pytype(t), upytype=ts.cython_pytype(u),
               tcytype=ts.cython_cytype(t), ucytype=ts.cython_cytype(u),)
@@ -350,16 +349,16 @@ def genpyx_map(t, u):
     kw['tisnotinst'] = " and ".join(tisnotinst)
     tc2pykeys = ['tc2pydecl', 'tc2pybody', 'tc2pyrtn']
     tc2py = ts.cython_c2py("deref(inow).first", t, cached=False)
-    kw.update([(k, v or '') for k, v in zip(tc2pykeys, tc2py)])
+    kw.update([(k, indentstr(v or '')) for k, v in zip(tc2pykeys, tc2py)])
     uc2pykeys = ['uc2pydecl', 'uc2pybody', 'uc2pyrtn']
     uc2py = ts.cython_c2py("v", u, cached=False)
-    kw.update([(k, v or '') for k, v in zip(uc2pykeys, uc2py)])
+    kw.update([(k, indentstr(v or '')) for k, v in zip(uc2pykeys, uc2py)])
     tpy2ckeys = ['tpy2cdecl', 'tpy2cbody', 'tpy2crtn']
     tpy2c = ts.cython_py2c("key", t)
-    kw.update([(k, v or '') for k, v in zip(tpy2ckeys, tpy2c)])
+    kw.update([(k, indentstr(v or '')) for k, v in zip(tpy2ckeys, tpy2c)])
     upy2ckeys = ['upy2cdecl', 'upy2cbody', 'upy2crtn']
     upy2c = ts.cython_py2c("value", u)
-    kw.update([(k, v or '') for k, v in zip(upy2ckeys, upy2c)])
+    kw.update([(k, indentstr(v or '')) for k, v in zip(upy2ckeys, upy2c)])
     return _pyxmap.format(**kw)
 
 
@@ -381,7 +380,7 @@ def genpxd_map(t, u):
     u = ts.canon(u)
     return _pxdmap.format(tclsname=ts.cython_classname(t)[1], 
                           uclsname=ts.cython_classname(u)[1],
-                          thumname=ts.human_names[t], uhumname=ts.human_names[u],
+                          thumname=ts.humanname(t), uhumname=ts.humanname(u),
                           tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),)
 
 
@@ -408,9 +407,14 @@ def test_map_{tfncname}_{ufncname}():
 """
 def gentest_map(t, u):
     """Returns the test snippet for a map of type t."""
-    a = '_array_almost' if u.startswith('vector') else ''
     t = ts.canon(t)
     u = ts.canon(u)
+    if t not in testvals or u not in testvals:
+        return ""
+    ustr = u
+    while not isinstance(ustr, basestring):
+        ustr = ustr[0]
+    a = '_array_almost' if ustr.startswith('vector') else ''
     return _testmap.format(*[repr(i) for i in testvals[t] + testvals[u][::-1]], 
                            tclsname=ts.cython_classname(t)[1], 
                            uclsname=ts.cython_classname(u)[1],
@@ -443,8 +447,9 @@ def genpyx_py2c_map(t, u):
     iterval = c2py_exprs[u].format(var="deref(mapiter).second")
     initkey = py2c_exprs[t].format(var="key")
     initval = py2c_exprs[u].format(var="value")
-    return _pyxpy2cmap.format(tclsname=ts.cython_classname(t)[1], uclsname=ts.cython_classname(u)[1],
-                              thumname=ts.human_names[t], uhumname=ts.human_names[u],
+    return _pyxpy2cmap.format(tclsname=ts.cython_classname(t)[1], 
+                              uclsname=ts.cython_classname(u)[1],
+                              thumname=ts.humanname(t), uhumname=ts.humanname(u),
                               tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),
                               tpytype=ts.cython_pytype(t), upytype=ts.cython_pytype(u),
                               tcytype=ts.cython_cytype(t), ucytype=ts.cython_cytype(u),
@@ -461,7 +466,7 @@ cdef dict map_to_dict_{tfncname}_{ufncname}(cpp_map[{tctype}, {uctype}])
 def genpxd_py2c_map(t, u):
     """Returns the pxd snippet for a set of type t."""
     return _pxdpy2cmap.format(tclsname=ts.cython_classname(t)[1], uclsname=ts.cython_classname(u)[1],
-                              thumname=ts.human_names[t], uhumname=ts.human_names[u],
+                              thumname=ts.humanname(t), uhumname=ts.humanname(u),
                               tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),
                               tfncname=func_names[t], ufncname=func_names[u])
 
@@ -495,7 +500,7 @@ def genpyx_py2c_set(t):
     iterval = c2py_exprs[t].format(var="deref(setiter)")
     initval = py2c_exprs[t].format(var="value")
     return _pyxpy2cset.format(clsname=ts.cython_classname(t)[1], 
-                              humname=ts.human_names[t], 
+                              humname=ts.humanname(t), 
                               ctype=ts.cython_ctype(t), 
                               pytype=ts.cython_pytype(t), 
                               cytype=ts.cython_cytype(t),
@@ -511,7 +516,7 @@ cdef set cpp_to_py_set_{fncname}(cpp_set[{ctype}])
 def genpxd_py2c_set(t):
     """Returns the pxd snippet for a set of type t."""
     return _pxdpy2cset.format(clsname=ts.cython_classname(t)[1],
-                              humname=ts.human_names[t], 
+                              humname=ts.humanname(t), 
                               ctype=ts.cython_ctype(t), 
                               fncname=func_names[t])
 
@@ -652,7 +657,6 @@ def gentest(template, header=None, package='..'):
     testfuncs = dict([(k[8:], v) for k, v in globals().items() \
                     if k.startswith('gentest_') and callable(v)])
     test = _testheader if header is None else header
-    print ts.STLCONTAINERS
     test = test.format(stlcontainers=ts.STLCONTAINERS, package=package)
     for t in template:
         test += testfuncs[t[0]](*t[1:]) + "\n\n" 

@@ -18,6 +18,7 @@ stlcontainers = [
     ('map', 'int', 'float'),
     ('map', 'uint', 'float'),
     ('map', 'int', 'complex'),
+    ('map', 'int', ('vector', 'float')),
     ]
 
 stlcontainers_module = 'xdstlc'

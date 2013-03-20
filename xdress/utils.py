@@ -12,6 +12,13 @@ def indent(s, n=4, join=True):
         return [spaces + l for l in lines]
 
 
+class indentstr(str):
+    def __getattr__(self, key):
+        if key.startswith('indent'):
+            return indent(self, n=int(key[6:]))
+        return getattr(super(indentstr, self), key)
+
+
 def expand_default_args(methods):
     """This function takes a collection of method tuples and expands all of 
     the default arguments, returning a set of all methods possible."""
