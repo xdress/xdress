@@ -1,9 +1,11 @@
 """Generates cython wrapper classes and converter functions for standard library
 containters to the associated python types.
 """
-
-import typesystem as ts
 import pprint
+
+from utils import newoverwrite, newcopyover, ensuredirs
+import typesystem as ts
+
 
 testvals = {
     'str': ["Aha", "Take", "Me", "On"], 
@@ -172,12 +174,12 @@ def genpxd_set(t):
 
 _testset = """# Set{clsname}
 def test_set_{fncname}():
-    s = conv.Set{clsname}()
+    s = {stlcontainers}.Set{clsname}()
     s.add({0})
     assert_true({0} in s)
     assert_true({2} not in s)
 
-    s = conv.Set{clsname}([{0}, {1}, {2}])
+    s = {stlcontainers}.Set{clsname}([{0}, {1}, {2}])
     assert_true({1} in s)
     assert_true({3} not in s)
 
@@ -187,7 +189,8 @@ def gentest_set(t):
     t = ts.canon(t)
     return _testset.format(*[repr(i) for i in testvals[t]], 
                            clsname=ts.cython_classname(t)[1],
-                           fncname=t if isinstance(t, basestring) else t[0])
+                           fncname=t if isinstance(t, basestring) else t[0], 
+                           stlcontainers=ts.STLCONTAINERS)
 
 #
 # Maps
@@ -384,17 +387,17 @@ def genpxd_map(t, u):
 
 _testmap = """# Map{tclsname}{uclsname}
 def test_map_{tfncname}_{ufncname}():
-    m = conv.Map{tclsname}{uclsname}()
+    m = {stlcontainers}.Map{tclsname}{uclsname}()
     m[{0}] = {4}
     m[{1}] = {5}
     assert{array}_equal(len(m), 2)
     assert{array}_equal(m[{1}], {5})
 
-    m = conv.Map{tclsname}{uclsname}({{{2}: {6}, {3}: {7}}})
+    m = {stlcontainers}.Map{tclsname}{uclsname}({{{2}: {6}, {3}: {7}}})
     assert{array}_equal(len(m), 2)
     assert{array}_equal(m[{2}], {6})
 
-    n = conv.Map{tclsname}{uclsname}(m, False)
+    n = {stlcontainers}.Map{tclsname}{uclsname}(m, False)
     assert{array}_equal(len(n), 2)
     assert{array}_equal(n[{2}], {6})
 
@@ -411,7 +414,8 @@ def gentest_map(t, u):
     return _testmap.format(*[repr(i) for i in testvals[t] + testvals[u][::-1]], 
                            tclsname=ts.cython_classname(t)[1], 
                            uclsname=ts.cython_classname(u)[1],
-                           tfncname=t, ufncname=u, array=a)
+                           tfncname=t, ufncname=u, array=a, 
+                           stlcontainers=ts.STLCONTAINERS)
 
 
 #
@@ -544,7 +548,7 @@ import numpy as np
 
 np.import_array()
 
-cimport xdress_extra_types
+cimport {extra_types}
 
 cdef np.ndarray c2py_vector_dbl(cpp_vector[double] * v):
     cdef np.ndarray vview
@@ -577,6 +581,7 @@ def genpyx(template, header=None):
     pyxfuncs = dict([(k[7:], v) for k, v in globals().items() \
                     if k.startswith('genpyx_') and callable(v)])
     pyx = _pyxheader if header is None else header
+    pyx = pyx.format(extra_types=ts.EXTRA_TYPES)
     for t in template:
         pyx += pyxfuncs[t[0]](*t[1:]) + "\n\n" 
     return pyx
@@ -601,7 +606,7 @@ from libcpp.vector cimport vector as cpp_vector
 cimport numpy as np
 
 # Local imports
-cimport xdress_extra_types
+cimport {extra_types}
 
 cimport numpy as np
 
@@ -615,6 +620,7 @@ def genpxd(template, header=None):
     pxdfuncs = dict([(k[7:], v) for k, v in globals().items() \
                     if k.startswith('genpxd_') and callable(v)])
     pxd = _pxdheader if header is None else header
+    pxd = pxd.format(extra_types=ts.EXTRA_TYPES)
     for t in template:
         pxd += pxdfuncs[t[0]](*t[1:]) + "\n\n" 
     return pxd
@@ -636,24 +642,24 @@ from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 import os
 import numpy  as np
-import tables as tb
 
-import pyne.stlconverters as conv
+from {package} import {stlcontainers}
 
 
 '''
-def gentest(template, header=None):
+def gentest(template, header=None, package='..'):
     """Returns a string of a test file representing the given template."""
     testfuncs = dict([(k[8:], v) for k, v in globals().items() \
                     if k.startswith('gentest_') and callable(v)])
     test = _testheader if header is None else header
+    test = test.format(stlcontainers=ts.STLCONTAINERS, package=package)
     for t in template:
         test += testfuncs[t[0]](*t[1:]) + "\n\n" 
     return test
 
 
 def genfiles(template, fname='temp', pxdname=None, testname=None, 
-             pyxheader=None, pxdheader=None, testheader=None):
+             pyxheader=None, pxdheader=None, testheader=None, package='..'):
     """Generates all cython source files needed to create the wrapper."""
     # munge some filenames
     fname = fname[:-4] if fname.endswith('.pyx') else fname
@@ -665,14 +671,11 @@ def genfiles(template, fname='temp', pxdname=None, testname=None,
 
     pyx = genpyx(template, pyxheader)
     pxd = genpxd(template, pxdheader)
-    test = gentest(template, testheader)
+    test = gentest(template, testheader, package)
 
-    with open(fname, 'w') as f:
-        f.write(pyx)
-    with open(pxdname, 'w') as f:
-        f.write(pxd)
-    with open(testname, 'w') as f:
-        f.write(test)
+    newoverwrite(pyx, fname)
+    newoverwrite(pxd, pxdname)
+    newoverwrite(test, testname)
 
 if __name__ == "__main__":
     #t = [('set', 'int')]

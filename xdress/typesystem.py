@@ -218,7 +218,7 @@ Type System API
 
 """
 import functools
-from collections import Sequence, Set, Iterable
+from collections import Sequence, Set, Iterable, MutableMapping
 
 def _ishashable(x):
     try:
@@ -243,7 +243,7 @@ def _memoize(obj):
     return memoizer
 
 
-BASE_TYPES = set(['char', 'str', 'int32', 'int64', 'uint32', 'uint64', 'float32', 
+base_types = set(['char', 'str', 'int32', 'int64', 'uint32', 'uint64', 'float32', 
                   'float64', 'complex128', 'void', 'bool'])
 """Base types in the type system."""
 
@@ -330,7 +330,6 @@ human_names = {
     }
 
 
-
 @_memoize
 def isdependent(t):
     """Returns whether t is a dependent type or not."""
@@ -386,7 +385,7 @@ def _resolve_dependent_type(tname, tinst=None):
 def canon(t):
     """Turns the type into its canonical form. See module docs for more information."""
     if isinstance(t, basestring):
-        if t in BASE_TYPES:
+        if t in base_types:
             return t
         elif t in type_aliases:
             return canon(type_aliases[t])
@@ -435,33 +434,126 @@ def canon(t):
 
 #################### Type System Above This Line ##########################
 
-_cython_c_base_types = {
+EXTRA_TYPES = 'xdress_extra_types'
+
+STLCONTAINERS = 'stlcontainers' 
+
+_ensuremoddot = lambda x: x + '.' if x is not None and 0 < len(x) else ''
+
+class _LazyConfigDict(MutableMapping):
+    def __init__(self, items):
+        self._d = dict(items)
+
+    def __len__(self):
+        return len(self._d)
+
+    def __contains__(self, key):
+        return key in self._d
+
+    def __iter__(self):
+        for k in self._d:
+            yield k
+
+    def __getitem__(self, key):
+        value = self._d[key]
+        kw = {'extra_types': _ensuremoddot(EXTRA_TYPES),
+              'stlcontainers': _ensuremoddot(STLCONTAINERS),}
+        for k, v in kw.items():
+            value = value.replace('{' + k + '}', v)
+        return value
+
+    def __setitem__(self, key, value):
+        self._d[key] = value
+
+    def __delitem__(self, key):
+        del self._d[key]
+
+class _LazyImportDict(MutableMapping):
+    def __init__(self, items):
+        self._d = dict(items)
+
+    def __len__(self):
+        return len(self._d)
+
+    def __contains__(self, key):
+        return key in self._d
+
+    def __iter__(self):
+        for k in self._d:
+            yield k
+
+    def __getitem__(self, key):
+        value = self._d[key]
+        kw = {'extra_types': _ensuremoddot(EXTRA_TYPES),
+              'stlcontainers': _ensuremoddot(STLCONTAINERS),}
+        newvalue = tuple(tuple(x.format(**kw) or None for x in imp) for imp in value)
+        return newvalue
+
+    def __setitem__(self, key, value):
+        self._d[key] = value
+
+    def __delitem__(self, key):
+        del self._d[key]
+
+class _LazyConverterDict(MutableMapping):
+    def __init__(self, items):
+        self._d = dict(items)
+
+    def __len__(self):
+        return len(self._d)
+
+    def __contains__(self, key):
+        return key in self._d
+
+    def __iter__(self):
+        for k in self._d:
+            yield k
+
+    def __getitem__(self, key):
+        value = self._d[key]
+        kw = {'extra_types': _ensuremoddot(EXTRA_TYPES),
+              'stlcontainers': _ensuremoddot(STLCONTAINERS),}
+        newvalue = []
+        for x in value:
+            newx = x
+            if isinstance(newx, basestring):
+                for k, v in kw.items():
+                    newx = newx.replace('{' + k + '}', v)
+            newvalue.append(newx)
+        return tuple(newvalue)
+
+    def __setitem__(self, key, value):
+        self._d[key] = value
+
+    def __delitem__(self, key):
+        del self._d[key]
+
+#########################   Cython Functions   ################################
+
+_cython_ctypes = _LazyConfigDict({
     'char': 'char',
     'str': 'std_string',
     'int32': 'int',
-    'uint32': 'xdress_extra_types.uint',  # 'unsigned int'
+    'uint32': '{extra_types}uint',  # 'unsigned int'
     'float32': 'float',
     'float64': 'double',
-    'complex128': 'xdress_extra_types.complex_t',
+    'complex128': '{extra_types}complex_t',
     'bool': 'bint',
     'void': 'void', 
-    }
-
-_cython_c_template_types = {
     'map': 'cpp_map',
     'dict': 'dict',
     'pair': 'cpp_pair',
     'set': 'cpp_set',
     'vector': 'cpp_vector',
-    }
+    })
 
 @_memoize
 def cython_ctype(t):
     """Given a type t, returns the cooresponding Cython C type declaration."""
     t = canon(t)
     if isinstance(t, basestring):
-        if  t in BASE_TYPES:
-            return _cython_c_base_types[t]
+        if  t in base_types:
+            return _cython_ctypes[t]
     # must be tuple below this line
     tlen = len(t)
     if 2 == tlen:
@@ -475,7 +567,7 @@ def cython_ctype(t):
     elif 3 <= tlen:
         assert t[0] in template_types
         assert len(t) == len(template_types[t[0]]) + 2
-        template_name = _cython_c_template_types[t[0]]
+        template_name = _cython_ctypes[t[0]]
         assert template_name is not NotImplemented
         template_filling = ', '.join([cython_ctype(x) for x in t[1:-1]])
         cyct = '{0}[{1}]'.format(template_name, template_filling)
@@ -485,19 +577,16 @@ def cython_ctype(t):
         return cyct
 
 
-_cython_cimport_base_types = {
+_cython_cimports = _LazyImportDict({
     'char': (None,),
     'str': (('libcpp.string', 'string', 'std_string'),),
     'int32': (None,),
-    'uint32': (('xdress_extra_types'),),  # 'unsigned int'
+    'uint32': (('{extra_types}'),),  # 'unsigned int'
     'float32': (None,),
     'float64': (None,),
-    'complex128': (('xdress_extra_types'),),
+    'complex128': (('{extra_types}'),),
     'bool': (None,), 
     'void': (None,), 
-    }
-
-_cython_cimport_template_types = {
     'map': (('libcpp.map', 'map', 'cpp_map'),),
     'dict': (None,),
     'pair': (('libcpp.utility', 'pair', 'cpp_pair'),),
@@ -505,29 +594,26 @@ _cython_cimport_template_types = {
     'vector': (('libcpp.vector', 'vector', 'cpp_vector'),),
     'nucid': (('pyne', 'cpp_nucname'),),
     'nucname': (('pyne', 'cpp_nucname'), ('libcpp.string', 'string', 'std_string')),
-    }
+    })
 
-_cython_cyimport_base_types = {
+_cython_cyimports = _LazyImportDict({
     'char': (None,),
     'str': (None,),
     'int32': (None,),
     'uint32': (None,),
     'float32': (None,),
     'float64': (None,),
-    'complex128': (('xdress_extra_types',),),  # for py2c_complex()
+    'complex128': (('{extra_types}',),),  # for py2c_complex()
     'bool': (None,), 
     'void': (None,), 
-    }
-
-_cython_cyimport_template_types = {
-    'map': (('pyne', 'stlconverters', 'conv'),),
+    'map': (('{stlcontainers}',),),
     'dict': (None,),
-    'pair': (('pyne', 'stlconverters', 'conv'),),
-    'set': (('pyne', 'stlconverters', 'conv'),),
+    'pair': (('{stlcontainers}',),), 
+    'set': (('{stlcontainers}',),),
     'vector': (('numpy', 'as', 'np'),),
     'nucid': (('pyne', 'nucname'),),
     'nucname': (('pyne', 'nucname'),),
-    }
+    })
 
 @_memoize
 def cython_cimport_tuples(t, seen=None, inc=frozenset(['c', 'cy'])):
@@ -547,34 +633,30 @@ def cython_cimport_tuples(t, seen=None, inc=frozenset(['c', 'cy'])):
     if seen is None:
         seen = set()
     if isinstance(t, basestring):
-        if t in BASE_TYPES:
+        if t in base_types:
             if 'c' in inc:
-                seen.update(_cython_cimport_base_types[t])
+                seen.update(_cython_cimports[t])
             if 'cy' in inc:
-                seen.update(_cython_cyimport_base_types[t])
+                seen.update(_cython_cyimports[t])
             seen -= set((None, (None,)))
             return seen        
     # must be tuple below this line
     tlen = len(t)
     if 2 == tlen:
         if 'c' in inc:
-            seen.update(_cython_cimport_base_types.get(t[0], (None,)))
-            seen.update(_cython_cimport_base_types.get(t[1], (None,)))
-            seen.update(_cython_cimport_template_types.get(t[0], (None,)))
-            seen.update(_cython_cimport_template_types.get(t[1], (None,)))
+            seen.update(_cython_cimports.get(t[0], (None,)))
+            seen.update(_cython_cimports.get(t[1], (None,)))
         if 'cy' in inc:
-            seen.update(_cython_cyimport_base_types.get(t[0], (None,)))
-            seen.update(_cython_cyimport_base_types.get(t[1], (None,)))
-            seen.update(_cython_cyimport_template_types.get(t[0], (None,)))
-            seen.update(_cython_cyimport_template_types.get(t[1], (None,)))
+            seen.update(_cython_cyimports.get(t[0], (None,)))
+            seen.update(_cython_cyimports.get(t[1], (None,)))
         seen -= set((None, (None,)))
         return cython_cimport_tuples(t[0], seen, inc)
     elif 3 <= tlen:
         assert t[0] in template_types
         if 'c' in inc:
-            seen.update(_cython_cimport_template_types[t[0]])
+            seen.update(_cython_cimports[t[0]])
         if 'cy' in inc:
-            seen.update(_cython_cyimport_template_types[t[0]])
+            seen.update(_cython_cyimports[t[0]])
         for x in t[1:-1]:
             cython_cimport_tuples(x, seen, inc)
         seen -= set((None, (None,)))
@@ -597,7 +679,7 @@ def cython_cimports(x, inc=frozenset(['c', 'cy'])):
 
 
 
-_cython_pyimport_base_types = {
+_cython_pyimports = _LazyImportDict({
     'char': (None,),
     'str': (None,),
     'int32': (None,),
@@ -607,17 +689,14 @@ _cython_pyimport_base_types = {
     'complex128': (None,),
     'bool': (None,), 
     'void': (None,), 
-    }
-
-_cython_pyimport_template_types = {
-    'map': (('pyne', 'stlconverters', 'conv'),),
+    'map': (('{stlcontainers}',),),
     'dict': (None,),
-    'pair': (('pyne', 'stlconverters', 'conv'),),
-    'set': (('pyne', 'stlconverters', 'conv'),),
+    'pair': (('{stlcontainers}',),),
+    'set': (('{stlcontainers}',),),
     'vector': (('numpy', 'as', 'np'),),
     'nucid': (('pyne', 'nucname'),),
     'nucname': (('pyne', 'nucname'),),
-    }
+    })
 
 @_memoize
 def cython_import_tuples(t, seen=None):
@@ -637,22 +716,20 @@ def cython_import_tuples(t, seen=None):
     if seen is None:
         seen = set()
     if isinstance(t, basestring):
-        if  t in BASE_TYPES:
-            seen.update(_cython_pyimport_base_types[t])
+        if  t in base_types:
+            seen.update(_cython_pyimports[t])
             seen -= set((None, (None,)))
             return seen
     # must be tuple below this line
     tlen = len(t)
     if 2 == tlen:
-        seen.update(_cython_pyimport_base_types.get(t[0], (None,)))
-        seen.update(_cython_pyimport_base_types.get(t[1], (None,)))
-        seen.update(_cython_pyimport_template_types.get(t[0], (None,)))
-        seen.update(_cython_pyimport_template_types.get(t[1], (None,)))
+        seen.update(_cython_pyimports.get(t[0], (None,)))
+        seen.update(_cython_pyimports.get(t[1], (None,)))
         seen -= set((None, (None,)))
         return cython_import_tuples(t[0], seen)
     elif 3 <= tlen:
         assert t[0] in template_types
-        seen.update(_cython_pyimport_template_types[t[0]])
+        seen.update(_cython_pyimports[t[0]])
         for x in t[1:-1]:
             cython_import_tuples(x, seen)
         seen -= set((None, (None,)))
@@ -674,7 +751,7 @@ def cython_imports(x):
     return set([_cython_import_cases[len(tup)](tup) for tup in x])
 
 
-_cython_cy_base_types = {
+_cython_cytypes = _LazyConfigDict({
     'char': 'char',
     'str': 'char *',
     'int32': 'int',
@@ -684,20 +761,14 @@ _cython_cy_base_types = {
     'complex128': 'object',
     'bool': 'bint',
     'void': 'void',
-    }
-
-
-_cython_cy_template_types = {
-    'map': 'conv._Map{key_type}{value_type}',
+    'map': '{stlcontainers}_Map{key_type}{value_type}',
     'dict': 'dict',
-    'pair': 'conv._Pair{value_type}',
-    'set': 'conv._Set{value_type}',
-    #'vector': 'conv._Vector{value_type}',
+    'pair': '{stlcontainers}_Pair{value_type}',
+    'set': '{stlcontainers}_Set{value_type}',
     'vector': 'np.ndarray',
-    }
+    })
 
-
-_cython_template_class_names = {
+_cython_classnames = _LazyConfigDict({
     # base types
     'char': 'Str',
     'str': 'Str',
@@ -714,10 +785,9 @@ _cython_template_class_names = {
     'pair': 'Pair{value_type}',
     'set': 'Set{value_type}',
     'vector': 'Vector{value_type}',    
-    #'vector': 'Ndarray{value_type}',
     'nucid': 'Nucid', 
     'nucname': 'Nucname',
-    }
+    })
 
 
 @_memoize
@@ -726,11 +796,11 @@ def _fill_cycyt(cycyt, t):
     d = {}
     for key, x in zip(template_types[t[0]], t[1:-1]):
         if isinstance(x, basestring):
-            val = _cython_template_class_names[x]
-        elif x[0] in BASE_TYPES:
-            val = _cython_template_class_names[x[0]]
+            val = _cython_classnames[x]
+        elif x[0] in base_types:
+            val = _cython_classnames[x[0]]
         else: 
-            val, _ = _fill_cycyt(_cython_template_class_names[x[0]], x)
+            val, _ = _fill_cycyt(_cython_classnames[x[0]], x)
         d[key] = val
     return cycyt.format(**d), t
     
@@ -740,18 +810,18 @@ def cython_classname(t, cycyt=None):
     if cycyt is None:
         t = canon(t)
         if isinstance(t, basestring):
-            return t, _cython_template_class_names[t]
-        elif t[0] in BASE_TYPES:
-            return t, _cython_template_class_names[t[0]]
-        return cython_classname(t, _cython_template_class_names[t[0]])
+            return t, _cython_classnames[t]
+        elif t[0] in base_types:
+            return t, _cython_classnames[t[0]]
+        return cython_classname(t, _cython_classnames[t[0]])
     d = {}
     for key, x in zip(template_types[t[0]], t[1:-1]):
         if isinstance(x, basestring):
-            val = _cython_template_class_names[x]
-        elif x[0] in BASE_TYPES:
-            val = _cython_template_class_names[x[0]]
+            val = _cython_classnames[x]
+        elif x[0] in base_types:
+            val = _cython_classnames[x[0]]
         else: 
-            val, _ = _fill_cycyt(x, _cython_template_class_names[x[0]])
+            val, _ = _fill_cycyt(x, _cython_classnames[x[0]])
         d[key] = val
     return t, cycyt.format(**d)
     
@@ -761,8 +831,8 @@ def cython_cytype(t):
     """Given a type t, returns the cooresponding Cython type."""
     t = canon(t)
     if isinstance(t, basestring):
-        if  t in BASE_TYPES:
-            return _cython_cy_base_types[t]
+        if  t in base_types:
+            return _cython_cytypes[t]
     # must be tuple below this line
     tlen = len(t)
     if 2 == tlen:
@@ -774,13 +844,13 @@ def cython_cytype(t):
             last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
             return cython_cytype(t[0]) + ' {0}'.format(last)
     elif 3 <= tlen:
-        if t in _cython_cy_template_types:
-            return _cython_cy_template_types[t]
+        if t in _cython_cytypes:
+            return _cython_cytypes[t]
         assert t[0] in template_types
         assert len(t) == len(template_types[t[0]]) + 2
-        template_name = _cython_cy_template_types[t[0]]
+        template_name = _cython_cytypes[t[0]]
         assert template_name is not NotImplemented        
-        cycyt = _cython_cy_template_types[t[0]]
+        cycyt = _cython_cytypes[t[0]]
         cycyt, t = _fill_cycyt(cycyt, t)
         if 0 != t[-1]:
             last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
@@ -788,7 +858,7 @@ def cython_cytype(t):
         return cycyt
 
 
-_cython_py_base_types = {
+_cython_pytypes = _LazyConfigDict({
     'char': 'str',
     'str': 'str',
     'int32': 'int',
@@ -798,16 +868,12 @@ _cython_py_base_types = {
     'complex128': 'object',
     'bool': 'bool',
     'void': 'object',
-    }
-
-
-_cython_py_template_types = {
-    'map': 'conv.Map{key_type}{value_type}',
+    'map': '{stlcontainers}Map{key_type}{value_type}',
     'dict': 'dict',
-    'pair': 'conv.Pair{value_type}',
-    'set': 'conv.Set{value_type}',
-    'vector': 'conv.Vector{value_type}',
-    }
+    'pair': '{stlcontainers}Pair{value_type}',
+    'set': '{stlcontainers}Set{value_type}',
+    'vector': '{stlcontainers}Vector{value_type}',
+    })
 
 @_memoize
 def _fill_cypyt(cypyt, t):
@@ -815,11 +881,11 @@ def _fill_cypyt(cypyt, t):
     d = {}
     for key, x in zip(template_types[t[0]], t[1:-1]):
         if isinstance(x, basestring):
-            val = _cython_template_class_names[x]
-        elif x[0] in BASE_TYPES:
-            val = _cython_template_class_names[x[0]]
+            val = _cython_classnames[x]
+        elif x[0] in base_types:
+            val = _cython_classnames[x[0]]
         else: 
-            val, _ = _fill_cypyt(_cython_template_class_names[x[0]], x)
+            val, _ = _fill_cypyt(_cython_classnames[x[0]], x)
         d[key] = val
     return cypyt.format(**d), t
     
@@ -829,8 +895,8 @@ def cython_pytype(t):
     """Given a type t, returns the cooresponding Python type."""
     t = canon(t)
     if isinstance(t, basestring):
-        if  t in BASE_TYPES:
-            return _cython_py_base_types[t]
+        if  t in base_types:
+            return _cython_pytypes[t]
     # must be tuple below this line
     tlen = len(t)
     if 2 == tlen:
@@ -844,13 +910,13 @@ def cython_pytype(t):
             #return cython_pytype(t[0]) + ' {0}'.format(last)
             return cython_pytype(t[0])
     elif 3 <= tlen:
-        if t in _cython_py_template_types:
-            return _cython_py_template_types[t]
+        if t in _cython_pytypes:
+            return _cython_pytypes[t]
         assert t[0] in template_types
         assert len(t) == len(template_types[t[0]]) + 2
-        template_name = _cython_py_template_types[t[0]]
+        template_name = _cython_pytypes[t[0]]
         assert template_name is not NotImplemented        
-        cypyt = _cython_py_template_types[t[0]]
+        cypyt = _cython_pytypes[t[0]]
         cypyt, t = _fill_cypyt(cypyt, t)
         # FIXME last is ignored for strings, but what about other types?
         #if 0 != t[-1]:
@@ -894,7 +960,7 @@ def cython_nptype(t):
     elif 3 <= tlen:
         return _numpy_types.get(t, 'np.NPY_OBJECT')
 
-_cython_c2py_conv = {
+_cython_c2py_conv = _LazyConverterDict({
     # Has tuple form of (copy, [view, [cached_view]])
     # base types
     'char': ('str(<char *> {var})',),
@@ -944,7 +1010,7 @@ _cython_c2py_conv = {
                 )),
     'nucid': ('nucname.zzaaam({var})',),
     'nucname': ('nucname.name({var})',),
-    }
+    })
 
 
 from_pytypes = {
@@ -1006,16 +1072,16 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     return decl, body, rtn, iscached
 
 
-_cython_py2c_conv = {
+_cython_py2c_conv = _LazyConverterDict({
     # Has tuple form of (body or return,  return or False)
     # base types
     'char': ('<char{last}> {var}', False),
     'str': ('std_string(<char *> {var})', False),
     'int32': ('{var}', False),
-    'uint32': ('<xdress_extra_types.uint> long({var})', False),
+    'uint32': ('<{ctype}> long({var})', False),
     'float32': ('<float> {var}', False),
     'float64': ('<double> {var}', False),
-    'complex128': ('xdress_extra_types.py2c_complex({var})', False),
+    'complex128': ('{extra_types}py2c_complex({var})', False),
     'bool': ('<bint> {var}', False),
     'void': ('NULL', False),
     # template types
@@ -1042,7 +1108,7 @@ _cython_py2c_conv = {
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
     'nucname': ('nucname.name({var})', False),
-    }
+    })
 
 @_memoize
 def cython_py2c(name, t, inst_name=None, proxy_name=None):
@@ -1140,10 +1206,10 @@ def register_class(name, template_args=None, cython_c_type=None,
     # register the class name
     isbase = True
     if template_args is None: 
-        BASE_TYPES.add(name)  # normal class        
+        base_types.add(name)  # normal class        
     elif isinstance(template_args, Sequence):
         if 0 == len(template_args):
-            BASE_TYPES.add(name)  # normal class
+            base_types.add(name)  # normal class
         elif isinstance(template_args, basestring):
             _raise_type_error(name)
         else:
@@ -1163,53 +1229,40 @@ def register_class(name, template_args=None, cython_c_type=None,
         if isinstance(cython_py2c, basestring):
             cython_py2c = (cython_py2c, False)
 
-        if isbase:
-            _cython_c_base_types[name] = cython_c_type
-            _cython_cy_base_types[name] = cython_cy_type
-            _cython_py_base_types[name] = cython_py_type
-            _cython_cimport_base_types[name] = cython_cimport
-            _cython_cyimport_base_types[name] = cython_cyimport
-            _cython_pyimport_base_types[name] = cython_pyimport
-        else:
-            _cython_c_template_types[name] = cython_c_type
-            _cython_cy_template_types[name] = cython_cy_type
-            _cython_py_template_types[name] = cython_py_type
-            _cython_cimport_template_types[name] = cython_cimport
-            _cython_cyimport_template_types[name] = cython_cyimport
-            _cython_pyimport_template_types[name] = cython_pyimport
+        _cython_ctypes[name] = cython_c_type
+        _cython_cytypes[name] = cython_cy_type
+        _cython_pytypes[name] = cython_py_type
+        _cython_cimports[name] = cython_cimport
+        _cython_cyimports[name] = cython_cyimport
+        _cython_pyimports[name] = cython_pyimport
 
         _cython_c2py_conv[name] = cython_c2py
         _cython_py2c_conv[name] = cython_py2c
-        _cython_template_class_names[name] = cython_template_class_name
+        _cython_classnames[name] = cython_template_class_name
 
 
 def deregister_class(name):
     """This function will remove a previously registered class from the type system.
     """
-    isbase = name in BASE_TYPES
+    isbase = name in base_types
     if not isbase and name not in template_types:
         _raise_type_error(name)
 
     if isbase:
-        BASE_TYPES.remove(name)
-        _cython_c_base_types.pop(name, None)
-        _cython_cy_base_types.pop(name, None)
-        _cython_py_base_types.pop(name, None)
-        _cython_cimport_base_types.pop(name, None)
-        _cython_cyimport_base_types.pop(name, None)
-        _cython_pyimport_base_types.pop(name, None)
+        base_types.remove(name)
     else:
         template_types.pop(name, None)
-        _cython_c_template_types.pop(name, None)
-        _cython_cy_template_types.pop(name, None)
-        _cython_py_template_types.pop(name, None)
-        _cython_cimport_template_types.pop(name, None)
-        _cython_cyimport_template_types.pop(name, None)
-        _cython_pyimport_template_types.pop(name, None)
+
+    _cython_ctypes.pop(name, None)
+    _cython_cytypes.pop(name, None)
+    _cython_pytypes.pop(name, None)
+    _cython_cimports.pop(name, None)
+    _cython_cyimports.pop(name, None)
+    _cython_pyimports.pop(name, None)
 
     _cython_c2py_conv.pop(name, None)
     _cython_py2c_conv.pop(name, None)
-    _cython_template_class_names.pop(name, None)
+    _cython_classnames.pop(name, None)
 
     # clear all caches
     funcs = [isdependent, isrefinement, _resolve_dependent_type, canon, 
@@ -1227,13 +1280,13 @@ def register_refinement(name, refinementof, cython_cimport=None, cython_cyimport
     refined_types[name] = refinementof
 
     cyci = _ensure_importable(cython_cimport)
-    _cython_cimport_base_types[name] = _cython_cimport_template_types[name] = cyci
+    _cython_cimports[name] = _cython_cimports[name] = cyci
 
     cycyi = _ensure_importable(cython_cyimport)
-    _cython_cyimport_base_types[name] = _cython_cyimport_template_types[name] = cycyi
+    _cython_cyimports[name] = _cython_cyimports[name] = cycyi
 
     cypyi = _ensure_importable(cython_pyimport)
-    _cython_pyimport_base_types[name] = _cython_pyimport_template_types[name] = cypyi
+    _cython_pyimports[name] = _cython_pyimports[name] = cypyi
 
     if isinstance(cython_c2py, basestring):
         cython_c2py = (cython_c2py,)
@@ -1254,12 +1307,9 @@ def deregister_refinement(name):
     refined_types.pop(name, None)
     _cython_c2py_conv.pop(name, None)
     _cython_py2c_conv.pop(name, None)
-    _cython_cimport_base_types.pop(name, None)
-    _cython_cyimport_base_types.pop(name, None)
-    _cython_pyimport_base_types.pop(name, None)
-    _cython_cimport_template_types.pop(name, None)
-    _cython_cyimport_template_types.pop(name, None)
-    _cython_pyimport_template_types.pop(name, None)
+    _cython_cimports.pop(name, None)
+    _cython_cyimports.pop(name, None)
+    _cython_pyimports.pop(name, None)
 
 
 def register_specialization(t, cython_c_type=None, cython_cy_type=None, 
@@ -1270,24 +1320,24 @@ def register_specialization(t, cython_c_type=None, cython_cy_type=None,
     """
     t = canon(t)
     if cython_c_type is not None:
-        _cython_c_template_types[t] = cython_c_type
+        _cython_ctypes[t] = cython_c_type
     if cython_cy_type is not None:
-        _cython_cy_template_types[t] = cython_cy_type
+        _cython_cytypes[t] = cython_cy_type
     if cython_py_type is not None:
-        _cython_py_template_types[t] = cython_py_type
+        _cython_pytypes[t] = cython_py_type
     if cython_cimport is not None:
-        _cython_cimport_template_types[t] = cython_cimport
+        _cython_cimports[t] = cython_cimport
     if cython_cyimport is not None:
-        _cython_cyimport_template_types[t] = cython_cyimport
+        _cython_cyimports[t] = cython_cyimport
     if cython_pyimport is not None:
-        _cython_pyimport_template_types[t] = cython_pyimport
+        _cython_pyimports[t] = cython_pyimport
 
 def deregister_specialization(t):
     """This function will remove previously registered template specialization."""
     t = canon(t)
-    _cython_c_template_types.pop(t, None)
-    _cython_cy_template_types.pop(t, None)
-    _cython_py_template_types.pop(t, None)
-    _cython_cimport_template_types.pop(t, None)
-    _cython_cyimport_template_types.pop(t, None)
-    _cython_pyimport_template_types.pop(t, None)
+    _cython_ctypes.pop(t, None)
+    _cython_cytypes.pop(t, None)
+    _cython_pytypes.pop(t, None)
+    _cython_cimports.pop(t, None)
+    _cython_cyimports.pop(t, None)
+    _cython_pyimports.pop(t, None)

@@ -43,6 +43,7 @@ try:
 except ImportError:
     import pickle
 
+from utils import newoverwrite, newcopyover, ensuredirs
 import typesystem as ts
 import stlwrap
 from cythongen import gencpppxd, genpxd, genpyx
@@ -185,50 +186,17 @@ PREREGISTER_CLASSES = [
       '{proxy_name}.mat_pointer[0]')),
     ]
 
-def newoverwrite(s, filename):
-    """Useful for not forcing re-compiles and thus playing nicely with the 
-    build system.  This is acomplished by not writing the file if the existsing
-    contents are exactly the same as what would be written out.
-
-    Parameters
-    ----------
-    s : str
-        string contents of file to possible
-    filename : str
-        Path to file.
-
-    """
-    if os.path.isfile(filename):
-        with open(filename, 'r') as f:
-            old = f.read()
-        if s == old:
-            return 
-    with open(filename, 'w') as f:
-        f.write(s)
-
-def newcopyover(f1, f2):
-    """Useful for not forcing re-compiles and thus playing nicely with the 
-    build system.  This is acomplished by not writing the file if the existsing
-    contents are exactly the same as what would be written out.
-
-    Parameters
-    ----------
-    f1 : str
-        Path to file to copy from
-    f2 : str
-        Path to file to copy over
-
-    """
-    if os.path.isfile(f1):
-        with open(f1, 'r') as f:
-            s = f.read()
-        return newoverwrite(s, f2)
-
-def ensuredirs(f):
-    """For a file path, ensure that its directory path exists."""
-    d = os.path.split(f)[0]
-    if not os.path.isdir(d):
-        os.makedirs(d)
+def genextratypes(ns, rc):
+    d = os.path.split(__file__)[0]
+    srcs = [os.path.join(d, 'xdress_extra_types.pxd'), 
+            os.path.join(d, 'xdress_extra_types.pyx')]
+    tars = [os.path.join(rc.packagedir, rc.extra_types + '.pxd'), 
+            os.path.join(rc.packagedir, rc.extra_types + '.pyx')]
+    newcopyover(srcs[0], tars[0])
+    with open(srcs[1], 'r') as f:
+        s = f.read()
+    s = s.format(extra_types=rc.extra_types)
+    newoverwrite(s, tars[1])
 
 def genstlcontainers(ns, rc):
     print "generating C++ standard library wrappers & converters"
@@ -236,18 +204,13 @@ def genstlcontainers(ns, rc):
     ensuredirs(fname)
     testname = os.path.join(rc.packagedir, 'tests', 'test_' + rc.stlcontainers_module)
     ensuredirs(testname)
-    stlwrap.genfiles(rc.stlcontainers, fname=fname, testname=testname)
-    d = os.path.split(__file__)[0]
-    xetsrc = [os.path.join(d, 'xdress_extra_types.pxd'), 
-              os.path.join(d, 'xdress_extra_types.pyx')]
-    xettar = [os.path.join(rc.packagedir, rc.extra_types + '.pxd'), 
-              os.path.join(rc.packagedir, rc.extra_types + '.pyx')]
-    for src, tar in zip(xetsrc, xettar):
-        newcopyover(src, tar)
+    stlwrap.genfiles(rc.stlcontainers, fname=fname, testname=testname, 
+                     package=rc.package)
 
 def genbindings(ns, rc):
     """Generates bidnings using the command line setting specified in ns.
     """
+    genextratypes(ns, rc)
     ns.cyclus = False  # FIXME cyclus bindings don't exist yet!
 
     # compute all descriptions first 
@@ -342,12 +305,14 @@ def main():
                         help="path to run control file.")
     parser.add_argument('--debug', action='store_true', default=False, 
                         help='build with debugging flags')    
+    parser.add_argument('--no-extratypes', action='store_false', dest='extratypes', 
+                        default=True, help="don't make extr types wrapper")
+    parser.add_argument('--no-stlcont', action='store_false', dest='stlcont', 
+                        default=True, help="don't make STL container wrappers")
     parser.add_argument('--no-cython', action='store_false', dest='cython', 
                         default=True, help="don't make cython bindings")
     parser.add_argument('--no-cyclus', action='store_false', dest='cyclus', 
                         default=True, help="don't make cyclus bindings")
-    parser.add_argument('--no-stlcont', action='store_false', dest='stlcont', 
-                        default=True, help="don't make STL container wrappers")
     parser.add_argument('--dump-desc', action='store_true', dest='dumpdesc', 
                         default=False, help="print description cache")
     parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', 
@@ -358,9 +323,16 @@ def main():
     execfile(ns.rc, rc, rc)
     rc = argparse.Namespace(**rc)
 
+    # set typesystem defaults
+    ts.EXTRA_TYPES = rc.extra_types
+    ts.STLCONTAINERS = rc.stlcontainers_module
+
     if ns.dumpdesc:
         dumpdesc(ns)
         return 
+
+    if ns.extratypes:
+        genextratypes(ns, rc)
 
     if ns.stlcont:
         genstlcontainers(ns, rc)

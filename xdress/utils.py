@@ -1,5 +1,7 @@
 """Helper functions for bright API generation."""
 
+import os
+
 def indent(s, n=4, join=True):
     """Indents all lines in the string or list s by n spaces."""
     spaces = " " * n
@@ -27,3 +29,50 @@ def expand_default_args(methods):
             # no default args
             methitems.add((mkey, mrtn))
     return methitems
+
+
+def newoverwrite(s, filename):
+    """Useful for not forcing re-compiles and thus playing nicely with the 
+    build system.  This is acomplished by not writing the file if the existsing
+    contents are exactly the same as what would be written out.
+
+    Parameters
+    ----------
+    s : str
+        string contents of file to possible
+    filename : str
+        Path to file.
+
+    """
+    if os.path.isfile(filename):
+        with open(filename, 'r') as f:
+            old = f.read()
+        if s == old:
+            return
+    with open(filename, 'w') as f:
+        f.write(s)
+
+def newcopyover(f1, f2):
+    """Useful for not forcing re-compiles and thus playing nicely with the 
+    build system.  This is acomplished by not writing the file if the existsing
+    contents are exactly the same as what would be written out.
+
+    Parameters
+    ----------
+    f1 : str
+        Path to file to copy from
+    f2 : str
+        Path to file to copy over
+
+    """
+    if os.path.isfile(f1):
+        with open(f1, 'r') as f:
+            s = f.read()
+        return newoverwrite(s, f2)
+
+def ensuredirs(f):
+    """For a file path, ensure that its directory path exists."""
+    d = os.path.split(f)[0]
+    if not os.path.isdir(d):
+        os.makedirs(d)
+

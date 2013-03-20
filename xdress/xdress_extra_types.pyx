@@ -1,7 +1,7 @@
-cimport xdress_extra_types
+cimport {extra_types}
 
-cdef xdress_extra_types.complex_t py2c_complex(object pyv):
-    cdef xdress_extra_types.complex_t cv = xdress_extra_types.complex_t()
+cdef {extra_types}.complex_t py2c_complex(object pyv):
+    cdef {extra_types}.complex_t cv = {extra_types}.complex_t()
     pyv = complex(pyv)
     cv.re = pyv.real
     cv.im = pyv.imag

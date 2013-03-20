@@ -2,7 +2,7 @@ package = 'xdtest'
 
 packagedir = 'xdtest'
 
-#extra_types = 'xdress_extra_types'
+extra_types = 'xdtest_extra_types'  # non-default value
 
 stlcontainers = [
     ('set', 'int'),
