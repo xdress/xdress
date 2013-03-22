@@ -20,15 +20,18 @@ testvals = {
 
 for t, tval in testvals.items():
     testvals[('vector', t, 0)] = [tval, tval[::-1], tval[::2]*2, tval[1::2]*2]
+    testvals[('set', t, 0)] = map(set, [tval, tval[::-1], tval[::2]*2, tval[1::2]*2])
 
 items = testvals.items()
 for t, tval in items:
     tval = map(tuple, tval) if isinstance(tval[0], list) else tval
+    tval = map(frozenset, tval) if isinstance(tval[0], set) else tval
     for u, uval in items:
         testvals[('map', t, u, 0)] = [dict(zip(tval, uval)), 
                                       dict(zip(tval[::-1], uval[::-1])), 
                                       dict(zip(tval[::2]*2, uval[::2]*2)),
                                       dict(zip(tval[1::2]*2, uval[1::2]*2))]
+
 del t, u, tval, uval, items
 
 #
