@@ -319,6 +319,7 @@ types, or other refined types!"""
 
 
 _humannames = {
+    'char': 'character',
     'str': 'string',
     'int32': 'integer',
     'uint32': 'unsigned integer',
@@ -790,9 +791,52 @@ _cython_cytypes = _LazyConfigDict({
     'vector': 'np.ndarray',
     })
 
+_cython_functionnames = _LazyConfigDict({
+    # base types
+    'char': 'char',
+    'str': 'str',
+    'int32': 'int',
+    'uint32': 'uint',
+    'float32': 'float',
+    'float64': 'double',
+    'complex128': 'complex',
+    'bool': 'bool',
+    'void': 'void',
+    # template types
+    'map': 'map_{key_type}_{value_type}',
+    'dict': 'dict',
+    'pair': 'pair_{key_type}_{value_type}',
+    'set': 'set_{value_type}',
+    'vector': 'vector_{value_type}',    
+    'nucid': 'nucid', 
+    'nucname': 'nucname',
+    })
+
+@_memoize
+def cython_functionname(t, cycyt=None):
+    """Computes function names for cython types."""
+    if cycyt is None:
+        t = canon(t)
+        if isinstance(t, basestring):
+            return t, _cython_functionnames[t]
+        elif t[0] in base_types:
+            return t, _cython_functionnames[t[0]]
+        return cython_functionname(t, _cython_functionnames[t[0]])
+    d = {}
+    for key, x in zip(template_types[t[0]], t[1:-1]):
+        if isinstance(x, basestring):
+            val = _cython_functionnames[x]
+        elif x[0] in base_types:
+            val = _cython_functionnames[x[0]]
+        else: 
+            val, _ = cython_functionname(x, _cython_functionnames[x[0]])
+        d[key] = val
+    return t, cycyt.format(**d)
+
+
 _cython_classnames = _LazyConfigDict({
     # base types
-    'char': 'Str',
+    'char': 'Char',
     'str': 'Str',
     'int32': 'Int',
     'uint32': 'UInt',
@@ -804,13 +848,12 @@ _cython_classnames = _LazyConfigDict({
     # template types
     'map': 'Map{key_type}{value_type}',
     'dict': 'Dict',
-    'pair': 'Pair{value_type}',
+    'pair': 'Pair{key_type}{value_type}',
     'set': 'Set{value_type}',
     'vector': 'Vector{value_type}',    
     'nucid': 'Nucid', 
     'nucname': 'Nucname',
     })
-
 
 @_memoize
 def _fill_cycyt(cycyt, t):
@@ -1024,7 +1067,9 @@ _cython_c2py_conv = _LazyConverterDict({
                 '{proxy_name} = np.PyArray_SimpleNewFromData(1, {var}_shape, {nptype}, &{var}[0])\n'
                 '{proxy_name} = np.PyArray_Copy({proxy_name})\n'),
                ('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptype}, &{var}[0])\n'),
+                '{proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptype}, &{var}[0])\n'
+                #'{proxy_name} = np.PyArray_Copy({proxy_name})\n'
+                ),
                ('if {cache_name} is None:\n'
                 '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
                 '    {proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptype}, &{var}[0])\n'
@@ -1049,7 +1094,7 @@ from_pytypes = {
 
 @_memoize
 def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None, 
-                cache_name=None, cache_prefix='self'):
+                cache_name=None, cache_prefix='self', existing_name=None):
     """Given a varibale name and type, returns cython code (declaration, body, 
     and return statements) to convert the variable from C/C++ to Python."""
     tkey = canon(t)
@@ -1066,7 +1111,7 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     ct = cython_ctype(t)
     cyt = cython_cytype(t)
     pyt = cython_pytype(t)
-    if istemplate(t) and 2 == len(t):
+    if istemplate(t) and (2 == len(t) or 3 == len(t) and t[-1] == 0):
         npt = cython_nptype(t[1])
     else:
         npt = cython_nptype(t)
@@ -1078,10 +1123,15 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     if 1 == len(c2pyt) or ind == 0:
         decl = body = None
         rtn = c2pyt[0].format(var=var, ctype=ct, cytype=cyt, pytype=pyt, nptype=npt)
-    elif ind == 1:
+    elif ind == 1 and existing_name is None:
         decl = "cdef {0} {1}".format(cyt, proxy_name)
         body = c2pyt[1].format(var=var, ctype=ct, cytype=cyt, pytype=pyt, nptype=npt, 
                                proxy_name=proxy_name)
+        rtn = proxy_name
+    elif ind == 1 and existing_name is not None:
+        decl = None
+        body = c2pyt[1].format(var=existing_name, ctype=ct, cytype=cyt, pytype=pyt, 
+                               nptype=npt, proxy_name=proxy_name)
         rtn = proxy_name
     elif ind == 2:
         decl = "cdef {0} {1}".format(cyt, proxy_name)
@@ -1090,6 +1140,7 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
         rtn = cache_name
         iscached = True
     if body is not None and 'np.npy_intp' in body:
+        decl = decl or ''
         decl += "\ncdef np.npy_intp {proxy_name}_shape[1]".format(proxy_name=proxy_name)
     return decl, body, rtn, iscached
 

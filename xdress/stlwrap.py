@@ -8,6 +8,7 @@ import typesystem as ts
 
 
 testvals = {
+    'char': ["m", "e", "t", "l"], 
     'str': ["Aha", "Take", "Me", "On"], 
     'int32': [1, 42, -65, 18], 
     'uint32': [1, 65, 4043370667L, 42L],
@@ -15,6 +16,10 @@ testvals = {
     'float64': [1.0, 42.42, -65.5555, 18],
     'complex128': [1.0, 42+42j, -65.55-1j, 0.18j],
     }
+
+for key, val in testvals.items():
+    testvals[('vector', key, 0)] = [val, val[::-1], val[::2]*2, val[1::2]*2]
+
 
 #
 # Sets
@@ -142,7 +147,7 @@ class Set{clsname}(_Set{clsname}, collections.Set):
 def genpyx_set(t):
     """Returns the pyx snippet for a set of type t."""
     t = ts.canon(t)
-    kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.humanname(t), 
+    kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.humanname(t)[1], 
               ctype=ts.cython_ctype(t), pytype=ts.cython_pytype(t), 
               cytype=ts.cython_cytype(t),)
     fpt = ts.from_pytypes[t]
@@ -189,7 +194,8 @@ def gentest_set(t):
     t = ts.canon(t)
     return _testset.format(*[repr(i) for i in testvals[t]], 
                            clsname=ts.cython_classname(t)[1],
-                           fncname=t if isinstance(t, basestring) else t[0], 
+                           fncname=ts.cython_functionname(t)[1],
+ #if isinstance(t, basestring) else t[0], 
                            stlcontainers=ts.STLCONTAINERS)
 
 #
@@ -341,7 +347,7 @@ def genpyx_map(t, u):
     t = ts.canon(t)
     u = ts.canon(u)
     kw = dict(tclsname=ts.cython_classname(t)[1], uclsname=ts.cython_classname(u)[1],
-              thumname=ts.humanname(t), uhumname=ts.humanname(u),
+              thumname=ts.humanname(t)[1], uhumname=ts.humanname(u)[1],
               tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),
               tpytype=ts.cython_pytype(t), upytype=ts.cython_pytype(u),
               tcytype=ts.cython_cytype(t), ucytype=ts.cython_cytype(u),)
@@ -351,7 +357,8 @@ def genpyx_map(t, u):
     tc2py = ts.cython_c2py("deref(inow).first", t, cached=False)
     kw.update([(k, indentstr(v or '')) for k, v in zip(tc2pykeys, tc2py)])
     uc2pykeys = ['uc2pydecl', 'uc2pybody', 'uc2pyrtn']
-    uc2py = ts.cython_c2py("v", u, cached=False)
+    uc2py = ts.cython_c2py("v", u, cached=False, 
+                           existing_name="deref(self.map_ptr)[k]")
     kw.update([(k, indentstr(v or '')) for k, v in zip(uc2pykeys, uc2py)])
     tpy2ckeys = ['tpy2cdecl', 'tpy2cbody', 'tpy2crtn']
     tpy2c = ts.cython_py2c("key", t)
@@ -380,7 +387,7 @@ def genpxd_map(t, u):
     u = ts.canon(u)
     return _pxdmap.format(tclsname=ts.cython_classname(t)[1], 
                           uclsname=ts.cython_classname(u)[1],
-                          thumname=ts.humanname(t), uhumname=ts.humanname(u),
+                          thumname=ts.humanname(t)[1], uhumname=ts.humanname(u)[1],
                           tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),)
 
 
@@ -418,8 +425,9 @@ def gentest_map(t, u):
     return _testmap.format(*[repr(i) for i in testvals[t] + testvals[u][::-1]], 
                            tclsname=ts.cython_classname(t)[1], 
                            uclsname=ts.cython_classname(u)[1],
-                           tfncname=t, ufncname=u, array=a, 
-                           stlcontainers=ts.STLCONTAINERS)
+                           tfncname=ts.cython_functionname(t)[1], 
+                           ufncname=ts.cython_functionname(u)[1], 
+                           array=a, stlcontainers=ts.STLCONTAINERS)
 
 
 #
@@ -449,7 +457,7 @@ def genpyx_py2c_map(t, u):
     initval = py2c_exprs[u].format(var="value")
     return _pyxpy2cmap.format(tclsname=ts.cython_classname(t)[1], 
                               uclsname=ts.cython_classname(u)[1],
-                              thumname=ts.humanname(t), uhumname=ts.humanname(u),
+                              thumname=ts.humanname(t)[1], uhumname=ts.humanname(u)[1],
                               tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),
                               tpytype=ts.cython_pytype(t), upytype=ts.cython_pytype(u),
                               tcytype=ts.cython_cytype(t), ucytype=ts.cython_cytype(u),
@@ -466,7 +474,7 @@ cdef dict map_to_dict_{tfncname}_{ufncname}(cpp_map[{tctype}, {uctype}])
 def genpxd_py2c_map(t, u):
     """Returns the pxd snippet for a set of type t."""
     return _pxdpy2cmap.format(tclsname=ts.cython_classname(t)[1], uclsname=ts.cython_classname(u)[1],
-                              thumname=ts.humanname(t), uhumname=ts.humanname(u),
+                              thumname=ts.humanname(t)[1], uhumname=ts.humanname(u)[1],
                               tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),
                               tfncname=func_names[t], ufncname=func_names[u])
 
@@ -500,7 +508,7 @@ def genpyx_py2c_set(t):
     iterval = c2py_exprs[t].format(var="deref(setiter)")
     initval = py2c_exprs[t].format(var="value")
     return _pyxpy2cset.format(clsname=ts.cython_classname(t)[1], 
-                              humname=ts.humanname(t), 
+                              humname=ts.humanname(t)[1], 
                               ctype=ts.cython_ctype(t), 
                               pytype=ts.cython_pytype(t), 
                               cytype=ts.cython_cytype(t),
@@ -516,7 +524,7 @@ cdef set cpp_to_py_set_{fncname}(cpp_set[{ctype}])
 def genpxd_py2c_set(t):
     """Returns the pxd snippet for a set of type t."""
     return _pxdpy2cset.format(clsname=ts.cython_classname(t)[1],
-                              humname=ts.humanname(t), 
+                              humname=ts.humanname(t)[1], 
                               ctype=ts.cython_ctype(t), 
                               fncname=func_names[t])
 
@@ -555,31 +563,6 @@ np.import_array()
 
 cimport {extra_types}
 
-cdef np.ndarray c2py_vector_dbl(cpp_vector[double] * v):
-    cdef np.ndarray vview
-    cdef np.ndarray pyv
-    cdef np.npy_intp v_shape[1]
-    v_shape[0] = <np.npy_intp> v.size()
-    vview = np.PyArray_SimpleNewFromData(1, v_shape, np.NPY_FLOAT64, &v[0][0])
-    pyv = np.PyArray_Copy(vview)
-    return pyv
-
-cdef cpp_vector[double] py2c_vector_dbl(object v):
-    cdef int i
-    cdef int v_size = len(v)
-    cdef double * v_data
-    cdef cpp_vector[double] vec
-    if isinstance(v, np.ndarray) and (<np.ndarray> v).descr.type_num == np.NPY_FLOAT64:
-        v_data = <double *> np.PyArray_DATA(<np.ndarray> v)
-        vec = cpp_vector[double](<size_t> v_size)
-        for i in range(v_size):
-            vec[i] = v_data[i]
-    else:
-        vec = cpp_vector[double](<size_t> v_size)
-        for i in range(v_size):
-            vec[i] = <double> v[i]
-    return vec
-
 """
 def genpyx(template, header=None):
     """Returns a string of a pyx file representing the given template."""
@@ -614,10 +597,6 @@ cimport numpy as np
 cimport {extra_types}
 
 cimport numpy as np
-
-cdef np.ndarray c2py_vector_dbl(cpp_vector[double] *)
-
-cdef cpp_vector[double] py2c_vector_dbl(object)
 
 """
 def genpxd(template, header=None):
