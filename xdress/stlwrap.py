@@ -8,18 +8,28 @@ import typesystem as ts
 
 
 testvals = {
-    'char': ["m", "e", "t", "l"], 
+    'char': ["m", "e", "t", "l"],
     'str': ["Aha", "Take", "Me", "On"], 
     'int32': [1, 42, -65, 18], 
+    'bool': [True, False, False, True], 
     'uint32': [1, 65, 4043370667L, 42L],
     'float32': [1.0, 42.42, -65.5555, 18],
     'float64': [1.0, 42.42, -65.5555, 18],
     'complex128': [1.0, 42+42j, -65.55-1j, 0.18j],
     }
 
-for key, val in testvals.items():
-    testvals[('vector', key, 0)] = [val, val[::-1], val[::2]*2, val[1::2]*2]
+for t, tval in testvals.items():
+    testvals[('vector', t, 0)] = [tval, tval[::-1], tval[::2]*2, tval[1::2]*2]
 
+items = testvals.items()
+for t, tval in items:
+    tval = map(tuple, tval) if isinstance(tval[0], list) else tval
+    for u, uval in items:
+        testvals[('map', t, u, 0)] = [dict(zip(tval, uval)), 
+                                      dict(zip(tval[::-1], uval[::-1])), 
+                                      dict(zip(tval[::2]*2, uval[::2]*2)),
+                                      dict(zip(tval[1::2]*2, uval[1::2]*2))]
+del t, u, tval, uval, items
 
 #
 # Sets
@@ -358,7 +368,7 @@ def genpyx_map(t, u):
     kw.update([(k, indentstr(v or '')) for k, v in zip(tc2pykeys, tc2py)])
     uc2pykeys = ['uc2pydecl', 'uc2pybody', 'uc2pyrtn']
     uc2py = ts.cython_c2py("v", u, cached=False, 
-                           existing_name="(deref(self.map_ptr)[k])")
+                           existing_name="deref(self.map_ptr)[k]")
     kw.update([(k, indentstr(v or '')) for k, v in zip(uc2pykeys, uc2py)])
     tpy2ckeys = ['tpy2cdecl', 'tpy2cbody', 'tpy2crtn']
     tpy2c = ts.cython_py2c("key", t)
@@ -394,22 +404,55 @@ def genpxd_map(t, u):
 _testmap = """# Map{tclsname}{uclsname}
 def test_map_{tfncname}_{ufncname}():
     m = {stlcontainers}.Map{tclsname}{uclsname}()
+    uismap = isinstance({5}, Mapping) 
     m[{0}] = {4}
     m[{1}] = {5}
-    assert{array}_equal(len(m), 2)
-    assert{array}_equal(m[{1}], {5})
+    import pprint
+    pprint.pprint(m)
+    assert_equal(len(m), 2)
+    if uismap:
+        for key, value in m[{1}].items():
+            print key, value, {5}[key]
+            if isinstance(value, np.ndarray):
+                assert_array_almost_equal(value, {5}[key])
+            else:
+                assert_equal(value, {5}[key])
+    else:
+        assert{array}_equal(m[{1}], {5})
 
     m = {stlcontainers}.Map{tclsname}{uclsname}({{{2}: {6}, {3}: {7}}})
-    assert{array}_equal(len(m), 2)
-    assert{array}_equal(m[{2}], {6})
+    assert_equal(len(m), 2)
+    if uismap:
+        for key, value in m[{2}].items():
+            if isinstance(value, np.ndarray):
+                print key, value, {6}[key]
+                assert_array_almost_equal(value, {6}[key])
+            else:
+                assert_equal(value, {6}[key])
+    else:
+        assert{array}_equal(m[{2}], {6})
 
     n = {stlcontainers}.Map{tclsname}{uclsname}(m, False)
-    assert{array}_equal(len(n), 2)
-    assert{array}_equal(n[{2}], {6})
+    assert_equal(len(n), 2)
+    if uismap:
+        for key, value in m[{2}].items():
+            if isinstance(value, np.ndarray):
+                assert_array_almost_equal(value, {6}[key])
+            else:
+                assert_equal(value, {6}[key])
+    else:
+        assert{array}_equal(m[{2}], {6})
 
     # points to the same underlying map
     n[{1}] = {5}
-    assert{array}_equal(m[{1}], {5})
+    if uismap:
+        for key, value in m[{1}].items():
+            if isinstance(value, np.ndarray):
+                assert_array_almost_equal(value, {5}[key])
+            else:
+                assert_equal(value, {5}[key])
+    else:
+        assert{array}_equal(m[{1}], {5})
 
 """
 def gentest_map(t, u):
@@ -627,6 +670,7 @@ from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 import os
 import numpy  as np
+from collections import Container, Mapping
 
 from {package} import {stlcontainers}
 

@@ -322,6 +322,7 @@ types, or other refined types!"""
 _humannames = {
     'char': 'character',
     'str': 'string',
+    'bool': 'boolean',
     'int32': 'integer',
     'uint32': 'unsigned integer',
     'float32': 'float',
@@ -831,7 +832,7 @@ def cython_functionname(t, cycyt=None):
         elif x[0] in base_types:
             val = _cython_functionnames[x[0]]
         else: 
-            val, _ = cython_functionname(x, _cython_functionnames[x[0]])
+            _, val = cython_functionname(x, _cython_functionnames[x[0]])
         d[key] = val
     return t, cycyt.format(**d)
 
@@ -1075,6 +1076,25 @@ _cython_c2py_conv = _LazyConverterDict({
                 '    {proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptype}, &{var}[0])\n'
                 '    {cache_name} = {proxy_name}\n'
                 )),
+    ('vector', 'bool', 0): (  # C++ standard is silly here
+               ('cdef int i\n'
+                '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptype})\n'
+                'for i in range({proxy_name}_shape[0]):\n' 
+                '    {proxy_name}[i] = {var}[i]\n'),
+               ('cdef int i\n'
+                '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptype})\n'
+                'for i in range({proxy_name}_shape[0]):\n' 
+                '    {proxy_name}[i] = {var}[i]\n'),
+               ('cdef int i\n'
+                'if {cache_name} is None:\n'
+                '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                '    {proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptype})\n'
+                '    for i in range({proxy_name}_shape[0]):\n' 
+                '        {proxy_name}[i] = {var}[i]\n'
+                '    {cache_name} = {proxy_name}\n'
+                )),
     'nucid': ('nucname.zzaaam({var})',),
     'nucname': ('nucname.name({var})',),
     })
@@ -1098,7 +1118,8 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     """Given a varibale name and type, returns cython code (declaration, body, 
     and return statements) to convert the variable from C/C++ to Python."""
     tkey = canon(t)
-    while not isinstance(tkey, basestring):
+    #while not isinstance(tkey, basestring):
+    while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
         tkey = tkey[0]
     c2pyt = _cython_c2py_conv[tkey]
     ind = int(view) + int(cached)
@@ -1138,6 +1159,9 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     if body is not None and 'np.npy_intp' in body:
         decl = decl or ''
         decl += "\ncdef np.npy_intp {proxy_name}_shape[1]".format(proxy_name=proxy_name)
+    if decl is not None and body is not None:
+        decl += '\n'+"\n".join([l for l in body.splitlines() if l.startswith('cdef')])
+        body = "\n".join([l for l in body.splitlines() if not l.startswith('cdef')])
     return decl, body, rtn, iscached
 
 
