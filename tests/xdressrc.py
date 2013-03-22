@@ -21,6 +21,7 @@ stlcontainers = [
     ('map', 'int', ('vector', 'int')),
     ('map', 'int', ('vector', 'uint')),
     ('map', 'int', ('vector', 'float')),
+    ('map', 'int', ('map', 'int', ('vector', 'float'))),
     #('map', 'int', ('vector', 'char')),
     #('map', 'int', ('vector', 'str')),
     #('map', 'int', ('vector', 'complex')),

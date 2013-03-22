@@ -358,7 +358,7 @@ def genpyx_map(t, u):
     kw.update([(k, indentstr(v or '')) for k, v in zip(tc2pykeys, tc2py)])
     uc2pykeys = ['uc2pydecl', 'uc2pybody', 'uc2pyrtn']
     uc2py = ts.cython_c2py("v", u, cached=False, 
-                           existing_name="deref(self.map_ptr)[k]")
+                           existing_name="(deref(self.map_ptr)[k])")
     kw.update([(k, indentstr(v or '')) for k, v in zip(uc2pykeys, uc2py)])
     tpy2ckeys = ['tpy2cdecl', 'tpy2cbody', 'tpy2crtn']
     tpy2c = ts.cython_py2c("key", t)
@@ -570,8 +570,9 @@ def genpyx(template, header=None):
                     if k.startswith('genpyx_') and callable(v)])
     pyx = _pyxheader if header is None else header
     pyx = pyx.format(extra_types=ts.EXTRA_TYPES)
-    for t in template:
-        pyx += pyxfuncs[t[0]](*t[1:]) + "\n\n" 
+    with ts.swap_stlcontainers(None):
+        for t in template:
+            pyx += pyxfuncs[t[0]](*t[1:]) + "\n\n" 
     return pyx
 
 

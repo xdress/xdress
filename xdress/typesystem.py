@@ -218,6 +218,7 @@ Type System API
 
 """
 import functools
+from contextlib import contextmanager
 from collections import Sequence, Set, Iterable, MutableMapping
 
 def _ishashable(x):
@@ -326,7 +327,8 @@ _humannames = {
     'float32': 'float',
     'float64': 'double',
     'complex128': 'complex',
-    'dict': 'map of ({key_type}, {value_type}) items',
+    'dict': 'dict of ({key_type}, {value_type}) items',
+    'map': 'map of ({key_type}, {value_type}) items',
     'pair': '({key_type}, {value_type}) pair',
     'set': 'set of {value_type}',
     'vector': 'vector [ndarray] of {value_type}',
@@ -886,7 +888,7 @@ def cython_classname(t, cycyt=None):
         elif x[0] in base_types:
             val = _cython_classnames[x[0]]
         else: 
-            val, _ = _fill_cycyt(x, _cython_classnames[x[0]])
+            _, val = cython_classname(x, _cython_classnames[x[0]])
         d[key] = val
     return t, cycyt.format(**d)
     
@@ -1067,9 +1069,7 @@ _cython_c2py_conv = _LazyConverterDict({
                 '{proxy_name} = np.PyArray_SimpleNewFromData(1, {var}_shape, {nptype}, &{var}[0])\n'
                 '{proxy_name} = np.PyArray_Copy({proxy_name})\n'),
                ('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptype}, &{var}[0])\n'
-                #'{proxy_name} = np.PyArray_Copy({proxy_name})\n'
-                ),
+                '{proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptype}, &{var}[0])\n'),
                ('if {cache_name} is None:\n'
                 '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
                 '    {proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptype}, &{var}[0])\n'
@@ -1116,6 +1116,7 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     else:
         npt = cython_nptype(t)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
+    var = existing_name or var
     cache_name = "_{0}".format(name) if cache_name is None else cache_name
     cache_name = cache_name if cache_prefix is None else "{0}.{1}".format(cache_prefix, cache_name)
     proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
@@ -1123,15 +1124,10 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     if 1 == len(c2pyt) or ind == 0:
         decl = body = None
         rtn = c2pyt[0].format(var=var, ctype=ct, cytype=cyt, pytype=pyt, nptype=npt)
-    elif ind == 1 and existing_name is None:
+    elif ind == 1:
         decl = "cdef {0} {1}".format(cyt, proxy_name)
         body = c2pyt[1].format(var=var, ctype=ct, cytype=cyt, pytype=pyt, nptype=npt, 
                                proxy_name=proxy_name)
-        rtn = proxy_name
-    elif ind == 1 and existing_name is not None:
-        decl = None
-        body = c2pyt[1].format(var=existing_name, ctype=ct, cytype=cyt, pytype=pyt, 
-                               nptype=npt, proxy_name=proxy_name)
         rtn = proxy_name
     elif ind == 2:
         decl = "cdef {0} {1}".format(cyt, proxy_name)
@@ -1415,3 +1411,24 @@ def deregister_specialization(t):
     _cython_cimports.pop(t, None)
     _cython_cyimports.pop(t, None)
     _cython_pyimports.pop(t, None)
+
+
+#################### Type system helpers #######################################
+
+def clearmemo():
+    """Clears all function memoizations."""
+    for x in globals().itervalues():
+        if callable(x) and hasattr(x, 'cache'):
+            x.cache.clear()
+
+@contextmanager
+def swap_stlcontainers(s):
+    """A context manager for temporarily swapping out the STLCONTAINERS value
+    with a new value and replacing the original value before exiting."""
+    global STLCONTAINERS
+    old = STLCONTAINERS
+    STLCONTAINERS = s
+    #clearmemo()
+    yield
+    #clearmemo()
+    STLCONTAINERS = old
