@@ -1031,7 +1031,6 @@ def cython_nptype(t):
 _cython_c2py_conv = _LazyConverterDict({
     # Has tuple form of (copy, [view, [cached_view]])
     # base types
-    #'char': ('str(<char *> {var})',),
     'char': ('str(&{var})[0]',),
     'str': ('str(<char *> {var}.c_str())',),
     'int32': ('int({var})',),
@@ -1189,9 +1188,7 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
 _cython_py2c_conv = _LazyConverterDict({
     # Has tuple form of (body or return,  return or False)
     # base types
-    #'char': ('<char{last}> {var}', False),
     'char': ('(<char *> {var})[0]', False),
-    #'char': ('{proxy_name} = (<char *> {var})', '<bytes> {proxy_name}[0]'),
     'str': ('std_string(<char *> {var})', False),
     'int32': ('{var}', False),
     'uint32': ('<{ctype}> long({var})', False),

@@ -417,7 +417,7 @@ def test_map_{tfncname}_{ufncname}():
         for key, value in m[{1}].items():
             print key, value, {5}[key]
             if isinstance(value, np.ndarray):
-                assert_array_almost_equal(value, {5}[key])
+                assert{array}_equal(value, {5}[key])
             else:
                 assert_equal(value, {5}[key])
     else:
@@ -429,7 +429,7 @@ def test_map_{tfncname}_{ufncname}():
         for key, value in m[{2}].items():
             if isinstance(value, np.ndarray):
                 print key, value, {6}[key]
-                assert_array_almost_equal(value, {6}[key])
+                assert{array}_equal(value, {6}[key])
             else:
                 assert_equal(value, {6}[key])
     else:
@@ -440,7 +440,7 @@ def test_map_{tfncname}_{ufncname}():
     if uismap:
         for key, value in m[{2}].items():
             if isinstance(value, np.ndarray):
-                assert_array_almost_equal(value, {6}[key])
+                assert{array}_equal(value, {6}[key])
             else:
                 assert_equal(value, {6}[key])
     else:
@@ -451,7 +451,7 @@ def test_map_{tfncname}_{ufncname}():
     if uismap:
         for key, value in m[{1}].items():
             if isinstance(value, np.ndarray):
-                assert_array_almost_equal(value, {5}[key])
+                assert{array}_equal(value, {5}[key])
             else:
                 assert_equal(value, {5}[key])
     else:
@@ -464,13 +464,12 @@ def gentest_map(t, u):
     u = ts.canon(u)
     if t not in testvals or u not in testvals:
         return ""
-    ustr = u
-    ux = None
-    while not isinstance(ustr, basestring):
-        ux = ustr[1]
-        ustr = ustr[0]
-    a = '_array' if ustr.startswith('vector') else ''
-    a += '_almost' if ux not in ['str', 'char'] else ''
+    ulowt = u
+    ulowu = u
+    while ulowu[-1] == 0:
+        ulowt, ulowu = ulowu[-3:-1]
+    a = '_array' if ulowt == 'vector' else ''
+    a += '_almost' if ulowu not in ['str', 'char'] else ''
     return _testmap.format(*[repr(i) for i in testvals[t] + testvals[u][::-1]], 
                            tclsname=ts.cython_classname(t)[1], 
                            uclsname=ts.cython_classname(u)[1],
