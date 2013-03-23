@@ -37,6 +37,7 @@ stlcontainers = [
     ('map', 'int', ('map', 'int', ('vector', 'bool'))),
     ('map', 'int', ('map', 'int', ('vector', 'char'))),
     ('map', 'int', ('map', 'int', ('vector', 'float'))),
+    # the right way to do this is register new numpy dtypes
     #('map', 'int', ('vector', 'str')),
     #('map', 'int', ('vector', 'complex')),
     ]

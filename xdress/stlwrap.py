@@ -410,8 +410,8 @@ def test_map_{tfncname}_{ufncname}():
     uismap = isinstance({5}, Mapping) 
     m[{0}] = {4}
     m[{1}] = {5}
-    import pprint
-    pprint.pprint(m)
+    #import pprint
+    #pprint.pprint(m)
     assert_equal(len(m), 2)
     if uismap:
         for key, value in m[{1}].items():

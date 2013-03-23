@@ -1228,18 +1228,28 @@ _cython_py2c_conv = _LazyConverterDict({
                 '    {var}_data = <{npctype} *> np.PyArray_DATA(<np.ndarray> {var})\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
                 '    for i in range({var}_size):\n'
-                #'        {proxy_name}[i] = <char> {var}_data[i])\n'
                 '        {proxy_name}[i] = {var}[i]\n'
-                #'        {proxy_name}[i] = (<char *> {var}_data)[i]\n'
                 'else:\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
                 '    for i in range({var}_size):\n'
                 '        _ = str({var}[i])[0]\n'
                 '        {proxy_name}[i] = deref(<char *> _)\n'),
-                #'        (<char *> {proxy_name}[i]) = str({var}[i])[0]\n'),
-                #'        {proxy_name}[i] = <char> str({var}[i])[0]\n'),
-                #'        {proxy_name}[i] = (<char *> {var})[i]\n'),
-               '{proxy_name}'),     # FIXME There might be imporvements here...
+               '{proxy_name}'),
+    ('vector', 'str', 0): ((
+                'cdef int i\n'
+                'cdef int {var}_size\n'
+                'cdef {npctype} * {var}_data\n'
+                '{var}_size = len({var})\n'
+                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
+                '    {var}_data = <{npctype} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+                '    for i in range({var}_size):\n'
+                '        {proxy_name}[i] = {var}[i]\n'
+                'else:\n'
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+                '    for i in range({var}_size):\n'
+                '        {proxy_name}[i] = std_string(<char *> {var}[i])\n'),
+               '{proxy_name}'),
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
     'nucname': ('nucname.name({var})', False),
