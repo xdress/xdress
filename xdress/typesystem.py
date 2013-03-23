@@ -778,7 +778,7 @@ def cython_imports(x):
 
 
 _cython_cytypes = _LazyConfigDict({
-    'char': 'char',
+    'char': 'char *',
     'str': 'char *',
     'int32': 'int',
     'uint32': 'long',  # 'unsigned int'
@@ -1031,7 +1031,8 @@ def cython_nptype(t):
 _cython_c2py_conv = _LazyConverterDict({
     # Has tuple form of (copy, [view, [cached_view]])
     # base types
-    'char': ('str(<char *> {var})',),
+    #'char': ('str(<char *> {var})',),
+    'char': ('str(&{var})[0]',),
     'str': ('str(<char *> {var}.c_str())',),
     'int32': ('int({var})',),
     'uint32': ('int({var})',),
@@ -1095,6 +1096,25 @@ _cython_c2py_conv = _LazyConverterDict({
                 '        {proxy_name}[i] = {var}[i]\n'
                 '    {cache_name} = {proxy_name}\n'
                 )),
+    ('vector', 'char', 0): (  # C/C++ chars are ints while Python Chars are length-1 strings
+               ('cdef int i\n'
+                '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                '{proxy_name} = np.empty({proxy_name}_shape[0], "S1")\n'
+                'for i in range({proxy_name}_shape[0]):\n' 
+                '    {proxy_name}[i] = str(&{var}[i])[0]\n'),
+               ('cdef int i\n'
+                '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                '{proxy_name} = np.empty({proxy_name}_shape[0], "S1")\n'
+                'for i in range({proxy_name}_shape[0]):\n' 
+                '    {proxy_name}[i] = str(&{var}[i])[0]\n'),
+               ('cdef int i\n'
+                'if {cache_name} is None:\n'
+                '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                '    for i in range({proxy_name}_shape[0]):\n' 
+                '        {proxy_name}[i] = str(&{var}[i])[0]\n'
+                '    {cache_name} = {proxy_name}\n'
+                )),
     'nucid': ('nucname.zzaaam({var})',),
     'nucname': ('nucname.name({var})',),
     })
@@ -1102,6 +1122,7 @@ _cython_c2py_conv = _LazyConverterDict({
 
 from_pytypes = {
     'str': ['basestring'],
+    'char': ['basestring'],
     'int32': ['int', 'long'],
     'uint32': ['int', 'long'],
     'float32': ['float', 'int', 'long'],
@@ -1168,7 +1189,9 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
 _cython_py2c_conv = _LazyConverterDict({
     # Has tuple form of (body or return,  return or False)
     # base types
-    'char': ('<char{last}> {var}', False),
+    #'char': ('<char{last}> {var}', False),
+    'char': ('(<char *> {var})[0]', False),
+    #'char': ('{proxy_name} = (<char *> {var})', '<bytes> {proxy_name}[0]'),
     'str': ('std_string(<char *> {var})', False),
     'int32': ('{var}', False),
     'uint32': ('<{ctype}> long({var})', False),
@@ -1199,6 +1222,27 @@ _cython_py2c_conv = _LazyConverterDict({
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = <{npctype}> {var}[i]\n'),
                '{proxy_name}'),     # FIXME There might be imporvements here...
+    ('vector', 'char', 0): ((
+                'cdef int i\n'
+                'cdef int {var}_size\n'
+                'cdef {npctype} * {var}_data\n'
+                '{var}_size = len({var})\n'
+                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
+                '    {var}_data = <{npctype} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+                '    for i in range({var}_size):\n'
+                #'        {proxy_name}[i] = <char> {var}_data[i])\n'
+                '        {proxy_name}[i] = {var}[i]\n'
+                #'        {proxy_name}[i] = (<char *> {var}_data)[i]\n'
+                'else:\n'
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+                '    for i in range({var}_size):\n'
+                '        _ = str({var}[i])[0]\n'
+                '        {proxy_name}[i] = deref(<char *> _)\n'),
+                #'        (<char *> {proxy_name}[i]) = str({var}[i])[0]\n'),
+                #'        {proxy_name}[i] = <char> str({var}[i])[0]\n'),
+                #'        {proxy_name}[i] = (<char *> {var})[i]\n'),
+               '{proxy_name}'),     # FIXME There might be imporvements here...
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
     'nucname': ('nucname.name({var})', False),
@@ -1217,7 +1261,7 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
         last = ' ' + t[-1]
     tkey = t
     tinst = None
-    while not isinstance(tkey, basestring):
+    while tkey not in _cython_py2c_conv and not isinstance(tkey, basestring):
         tinst = tkey
         tkey = tkey[1] if (0 < len(tkey) and isrefinement(tkey[1])) else tkey[0]
     py2ct = _cython_py2c_conv[tkey]

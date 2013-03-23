@@ -465,9 +465,12 @@ def gentest_map(t, u):
     if t not in testvals or u not in testvals:
         return ""
     ustr = u
+    ux = None
     while not isinstance(ustr, basestring):
+        ux = ustr[1]
         ustr = ustr[0]
-    a = '_array_almost' if ustr.startswith('vector') else ''
+    a = '_array' if ustr.startswith('vector') else ''
+    a += '_almost' if ux not in ['str', 'char'] else ''
     return _testmap.format(*[repr(i) for i in testvals[t] + testvals[u][::-1]], 
                            tclsname=ts.cython_classname(t)[1], 
                            uclsname=ts.cython_classname(u)[1],
