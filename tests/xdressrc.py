@@ -43,3 +43,12 @@ stlcontainers = [
     ]
 
 stlcontainers_module = 'xdstlc'
+
+classes = [
+    ('FCComp', 'fccomp'), 
+    ('EnrichmentParameters', 'enrichment_parameters'), 
+    ('Enrichment', 'bright_enrichment', 'enrichment'), 
+    ('Reprocess', 'reprocess'), 
+    ]
+
+functions = []

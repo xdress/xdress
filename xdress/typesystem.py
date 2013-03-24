@@ -464,6 +464,7 @@ EXTRA_TYPES = 'xdress_extra_types'
 
 STLCONTAINERS = 'stlcontainers' 
 
+_ensuremod = lambda x: x if x is not None and 0 < len(x) else ''
 _ensuremoddot = lambda x: x + '.' if x is not None and 0 < len(x) else ''
 
 class _LazyConfigDict(MutableMapping):
@@ -510,9 +511,10 @@ class _LazyImportDict(MutableMapping):
 
     def __getitem__(self, key):
         value = self._d[key]
-        kw = {'extra_types': _ensuremoddot(EXTRA_TYPES),
-              'stlcontainers': _ensuremoddot(STLCONTAINERS),}
-        newvalue = tuple(tuple(x.format(**kw) or None for x in imp) for imp in value)
+        kw = {'extra_types': _ensuremod(EXTRA_TYPES),
+              'stlcontainers': _ensuremod(STLCONTAINERS),}
+        newvalue = tuple(tuple(x.format(**kw) or None for x in imp if x is not None) \
+                            for imp in value if imp is not None) or (None,)
         return newvalue
 
     def __setitem__(self, key, value):
@@ -701,7 +703,7 @@ def cython_cimports(x, inc=frozenset(['c', 'cy'])):
     """
     if not isinstance(x, Set):
         x = cython_cimport_tuples(x, inc=inc)
-    return set([_cython_cimport_cases[len(tup)](tup) for tup in x])
+    return set([_cython_cimport_cases[len(tup)](tup) for tup in x if 0 != len(tup)])
 
 
 

@@ -47,7 +47,7 @@ from utils import newoverwrite, newcopyover, ensuredirs
 import typesystem as ts
 import stlwrap
 from cythongen import gencpppxd, genpxd, genpyx
-from autodescribe import describe, merge_descriptions
+import autodescribe 
 
 
 class DescriptionCache(object):
@@ -112,7 +112,7 @@ class DescriptionCache(object):
 cache = DescriptionCache()
 
 
-def describe_class(classname, filename, verbose=False):
+def describe_class(classname, srcname, tarname, rc, verbose=False):
     """Returns a description dictionary for a class (called classname) 
     living in a file (called filename).  
 
@@ -120,9 +120,10 @@ def describe_class(classname, filename, verbose=False):
     ----------
     classname : str
         Class to describe.
-    filename : str
-        File where the class is implemented.  Will remove leading ``'bright_'`` from
-        filename for the puprose of generating other files.
+    srcname : str
+        File basename where the class is implemented.  
+    tarname : str
+        File basename where the class basenames will be generated.  
     verbose : bool, optional
         Flag for printing extra information during description process.
 
@@ -133,18 +134,20 @@ def describe_class(classname, filename, verbose=False):
 
     """
     # C++ description
-    cppfilename = filename + '.cpp'
+    cppfilename = os.path.join(rc.sourcedir, srcname + '.cpp')
     if cache.isvalid(classname, cppfilename):
         cppdesc = cache[classname, cppfilename]
     else:
-        cppdesc = describe(cppfilename, classname=classname, verbose=verbose)
+        cppdesc = autodescribe.describe(cppfilename, classname=classname, 
+                                        verbose=verbose)
         cache[classname, cppfilename] = cppdesc
 
     # python description
-    if os.path.isfile(filename + '.py'):
+    pyfilename = os.path.join(rc.sourcedir, srcname + '.py')
+    if os.path.isfile(pyfilename):
         glbs = globals()
         locs = {}
-        execfile(filename + '.py', glbs, locs)
+        execfile(pyfilename, glbs, locs)
         if 'desc' not in locs:
             pydesc = {}
         elif callable(locs['desc']):
@@ -154,37 +157,14 @@ def describe_class(classname, filename, verbose=False):
     else:
         pydesc = {}
 
-    desc = merge_descriptions([cppdesc, pydesc])
-    basefilename = os.path.split(filename)[-1]
-    dimfilename = basefilename[7:] if basefilename.startswith('bright_') else basefilename
-    desc['cpp_filename'] = '{0}.cpp'.format(basefilename)
-    desc['header_filename'] = '{0}.h'.format(basefilename)
-    desc['metadata_filename'] = '{0}.py'.format(basefilename)
-    desc['pxd_filename'] = '{0}.pxd'.format(dimfilename)
-    desc['pyx_filename'] = '{0}.pyx'.format(dimfilename)
-    desc['cpppxd_filename'] = 'cpp_{0}.pxd'.format(dimfilename)
+    desc = autodescribe.merge_descriptions([cppdesc, pydesc])
+    desc['cpp_filename'] = '{0}.cpp'.format(srcname)
+    desc['header_filename'] = '{0}.h'.format(srcname)
+    desc['metadata_filename'] = '{0}.py'.format(srcname)
+    desc['pxd_filename'] = '{0}.pxd'.format(tarname)
+    desc['pyx_filename'] = '{0}.pyx'.format(tarname)
+    desc['cpppxd_filename'] = 'cpp_{0}.pxd'.format(tarname)
     return desc
-
-# Classes and type to preregister with the typesyetem prior to doing any code 
-# generation.  
-PREREGISTER_KEYS = ['name', 'cython_c_type', 'cython_cimport', 'cython_cy_type',
-                    'cython_py_type', 'cython_template_class_name', 
-                    'cython_cyimport', 'cython_pyimport', 'cython_c2py', 'cython_py2c']
-PREREGISTER_CLASSES = [
-    ('Material', 'cpp_material.Material', ('pyne', 'cpp_material'), 
-     'material._Material', 'material.Material', 'Material', ('pyne', 'material'), 
-     ('pyne', 'material'), 
-     ('{pytype}({var})', 
-      ('{proxy_name} = {pytype}()\n'
-       '{proxy_name}.mat_pointer[0] = {var}'),
-      ('if {cache_name} is None:\n'
-       '    {proxy_name} = {pytype}(free_mat=False)\n'
-       '    {proxy_name}.mat_pointer = &{var}\n'
-       '    {cache_name} = {proxy_name}\n')
-     ),
-     ('{proxy_name} = {pytype}({var}, free_mat=not isinstance({var}, {cytype}))',
-      '{proxy_name}.mat_pointer[0]')),
-    ]
 
 def genextratypes(ns, rc):
     d = os.path.split(__file__)[0]
@@ -212,13 +192,15 @@ def genbindings(ns, rc):
     """
     genextratypes(ns, rc)
     ns.cyclus = False  # FIXME cyclus bindings don't exist yet!
+    for i, cls in enumerate(rc.classes):
+        if len(cls) == 2:
+            rc.classes[i] = (cls[0], cls[1], cls[1])
 
     # compute all descriptions first 
     env = {}
-    for classname, fname, mkcython, mkcyclus in CLASSES:
+    for classname, srcname, tarname in rc.classes:
         print("parsing " + classname)
-        desc = env[classname] = describe_class(classname, 
-                                               os.path.join('cpp', fname), 
+        desc = env[classname] = describe_class(classname, srcname, tarname, rc, 
                                                verbose=ns.verbose)
         if ns.verbose:
             pprint(env[classname])
@@ -236,7 +218,7 @@ def genbindings(ns, rc):
                        '    {cache_name} = {proxy_name}\n')
                      )
         class_py2c = ('{proxy_name} = <{cytype}> {var}', '(<{ctype} *> {proxy_name}._inst)[0]')
-        class_cimport = ('bright', cpppxd_base) 
+        class_cimport = (rc.package, cpppxd_base) 
         ts.register_class(classname,                              # FCComp
             cython_c_type=cpppxd_base + '.' + classname,          # cpp_fccomp.FCComp
             cython_cimport=class_cimport,  
@@ -248,25 +230,12 @@ def genbindings(ns, rc):
             cython_c2py=class_c2py,
             cython_py2c=class_py2c,
             )
-    cache.dump()
+        cache.dump()
 
-    # now preregister types with the type system
-    for prc in PREREGISTER_CLASSES:
-        ts.register_class(**dict(zip(PREREGISTER_KEYS, prc)))
-
-    # Now register specialization
-    ts.register_specialization(('map', 'str', ('Material', '*'), 0), 
-        cython_c_type='material._MapStrMaterial', 
-        cython_cy_type='material._MapStrMaterial', 
-        cython_py_type='material.MapStrMaterial',
-        cython_cimport=(('pyne', 'material'),),
-        cython_cyimport=(('pyne', 'material'),),
-        cython_pyimport=(('pyne', 'material'),),
-        )
 
     # next, make cython bindings
-    for classname, fname, mkcython, mkcyclus in CLASSES:
-        if not mkcython or not ns.cython:
+    for classname, srcname, tarname in rc.classes:
+        if not ns.cython:
             continue
         print("making cython bindings for " + classname)
         # generate first, then write out to ensure this is atomic per-class
@@ -274,13 +243,13 @@ def genbindings(ns, rc):
         cpppxd = gencpppxd(desc)
         pxd = genpxd(desc)
         pyx = genpyx(desc, env)
-        newoverwrite(cpppxd, os.path.join('bright', desc['cpppxd_filename']))
-        newoverwrite(pxd, os.path.join('bright', desc['pxd_filename']))
-        newoverwrite(pyx, os.path.join('bright', desc['pyx_filename']))
+        newoverwrite(cpppxd, os.path.join(rc.package, desc['cpppxd_filename']))
+        newoverwrite(pxd, os.path.join(rc.package, desc['pxd_filename']))
+        newoverwrite(pyx, os.path.join(rc.package, desc['pyx_filename']))
 
     # next, make cyclus bindings
-    for classname, fname, mkcython, mkcyclus in CLASSES:
-        if not mkcyclus or not ns.cyclus:
+    for classname, srcname, tarname in rc.classes:
+        if not ns.cyclus:
             continue
         print("making cyclus bindings for " + classname)
 

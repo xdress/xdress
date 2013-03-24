@@ -14,9 +14,9 @@ Cython Generation API
 import math
 from copy import deepcopy
 
-from bright.apigen.utils import indent, expand_default_args
-from bright.apigen import typesystem as ts
-from bright.apigen.typesystem import cython_ctype, cython_cimport_tuples, \
+from utils import indent, indentstr, expand_default_args
+import typesystem as ts
+from typesystem import cython_ctype, cython_cimport_tuples, \
     cython_cimports, register_class, cython_cytype, cython_pytype, cython_c2py, \
     cython_py2c, cython_import_tuples, cython_imports, isrefinement
 
