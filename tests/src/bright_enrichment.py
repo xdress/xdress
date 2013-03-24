@@ -22,8 +22,6 @@ desc = {
         'methods': {},
         },
     'attrs': {
-        'j': 'nucid',
-        'k': 'nucid',
         },
     }
 

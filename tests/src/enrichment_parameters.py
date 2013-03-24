@@ -14,8 +14,6 @@ desc = {
         'attrs': {},
         },
     'attrs': {
-        'j': 'nucid',
-        'k': 'nucid',
         },
     'extra': {'cpppxd': ("    EnrichmentParameters "
                          "fillUraniumEnrichmentDefaults() except +")},
