@@ -77,6 +77,7 @@ add_custom_target( ReplicatePythonSourceTree ALL ${CMAKE_COMMAND} -P
 #file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/xdress/_includes/
 #     DESTINATION ${CMAKE_BINARY_DIR}/xdress/_includes/)
 
+add_subdirectory(src)
 add_subdirectory(xdtest)
 
 # Print include dir

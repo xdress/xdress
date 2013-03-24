@@ -1,5 +1,5 @@
 package = 'xdtest'
-
+sourcedir = 'src'
 packagedir = 'xdtest'
 
 extra_types = 'xdtest_extra_types'  # non-default value
