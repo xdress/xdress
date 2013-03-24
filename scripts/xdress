@@ -1,0 +1,7 @@
+#!/usr/bin/env python
+"""xdress entry point."""
+
+from xdress.main import main
+
+main()
+

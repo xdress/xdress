@@ -9,5 +9,5 @@ PYTHONPATH=$SITEPATH python -c "import xdtest.fccomp" && \
 PYTHONPATH=$SITEPATH python -c "import xdtest.enrichment_parameters" && \
 PYTHONPATH=$SITEPATH python -c "import xdtest.enrichment" && \
 PYTHONPATH=$SITEPATH python -c "import xdtest.reprocess" && \
-echo "ran imports OK" && \
+echo "Ran imports OK" && \
 cd ../..
