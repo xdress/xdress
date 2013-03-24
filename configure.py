@@ -73,7 +73,7 @@ def setup():
                                      (os.name != 'nt' and not s.endswith('.bat'))]
     packages = ['xdress', ]
     pack_dir = {'xdress': 'xdress',}
-    pack_data = {'xdress': ['*.pxd', '*.pyx']}
+    pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp']}
     setup_kwargs = {
         "name": "xdress",
         "version": INFO['version'],

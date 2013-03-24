@@ -168,15 +168,17 @@ def describe_class(classname, srcname, tarname, rc, verbose=False):
 
 def genextratypes(ns, rc):
     d = os.path.split(__file__)[0]
-    srcs = [os.path.join(d, 'xdress_extra_types.pxd'), 
+    srcs = [os.path.join(d, 'xdress_extra_types.h'), 
+            os.path.join(d, 'xdress_extra_types.pxd'), 
             os.path.join(d, 'xdress_extra_types.pyx')]
-    tars = [os.path.join(rc.packagedir, rc.extra_types + '.pxd'), 
+    tars = [os.path.join(rc.sourcedir, rc.extra_types + '.h'), 
+            os.path.join(rc.packagedir, rc.extra_types + '.pxd'), 
             os.path.join(rc.packagedir, rc.extra_types + '.pyx')]
-    newcopyover(srcs[0], tars[0])
-    with open(srcs[1], 'r') as f:
-        s = f.read()
-    s = s.format(extra_types=rc.extra_types)
-    newoverwrite(s, tars[1])
+    for src, tar in zip(srcs, tars):
+        with open(src, 'r') as f:
+            s = f.read()
+            s = s.format(extra_types=rc.extra_types)
+            newoverwrite(s, tar)
 
 def genstlcontainers(ns, rc):
     print "generating C++ standard library wrappers & converters"
@@ -269,7 +271,7 @@ defaultrc = dict(
 
 def main():
     """Entry point for xdress API generation."""
-    parser = argparse.ArgumentParser("Generates xdress API")
+    parser = argparse.ArgumentParser("Generates XDress API")
     parser.add_argument('--rc', default="xdressrc.py", 
                         help="path to run control file.")
     parser.add_argument('--debug', action='store_true', default=False, 
