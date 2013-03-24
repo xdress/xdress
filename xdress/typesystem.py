@@ -1505,7 +1505,7 @@ def swap_stlcontainers(s):
     global STLCONTAINERS
     old = STLCONTAINERS
     STLCONTAINERS = s
-    #clearmemo()
+    clearmemo()
     yield
-    #clearmemo()
+    clearmemo()
     STLCONTAINERS = old
