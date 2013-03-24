@@ -16,7 +16,7 @@ cdef cpp_map[int, double] sepeff_py2c(object x):
         elif isinstance(key, basestring):
             ks = std_string(<char *> key)
             if 0 < 1:
-                k = ks
+                k = 42
             else:
                 k = ks
         else:

@@ -5,4 +5,9 @@ python ../xdress/main.py --no-cyclus && \
 python setup.py install --prefix=$INST -- -- && \
 cd xdtest/tests && \
 PYTHONPATH=$SITEPATH nosetests test_xdstlc.py && \
+PYTHONPATH=$SITEPATH python -c "import xdtest.fccomp" && \
+PYTHONPATH=$SITEPATH python -c "import xdtest.enrichment_parameters" && \
+PYTHONPATH=$SITEPATH python -c "import xdtest.enrichment" && \
+PYTHONPATH=$SITEPATH python -c "import xdtest.reprocess" && \
+echo "ran imports OK" && \
 cd ../..

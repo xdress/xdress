@@ -105,10 +105,10 @@ def cython_version():
 def setup():
     from distutils import core
     scripts = []
-    packages = ['xdtest', ]
-    pack_dir = {'xdtest': 'xdtest',}
+    packages = ['xdtest', 'xdtest.lib']
+    pack_dir = {'xdtest': 'xdtest', 'xdtest.lib': 'xdtest/lib'}
     extpttn = ['*.dll', '*.so', '*.dylib', '*.pyd', '*.pyo']
-    pack_data = {'xdtest': ['*.pxd', '*.json',] + extpttn,}
+    pack_data = {'xdtest': ['*.pxd', '*.json',] + extpttn, 'xdtest.lib': extpttn}
     setup_kwargs = {
         "name": "xdtest",
         "version": INFO['version'],

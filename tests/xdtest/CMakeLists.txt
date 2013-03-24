@@ -15,6 +15,10 @@ set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/xdstlc.pyx
                             PROPERTIES CYTHON_IS_CXX TRUE)
 cython_add_module(xdstlc xdstlc.pyx)
 
+set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/typeconverters.pyx
+                            PROPERTIES CYTHON_IS_CXX TRUE)
+cython_add_module(typeconverters typeconverters.pyx)
+
 
 # fccomp
 set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/fccomp.pyx
