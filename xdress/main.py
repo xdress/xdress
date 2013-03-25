@@ -157,6 +157,9 @@ def describe_class(classname, srcname, tarname, rc, verbose=False):
     else:
         pydesc = {}
 
+    if tarname is None:
+        tarname = "<dont-build>"
+
     desc = autodescribe.merge_descriptions([cppdesc, pydesc])
     desc['cpp_filename'] = '{0}.cpp'.format(srcname)
     desc['header_filename'] = '{0}.h'.format(srcname)
@@ -236,7 +239,7 @@ def genbindings(ns, rc):
 
     # next, make cython bindings
     for classname, srcname, tarname in rc.classes:
-        if not ns.cython:
+        if not ns.cython or tarname is None:
             continue
         print("making cython bindings for " + classname)
         # generate first, then write out to ensure this is atomic per-class
@@ -250,7 +253,7 @@ def genbindings(ns, rc):
 
     # next, make cyclus bindings
     for classname, srcname, tarname in rc.classes:
-        if not ns.cyclus:
+        if not ns.cyclus or tarname is None:
             continue
         print("making cyclus bindings for " + classname)
 
