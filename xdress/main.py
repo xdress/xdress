@@ -192,7 +192,6 @@ def genstlcontainers(ns, rc):
 def genbindings(ns, rc):
     """Generates bidnings using the command line setting specified in ns.
     """
-    genextratypes(ns, rc)
     ns.cyclus = False  # FIXME cyclus bindings don't exist yet!
     for i, cls in enumerate(rc.classes):
         if len(cls) == 2:
