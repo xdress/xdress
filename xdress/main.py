@@ -1,35 +1,37 @@
-"""Top-level automatic API generators for Bright.  
+"""Top-level automatic API generators entry point.  
 
 :author: Anthony Scopatz <scopatz@gmail.com>
 
 API Generation
 ==============
-This module is where all of the Bright-specific API generation routines reside.
+This module is where all of the API generation routines reside.
 Until now the type system, automatic description, and cython code generation have
-all be independent of what classes they are wrapping.  The functions and classes
-here are specifically set up to be executed on the Bright code base.  Thus, 
-attempting to wrap other codes with the tools developed here would only need to fork
-this module. 
-
-The main module is normally run from the base bright directory as follows:
+all be independent of what classes they are wrapping.  
+The main module is normally run via the command line interface as follows:
 
 .. code-block:: bash
 
-    ~ $ cd bright
-    ~/bright $ python bright/apigen/main.py
+    path/to/proj/ $ xdress
 
-The function here has the following command line interface::
+This has the following usage::
 
-    usage: Generates Bright API [-h] [--debug] [--no-cython] [--no-cyclus]
-                                [--dump-desc] [-v]
+    path/to/proj/ $ xdress -h 
+    usage: Generates XDress API [-h] [--rc RC] [--debug] [--no-extratypes]
+                                [--no-stlcont] [--no-cython] [--no-cyclus]
+                                [--dump-desc] [-I INCLUDES [INCLUDES ...]] [-v]
 
     optional arguments:
-      -h, --help     show this help message and exit
-      --debug        build with debugging flags
-      --no-cython    don't make cython bindings
-      --no-cyclus    don't make cyclus bindings
-      --dump-desc    print description cache
-      -v, --verbose  print more output
+      -h, --help            show this help message and exit
+      --rc RC               path to run control file.
+      --debug               build with debugging flags
+      --no-extratypes       don't make extr types wrapper
+      --no-stlcont          don't make STL container wrappers
+      --no-cython           don't make cython bindings
+      --no-cyclus           don't make cyclus bindings
+      --dump-desc           print description cache
+      -I INCLUDES [INCLUDES ...]
+                            additional include dirs
+      -v, --verbose         print more output
 
 Main API
 ========
