@@ -146,14 +146,11 @@ except ImportError:
                     pass
 import tempfile
 
-# Other imports
-import pyne
-
 RE_INT = re.compile('^\d+$')
 RE_FLOAT = re.compile('^[+-]?\.?\d+\.?\d*?(e[+-]?\d+)?$')
 
 
-def describe(filename, classname=None, parser='gccxml', verbose=False):
+def describe(filename, classname=None, includes=(), parser='gccxml', verbose=False):
     """Automatically describes a class in a file.  This is the main entry point.
 
     Parameters
@@ -163,6 +160,8 @@ def describe(filename, classname=None, parser='gccxml', verbose=False):
     classname : str or None, optional
         The classname, a 'None' value will attempt to infer this from the 
         filename.
+    includes: list of str, optional
+        The list of extra include directories to search for header files.
     parser : str, optional
         The parser / AST to use to use for the C++ file.  Currently only
         'clang' and 'gccxml' are supported, though others may be 
@@ -180,7 +179,7 @@ def describe(filename, classname=None, parser='gccxml', verbose=False):
         classname = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
     describers = {'clang': clang_describe, 'gccxml': gccxml_describe}
     describer = describers[parser]
-    desc = describer(filename, classname, verbose=verbose)
+    desc = describer(filename, classname, includes, verbose=verbose)
     return desc
 
 
@@ -189,7 +188,7 @@ def describe(filename, classname=None, parser='gccxml', verbose=False):
 #
 
 
-def gccxml_describe(filename, classname, verbose=False):
+def gccxml_describe(filename, classname, includes=(), verbose=False):
     """Use GCC-XML to describe the class.
 
     Parameters
@@ -199,6 +198,8 @@ def gccxml_describe(filename, classname, verbose=False):
     classname : str or None, optional
         The classname, a 'None' value will attempt to infer this from the 
         filename.
+    includes: list of str, optional
+        The list of extra include directories to search for header files.
     verbose : bool, optional
         Flag to diplay extra information while describing the class.
 
@@ -209,7 +210,8 @@ def gccxml_describe(filename, classname, verbose=False):
         API bindings.
     """
     f = tempfile.NamedTemporaryFile()
-    cmd = ['gccxml', filename, '-fxml=' + f.name, '-I' + pyne.includes]
+    cmd = ['gccxml', filename, '-fxml=' + f.name]
+    cmd += map(lambda i: '-I' + i,  includes)
     if verbose:
         print " ".join(cmd)
     subprocess.call(cmd)
@@ -515,7 +517,7 @@ class GccxmlClassDescriber(object):
 # Clang Describers
 #
 
-def clang_describe(filename, classname, verbose=False):
+def clang_describe(filename, classname, includes=(), verbose=False):
     """Use clang to describe the class."""
     index = cindex.Index.create()
     tu = index.parse(filename, args=['-cc1', '-I' + pyne.includes])

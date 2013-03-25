@@ -112,7 +112,7 @@ class DescriptionCache(object):
 cache = DescriptionCache()
 
 
-def describe_class(classname, srcname, tarname, rc, verbose=False):
+def describe_class(classname, srcname, tarname, ns, rc):
     """Returns a description dictionary for a class (called classname) 
     living in a file (called filename).  
 
@@ -139,7 +139,8 @@ def describe_class(classname, srcname, tarname, rc, verbose=False):
         cppdesc = cache[classname, cppfilename]
     else:
         cppdesc = autodescribe.describe(cppfilename, classname=classname, 
-                                        verbose=verbose)
+                                        includes=ns.includes + rc.includes,
+                                        verbose=ns.verbose)
         cache[classname, cppfilename] = cppdesc
 
     # python description
@@ -204,8 +205,7 @@ def genbindings(ns, rc):
     env = {}
     for classname, srcname, tarname in rc.classes:
         print("parsing " + classname)
-        desc = env[classname] = describe_class(classname, srcname, tarname, rc, 
-                                               verbose=ns.verbose)
+        desc = env[classname] = describe_class(classname, srcname, tarname, ns, rc)
         if ns.verbose:
             pprint(env[classname])
 
@@ -288,6 +288,8 @@ def main():
                         default=True, help="don't make cyclus bindings")
     parser.add_argument('--dump-desc', action='store_true', dest='dumpdesc', 
                         default=False, help="print description cache")
+    parser.add_argument('-I', action='store', dest='includes', nargs="+",
+                        default=[], help="additional include dirs")
     parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', 
                         default=False, help="print more output")
     ns = parser.parse_args()
@@ -295,6 +297,7 @@ def main():
     rc = dict(defaultrc)
     execfile(ns.rc, rc, rc)
     rc = argparse.Namespace(**rc)
+    rc.includes = list(rc.includes) if hasattr(rc, 'includes') else []
 
     # set typesystem defaults
     ts.EXTRA_TYPES = rc.extra_types
