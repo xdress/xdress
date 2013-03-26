@@ -1192,7 +1192,7 @@ _cython_py2c_conv = _LazyConverterDict({
     # base types
     'char': ('(<char *> {var})[0]', False),
     'str': ('std_string(<char *> {var})', False),
-    'int32': ('{var}', False),
+    'int32': ('<int> {var}', False),
     'uint32': ('<{ctype}> long({var})', False),
     'float32': ('<float> {var}', False),
     'float64': ('<double> {var}', False),

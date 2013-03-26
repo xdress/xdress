@@ -52,5 +52,6 @@ classes = [
     ]
 
 functions = [
+    ('func', 'reprocess'),
     ('fillUraniumEnrichmentDefaults', 'enrichment_parameters'),
     ]

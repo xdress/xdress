@@ -92,3 +92,12 @@ int bright::Reprocess::calc ()
   return 3;
 };
 
+
+
+
+int bright::func(){return 1;};
+
+int bright::func(double x, int y){return y + x;};
+
+int bright::func(std::string x, double y){return 1 + y;};
+

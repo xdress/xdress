@@ -102,6 +102,9 @@ desc = {
     }
 
 mod = {'Reprocess': desc,
+       'func': {
+            'docstring': "I am a weird function."
+            },
        'docstring': "Python wrapper for Reprocess.",}
 
 import typesystem as ts

@@ -609,11 +609,10 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
             top-level class node is found and visited.
 
         """
-        if node is None:
-            node = self._root.find("Function[@name='{0}']".format(self.name))
-            assert node.attrib['file'] in self.onlyin
-        self.visit_function(node)
-
+        root = node or self._root
+        for n in root.iterfind("Function[@name='{0}']".format(self.name)):
+            if n.attrib['file'] in self.onlyin:
+                self.visit_function(n)
 
 #
 # Clang Describers

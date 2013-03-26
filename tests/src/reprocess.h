@@ -36,6 +36,11 @@ namespace bright {
     int calc();
   };
 
+
+  int func();
+  int func(double x, int y=10);
+  int func(std::string x, double y=10.0);
+
 // end namespace
 };
 
