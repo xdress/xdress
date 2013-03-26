@@ -161,7 +161,7 @@ def compute_desc(name, srcname, tarname, ns, rc):
     if cache.isvalid(name, cppfilename):
         cppdesc = cache[name, cppfilename]
     else:
-        cppdesc = autodescribe.describe(cppfilename, classname=name, 
+        cppdesc = autodescribe.describe(cppfilename, name=name, 
                                         includes=ns.includes + rc.includes,
                                         verbose=ns.verbose)
         cache[name, cppfilename] = cppdesc

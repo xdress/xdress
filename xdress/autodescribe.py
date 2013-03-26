@@ -171,15 +171,15 @@ RE_INT = re.compile('^\d+$')
 RE_FLOAT = re.compile('^[+-]?\.?\d+\.?\d*?(e[+-]?\d+)?$')
 
 
-def describe(filename, classname=None, includes=(), parser='gccxml', verbose=False):
+def describe(filename, name=None, includes=(), parser='gccxml', verbose=False):
     """Automatically describes a class in a file.  This is the main entry point.
 
     Parameters
     ----------
     filename : str
         The path to the file.
-    classname : str or None, optional
-        The classname, a 'None' value will attempt to infer this from the 
+    name : str or None, optional
+        The name, a 'None' value will attempt to infer this from the 
         filename.
     includes: list of str, optional
         The list of extra include directories to search for header files.
@@ -196,11 +196,11 @@ def describe(filename, classname=None, includes=(), parser='gccxml', verbose=Fal
         A dictionary describing the class which may be used to generate
         API bindings.
     """
-    if classname is None:
-        classname = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
+    if name is None:
+        name = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
     describers = {'clang': clang_describe, 'gccxml': gccxml_describe}
     describer = describers[parser]
-    desc = describer(filename, classname, includes, verbose=verbose)
+    desc = describer(filename, name, includes, verbose=verbose)
     return desc
 
 
@@ -209,15 +209,15 @@ def describe(filename, classname=None, includes=(), parser='gccxml', verbose=Fal
 #
 
 
-def gccxml_describe(filename, classname, includes=(), verbose=False):
+def gccxml_describe(filename, name, includes=(), verbose=False):
     """Use GCC-XML to describe the class.
 
     Parameters
     ----------
     filename : str
         The path to the file.
-    classname : str or None, optional
-        The classname, a 'None' value will attempt to infer this from the 
+    name : str or None, optional
+        The name, a 'None' value will attempt to infer this from the 
         filename.
     includes: list of str, optional
         The list of extra include directories to search for header files.
@@ -239,7 +239,7 @@ def gccxml_describe(filename, classname, includes=(), verbose=False):
     f.seek(0)
     root = etree.parse(f)
     onlyin = set([filename, filename.replace('.cpp', '.h')])
-    describer = GccxmlClassDescriber(classname, root, onlyin=onlyin, verbose=verbose)
+    describer = GccxmlClassDescriber(name, root, onlyin=onlyin, verbose=verbose)
     describer.visit()
     f.close()
     return describer.desc
@@ -248,15 +248,15 @@ def gccxml_describe(filename, classname, includes=(), verbose=False):
 class GccxmlBaseDescriber(object):
     """Base class used to generate descriptions via GCC-XML output.
     Sub-classes need only implement a visit() method and optionally a 
-    constructor."""
+    constructor.  The default visitor methods are valid for classes."""
 
     _integer_types = frozenset(['int32', 'int64', 'uint32', 'uint64'])
 
-    def __init__(self, classname, root=None, onlyin=None, verbose=False):
+    def __init__(self, name, root=None, onlyin=None, verbose=False):
         """Parameters
         -------------
-        classname : str
-            The classname, this may not have a None value.
+        name : str
+            The name, this may not have a None value.
         root : element tree node, optional
             The root element node of the class or struct to describe.  
         onlyin :  str, optional
@@ -266,8 +266,8 @@ class GccxmlBaseDescriber(object):
             Flag to display extra information while visiting the class.
 
         """
-        self.desc = {'name': classname, 'attrs': {}, 'methods': {}}
-        self.classname = classname
+        self.desc = {'name': name}
+        self.name = name
         self.verbose = verbose
         self._root = root
         onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
@@ -335,7 +335,7 @@ class GccxmlBaseDescriber(object):
         self._pprint(node)
         name = node.attrib['name']
         self._currclass.append(name)
-        if name == self.classname:
+        if name == self.name:
             bases = node.attrib['bases'].split()
             bases = None if len(bases) == 0 else [self.type(b) for b in bases]
             self.desc['parents'] = bases
@@ -415,7 +415,7 @@ class GccxmlBaseDescriber(object):
         """visits a member variable."""
         self._pprint(node)
         context = self._root.find(".//*[@id='{0}']".format(node.attrib['context']))
-        if context.attrib['name'] == self.classname:
+        if context.attrib['name'] == self.name:
             # assert this field is member of the class we are trying to parse
             name = node.attrib['name']
             t = self.type(node.attrib['type'])
@@ -510,11 +510,11 @@ class GccxmlBaseDescriber(object):
 class GccxmlClassDescriber(GccxmlBaseDescriber):
     """Class used to generate class descriptions via GCC-XML output."""
 
-    def __init__(self, classname, root=None, onlyin=None, verbose=False):
+    def __init__(self, name, root=None, onlyin=None, verbose=False):
         """Parameters
         -------------
-        classname : str
-            The classname, this may not have a None value.
+        name : str
+            The name, this may not have a None value.
         root : element tree node, optional
             The root element node of the class or struct to describe.  
         onlyin :  str, optional
@@ -524,18 +524,10 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
             Flag to display extra information while visiting the class.
 
         """
-        self.desc = {'name': classname, 'attrs': {}, 'methods': {}}
-        self.classname = classname
-        self.verbose = verbose
-        self._root = root
-        onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
-        onlyin = set() if onlyin is None else set(onlyin)
-        self.onlyin = set([root.find("File[@name='{0}']".format(oi)).attrib['id'] \
-                           for oi in onlyin])
-        self._currfunc = []  # this must be a stack to handle nested functions
-        self._currfuncsig = None
-        self._currclass = []  # this must be a stack to handle nested classes  
-        self._level = -1
+        super(GccxmlClassDescriber, self).__init__(name, root=root, onlyin=onlyin, 
+                                                   verbose=verbose)
+        self.desc['attrs'] = {}
+        self.desc['methods'] = {}
 
     def visit(self, node=None):
         """Visits the class node and all sub-nodes, generating the description
@@ -549,9 +541,9 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
 
         """
         if node is None:
-            node = self._root.find("Class[@name='{0}']".format(self.classname))
+            node = self._root.find("Class[@name='{0}']".format(self.name))
             if node is None:
-                node = self._root.find("Struct[@name='{0}']".format(self.classname))
+                node = self._root.find("Struct[@name='{0}']".format(self.name))
             assert node.attrib['file'] in self.onlyin
             self.visit_class(node)
         members = node.attrib.get('members', '').strip().split()
@@ -572,13 +564,13 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
 # Clang Describers
 #
 
-def clang_describe(filename, classname, includes=(), verbose=False):
+def clang_describe(filename, name, includes=(), verbose=False):
     """Use clang to describe the class."""
     index = cindex.Index.create()
     tu = index.parse(filename, args=['-cc1', '-I' + pyne.includes])
     #onlyin = set([filename, filename.replace('.cpp', '.h')])
     onlyin = set([filename.replace('.cpp', '.h')])
-    describer = ClangClassDescriber(classname, onlyin=onlyin, verbose=verbose)
+    describer = ClangClassDescriber(name, onlyin=onlyin, verbose=verbose)
     describer.visit(tu.cursor)
     from pprint import pprint; pprint(describer.desc)
     return describer.desc
@@ -620,9 +612,9 @@ class ClangClassDescriber(object):
 
     _funckinds = set(['function_decl', 'cxx_method', 'constructor', 'destructor'])
 
-    def __init__(self, classname, root=None, onlyin=None, verbose=False):
-        self.desc = {'name': classname, 'attrs': {}, 'methods': {}}
-        self.classname = classname
+    def __init__(self, name, root=None, onlyin=None, verbose=False):
+        self.desc = {'name': name, 'attrs': {}, 'methods': {}}
+        self.name = name
         self.verbose = verbose
         onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
         self.onlyin = set() if onlyin is None else set(onlyin)
@@ -740,7 +732,7 @@ class ClangClassDescriber(object):
         self._pprint(cur, "class template partial specialization")
 
 
-def clang_find_class(node, classname, namespace=None):
+def clang_find_class(node, name, namespace=None):
     """Find the node for a given class underneath the current node.
     """
     if namespace is None:
@@ -749,13 +741,13 @@ def clang_find_class(node, classname, namespace=None):
         nsdecls = [n for n in clang_find_declarations(node) if n.spelling == namespace]
     classnode = None
     for nsnode in nsdecls[::-1]:
-        decls = [n for n in clang_find_declarations(nsnode) if n.spelling == classname]
+        decls = [n for n in clang_find_declarations(nsnode) if n.spelling == name]
         if 0 < len(decls):
             assert 1 == len(decls)
             classnode = decls[0]
             break
     if classnode is None:
-        msg = "the class {0} could not be found in {1}".format(classname, filename)
+        msg = "the class {0} could not be found in {1}".format(name, filename)
         raise ValueError(msg)
     return classnode
 
