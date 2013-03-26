@@ -87,7 +87,7 @@ class DescriptionCache(object):
         return self.cache[key][1]  # return the description only
 
     def __setitem__(self, key, value):
-        classname, filename = key
+        name, filename, kind = key
         with open(filename, 'r') as f:
             filestr = f.read()
         currhash = md5(filestr).hexdigest()
@@ -276,7 +276,7 @@ def genbindings(ns, rc):
             cython_py2c=class_py2c,
             )
         cache.dump()
-        _adddesc2env(desc, env, name, srcname, tarname)
+        _adddesc2env(desc, env, classname, srcname, tarname)
 
     # then compute all function descriptions
     for funcname, srcname, tarname in rc.functions:
@@ -284,7 +284,7 @@ def genbindings(ns, rc):
         desc = compute_desc(funcname, srcname, tarname, 'func', ns, rc)
         if ns.verbose:
             pprint(desc)
-        _adddesc2env(desc, env, name, srcname, tarname)
+        _adddesc2env(desc, env, funcname, srcname, tarname)
 
     # next, make cython bindings
     # generate first, then write out to ensure this is atomic per-class
