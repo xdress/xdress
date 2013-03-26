@@ -226,8 +226,10 @@ def genbindings(ns, rc):
             pprint(desc)
 
         print("registering " + classname)
-        pxd_base = desc['pxd_filename'].rsplit('.', 1)[0]         # eg, fccomp
-        cpppxd_base = desc['cpppxd_filename'].rsplit('.', 1)[0]   # eg, cpp_fccomp
+        #pxd_base = desc['pxd_filename'].rsplit('.', 1)[0]         # eg, fccomp
+        pxd_base = tarname or srcname  # eg, fccomp
+        #cpppxd_base = desc['cpppxd_filename'].rsplit('.', 1)[0]   # eg, cpp_fccomp
+        cpppxd_base = 'cpp_' + (tarname or srcname)   # eg, cpp_fccomp
         class_c2py = ('{pytype}({var})', 
                       ('{proxy_name} = {pytype}()\n'
                        '(<{ctype} *> {proxy_name}._inst)[0] = {var}'),
