@@ -171,7 +171,8 @@ RE_INT = re.compile('^\d+$')
 RE_FLOAT = re.compile('^[+-]?\.?\d+\.?\d*?(e[+-]?\d+)?$')
 
 
-def describe(filename, name=None, includes=(), parser='gccxml', verbose=False):
+def describe(filename, name=None, kind='class', includes=(), parser='gccxml', 
+    verbose=False):
     """Automatically describes a class in a file.  This is the main entry point.
 
     Parameters
@@ -181,6 +182,8 @@ def describe(filename, name=None, includes=(), parser='gccxml', verbose=False):
     name : str or None, optional
         The name, a 'None' value will attempt to infer this from the 
         filename.
+    kind : str, optional
+        The kind of type to describe, currently valid flags are 'class' and 'func'.
     includes: list of str, optional
         The list of extra include directories to search for header files.
     parser : str, optional
@@ -200,7 +203,7 @@ def describe(filename, name=None, includes=(), parser='gccxml', verbose=False):
         name = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
     describers = {'clang': clang_describe, 'gccxml': gccxml_describe}
     describer = describers[parser]
-    desc = describer(filename, name, includes, verbose=verbose)
+    desc = describer(filename, name, kind, includes=includes, verbose=verbose)
     return desc
 
 
@@ -209,7 +212,7 @@ def describe(filename, name=None, includes=(), parser='gccxml', verbose=False):
 #
 
 
-def gccxml_describe(filename, name, includes=(), verbose=False):
+def gccxml_describe(filename, name, kind, includes=(), verbose=False):
     """Use GCC-XML to describe the class.
 
     Parameters
@@ -219,6 +222,8 @@ def gccxml_describe(filename, name, includes=(), verbose=False):
     name : str or None, optional
         The name, a 'None' value will attempt to infer this from the 
         filename.
+    kind : str
+        The kind of type to describe, currently valid flags are 'class' and 'func'.
     includes: list of str, optional
         The list of extra include directories to search for header files.
     verbose : bool, optional
@@ -239,7 +244,8 @@ def gccxml_describe(filename, name, includes=(), verbose=False):
     f.seek(0)
     root = etree.parse(f)
     onlyin = set([filename, filename.replace('.cpp', '.h')])
-    describer = GccxmlClassDescriber(name, root, onlyin=onlyin, verbose=verbose)
+    describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber}
+    describer = describers[kind](name, root, onlyin=onlyin, verbose=verbose)
     describer.visit()
     f.close()
     return describer.desc
@@ -250,6 +256,7 @@ class GccxmlBaseDescriber(object):
     Sub-classes need only implement a visit() method and optionally a 
     constructor.  The default visitor methods are valid for classes."""
 
+    _funckey = None
     _integer_types = frozenset(['int32', 'int64', 'uint32', 'uint64'])
 
     def __init__(self, name, root=None, onlyin=None, verbose=False):
@@ -375,7 +382,7 @@ class GccxmlBaseDescriber(object):
         if self._currfuncsig is None:
             return 
         key = (funcname,) + tuple(self._currfuncsig)
-        self.desc['methods'][key] = rtntype
+        self.desc[self._funckey][key] = rtntype
         self._currfuncsig = None
 
     def visit_constructor(self, node):
@@ -390,6 +397,11 @@ class GccxmlBaseDescriber(object):
 
     def visit_method(self, node):
         """visits a member function."""
+        self._pprint(node)
+        self._visit_func(node)
+
+    def visit_function(self, node):
+        """visits a non-member function."""
         self._pprint(node)
         self._visit_func(node)
 
@@ -510,11 +522,13 @@ class GccxmlBaseDescriber(object):
 class GccxmlClassDescriber(GccxmlBaseDescriber):
     """Class used to generate class descriptions via GCC-XML output."""
 
+    _funckey = 'methods'
+
     def __init__(self, name, root=None, onlyin=None, verbose=False):
         """Parameters
         -------------
         name : str
-            The name, this may not have a None value.
+            The class name, this may not have a None value.
         root : element tree node, optional
             The root element node of the class or struct to describe.  
         onlyin :  str, optional
@@ -527,7 +541,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
         super(GccxmlClassDescriber, self).__init__(name, root=root, onlyin=onlyin, 
                                                    verbose=verbose)
         self.desc['attrs'] = {}
-        self.desc['methods'] = {}
+        self.desc[self._funckey] = {}
 
     def visit(self, node=None):
         """Visits the class node and all sub-nodes, generating the description
@@ -558,6 +572,44 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
                 meth(child)
         self._level -= 1
 
+class GccxmlFuncDescriber(GccxmlBaseDescriber):
+    """Class used to generate function descriptions via GCC-XML output."""
+
+    _funckey = 'signatures'
+
+    def __init__(self, name, root=None, onlyin=None, verbose=False):
+        """Parameters
+        -------------
+        name : str
+            The function name, this may not have a None value.
+        root : element tree node, optional
+            The root element node of the class or struct to describe.  
+        onlyin :  str, optional
+            Filename the class or struct described must live in.  Prevents 
+            finding classes of the same name coming from other libraries.
+        verbose : bool, optional
+            Flag to display extra information while visiting the class.
+
+        """
+        super(GccxmlClassDescriber, self).__init__(name, root=root, onlyin=onlyin, 
+                                                   verbose=verbose)
+        self.desc[self._funckey] = {}
+
+    def visit(self, node=None):
+        """Visits the class node and all sub-nodes, generating the description
+        dictionary as it goes.
+
+        Parameters
+        ----------
+        node : element tree node, optional
+            The element tree node to start from.  If this is None, then the 
+            top-level class node is found and visited.
+
+        """
+        if node is None:
+            node = self._root.find("Function[@name='{0}']".format(self.name))
+            assert node.attrib['file'] in self.onlyin
+        self.visit_function(node)
 
 
 #
@@ -953,7 +1005,7 @@ def clang_canonize(t):
 def merge_descriptions(descriptions):
     """Given a sequence of descriptions, in order of increasing precedence, 
     merge them into a single description dictionary."""
-    attrsmeths = frozenset(['attrs', 'methods'])
+    attrsmeths = frozenset(['attrs', 'methods', 'signatures'])
     desc = {}
     for description in descriptions:
         for key, value in description.items():
@@ -973,7 +1025,7 @@ def merge_descriptions(descriptions):
                 desc[key] = deepcopy(value)
     # now sanitize methods
     name = desc['name']
-    methods = desc['methods']
+    methods = desc.get('methods', {})
     for methkey, methval in methods.items():
         if methval is None and not methkey[0].endswith(name):
             del methods[methkey]  # constructor for parent

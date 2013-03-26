@@ -135,7 +135,7 @@ def load_pysrcmod(srcname, ns, rc):
     pysrcenv[srcname] = pymod
 
 
-def compute_desc(name, srcname, tarname, ns, rc):
+def compute_desc(name, srcname, tarname, kind, ns, rc):
     """Returns a description dictionary for a class or function
     implemented in a source file and bound into a target file.
 
@@ -147,6 +147,8 @@ def compute_desc(name, srcname, tarname, ns, rc):
         File basename of implementation.  
     tarname : str
         File basename where the bindings will be generated.  
+    kind : str          
+        The kind of type to describe, currently valid flags are 'class' and 'func'.
     verbose : bool, optional
         Flag for printing extra information during description process.
 
@@ -159,12 +161,12 @@ def compute_desc(name, srcname, tarname, ns, rc):
     # C++ description
     cppfilename = os.path.join(rc.sourcedir, srcname + '.cpp')
     if cache.isvalid(name, cppfilename):
-        cppdesc = cache[name, cppfilename]
+        cppdesc = cache[name, cppfilename, kind]
     else:
-        cppdesc = autodescribe.describe(cppfilename, name=name, 
+        cppdesc = autodescribe.describe(cppfilename, name=name, kind=kind,
                                         includes=ns.includes + rc.includes,
                                         verbose=ns.verbose)
-        cache[name, cppfilename] = cppdesc
+        cache[name, cppfilename, kind] = cppdesc
 
     # python description
     pydesc = pysrcenv[srcname].get(name, {})
@@ -207,6 +209,22 @@ def genstlcontainers(ns, rc):
     stlwrap.genfiles(rc.stlcontainers, fname=fname, testname=testname, 
                      package=rc.package)
 
+
+def _adddesc2env(desc, env, name, srcname, tarname):
+    """Adds a description to environment"""
+    # Add to target environment
+    # docstrings overwrite, extras accrete 
+    mod = {name: desc, 'docstring': pysrcenv[srcname].get('docstring', ''),
+           'cpppxd_filename': desc['cpppxd_filename'],
+           'pxd_filename': desc['pxd_filename'], 
+           'pyx_filename': desc['pyx_filename']}
+    if tarname not in env:
+        env[tarname] = mod
+        env[tarname]['extra'] = pysrcenv[srcname].get('extra', '')
+    else:
+        env[tarname].update(mod)
+        env[tarname]['extra'] += pysrcenv[srcname].get('extra', '')
+
 def genbindings(ns, rc):
     """Generates bidnings using the command line setting specified in ns.
     """
@@ -215,13 +233,18 @@ def genbindings(ns, rc):
         if len(cls) == 2:
             rc.classes[i] = (cls[0], cls[1], cls[1])
         load_pysrcmod(cls[1], ns, rc)        
+    for i, fnc in enumerate(rc.functions):
+        if len(fnc) == 2:
+            rc.functions[i] = (fnc[0], fnc[1], fnc[1])
+        load_pysrcmod(fnc[1], ns, rc)        
 
     # compute all class descriptions first 
     classes = {}
     env = {}  # target environment, not source one
     for classname, srcname, tarname in rc.classes:
         print("parsing " + classname)
-        desc = classes[classname] = compute_desc(classname, srcname, tarname, ns, rc)
+        desc = classes[classname] = compute_desc(classname, srcname, tarname, 
+                                                 'class', ns, rc)
         if ns.verbose:
             pprint(desc)
 
@@ -253,19 +276,15 @@ def genbindings(ns, rc):
             cython_py2c=class_py2c,
             )
         cache.dump()
+        _adddesc2env(desc, env, name, srcname, tarname)
 
-        # Add to target environment
-        # docstrings overwrite, extras accrete 
-        mod = {classname: desc, 'docstring': pysrcenv[srcname].get('docstring', ''),
-               'cpppxd_filename': desc['cpppxd_filename'],
-               'pxd_filename': desc['pxd_filename'], 
-               'pyx_filename': desc['pyx_filename']}
-        if tarname not in env:
-            env[tarname] = mod
-            env[tarname]['extra'] = pysrcenv[srcname].get('extra', '')
-        else:
-            env[tarname].update(mod)
-            env[tarname]['extra'] += pysrcenv[srcname].get('extra', '')
+    # then compute all function descriptions
+    for funcname, srcname, tarname in rc.functions:
+        print("parsing " + classname)
+        desc = compute_desc(funcname, srcname, tarname, 'func', ns, rc)
+        if ns.verbose:
+            pprint(desc)
+        _adddesc2env(desc, env, name, srcname, tarname)
 
     # next, make cython bindings
     # generate first, then write out to ensure this is atomic per-class
