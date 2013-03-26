@@ -245,8 +245,10 @@ def gccxml_describe(filename, classname, includes=(), verbose=False):
     return describer.desc
 
 
-class GccxmlClassDescriber(object):
-    """Class used to generate descriptions via GCC-XML output."""
+class GccxmlBaseDescriber(object):
+    """Base class used to generate descriptions via GCC-XML output.
+    Sub-classes need only implement a visit() method and optionally a 
+    constructor."""
 
     _integer_types = frozenset(['int32', 'int64', 'uint32', 'uint64'])
 
@@ -288,35 +290,6 @@ class GccxmlClassDescriber(object):
             print("{0}{1} {2}: {3}".format(self._level * "  ", node.tag,
                                        node.attrib.get('id', ''),
                                        node.attrib.get('name', None)))
-
-    def visit(self, node=None):
-        """Visits the class node and all sub-nodes, generating the description
-        dictionary as it goes.
-
-        Parameters
-        ----------
-        node : element tree node, optional
-            The element tree node to start from.  If this is None, then the 
-            top-level class node is found and visited.
-
-        """
-        if node is None:
-            node = self._root.find("Class[@name='{0}']".format(self.classname))
-            if node is None:
-                node = self._root.find("Struct[@name='{0}']".format(self.classname))
-            assert node.attrib['file'] in self.onlyin
-            self.visit_class(node)
-        members = node.attrib.get('members', '').strip().split()
-        children = [self._root.find(".//*[@id='{0}']".format(m)) for m in members]
-        children = [c for c in children if c.attrib['access'] == 'public']
-        self._level += 1
-        for child in children:
-            tag = child.tag.lower()
-            meth_name = 'visit_' + tag
-            meth = getattr(self, meth_name, None)
-            if meth is not None:
-                meth(child)
-        self._level -= 1
 
     _template_args = {
         'array': ('value_type',),
@@ -532,6 +505,68 @@ class GccxmlClassDescriber(object):
             c = meth(node)
             self._level -= 1
         return c
+
+
+class GccxmlClassDescriber(GccxmlBaseDescriber):
+    """Class used to generate class descriptions via GCC-XML output."""
+
+    def __init__(self, classname, root=None, onlyin=None, verbose=False):
+        """Parameters
+        -------------
+        classname : str
+            The classname, this may not have a None value.
+        root : element tree node, optional
+            The root element node of the class or struct to describe.  
+        onlyin :  str, optional
+            Filename the class or struct described must live in.  Prevents 
+            finding classes of the same name coming from other libraries.
+        verbose : bool, optional
+            Flag to display extra information while visiting the class.
+
+        """
+        self.desc = {'name': classname, 'attrs': {}, 'methods': {}}
+        self.classname = classname
+        self.verbose = verbose
+        self._root = root
+        onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
+        onlyin = set() if onlyin is None else set(onlyin)
+        self.onlyin = set([root.find("File[@name='{0}']".format(oi)).attrib['id'] \
+                           for oi in onlyin])
+        self._currfunc = []  # this must be a stack to handle nested functions
+        self._currfuncsig = None
+        self._currclass = []  # this must be a stack to handle nested classes  
+        self._level = -1
+
+    def visit(self, node=None):
+        """Visits the class node and all sub-nodes, generating the description
+        dictionary as it goes.
+
+        Parameters
+        ----------
+        node : element tree node, optional
+            The element tree node to start from.  If this is None, then the 
+            top-level class node is found and visited.
+
+        """
+        if node is None:
+            node = self._root.find("Class[@name='{0}']".format(self.classname))
+            if node is None:
+                node = self._root.find("Struct[@name='{0}']".format(self.classname))
+            assert node.attrib['file'] in self.onlyin
+            self.visit_class(node)
+        members = node.attrib.get('members', '').strip().split()
+        children = [self._root.find(".//*[@id='{0}']".format(m)) for m in members]
+        children = [c for c in children if c.attrib['access'] == 'public']
+        self._level += 1
+        for child in children:
+            tag = child.tag.lower()
+            meth_name = 'visit_' + tag
+            meth = getattr(self, meth_name, None)
+            if meth is not None:
+                meth(child)
+        self._level -= 1
+
+
 
 #
 # Clang Describers
