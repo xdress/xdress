@@ -14,7 +14,7 @@ Cython Generation API
 import math
 from copy import deepcopy
 
-from utils import indent, indentstr, expand_default_args
+from utils import indent, indentstr, expand_default_args, isclassdesc
 import typesystem as ts
 from typesystem import cython_ctype, cython_cimport_tuples, \
     cython_cimports, register_class, cython_cytype, cython_pytype, cython_c2py, \
@@ -31,10 +31,68 @@ AUTOGEN_WARNING = \
 ################################################
 """
 
-_cpppxd_template = AUTOGEN_WARNING + \
-"""{cimports}
+def gencpppxd(env, exception_type='+'):
+    """Generates all cpp_*.pxd Cython header files for an environment of modules.
 
-cdef extern from "{header_filename}" namespace "{namespace}":
+    Parameters
+    ----------
+    env : dict
+        Environment dictonary mapping target module names to module description
+        dictionaries.
+    exception_type : str, optional
+        Cython exception annotation.  Set to None when exceptions should not 
+        be included.
+
+    Returns
+    -------
+    cpppxds : dict
+        Maps environment target names to Cython cpp_*.pxd header files strings.
+
+    """
+    cpppxds = {}
+    for name, mod in env.iteritems():
+        cpppxds[name] = modcpppxd(mod, exception_type)
+    return cpppxds
+
+
+def modcpppxd(mod, exception_type='+'):
+    """Generates a cpp_*.pxd Cython header file for exposing a C/C++ module to
+    other Cython wrappers based off of a dictionary description of the module.
+
+    Parameters
+    ----------
+    mod : dict
+        Module description dictonary.
+    exception_type : str, optional
+        Cython exception annotation.  Set to None when exceptions should not 
+        be included.
+
+    Returns
+    -------
+    cpppxd : str
+        Cython cpp_*.pxd header file as in-memory string.
+
+    """
+    m = {'extra': mod.get('extra', ''), 
+         "cpppxd_filename": mod.get("cpppxd_filename", "")}
+    attrs = []
+    cimport_tups = set()
+    for name, desc in mod.iteritems():
+        if isclassdesc(desc):
+            ci_tup, attr_str = classcpppxd(desc, exception_type)
+        else:
+            continue
+        cimport_tups |= ci_tup
+        attrs.append(attr_str)
+    m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
+    m['attrs_block'] = "\n".join(attrs)
+    t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
+    cpppxd = t.format(**m)
+    return cpppxd
+
+
+_cpppxd_class_template = \
+"""cdef extern from "{header_filename}" namespace "{namespace}":
 
     cdef cppclass {name}{parents}:
         # constructors
@@ -49,10 +107,10 @@ cdef extern from "{header_filename}" namespace "{namespace}":
 {extra}
 """
 
-
-def gencpppxd(desc, exception_type='+'):
-    """Generates a cpp_*.pxd Cython header file for exposing C/C++ data from to 
-    other Cython wrappers based off of a dictionary description.
+def classcpppxd(desc, exception_type='+'):
+    """Generates a cpp_*.pxd Cython header snippet for exposing a C/C++ class or 
+    struct to other Cython wrappers based off of a dictionary description of the 
+    class or struct.
 
     Parameters
     ----------
@@ -64,6 +122,8 @@ def gencpppxd(desc, exception_type='+'):
 
     Returns
     -------
+    cimport_tups : set of tuples
+        Set of Cython cimport tuples for cpp_*.pxd header file.
     cpppxd : str
         Cython cpp_*.pxd header file as in-memory string.
 
@@ -114,38 +174,90 @@ def gencpppxd(desc, exception_type='+'):
     d['methods_block'] = indent(mlines, 8)
     d['constructors_block'] = indent(clines, 8)
 
-    d['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
     d['extra'] = desc.get('extra', {}).get('cpppxd', '')
-    cpppxd = _cpppxd_template.format(**d)
+    cpppxd = _cpppxd_class_template.format(**d)
     if 'cpppxd_filename' not in desc:
         desc['cpppxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
-    return cpppxd
+    return cimport_tups, cpppxd
     
 
+def genpxd(env):
+    """Generates all pxd Cython header files for an environment of modules.
 
-_pxd_template = AUTOGEN_WARNING + \
-"""{cimports}
+    Parameters
+    ----------
+    env : dict
+        Environment dictonary mapping target module names to module description
+        dictionaries.
 
-cdef class {name}{parents}:
+    Returns
+    -------
+    pxds : str
+        Maps environment target names to Cython pxd header files strings.
+
+    """
+    pxds = {}
+    for name, mod in env.iteritems():
+        pxds[name] = modpxd(mod)
+    return pxds
+
+
+def modpxd(mod):
+    """Generates a pxd Cython header file for exposing C/C++ data to 
+    other Cython wrappers based off of a dictionary description.
+
+    Parameters
+    ----------
+    mod : dict
+        Module description dictonary.
+
+    Returns
+    -------
+    pxd : str
+        Cython .pxd header file as in-memory string.
+
+    """
+    m = {'extra': mod.get('extra', ''), 
+         "pxd_filename": mod.get("pxd_filename", "")}
+    attrs = []
+    cimport_tups = set()
+    for name, desc in mod.iteritems():
+        if isclassdesc(desc):
+            ci_tup, attr_str = classpxd(desc)
+        else:
+            continue
+        cimport_tups |= ci_tup
+        attrs.append(attr_str)
+    m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
+    m['attrs_block'] = "\n".join(attrs)
+    t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
+    pxd = t.format(**m)
+    return pxd
+
+
+_pxd_class_template = \
+"""cdef class {name}{parents}:
 {body}
 
 {extra}
 """
 
 
-def genpxd(desc):
-    """Generates a ``*pxd`` Cython header file for exposing C/C++ data to 
+def classpxd(desc):
+    """Generates a ``*pxd`` Cython header snippet for exposing a C/C++ class to 
     other Cython wrappers based off of a dictionary description.
 
     Parameters
     ----------
+    cimport_tups : set of tuples
+        Set of Cython cimport tuples for .pxd header file.
     desc : dict
         Class description dictonary.
 
     Returns
     -------
     pxd : str
-        Cython ``*.pxd`` header file as in-memory string.
+        Cython ``*.pxd`` header snippet for class.
 
     """
     if 'pxd_filename' not in desc:
@@ -159,6 +271,7 @@ def genpxd(desc):
     cimport_tups = set()
     for parent in desc['parents'] or ():
         cython_cimport_tuples(parent, cimport_tups, set(['cy']))
+    
 
     from_cpppxd = desc['cpppxd_filename'].rsplit('.', 1)[0]
     # This is taken care of in main!
@@ -180,40 +293,89 @@ def genpxd(desc):
             decl = "cdef public {0} {1}".format(cyt, cachename)
             body.append(decl)
 
-    d['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
     d['body'] = indent(body or ['pass'])
     d['extra'] = desc.get('extra', {}).get('pxd', '')
-    pxd = _pxd_template.format(**d)
-    return pxd
+    pxd = _pxd_class_template.format(**d)
+    return cimport_tups, pxd
     
 
-_pyx_template = AUTOGEN_WARNING + \
+def genpyx(env):
+    """Generates all pyx Cython implementation files for an environment of modules.
+
+    Parameters
+    ----------
+    env : dict
+        Environment dictonary mapping target module names to module description
+        dictionaries.
+
+    Returns
+    -------
+    pyxs : str
+        Maps environment target names to Cython pxd header files strings.
+
+    """
+    # get flat namespace of class descriptions
+    classes = {}
+    for envname, mod in env.iteritems():
+        for modname, desc in mod.iteritems():
+            if isclassdesc(desc):
+                classes[desc['name']] = desc
+    # gen files
+    pyxs = {}
+    for name, mod in env.iteritems():
+        pyxs[name] = modpyx(mod, classes=classes)
+    return pyxs
+
+
+_pyx_mod_template = AUTOGEN_WARNING + \
 '''"""{module_docstring}
 """
 {cimports}
 
 {imports}
 
-cdef class {name}{parents}:
-{class_docstring}
-
-    # constuctors
-    def __cinit__(self, *args, **kwargs):
-        self._inst = NULL
-        self._free_inst = True
-
-        # cached property defaults
-{property_defaults}
-
-{constructor_block}
-
-    # attributes
 {attrs_block}
-    # methods
-{methods_block}
 
 {extra}
 '''
+
+def modpyx(mod, classes=None):
+    """Generates a pyx Cython implementation file for exposing C/C++ data to 
+    other Cython wrappers based off of a dictionary description.
+
+    Parameters
+    ----------
+    mod : dict
+        Module description dictonary.
+
+    Returns
+    -------
+    pyx : str
+        Cython pyx header file as in-memory string.
+
+    """
+    m = {'extra': mod.get('extra', ''), 
+         "pxd_filename": mod.get("pxd_filename", "")}
+    attrs = []
+    import_tups = set()
+    cimport_tups = set()
+    for name, desc in mod.iteritems():
+        if isclassdesc(desc):
+            i_tup, ci_tup, attr_str = classpyx(desc, classes=classes)
+        else:
+            continue
+        import_tups |= i_tup
+        cimport_tups |= ci_tup
+        attrs.append(attr_str)
+    m['imports'] = "\n".join(sorted(cython_imports(import_tups)))
+    m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
+    if 'numpy' in m['cimports']:
+        m['imports'] += "\n\nnp.import_array()"
+    m['attrs_block'] = "\n".join(attrs)
+    t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
+    pyx = _pyx_mod_template.format(**m)
+    return pyx
+
 
 def _gen_property_get(name, t, cached_names=None, inst_name="self._inst"):
     """This generates a Cython property getter for a variable of a given 
@@ -412,7 +574,30 @@ def _doc_add_sig(doc, name, args, ismethod=True):
     newdoc = "{0}({1})\n{2}".format(name, ", ".join(sig), doc)
     return newdoc
 
-def genpyx(desc, env=None):
+
+_pyx_class_template = \
+'''cdef class {name}{parents}:
+{class_docstring}
+
+    # constuctors
+    def __cinit__(self, *args, **kwargs):
+        self._inst = NULL
+        self._free_inst = True
+
+        # cached property defaults
+{property_defaults}
+
+{constructor_block}
+
+    # attributes
+{attrs_block}
+    # methods
+{methods_block}
+
+{extra}
+'''
+
+def classpyx(desc, classes=None):
     """Generates a ``*.pyx`` Cython wrapper implementation for exposing a C/C++ 
     class based off of a dictionary description.  The environment is a 
     dictionary of all class names known to their descriptions.
@@ -421,9 +606,9 @@ def genpyx(desc, env=None):
     ----------
     desc : dict
         Class description dictonary.
-    env : env, optional
-        Environment dictionary which maps all class names that are required to 
-        their own descriptions.  This is required for resolved class heirarchy
+    classes : env, optional
+        Dictionary which maps all class names that are required to 
+        their own descriptions.  This is required for resolving class heirarchy
         dependencies.
 
     Returns
@@ -533,12 +718,8 @@ def genpyx(desc, env=None):
     d['methods_block'] = indent(mlines)
     d['constructor_block'] = indent(clines)
 
-    d['imports'] = "\n".join(sorted(cython_imports(import_tups)))
-    d['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
-    if 'numpy' in d['cimports']:
-        d['imports'] += "\n\nnp.import_array()"
     d['extra'] = desc.get('extra', {}).get('pyx', '')
-    pyx = _pyx_template.format(**d)
+    pyx = _pyx_class_template.format(**d)
     if 'pyx_filename' not in desc:
         desc['pyx_filename'] = '{0}.pyx'.format(d['name'].lower())
-    return pyx
+    return import_tups, cimport_tups, pyx

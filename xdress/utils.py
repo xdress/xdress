@@ -83,3 +83,7 @@ def ensuredirs(f):
     if not os.path.isdir(d):
         os.makedirs(d)
 
+
+def isclassdesc(desc):
+    """Tests if a description is a class-type description."""
+    return 'parents' in desc

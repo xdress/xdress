@@ -218,7 +218,6 @@ def gccxml_describe(filename, classname, includes=(), verbose=False):
     f.seek(0)
     root = etree.parse(f)
     onlyin = set([filename, filename.replace('.cpp', '.h')])
-    #onlyin = set([filename.replace('.cpp', '.h')])
     describer = GccxmlClassDescriber(classname, root, onlyin=onlyin, verbose=verbose)
     describer.visit()
     f.close()
