@@ -16,9 +16,9 @@ The abstract representation of a C++ class is known as a **description** (abbr.
 This structure makes heavy use of the type system to declare the types of all needed
 parameters.
 
-Top-Level Keys
---------------
-The following are valid top-level keys in a description dictionary: 
+Class Description Top-Level Keys
+---------------------------------
+The following are valid top-level keys in a class description dictionary: 
 name, parents, namespace, attrs, methods, docstrings, and extra.
 
 :name: str, the class name
@@ -36,9 +36,31 @@ name, parents, namespace, attrs, methods, docstrings, and extra.
     this method is assumed to be a constructor or destructor.
 :docstrings: dict, optional, this dictionary is meant for storing documentation 
     strings.  All values are thus either strings or dictionaries of strings.  
-    Valid keys include: module, class, attrs, and methods.  The attrs and methods
+    Valid keys include: class, attrs, and methods.  The attrs and methods
     keys are dictionaries which may include keys that mirror the top-level keys of
     the same name.
+:extra: dict, optional, this stores arbitrary metadata that may be used with 
+    different backends. It is not added by any auto-describe routine but may be
+    inserted later if needed.  One example use case is that the Cython generation
+    looks for the pyx, pxd, and cpppxd keys for strings of supplemental Cython 
+    code to insert directly into the wrapper.
+
+Function Description Top-Level Keys
+------------------------------------
+The following are valid top-level keys in a function description dictionary: 
+name, namespace, signatures, docstring, and extra.
+
+:name: str, the class name
+:namespace: str or None, the namespace or module the class lives in.
+:signatures: dict or dict-like, similar to the attrs except that the keys are now
+    function signatures and the values are the method return types.  The signatures
+    themselves are tuples. The first element of these tuples is the method name.
+    The remaining elements (if any) are the function arguments.  Arguments are 
+    themselves length-2 or -3 tuples whose first elements are the argument names, 
+    the second element is the argument type, and the third element (if present) is
+    the default value. Unlike constuctors and destructors, the return type may not
+    be None (only 'void' values are allowed).
+:docstring: str, optional, this dictionary is meant for a documentation string.  
 :extra: dict, optional, this stores arbitrary metadata that may be used with 
     different backends. It is not added by any auto-describe routine but may be
     inserted later if needed.  One example use case is that the Cython generation
@@ -50,7 +72,7 @@ Toaster Example
 Suppose we have a C++ class called Toaster that takes bread and makes delicious 
 toast.  A valid description dictionary for this class would be as follows::
 
-    desc = {
+    class_desc = {
         'name': 'Toaster',
         'parents': ['FCComp'],
         'namespace': 'bright',
@@ -72,7 +94,6 @@ toast.  A valid description dictionary for this class would be as follows::
             ('write', ('filename', ('char' '*'), '"toaster.txt"')): 'void',
             },
         'docstrings': {
-            'module': "This is where Toaster lives.",
             'class': "I am a toaster!",
             'attrs': {
                 'n_slices': 'the number of slices',

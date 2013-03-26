@@ -87,3 +87,7 @@ def ensuredirs(f):
 def isclassdesc(desc):
     """Tests if a description is a class-type description."""
     return 'parents' in desc
+
+def isfuncdesc(desc):
+    """Tests if a description is a function-type description."""
+    return 'signatures' in desc

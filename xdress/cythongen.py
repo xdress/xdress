@@ -14,7 +14,7 @@ Cython Generation API
 import math
 from copy import deepcopy
 
-from utils import indent, indentstr, expand_default_args, isclassdesc
+from utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc
 import typesystem as ts
 from typesystem import cython_ctype, cython_cimport_tuples, \
     cython_cimports, register_class, cython_cytype, cython_pytype, cython_c2py, \
@@ -82,6 +82,8 @@ def modcpppxd(mod, exception_type='+'):
     for name, desc in mod.iteritems():
         if isclassdesc(desc):
             ci_tup, attr_str = classcpppxd(desc, exception_type)
+        elif isfuncdesc(desc):
+            ci_tup, attr_str = funccpppxd(desc, exception_type)
         else:
             continue
         cimport_tups |= ci_tup
@@ -181,7 +183,68 @@ def classcpppxd(desc, exception_type='+'):
     if 'cpppxd_filename' not in desc:
         desc['cpppxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
     return cimport_tups, cpppxd
-    
+
+
+_cpppxd_func_template = \
+"""# function signatures
+cdef extern from "{header_filename}" namespace "{namespace}":
+
+{functions_block}
+
+{extra}
+"""
+
+def funccpppxd(desc, exception_type='+'):
+    """Generates a cpp_*.pxd Cython header snippet for exposing a C/C++ function 
+    to other Cython wrappers based off of a dictionary description.
+
+    Parameters
+    ----------
+    desc : dict
+        Function description dictonary.
+    exception_type : str, optional
+        Cython exception annotation.  Set to None when exceptions should not 
+        be included.
+
+    Returns
+    -------
+    cimport_tups : set of tuples
+        Set of Cython cimport tuples for cpp_*.pxd header file.
+    cpppxd : str
+        Cython cpp_*.pxd header file as in-memory string.
+
+    """
+    d = {}
+    copy_from_desc = ['name', 'namespace', 'header_filename']
+    for key in copy_from_desc:
+        d[key] = desc[key]
+    inc = set(['c'])
+    cimport_tups = set()
+
+    flines = []
+    estr = str() if exception_type is None else  ' except {0}'.format(exception_type)
+    funcitems = sorted(expand_default_args(desc['signatures'].items()))
+    for fkey, frtn in funcitems:
+        fname, fargs = mkey[0], mkey[1:]
+        if fname.startswith('_'):
+            continue  # private 
+        argfill = ", ".join([cython_ctype(a[1]) for a in fargs])
+        for a in fargs:
+            cython_cimport_tuples(a[1], cimport_tups, inc)
+        line = "{0}({1}){2}".format(fname, argfill, estr)
+        rtype = cython_ctype(mrtn)
+        cython_cimport_tuples(mrtn, cimport_tups, inc)
+        line = rtype + " " + line
+        if line not in flines:
+            flines.append(line)
+    d['functions_block'] = indent(flines, 4)
+
+    d['extra'] = desc.get('extra', {}).get('cpppxd', '')
+    cpppxd = _cpppxd_func_template.format(**d)
+    if 'cpppxd_filename' not in desc:
+        desc['cpppxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
+    return cimport_tups, cpppxd
+   
 
 def genpxd(env):
     """Generates all pxd Cython header files for an environment of modules.
@@ -228,6 +291,7 @@ def modpxd(mod):
     for name, desc in mod.iteritems():
         if isclassdesc(desc):
             ci_tup, attr_str = classpxd(desc)
+        # no need to wrap functions again
         else:
             continue
         cimport_tups |= ci_tup
@@ -370,14 +434,16 @@ def modpyx(mod, classes=None):
 
     """
     m = {'extra': mod.get('extra', ''), 
-         'docstring': mod.get('docstring', ''), 
-         "pxd_filename": mod.get("pxd_filename", "")}
+         'docstring': mod.get('docstring', "no docstring, please file a bug report!"), 
+         "pyx_filename": mod.get("pyx_filename", "")}
     attrs = []
     import_tups = set()
     cimport_tups = set()
     for name, desc in mod.iteritems():
         if isclassdesc(desc):
             i_tup, ci_tup, attr_str = classpyx(desc, classes=classes)
+        elif isfuncdesc(desc):
+            i_tup, ci_tup, attr_str = funcpyx(desc)
         else:
             continue
         import_tups |= i_tup
@@ -641,8 +707,6 @@ def classpyx(desc, classes=None):
     copy_from_desc = ['name', 'namespace', 'header_filename']
     for key in copy_from_desc:
         d[key] = desc[key]
-    d['module_docstring'] = desc.get('docstrings', {})\
-                                .get('module', nodocmsg.format(desc['name'].lower()))
     class_doc = desc.get('docstrings', {}).get('class', nodocmsg.format(desc['name']))
     d['class_docstring'] = indent('\"\"\"{0}\"\"\"'.format(class_doc))
 
@@ -738,4 +802,62 @@ def classpyx(desc, classes=None):
     pyx = _pyx_class_template.format(**d)
     if 'pyx_filename' not in desc:
         desc['pyx_filename'] = '{0}.pyx'.format(d['name'].lower())
+    return import_tups, cimport_tups, pyx
+
+
+def funcpyx(desc):
+    """Generates a ``*.pyx`` Cython wrapper implementation for exposing a C/C++ 
+    function based off of a dictionary description.  
+
+    Parameters
+    ----------
+    desc : dict
+        Class description dictonary.
+
+    Returns
+    -------
+    pyx : str
+        Cython ``*.pyx`` implementation as in-memory string.
+
+    """
+    nodocmsg = "no docstring for {0}, please file a bug report!"
+    inst_name = desc['cpppxd_filename'].rsplit('.', 1)[0]
+
+    import_tups = set()
+    cimport_tups = set((inst_name,))
+
+    flines = []
+    funccounts = _count0(desc['signatures'])
+    currcounts = {k: 0 for k in methcounts}
+    mangled_fnames = {}
+    funcitems = sorted(desc['signatures'].items())
+    for fkey, frtn in funcitems:
+        fname, fargs = fkey[0], fkey[1:]
+        if fname.startswith('_'):
+            continue  # skip private
+        if 1 < funccounts[fname]:
+            fname_mangled = "_{0}_{1:0{2}}".format(fname, currcounts[fname], 
+                                        int(math.log(funccounts[fname], 10)+1)).lower()
+        else:
+            fname_mangled = fname
+        currcounts[fname] += 1
+        mangled_mnames[fkey] = fname_mangled
+        for a in fargs:
+            cython_import_tuples(a[1], import_tups)
+            cython_cimport_tuples(a[1], cimport_tups)
+        cython_import_tuples(frtn, import_tups)
+        cython_cimport_tuples(frtn, cimport_tups)
+        fdoc = desc.get('docstring', nodocmsg.format(fname))
+        fdoc = _doc_add_sig(fdoc, fname, fargs)
+        flines += _gen_method(fname, fname_mangled, fargs, frtn, fdoc, 
+                              inst_name=inst_name)
+        if 1 < methcounts[fname] and currcounts[fname] == methcounts[fname]:
+            # write dispatcher
+            nm = {k: v for k, v in mangled_fnames.iteritems() if k[0] == fname}
+            flines += _gen_dispatcher(fname, nm, doc=fdoc)
+
+    flines.append(desc.get('extra', {}).get('pyx', ''))
+    pyx = '\n'.append(flines)
+    if 'pyx_filename' not in desc:
+        desc['pyx_filename'] = '{0}.pyx'.format(desc['name'].lower())
     return import_tups, cimport_tups, pyx
