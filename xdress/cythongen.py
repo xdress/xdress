@@ -51,6 +51,8 @@ def gencpppxd(env, exception_type='+'):
     """
     cpppxds = {}
     for name, mod in env.iteritems():
+        if mod['cpppxd_filename'] is None:
+            continue
         cpppxds[name] = modcpppxd(mod, exception_type)
     return cpppxds
 
@@ -198,6 +200,8 @@ def genpxd(env):
     """
     pxds = {}
     for name, mod in env.iteritems():
+        if mod['pxd_filename'] is None:
+            continue
         pxds[name] = modpxd(mod)
     return pxds
 
@@ -299,7 +303,7 @@ def classpxd(desc):
     return cimport_tups, pxd
     
 
-def genpyx(env):
+def genpyx(env, classes=None):
     """Generates all pyx Cython implementation files for an environment of modules.
 
     Parameters
@@ -307,6 +311,10 @@ def genpyx(env):
     env : dict
         Environment dictonary mapping target module names to module description
         dictionaries.
+    classes : dict, optional
+        Dictionary which maps all class names that are required to 
+        their own descriptions.  This is required for resolving class heirarchy
+        dependencies. If None, this will be computed here.
 
     Returns
     -------
@@ -314,15 +322,18 @@ def genpyx(env):
         Maps environment target names to Cython pxd header files strings.
 
     """
-    # get flat namespace of class descriptions
-    classes = {}
-    for envname, mod in env.iteritems():
-        for modname, desc in mod.iteritems():
-            if isclassdesc(desc):
-                classes[desc['name']] = desc
+    if classes is None:
+        # get flat namespace of class descriptions
+        classes = {}
+        for envname, mod in env.iteritems():
+            for modname, desc in mod.iteritems():
+                if isclassdesc(desc):
+                    classes[desc['name']] = desc
     # gen files
     pyxs = {}
     for name, mod in env.iteritems():
+        if mod['pyx_filename'] is None:
+            continue
         pyxs[name] = modpyx(mod, classes=classes)
     return pyxs
 
@@ -347,6 +358,10 @@ def modpyx(mod, classes=None):
     ----------
     mod : dict
         Module description dictonary.
+    classes : dict, optional
+        Dictionary which maps all class names that are required to 
+        their own descriptions.  This is required for resolving class heirarchy
+        dependencies.
 
     Returns
     -------
@@ -606,7 +621,7 @@ def classpyx(desc, classes=None):
     ----------
     desc : dict
         Class description dictonary.
-    classes : env, optional
+    classes : dict, optional
         Dictionary which maps all class names that are required to 
         their own descriptions.  This is required for resolving class heirarchy
         dependencies.

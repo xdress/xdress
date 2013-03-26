@@ -113,63 +113,75 @@ class DescriptionCache(object):
 # singleton
 cache = DescriptionCache()
 
+pysrcenv = {}
 
-def describe_class(classname, srcname, tarname, ns, rc):
-    """Returns a description dictionary for a class (called classname) 
-    living in a file (called filename).  
+def load_pysrcmod(srcname, ns, rc):
+    """Loads a module dictionary from a src file into the pysrcenv cache."""
+    if srcname in pysrcenv:
+        return 
+    pyfilename = os.path.join(rc.sourcedir, srcname + '.py')
+    if os.path.isfile(pyfilename):
+        glbs = globals()
+        locs = {}
+        execfile(pyfilename, glbs, locs)
+        if 'mod' not in locs:
+            pymod = {}
+        elif callable(locs['mod']):
+            pymod = eval('mod()', glbs, locs)
+        else:
+            pymod = locs['mod']
+    else:
+        pymod = {}
+    pysrcenv[srcname] = pymod
+
+
+def compute_desc(name, srcname, tarname, ns, rc):
+    """Returns a description dictionary for a class or function
+    implemented in a source file and bound into a target file.
 
     Parameters
     ----------
-    classname : str
-        Class to describe.
+    name : str
+        Class or function name to describe.
     srcname : str
-        File basename where the class is implemented.  
+        File basename of implementation.  
     tarname : str
-        File basename where the class basenames will be generated.  
+        File basename where the bindings will be generated.  
     verbose : bool, optional
         Flag for printing extra information during description process.
 
     Returns
     -------
     desc : dict
-        Description dictionary of the class.
+        Description dictionary.
 
     """
     # C++ description
     cppfilename = os.path.join(rc.sourcedir, srcname + '.cpp')
-    if cache.isvalid(classname, cppfilename):
-        cppdesc = cache[classname, cppfilename]
+    if cache.isvalid(name, cppfilename):
+        cppdesc = cache[name, cppfilename]
     else:
-        cppdesc = autodescribe.describe(cppfilename, classname=classname, 
+        cppdesc = autodescribe.describe(cppfilename, classname=name, 
                                         includes=ns.includes + rc.includes,
                                         verbose=ns.verbose)
-        cache[classname, cppfilename] = cppdesc
+        cache[name, cppfilename] = cppdesc
 
     # python description
-    pyfilename = os.path.join(rc.sourcedir, srcname + '.py')
-    if os.path.isfile(pyfilename):
-        glbs = globals()
-        locs = {}
-        execfile(pyfilename, glbs, locs)
-        if 'desc' not in locs:
-            pydesc = {}
-        elif callable(locs['desc']):
-            pydesc = eval('desc()', glbs, locs)
-        else:
-            pydesc = locs['desc']
-    else:
-        pydesc = {}
+    pydesc = pysrcenv[srcname].get(name, {})
 
-    if tarname is None:
-        tarname = "<dont-build>"
+    #if tarname is None:
+    #    tarname = "<dont-build>"
 
     desc = autodescribe.merge_descriptions([cppdesc, pydesc])
     desc['cpp_filename'] = '{0}.cpp'.format(srcname)
     desc['header_filename'] = '{0}.h'.format(srcname)
     desc['metadata_filename'] = '{0}.py'.format(srcname)
-    desc['pxd_filename'] = '{0}.pxd'.format(tarname)
-    desc['pyx_filename'] = '{0}.pyx'.format(tarname)
-    desc['cpppxd_filename'] = 'cpp_{0}.pxd'.format(tarname)
+    if tarname is None:
+        desc['pxd_filename'] = desc['pyx_filename'] = desc['cpppxd_filename'] = None
+    else:
+        desc['pxd_filename'] = '{0}.pxd'.format(tarname)
+        desc['pyx_filename'] = '{0}.pyx'.format(tarname)
+        desc['cpppxd_filename'] = 'cpp_{0}.pxd'.format(tarname)
     return desc
 
 def genextratypes(ns, rc):
@@ -202,14 +214,16 @@ def genbindings(ns, rc):
     for i, cls in enumerate(rc.classes):
         if len(cls) == 2:
             rc.classes[i] = (cls[0], cls[1], cls[1])
+        load_pysrcmod(srcname, ns, rc)        
 
-    # compute all descriptions first 
-    env = {}
+    # compute all class descriptions first 
+    classes = {}
+    env = {}  # target environment, not source one
     for classname, srcname, tarname in rc.classes:
         print("parsing " + classname)
-        desc = env[classname] = describe_class(classname, srcname, tarname, ns, rc)
+        desc = classes[classname] = compute_desc(classname, srcname, tarname, ns, rc)
         if ns.verbose:
-            pprint(env[classname])
+            pprint(desc)
 
         print("registering " + classname)
         pxd_base = desc['pxd_filename'].rsplit('.', 1)[0]         # eg, fccomp
@@ -238,26 +252,36 @@ def genbindings(ns, rc):
             )
         cache.dump()
 
+        # Add to target environment
+        # docstrings overwrite, extras accrete 
+        mod = {classname: desc, 'docstring': pysrcenv[srcname].get('docstring', ''),
+               'cpppxd_filename': desc['cpppxd_filename'],
+               'pxd_filename': desc['pxd_filename'], 
+               'pyx_filename': desc['pyx_filename']}
+        if tarname not in env:
+            env[tarname] = mod
+            env[tarname]['extra'] = pysrcenv[srcname].get('extra', '')
+        else:
+            env[tarname].update(mod)
+            env[tarname]['extra'] += pysrcenv[srcname].get('extra', '')
 
     # next, make cython bindings
-    for classname, srcname, tarname in rc.classes:
-        if not ns.cython or tarname is None:
-            continue
-        print("making cython bindings for " + classname)
-        # generate first, then write out to ensure this is atomic per-class
-        desc = env[classname]
-        cpppxd = gencpppxd(desc)
-        pxd = genpxd(desc)
-        pyx = genpyx(desc, env)
-        newoverwrite(cpppxd, os.path.join(rc.package, desc['cpppxd_filename']))
-        newoverwrite(pxd, os.path.join(rc.package, desc['pxd_filename']))
-        newoverwrite(pyx, os.path.join(rc.package, desc['pyx_filename']))
+    # generate first, then write out to ensure this is atomic per-class
+    if ns.cython:
+        print("making cython bindings")
+        cpppxds = gencpppxd(env)
+        pxds = genpxd(env)
+        pyxs = genpyx(env, classes)
+        for key, cpppxd in cpppxds.iteritems():
+            newoverwrite(cpppxd, os.path.join(rc.package, env[key]['cpppxd_filename']))
+        for key, pxd in pxds.iteritems():
+            newoverwrite(pxd, os.path.join(rc.package, env[key]['pxd_filename']))
+        for key, pyx in pyxs.iteritems():
+            newoverwrite(pyx, os.path.join(rc.package, env[key]['pyx_filename']))
 
     # next, make cyclus bindings
-    for classname, srcname, tarname in rc.classes:
-        if not ns.cyclus or tarname is None:
-            continue
-        print("making cyclus bindings for " + classname)
+    if ns.cyclus:
+        print("making cyclus bindings")
 
 def dumpdesc(ns):
     """Prints the current contents of the description cache using ns.
