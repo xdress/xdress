@@ -339,7 +339,7 @@ def genpyx(env, classes=None):
 
 
 _pyx_mod_template = AUTOGEN_WARNING + \
-'''"""{module_docstring}
+'''"""{docstring}
 """
 {cimports}
 
@@ -370,6 +370,7 @@ def modpyx(mod, classes=None):
 
     """
     m = {'extra': mod.get('extra', ''), 
+         'docstring': mod.get('docstring', ''), 
          "pxd_filename": mod.get("pxd_filename", "")}
     attrs = []
     import_tups = set()
@@ -551,20 +552,20 @@ def _gen_dispatcher(name, name_mangled, doc=None, hasrtn=True):
     return lines
 
 
-def _class_heirarchy(cls, ch, env):
-    if env[cls]['parents'] is None:
+def _class_heirarchy(cls, ch, classes):
+    if classes[cls]['parents'] is None:
         return 
     if 0 == len(ch) or ch[0] != cls:
         ch.insert(0, cls)
-    for p in env[cls]['parents'][::-1]:
+    for p in classes[cls]['parents'][::-1]:
         ch.insert(0, p)
-        _class_heirarchy(p, ch, env)
+        _class_heirarchy(p, ch, classes)
 
-def _method_instance_names(desc, env, key, rtn):
+def _method_instance_names(desc, classes, key, rtn):
     classnames = []
-    _class_heirarchy(desc['name'], classnames, env)
+    _class_heirarchy(desc['name'], classnames, classes)
     for classname in classnames:
-        classrtn = env.get(classname, {}).get('methods', {}).get(key, NotImplemented)
+        classrtn = classes.get(classname, {}).get('methods', {}).get(key, NotImplemented)
         if rtn != classrtn:
             continue
         #class_ctype = cython_ctype(desc['name'])
@@ -632,8 +633,8 @@ def classpyx(desc, classes=None):
         Cython ``*.pyx`` implementation file as in-memory string.
 
     """
-    if env is None:
-        env = {desc['name']: desc}
+    if classes is None:
+        classes = {desc['name']: desc}
     nodocmsg = "no docstring for {0}, please file a bug report!"
     pars = ', '.join([cython_cytype(p) for p in desc['parents'] or ()])
     d = {'parents': pars if 0 == len(pars) else '('+pars+')'}
@@ -690,7 +691,7 @@ def classpyx(desc, classes=None):
         for a in margs:
             cython_import_tuples(a[1], import_tups)
             cython_cimport_tuples(a[1], cimport_tups)
-        minst_name, mcname = _method_instance_names(desc, env, mkey, mrtn)
+        minst_name, mcname = _method_instance_names(desc, classes, mkey, mrtn)
         if mcname != desc['name']:
             cython_import_tuples(mcname, import_tups)
             cython_cimport_tuples(mcname, cimport_tups)

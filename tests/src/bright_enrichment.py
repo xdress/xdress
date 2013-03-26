@@ -16,7 +16,6 @@ n : str, optional
 
 desc = {
     'docstrings': {
-        'module': mod_ds,
         'class': class_ds,
         'attrs': {},
         'methods': {},
@@ -24,6 +23,9 @@ desc = {
     'attrs': {
         },
     }
+
+mod = {'Enrichment': desc,
+       'docstring': mod_ds,}
 
 
 desc['docstrings']['attrs']['alpha_0'] = \

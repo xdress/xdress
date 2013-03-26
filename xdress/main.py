@@ -214,7 +214,7 @@ def genbindings(ns, rc):
     for i, cls in enumerate(rc.classes):
         if len(cls) == 2:
             rc.classes[i] = (cls[0], cls[1], cls[1])
-        load_pysrcmod(srcname, ns, rc)        
+        load_pysrcmod(cls[1], ns, rc)        
 
     # compute all class descriptions first 
     classes = {}

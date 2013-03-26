@@ -9,7 +9,6 @@ empty ErichmentParameters instance has all values set to zero.
 
 desc = {
     'docstrings': {
-        'module': mod_ds,
         'class': class_ds,
         'attrs': {},
         },
@@ -18,6 +17,9 @@ desc = {
     'extra': {'cpppxd': ("    EnrichmentParameters "
                          "fillUraniumEnrichmentDefaults() except +")},
     }
+
+mod = {'EnrichmentParameters': desc,
+       'docstring': mod_ds,}
 
 desc['docstrings']['attrs']['alpha_0'] = \
 r"""The :math:`\\alpha_0` attribute specifies the overall stage separation factor

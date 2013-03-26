@@ -83,7 +83,6 @@ output : Material
 
 desc = {
     'docstrings': {
-        'module': """Python wrapper for Reprocess.""",
         'class': class_ds,
         'attrs': {
             'sepeff_ds': sepeff_ds,
@@ -101,6 +100,9 @@ desc = {
         ('Reprocess', ('sepeff', 'sepeff_t'), ('name', 'str', '""')): None,
         },
     }
+
+mod = {'Reprocess': desc,
+       'docstring': "Python wrapper for Reprocess.",}
 
 import typesystem as ts
 

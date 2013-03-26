@@ -5,9 +5,9 @@ python ../xdress/main.py --no-cyclus && \
 python setup.py install --prefix=$INST -- -- && \
 cd xdtest/tests && \
 PYTHONPATH=$SITEPATH nosetests test_xdstlc.py && \
-PYTHONPATH=$SITEPATH python -c "import xdtest.fccomp" && \
-PYTHONPATH=$SITEPATH python -c "import xdtest.enrichment_parameters" && \
-PYTHONPATH=$SITEPATH python -c "import xdtest.enrichment" && \
-PYTHONPATH=$SITEPATH python -c "import xdtest.reprocess" && \
+PYTHONPATH=$SITEPATH python -c "import xdtest.fccomp as x; print x.__doc__" && \
+PYTHONPATH=$SITEPATH python -c "import xdtest.enrichment_parameters as x; print x.__doc__" && \
+PYTHONPATH=$SITEPATH python -c "import xdtest.enrichment as x; print x.__doc__" && \
+PYTHONPATH=$SITEPATH python -c "import xdtest.reprocess as x; print x.__doc__" && \
 echo "Ran imports OK" && \
 cd ../..

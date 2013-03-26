@@ -12,7 +12,6 @@ n : str, optional
 
 desc = {
     'docstrings': {
-        'module': "Python wrapper for fccomp.",
         'class': class_ds,
         'attrs': {},
         'methods': {},
@@ -20,6 +19,9 @@ desc = {
     'attrs': {},
     'extra': {},
     }
+
+mod = {'FCComp': desc,
+       'docstring': "Python wrapper for fccomp.",}
 
 desc['docstrings']['attrs']['name'] = \
 """The string identifier for the component.  Defaults to an empty string."""
