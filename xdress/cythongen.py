@@ -225,15 +225,15 @@ def funccpppxd(desc, exception_type='+'):
     estr = str() if exception_type is None else  ' except {0}'.format(exception_type)
     funcitems = sorted(expand_default_args(desc['signatures'].items()))
     for fkey, frtn in funcitems:
-        fname, fargs = mkey[0], mkey[1:]
+        fname, fargs = fkey[0], fkey[1:]
         if fname.startswith('_'):
             continue  # private 
         argfill = ", ".join([cython_ctype(a[1]) for a in fargs])
         for a in fargs:
             cython_cimport_tuples(a[1], cimport_tups, inc)
         line = "{0}({1}){2}".format(fname, argfill, estr)
-        rtype = cython_ctype(mrtn)
-        cython_cimport_tuples(mrtn, cimport_tups, inc)
+        rtype = cython_ctype(frtn)
+        cython_cimport_tuples(frtn, cimport_tups, inc)
         line = rtype + " " + line
         if line not in flines:
             flines.append(line)
@@ -824,11 +824,11 @@ def funcpyx(desc):
     inst_name = desc['cpppxd_filename'].rsplit('.', 1)[0]
 
     import_tups = set()
-    cimport_tups = set((inst_name,))
+    cimport_tups = set(((inst_name,),))
 
     flines = []
     funccounts = _count0(desc['signatures'])
-    currcounts = {k: 0 for k in methcounts}
+    currcounts = {k: 0 for k in funccounts}
     mangled_fnames = {}
     funcitems = sorted(desc['signatures'].items())
     for fkey, frtn in funcitems:
@@ -841,7 +841,7 @@ def funcpyx(desc):
         else:
             fname_mangled = fname
         currcounts[fname] += 1
-        mangled_mnames[fkey] = fname_mangled
+        mangled_fnames[fkey] = fname_mangled
         for a in fargs:
             cython_import_tuples(a[1], import_tups)
             cython_cimport_tuples(a[1], cimport_tups)
@@ -851,13 +851,13 @@ def funcpyx(desc):
         fdoc = _doc_add_sig(fdoc, fname, fargs)
         flines += _gen_method(fname, fname_mangled, fargs, frtn, fdoc, 
                               inst_name=inst_name)
-        if 1 < methcounts[fname] and currcounts[fname] == methcounts[fname]:
+        if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
             # write dispatcher
             nm = {k: v for k, v in mangled_fnames.iteritems() if k[0] == fname}
             flines += _gen_dispatcher(fname, nm, doc=fdoc)
 
     flines.append(desc.get('extra', {}).get('pyx', ''))
-    pyx = '\n'.append(flines)
+    pyx = '\n'.join(flines)
     if 'pyx_filename' not in desc:
         desc['pyx_filename'] = '{0}.pyx'.format(desc['name'].lower())
     return import_tups, cimport_tups, pyx

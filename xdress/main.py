@@ -71,10 +71,10 @@ class DescriptionCache(object):
         else:
             self.cache = {}
 
-    def isvalid(self, classname, filename):
-        """Boolean on whether the cach value for a (classname, filename)
+    def isvalid(self, name, filename, kind):
+        """Boolean on whether the cach value for a (name, filename, kind)
         tuple matches the state of the file on the system."""
-        key = (classname, filename)
+        key = (name, filename, kind)
         if key not in self.cache:
             return False
         cachehash = self.cache[key][0]
@@ -160,7 +160,7 @@ def compute_desc(name, srcname, tarname, kind, ns, rc):
     """
     # C++ description
     cppfilename = os.path.join(rc.sourcedir, srcname + '.cpp')
-    if cache.isvalid(name, cppfilename):
+    if cache.isvalid(name, cppfilename, kind):
         cppdesc = cache[name, cppfilename, kind]
     else:
         cppdesc = autodescribe.describe(cppfilename, name=name, kind=kind,
@@ -284,6 +284,7 @@ def genbindings(ns, rc):
         desc = compute_desc(funcname, srcname, tarname, 'func', ns, rc)
         if ns.verbose:
             pprint(desc)
+        cache.dump()
         _adddesc2env(desc, env, funcname, srcname, tarname)
 
     # next, make cython bindings

@@ -404,6 +404,9 @@ class GccxmlBaseDescriber(object):
         """visits a non-member function."""
         self._pprint(node)
         self._visit_func(node)
+        ns = self.context(node.attrib['context'])
+        if ns is not None:
+            self.desc['namespace'] = ns
 
     def visit_argument(self, node):
         """visits a constructor, destructor, or method argument."""
@@ -591,7 +594,7 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
             Flag to display extra information while visiting the class.
 
         """
-        super(GccxmlClassDescriber, self).__init__(name, root=root, onlyin=onlyin, 
+        super(GccxmlFuncDescriber, self).__init__(name, root=root, onlyin=onlyin, 
                                                    verbose=verbose)
         self.desc[self._funckey] = {}
 
