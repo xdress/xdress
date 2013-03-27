@@ -483,20 +483,87 @@ def gentest_map(t, u):
 #
 
 _pyxvector = """# {ctype} dtype
+cdef object pyxd_{fncname}_getitem(void * data, void * arr):
+{c2pydecl.indent4}
+{c2pybody.indent4}
+    pyval = {c2pyrtn}
+    return pyval
+
+cdef int pyxd_{fncname}_setitem(object value, void * data, void * arr):
+{py2cdecl}
+{py2cbody}
+    (<{ctype} *> data)[0] = {py2crtn}
+    return 0
+
+cdef void pyxd_{fncname}_copyswapn(void * dest, np.npy_intp dstride, void * src, np.npy_intp sstride, np.npy_intp n, int swap, void * arr):
+    cdef np.npy_intp i
+    cdef char * a 
+    cdef char * b 
+    cdef char c = 0
+    cdef int j
+    cdef int m
+
+    if src != NULL:
+        if (sstride == sizeof({ctype}) and dstride == sizeof({ctype})):
+            memcpy(dest, src, n*sizeof({ctype}))
+        else:
+            a = <char *> dest
+            b = <char *> src
+            for i in range(n):
+                memcpy(a, b, sizeof({ctype}))
+                a += dstride
+                b += sstride
+    if swap: 
+        m = sizeof({ctype}) / 2
+        a = <char *> dest
+        for i in range(n, 0, -1):
+            b = a + (sizeof({ctype}) - 1);
+            for j in range(m):
+                c = a[0]
+                a[0] = b[0]
+                a += 1
+                b[0] = c
+                b -= 1
+            a += dstride - m
+
+cdef void pyxd_{fncname}_copyswap(void * dest, void * src, int swap, void * arr):
+    cdef char * a 
+    cdef char * b 
+    cdef char c = 0
+    cdef int j
+    cdef int m
+    if src != NULL:
+        memcpy(dest, src, sizeof({ctype}))
+    if swap:
+        m = sizeof({ctype}) / 2
+        a = <char *> dest
+        b = a + (sizeof({ctype}) - 1);
+        for j in range(m):
+            c = a[0]
+            a[0] = b[0]
+            a += 1
+            b[0] = c
+            b -= 1
+
 cdef PyArray_ArrFuncs PyXD_{clsname}_ArrFuncs 
 PyArray_InitArrFuncs(&PyXD_{clsname}_ArrFuncs)
+PyXD_{clsname}_ArrFuncs.getitem = <PyArray_GetItemFunc *> (&pyxd_{fncname}_getitem)
+PyXD_{clsname}_ArrFuncs.setitem = <PyArray_SetItemFunc *> (&pyxd_{fncname}_setitem)
+PyXD_{clsname}_ArrFuncs.copyswapn = <PyArray_CopySwapNFunc *> (&pyxd_{fncname}_copyswapn)
+PyXD_{clsname}_ArrFuncs.copyswap = <PyArray_CopySwapFunc *> (&pyxd_{fncname}_copyswap)
 """
 
 def genpyx_vector(t):
     """Returns the pyx snippet for a vector of type t."""
     t = ts.canon(t)
     kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.humanname(t)[1], 
+              fncname=ts.cython_functionname(t)[1], 
               ctype=ts.cython_ctype(t), pytype=ts.cython_pytype(t), 
               cytype=ts.cython_cytype(t),)
     fpt = ts.from_pytypes[t]
     kw['isinst'] = " or ".join(["isinstance(value, {0})".format(x) for x in fpt])
     c2pykeys = ['c2pydecl', 'c2pybody', 'c2pyrtn']
-    c2py = ts.cython_c2py("deref(inow)", t, cached=False)
+    c2py = ts.cython_c2py("deref(<{0} *> data)".format(kw['ctype']), t, cached=False)
     kw.update([(k, indentstr(v or '')) for k, v in zip(c2pykeys, c2py)])
     py2ckeys = ['py2cdecl', 'py2cbody', 'py2crtn']
     py2c = ts.cython_py2c("value", t)
@@ -511,6 +578,10 @@ ctypedef struct PyXD_{clsname}:
     PyTypeObject *ob_typ
     {ctype} obval
 
+cdef object pyxd_{fncname}_getitem(void * data, void * arr)
+cdef int pyxd_{fncname}_setitem(object value, void * data, void * arr)
+cdef void pyxd_{fncname}_copyswapn(void * dest, np.npy_intp dstride, void * src, np.npy_intp sstride, np.npy_intp n, int swap, void * arr)
+cdef void pyxd_{fncname}_copyswap(void * dest, void * src, int swap, void * arr)
 """
 
 def genpxd_vector(t):
@@ -646,6 +717,7 @@ from libcpp.vector cimport vector as cpp_vector
 from cython.operator cimport dereference as deref
 from cython.operator cimport preincrement as inc
 from libc.stdlib cimport malloc, free
+from libc.string cimport memcpy
 from libcpp.string cimport string as std_string
 from libcpp.utility cimport pair
 from libcpp.map cimport map as cpp_map
@@ -704,23 +776,24 @@ cimport numpy as np
 cdef extern from "Python.h":
     ctypedef Py_ssize_t Py_ssize_t
 
-ctypedef object (*PyArray_GetItemFunc)(void *, void *)
-ctypedef int (*PyArray_SetItemFunc)(object, void *, void *)
-ctypedef void (*PyArray_CopySwapNFunc)(void *, np.npy_intp, void *, np.npy_intp, np.npy_intp, int, void *)
-ctypedef void (*PyArray_CopySwapFunc)(void *, void *, int, void *)
-ctypedef int (*PyArray_CompareFunc)(const void* d1, const void *, void *)
-ctypedef int (*PyArray_ArgFunc)(void *, np.npy_intp, np.npy_intp *, void *)
-ctypedef void (*PyArray_DotFunc)(void *, np.npy_intp, void *, np.npy_intp, void *, np.npy_intp, void *)
-ctypedef int (*PyArray_ScanFunc)(stdio.FILE *, void *, void *, void *)
-ctypedef int (*PyArray_FromStrFunc)(char *, void *, char **, void *)
-ctypedef bint (*PyArray_NonzeroFunc)(void *, void *)
-ctypedef void (*PyArray_FillFunc)(void *, np.npy_intp, void *)
-ctypedef void (*PyArray_FillWithScalarFunc)(void *, np.npy_intp, void *, void *)
-ctypedef int (*PyArray_SortFunc)(void *, np.npy_intp, void *)
-ctypedef int (*PyArray_ArgSortFunc)(void *, np.npy_intp *, np.npy_intp, void *)
-ctypedef np.NPY_SCALARKIND (*PyArray_ScalarKindFunc)(np.PyArrayObject *)
 
 cdef extern from "numpy/arrayobject.h":
+
+    ctypedef object (*PyArray_GetItemFunc)(void *, void *)
+    ctypedef int (*PyArray_SetItemFunc)(object, void *, void *)
+    ctypedef void (*PyArray_CopySwapNFunc)(void *, np.npy_intp, void *, np.npy_intp, np.npy_intp, int, void *)
+    ctypedef void (*PyArray_CopySwapFunc)(void *, void *, int, void *)
+    ctypedef int (*PyArray_CompareFunc)(const void* d1, const void *, void *)
+    ctypedef int (*PyArray_ArgFunc)(void *, np.npy_intp, np.npy_intp *, void *)
+    ctypedef void (*PyArray_DotFunc)(void *, np.npy_intp, void *, np.npy_intp, void *, np.npy_intp, void *)
+    ctypedef int (*PyArray_ScanFunc)(stdio.FILE *, void *, void *, void *)
+    ctypedef int (*PyArray_FromStrFunc)(char *, void *, char **, void *)
+    ctypedef bint (*PyArray_NonzeroFunc)(void *, void *)
+    ctypedef void (*PyArray_FillFunc)(void *, np.npy_intp, void *)
+    ctypedef void (*PyArray_FillWithScalarFunc)(void *, np.npy_intp, void *, void *)
+    ctypedef int (*PyArray_SortFunc)(void *, np.npy_intp, void *)
+    ctypedef int (*PyArray_ArgSortFunc)(void *, np.npy_intp *, np.npy_intp, void *)
+    ctypedef np.NPY_SCALARKIND (*PyArray_ScalarKindFunc)(np.PyArrayObject *)
 
     ctypedef struct PyArray_ArrFuncs:
         #np.PyArray_VectorUnaryFunc *cast[np.NPY_NTYPES]
@@ -766,6 +839,9 @@ cdef extern from "numpy/arrayobject.h":
         PyArray_ArrayDescr * subarray
         PyObject * fields
         PyArray_ArrFuncs * f
+
+#    cdef void _unaligned_strided_byte_copy(char * dst, np.npy_intp outstrides, char *src, np.npy_intp instrides, np.npy_intp N, int elsize)
+#    cdef void _strided_byte_swap(void *p, np.npy_intp stride, np.npy_intp n, int size)
 
 """
 def genpxd(template, header=None):
