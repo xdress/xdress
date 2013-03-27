@@ -479,6 +479,55 @@ def gentest_map(t, u):
 
 
 #
+# Vectors
+#
+
+_pyxvector = """# {ctype} dtype
+cdef PyArray_ArrFuncs PyXD_{clsname}_ArrFuncs 
+PyArray_InitArrFuncs(&PyXD_{clsname}_ArrFuncs)
+"""
+
+def genpyx_vector(t):
+    """Returns the pyx snippet for a vector of type t."""
+    t = ts.canon(t)
+    kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.humanname(t)[1], 
+              ctype=ts.cython_ctype(t), pytype=ts.cython_pytype(t), 
+              cytype=ts.cython_cytype(t),)
+    fpt = ts.from_pytypes[t]
+    kw['isinst'] = " or ".join(["isinstance(value, {0})".format(x) for x in fpt])
+    c2pykeys = ['c2pydecl', 'c2pybody', 'c2pyrtn']
+    c2py = ts.cython_c2py("deref(inow)", t, cached=False)
+    kw.update([(k, indentstr(v or '')) for k, v in zip(c2pykeys, c2py)])
+    py2ckeys = ['py2cdecl', 'py2cbody', 'py2crtn']
+    py2c = ts.cython_py2c("value", t)
+    kw.update([(k, indentstr(v or '')) for k, v in zip(py2ckeys, py2c)])
+    return _pyxvector.format(**kw)
+
+_pxdvector = """# {ctype} dtype
+#cdef extern from "Python.h":
+
+ctypedef struct PyXD_{clsname}:
+    Py_ssize_t ob_refcnt
+    PyTypeObject *ob_typ
+    {ctype} obval
+
+"""
+
+def genpxd_vector(t):
+    """Returns the pxd snippet for a vector of type t."""
+    t = ts.canon(t)
+    kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.humanname(t)[1], 
+              ctype=ts.cython_ctype(t), pytype=ts.cython_pytype(t), 
+              fncname=ts.cython_functionname(t)[1], 
+              cytype=ts.cython_cytype(t),)
+    return _pxdvector.format(**kw)
+
+def gentest_vector(t):
+    """Returns the test snippet for a set of type t."""
+    return ""
+
+
+#
 # Python <-> Map Cython Converter Functions
 #
 
@@ -528,6 +577,7 @@ def genpxd_py2c_map(t, u):
 
 def gentest_py2c_map(t, u):
     return ""
+
 
 
 #
@@ -600,6 +650,7 @@ from libcpp.string cimport string as std_string
 from libcpp.utility cimport pair
 from libcpp.map cimport map as cpp_map
 from libcpp.vector cimport vector as cpp_vector
+from cpython.ref cimport PyTypeObject
 
 # Python Imports
 import collections
@@ -638,6 +689,9 @@ from libcpp.string cimport string as std_string
 from libcpp.utility cimport pair
 from libcpp.map cimport map as cpp_map
 from libcpp.vector cimport vector as cpp_vector
+from libc cimport stdio
+from cpython.ref cimport PyTypeObject
+from cpython.object cimport PyObject
 
 # Python Imports
 cimport numpy as np
@@ -646,6 +700,72 @@ cimport numpy as np
 cimport {extra_types}
 
 cimport numpy as np
+
+cdef extern from "Python.h":
+    ctypedef Py_ssize_t Py_ssize_t
+
+ctypedef object (*PyArray_GetItemFunc)(void *, void *)
+ctypedef int (*PyArray_SetItemFunc)(object, void *, void *)
+ctypedef void (*PyArray_CopySwapNFunc)(void *, np.npy_intp, void *, np.npy_intp, np.npy_intp, int, void *)
+ctypedef void (*PyArray_CopySwapFunc)(void *, void *, int, void *)
+ctypedef int (*PyArray_CompareFunc)(const void* d1, const void *, void *)
+ctypedef int (*PyArray_ArgFunc)(void *, np.npy_intp, np.npy_intp *, void *)
+ctypedef void (*PyArray_DotFunc)(void *, np.npy_intp, void *, np.npy_intp, void *, np.npy_intp, void *)
+ctypedef int (*PyArray_ScanFunc)(stdio.FILE *, void *, void *, void *)
+ctypedef int (*PyArray_FromStrFunc)(char *, void *, char **, void *)
+ctypedef bint (*PyArray_NonzeroFunc)(void *, void *)
+ctypedef void (*PyArray_FillFunc)(void *, np.npy_intp, void *)
+ctypedef void (*PyArray_FillWithScalarFunc)(void *, np.npy_intp, void *, void *)
+ctypedef int (*PyArray_SortFunc)(void *, np.npy_intp, void *)
+ctypedef int (*PyArray_ArgSortFunc)(void *, np.npy_intp *, np.npy_intp, void *)
+ctypedef np.NPY_SCALARKIND (*PyArray_ScalarKindFunc)(np.PyArrayObject *)
+
+cdef extern from "numpy/arrayobject.h":
+
+    ctypedef struct PyArray_ArrFuncs:
+        #np.PyArray_VectorUnaryFunc *cast[np.NPY_NTYPES]
+        np.PyArray_VectorUnaryFunc *cast
+        PyArray_GetItemFunc *getitem
+        PyArray_SetItemFunc *setitem
+        PyArray_CopySwapNFunc *copyswapn
+        PyArray_CopySwapFunc *copyswap
+        PyArray_CompareFunc *compare
+        PyArray_ArgFunc *argmax
+        PyArray_DotFunc *dotfunc
+        PyArray_ScanFunc *scanfunc
+        PyArray_FromStrFunc *fromstr
+        PyArray_NonzeroFunc *nonzero
+        PyArray_FillFunc *fill
+        PyArray_FillWithScalarFunc *fillwithscalar
+        PyArray_SortFunc *sort
+        PyArray_ArgSortFunc *argsort
+        PyObject *castdict
+        PyArray_ScalarKindFunc *scalarkind
+        int **cancastscalarkindto
+        int *cancastto
+        int listpickle
+
+    cdef void PyArray_InitArrFuncs(PyArray_ArrFuncs *)
+
+    ctypedef struct PyArray_ArrayDescr:
+        PyArray_Descr * base
+        PyObject *shape
+
+    ctypedef struct PyArray_Descr:
+        Py_ssize_t ob_refcnt
+        PyTypeObject * ob_typ
+        PyTypeObject * typeobj
+        char kind
+        char type
+        char byteorder
+        char unused
+        int flags
+        int type_num
+        int elsize
+        int alignment
+        PyArray_ArrayDescr * subarray
+        PyObject * fields
+        PyArray_ArrFuncs * f
 
 """
 def genpxd(template, header=None):
