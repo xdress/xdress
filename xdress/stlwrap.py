@@ -545,12 +545,31 @@ cdef void pyxd_{fncname}_copyswap(void * dest, void * src, int swap, void * arr)
             b[0] = c
             b -= 1
 
+cdef np.npy_bool pyxd_{fncname}_nonzero(void * data, void * arr):
+    cdef int i = 0
+    cdef int tot = 0
+    cdef char * dat = <char *> data
+    for i in range(sizeof({ctype})):
+        tot += <int> dat[i]
+    if tot == 0:
+        return 0
+    else:
+        return 1
+
+#cdef void pyxd_{fncname}_cast(void * frm, void * to, np.npy_intp n, void * fromarr, void * toarr):
+
+
 cdef PyArray_ArrFuncs PyXD_{clsname}_ArrFuncs 
 PyArray_InitArrFuncs(&PyXD_{clsname}_ArrFuncs)
 PyXD_{clsname}_ArrFuncs.getitem = <PyArray_GetItemFunc *> (&pyxd_{fncname}_getitem)
 PyXD_{clsname}_ArrFuncs.setitem = <PyArray_SetItemFunc *> (&pyxd_{fncname}_setitem)
 PyXD_{clsname}_ArrFuncs.copyswapn = <PyArray_CopySwapNFunc *> (&pyxd_{fncname}_copyswapn)
 PyXD_{clsname}_ArrFuncs.copyswap = <PyArray_CopySwapFunc *> (&pyxd_{fncname}_copyswap)
+PyXD_{clsname}_ArrFuncs.nonzero = <PyArray_NonzeroFunc *> (&pyxd_{fncname}_nonzero)
+#PyXD_{clsname}_ArrFuncs.cast = <PyArray_NonzeroFunc *> (&pyxd_{fncname}_cast)
+#cdef int i_
+#for i_ in range(np.NPY_TYPES):
+#    PyXD_{clsname}_ArrFuncs.cast[i_] = NULL
 """
 
 def genpyx_vector(t):
@@ -571,8 +590,6 @@ def genpyx_vector(t):
     return _pyxvector.format(**kw)
 
 _pxdvector = """# {ctype} dtype
-#cdef extern from "Python.h":
-
 ctypedef struct PyXD_{clsname}:
     Py_ssize_t ob_refcnt
     PyTypeObject *ob_typ
@@ -582,6 +599,8 @@ cdef object pyxd_{fncname}_getitem(void * data, void * arr)
 cdef int pyxd_{fncname}_setitem(object value, void * data, void * arr)
 cdef void pyxd_{fncname}_copyswapn(void * dest, np.npy_intp dstride, void * src, np.npy_intp sstride, np.npy_intp n, int swap, void * arr)
 cdef void pyxd_{fncname}_copyswap(void * dest, void * src, int swap, void * arr)
+cdef np.npy_bool pyxd_{fncname}_nonzero(void * data, void * arr)
+#cdef void pyxd_{fncname}_cast(void * frm, void * to, np.npy_intp n, void * fromarr, void * toarr)
 """
 
 def genpxd_vector(t):
@@ -788,7 +807,7 @@ cdef extern from "numpy/arrayobject.h":
     ctypedef void (*PyArray_DotFunc)(void *, np.npy_intp, void *, np.npy_intp, void *, np.npy_intp, void *)
     ctypedef int (*PyArray_ScanFunc)(stdio.FILE *, void *, void *, void *)
     ctypedef int (*PyArray_FromStrFunc)(char *, void *, char **, void *)
-    ctypedef bint (*PyArray_NonzeroFunc)(void *, void *)
+    ctypedef np.npy_bool (*PyArray_NonzeroFunc)(void *, void *)
     ctypedef void (*PyArray_FillFunc)(void *, np.npy_intp, void *)
     ctypedef void (*PyArray_FillWithScalarFunc)(void *, np.npy_intp, void *, void *)
     ctypedef int (*PyArray_SortFunc)(void *, np.npy_intp, void *)
@@ -797,7 +816,8 @@ cdef extern from "numpy/arrayobject.h":
 
     ctypedef struct PyArray_ArrFuncs:
         #np.PyArray_VectorUnaryFunc *cast[np.NPY_NTYPES]
-        np.PyArray_VectorUnaryFunc *cast
+        #np.PyArray_VectorUnaryFunc * cast
+        np.PyArray_VectorUnaryFunc ** cast
         PyArray_GetItemFunc *getitem
         PyArray_SetItemFunc *setitem
         PyArray_CopySwapNFunc *copyswapn
@@ -839,9 +859,6 @@ cdef extern from "numpy/arrayobject.h":
         PyArray_ArrayDescr * subarray
         PyObject * fields
         PyArray_ArrFuncs * f
-
-#    cdef void _unaligned_strided_byte_copy(char * dst, np.npy_intp outstrides, char *src, np.npy_intp instrides, np.npy_intp N, int elsize)
-#    cdef void _strided_byte_swap(void *p, np.npy_intp stride, np.npy_intp n, int size)
 
 """
 def genpxd(template, header=None):
