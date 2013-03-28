@@ -570,6 +570,26 @@ PyXD_{clsname}_ArrFuncs.nonzero = <PyArray_NonzeroFunc *> (&pyxd_{fncname}_nonze
 #cdef int i_
 #for i_ in range(np.NPY_TYPES):
 #    PyXD_{clsname}_ArrFuncs.cast[i_] = NULL
+
+cdef PyXD_{clsname}_Type PyXD_{clsname}
+#cdef PyArray_Descr PyXD_{clsname}_Descr 
+#cdef PyArray_Descr PyXD_{clsname}_Descr = PyArray_Descr
+cdef PyArray_Descr PyXD_{clsname}_Descr 
+PyXD_{clsname}_Descr.typeobj = PyXD_{clsname}.ob_typ
+PyXD_{clsname}_Descr.kind = 'x'  # for xdress
+PyXD_{clsname}_Descr.type = 'x'
+PyXD_{clsname}_Descr.byteorder = '='
+PyXD_{clsname}_Descr.type_num = 0  # assigned at registration
+PyXD_{clsname}_Descr.elsize = sizeof({ctype})
+PyXD_{clsname}_Descr.alignment = 8
+PyXD_{clsname}_Descr.subarray = NULL
+PyXD_{clsname}_Descr.fields = NULL
+PyXD_{clsname}_Descr.f = &PyXD_{clsname}_ArrFuncs
+
+#PyXD_{clsname}_Descr_ = <object> &PyXD_{clsname}_Descr
+
+#cdef int pyxd_{fncname}_num = np.PyArray_RegisterDataType(PyXD_{clsname}_Descr_)
+#print pyxd_{fncname}_num
 """
 
 def genpyx_vector(t):
@@ -590,7 +610,7 @@ def genpyx_vector(t):
     return _pyxvector.format(**kw)
 
 _pxdvector = """# {ctype} dtype
-ctypedef struct PyXD_{clsname}:
+ctypedef struct PyXD_{clsname}_Type:
     Py_ssize_t ob_refcnt
     PyTypeObject *ob_typ
     {ctype} obval
@@ -795,7 +815,6 @@ cimport numpy as np
 cdef extern from "Python.h":
     ctypedef Py_ssize_t Py_ssize_t
 
-
 cdef extern from "numpy/arrayobject.h":
 
     ctypedef object (*PyArray_GetItemFunc)(void *, void *)
@@ -843,6 +862,8 @@ cdef extern from "numpy/arrayobject.h":
     ctypedef struct PyArray_ArrayDescr:
         PyArray_Descr * base
         PyObject *shape
+
+    cdef object PyArrayDescr_Type
 
     ctypedef struct PyArray_Descr:
         Py_ssize_t ob_refcnt
