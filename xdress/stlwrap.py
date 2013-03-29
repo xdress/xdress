@@ -556,9 +556,6 @@ cdef np.npy_bool pyxd_{fncname}_nonzero(void * data, void * arr):
     else:
         return 1
 
-#cdef void pyxd_{fncname}_cast(void * frm, void * to, np.npy_intp n, void * fromarr, void * toarr):
-
-
 cdef PyArray_ArrFuncs PyXD_{clsname}_ArrFuncs 
 PyArray_InitArrFuncs(&PyXD_{clsname}_ArrFuncs)
 PyXD_{clsname}_ArrFuncs.getitem = <PyArray_GetItemFunc *> (&pyxd_{fncname}_getitem)
@@ -571,24 +568,30 @@ PyXD_{clsname}_ArrFuncs.nonzero = <PyArray_NonzeroFunc *> (&pyxd_{fncname}_nonze
 #for i_ in range(np.NPY_TYPES):
 #    PyXD_{clsname}_ArrFuncs.cast[i_] = NULL
 
+
 cdef PyXD_{clsname}_Type PyXD_{clsname}
-#cdef PyArray_Descr PyXD_{clsname}_Descr 
-#cdef PyArray_Descr PyXD_{clsname}_Descr = PyArray_Descr
-cdef PyArray_Descr PyXD_{clsname}_Descr 
-PyXD_{clsname}_Descr.typeobj = PyXD_{clsname}.ob_typ
-PyXD_{clsname}_Descr.kind = 'x'  # for xdress
-PyXD_{clsname}_Descr.type = 'x'
-PyXD_{clsname}_Descr.byteorder = '='
-PyXD_{clsname}_Descr.type_num = 0  # assigned at registration
-PyXD_{clsname}_Descr.elsize = sizeof({ctype})
-PyXD_{clsname}_Descr.alignment = 8
-PyXD_{clsname}_Descr.subarray = NULL
-PyXD_{clsname}_Descr.fields = NULL
-PyXD_{clsname}_Descr.f = &PyXD_{clsname}_ArrFuncs
 
-#PyXD_{clsname}_Descr_ = <object> &PyXD_{clsname}_Descr
+cdef PyArray_Descr pyxd_{fncname}_desc = PyArray_Descr(
+    0, # ob_refcnt
+    (<PyTypeObject *> PyArray_API[3]), # ob_type == PyArrayDescr_Type
+    PyXD_{clsname}.ob_typ, # typeobj
+    'x',  # kind, for xdress
+    'x',  # type
+    '=',  # byteorder
+    0,    # flags
+    0,    # type_num, assigned at registration
+    sizeof({ctype}),  # elsize, 
+    8,  # alignment
+    NULL,  # subarray
+    NULL,  # fields
+    &PyXD_{clsname}_ArrFuncs,  # f == PyArray_ArrFuncs
+    )
+cdef object pyxd_{fncname}_desc_obj = &pyxd_{fncname}_desc
+Py_INCREF(pyxd_{fncname}_desc_obj)
 
-#cdef int pyxd_{fncname}_num = np.PyArray_RegisterDataType(PyXD_{clsname}_Descr_)
+
+#pyxd_{fncname}_desc_ = <object> &pyxd_{fncname}_desc
+#cdef int pyxd_{fncname}_num = np.PyArray_RegisterDataType(pyxd_{fncname}_desc_)
 #print pyxd_{fncname}_num
 """
 
@@ -801,7 +804,7 @@ from libcpp.utility cimport pair
 from libcpp.map cimport map as cpp_map
 from libcpp.vector cimport vector as cpp_vector
 from libc cimport stdio
-from cpython.ref cimport PyTypeObject
+from cpython.ref cimport PyTypeObject, Py_INCREF, Py_XDECREF
 from cpython.object cimport PyObject
 
 # Python Imports
@@ -861,18 +864,17 @@ cdef extern from "numpy/arrayobject.h":
 
     ctypedef struct PyArray_ArrayDescr:
         PyArray_Descr * base
-        PyObject *shape
+        PyObject  *shape
 
-    cdef object PyArrayDescr_Type
-
+    cdef void ** PyArray_API
+    
     ctypedef struct PyArray_Descr:
         Py_ssize_t ob_refcnt
-        PyTypeObject * ob_typ
+        PyTypeObject * ob_type
         PyTypeObject * typeobj
         char kind
         char type
         char byteorder
-        char unused
         int flags
         int type_num
         int elsize
