@@ -571,7 +571,7 @@ PyXD_{clsname}_ArrFuncs.nonzero = <PyArray_NonzeroFunc *> (&pyxd_{fncname}_nonze
 
 cdef PyXD_{clsname}_Type PyXD_{clsname}
 
-cdef PyArray_Descr pyxd_{fncname}_desc = PyArray_Descr(
+cdef PyArray_Descr c_pyxd_{fncname}_descr = PyArray_Descr(
     0, # ob_refcnt
     (<PyTypeObject *> PyArray_API[3]), # ob_type == PyArrayDescr_Type
     PyXD_{clsname}.ob_typ, # typeobj
@@ -586,13 +586,12 @@ cdef PyArray_Descr pyxd_{fncname}_desc = PyArray_Descr(
     NULL,  # fields
     &PyXD_{clsname}_ArrFuncs,  # f == PyArray_ArrFuncs
     )
-cdef object pyxd_{fncname}_desc_obj = &pyxd_{fncname}_desc
-Py_INCREF(pyxd_{fncname}_desc_obj)
+cdef object pyxd_{fncname}_descr = <object> (<void *> &c_pyxd_{fncname}_descr)
+Py_INCREF(<object> pyxd_{fncname}_descr)
 
-
-#pyxd_{fncname}_desc_ = <object> &pyxd_{fncname}_desc
-#cdef int pyxd_{fncname}_num = np.PyArray_RegisterDataType(pyxd_{fncname}_desc_)
-#print pyxd_{fncname}_num
+#cdef int pyxd_{fncname}_num = np.PyArray_RegisterDataType(c_pyxd_{fncname}_descr)
+cdef int pyxd_{fncname}_num = PyArray_RegisterDataType(&c_pyxd_{fncname}_descr)
+print pyxd_{fncname}_num
 """
 
 def genpyx_vector(t):
@@ -882,6 +881,8 @@ cdef extern from "numpy/arrayobject.h":
         PyArray_ArrayDescr * subarray
         PyObject * fields
         PyArray_ArrFuncs * f
+
+    cdef int PyArray_RegisterDataType(PyArray_Descr *)
 
 """
 def genpxd(template, header=None):
