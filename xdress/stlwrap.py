@@ -593,6 +593,7 @@ cdef type PyXD_{clsname} = type("PyXD_{clsname}", (type,), {{}})
 (<PyTypeObject *> PyXD_{clsname}).tp_basicsize = 2 + sizeof({ctype})
 (<PyTypeObject *> PyXD_{clsname}).tp_str = pyxd_{fncname}_type_str
 (<PyTypeObject *> PyXD_{clsname}).tp_repr = pyxd_{fncname}_type_repr
+(<PyTypeObject *> PyXD_{clsname}).tp_base = (<PyTypeObject *> PyArray_API[10])  # PyGenericArrType_Type
 
 #PyXD_{clsname}_ = PyXD_{clsname}
 
@@ -617,9 +618,6 @@ pyxd_{fncname} = pyxd_{fncname}_descr
 
 cdef int pyxd_{fncname}_num = PyArray_RegisterDataType(&c_pyxd_{fncname}_descr)
 print pyxd_{fncname}_num
-
-a = np.array([1, 42.0], dtype=pyxd_{fncname})
-print a 
 
 """
 
@@ -854,6 +852,7 @@ cdef extern from "Python.h":
         int tp_itemsize
         object tp_repr(object)
         object tp_str(object)
+        PyTypeObject * tp_base
 
 cdef extern from "numpy/arrayobject.h":
 
