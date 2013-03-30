@@ -490,10 +490,27 @@ cdef object pyxd_{fncname}_getitem(void * data, void * arr):
     return pyval
 
 cdef int pyxd_{fncname}_setitem(object value, void * data, void * arr):
-{py2cdecl}
-{py2cbody}
-    (<{ctype} *> data)[0] = {py2crtn}
-    return 0
+    cdef {ctype} cvalue 
+    print "in pyxd_{fncname}_setitem()"
+    print "pos = ", (<long> data - <long> arr) / sizeof({ctype})
+    if {isinst}:
+        print "am zero: ", value, type(value)
+{py2cdecl.indent8}
+{py2cbody.indent8}
+        #(<{ctype} *> data)[0] = {py2crtn}
+        cvalue = {py2crtn}
+        print "converted to C", cvalue.c_str()
+        #(<{ctype} *> data)[0] = cvalue
+        #(<{ctype} *> data)[0] = {ctype}()
+        print "new here"
+        #deref(<{ctype} *> data).assign(cvalue)
+        memcpy(data, <void *> &cvalue, sizeof({ctype}))
+        print "data val:", (<std_string *> data).c_str()
+        print "returning"
+        return 0
+    else:
+        print "am neg one"
+        return -1
 
 cdef void pyxd_{fncname}_copyswapn(void * dest, np.npy_intp dstride, void * src, np.npy_intp sstride, np.npy_intp n, int swap, void * arr):
     cdef np.npy_intp i
@@ -568,26 +585,26 @@ PyXD_{clsname}_ArrFuncs.nonzero = <PyArray_NonzeroFunc *> (&pyxd_{fncname}_nonze
 #for i_ in range(np.NPY_TYPES):
 #    PyXD_{clsname}_ArrFuncs.cast[i_] = NULL
 
-
 cdef object pyxd_{fncname}_type_str(object self):
     cdef PyXD_{clsname}_Type * cself = <PyXD_{clsname}_Type *> self
-    cdef {ctype} * data = &(cself.obval)
-{c2pydecl.indent4}
-{c2pybody.indent4}
-    pyval = {c2pyrtn}
+{cself2pydecl.indent4}
+{cself2pybody.indent4}
+    pyval = {cself2pyrtn}
     s = str(pyval)
     return s
-    
 
 cdef object pyxd_{fncname}_type_repr(object self):
     cdef PyXD_{clsname}_Type * cself = <PyXD_{clsname}_Type *> self
-    cdef {ctype} * data = &(cself.obval)
-{c2pydecl.indent4}
-{c2pybody.indent4}
-    pyval = {c2pyrtn}
+    print "type of self:", type(self)
+    print "cstring:", cself.obval.c_str()
+    print "csize", cself.obval.size()
+    print "clength:", cself.obval.length()
+    print "empty:", cself.obval.empty()
+{cself2pydecl.indent4}
+{cself2pybody.indent4}
+    pyval = {cself2pyrtn}
     s = repr(pyval)
     return s
-    
 
 cdef type PyXD_{clsname} = type("PyXD_{clsname}", (type,), {{}})
 (<PyTypeObject *> PyXD_{clsname}).tp_basicsize = 2 + sizeof({ctype})
@@ -633,6 +650,9 @@ def genpyx_vector(t):
     c2pykeys = ['c2pydecl', 'c2pybody', 'c2pyrtn']
     c2py = ts.cython_c2py("deref(<{0} *> data)".format(kw['ctype']), t, cached=False)
     kw.update([(k, indentstr(v or '')) for k, v in zip(c2pykeys, c2py)])
+    cself2pykeys = ['cself2pydecl', 'cself2pybody', 'cself2pyrtn']
+    cself2py = ts.cython_c2py("(cself.obval)", t, cached=False)
+    kw.update([(k, indentstr(v or '')) for k, v in zip(cself2pykeys, cself2py)])
     py2ckeys = ['py2cdecl', 'py2cbody', 'py2crtn']
     py2c = ts.cython_py2c("value", t)
     kw.update([(k, indentstr(v or '')) for k, v in zip(py2ckeys, py2c)])
@@ -791,8 +811,6 @@ from libcpp.utility cimport pair
 from libcpp.map cimport map as cpp_map
 from libcpp.vector cimport vector as cpp_vector
 from cpython.ref cimport PyTypeObject
-
-import types
 
 # Python Imports
 import collections
