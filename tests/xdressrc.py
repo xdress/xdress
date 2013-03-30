@@ -5,7 +5,9 @@ packagedir = 'xdtest'
 extra_types = 'xdtest_extra_types'  # non-default value
 
 stlcontainers = [
-    ('vector', 'str'),
+    ('vector', 'float64'),
+#    ('vector', 'str'),
+#    ('vector', 'int32'),
     ('set', 'int'),
     ('set', 'str'),
     ('set', 'uint'),

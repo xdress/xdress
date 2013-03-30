@@ -569,12 +569,37 @@ PyXD_{clsname}_ArrFuncs.nonzero = <PyArray_NonzeroFunc *> (&pyxd_{fncname}_nonze
 #    PyXD_{clsname}_ArrFuncs.cast[i_] = NULL
 
 
-cdef PyXD_{clsname}_Type PyXD_{clsname}
+cdef object pyxd_{fncname}_type_str(object self):
+    cdef PyXD_{clsname}_Type * cself = <PyXD_{clsname}_Type *> self
+    cdef {ctype} * data = &(cself.obval)
+{c2pydecl.indent4}
+{c2pybody.indent4}
+    pyval = {c2pyrtn}
+    s = str(pyval)
+    return s
+    
+
+cdef object pyxd_{fncname}_type_repr(object self):
+    cdef PyXD_{clsname}_Type * cself = <PyXD_{clsname}_Type *> self
+    cdef {ctype} * data = &(cself.obval)
+{c2pydecl.indent4}
+{c2pybody.indent4}
+    pyval = {c2pyrtn}
+    s = repr(pyval)
+    return s
+    
+
+cdef type PyXD_{clsname} = type("PyXD_{clsname}", (type,), {{}})
+(<PyTypeObject *> PyXD_{clsname}).tp_basicsize = 2 + sizeof({ctype})
+(<PyTypeObject *> PyXD_{clsname}).tp_str = pyxd_{fncname}_type_str
+(<PyTypeObject *> PyXD_{clsname}).tp_repr = pyxd_{fncname}_type_repr
+
+#PyXD_{clsname}_ = PyXD_{clsname}
 
 cdef PyArray_Descr c_pyxd_{fncname}_descr = PyArray_Descr(
     0, # ob_refcnt
     (<PyTypeObject *> PyArray_API[3]), # ob_type == PyArrayDescr_Type
-    PyXD_{clsname}.ob_typ, # typeobj
+    <PyTypeObject *> PyXD_{clsname}, # typeobj
     'x',  # kind, for xdress
     'x',  # type
     '=',  # byteorder
@@ -588,10 +613,14 @@ cdef PyArray_Descr c_pyxd_{fncname}_descr = PyArray_Descr(
     )
 cdef object pyxd_{fncname}_descr = <object> (<void *> &c_pyxd_{fncname}_descr)
 Py_INCREF(<object> pyxd_{fncname}_descr)
+pyxd_{fncname} = pyxd_{fncname}_descr
 
-#cdef int pyxd_{fncname}_num = np.PyArray_RegisterDataType(c_pyxd_{fncname}_descr)
 cdef int pyxd_{fncname}_num = PyArray_RegisterDataType(&c_pyxd_{fncname}_descr)
 print pyxd_{fncname}_num
+
+a = np.array([1, 42.0], dtype=pyxd_{fncname})
+print a 
+
 """
 
 def genpyx_vector(t):
@@ -765,6 +794,8 @@ from libcpp.map cimport map as cpp_map
 from libcpp.vector cimport vector as cpp_vector
 from cpython.ref cimport PyTypeObject
 
+import types
+
 # Python Imports
 import collections
 
@@ -816,6 +847,13 @@ cimport numpy as np
 
 cdef extern from "Python.h":
     ctypedef Py_ssize_t Py_ssize_t
+
+    ctypedef struct PyTypeObject:
+        char * tp_name
+        int tp_basicsize
+        int tp_itemsize
+        object tp_repr(object)
+        object tp_str(object)
 
 cdef extern from "numpy/arrayobject.h":
 
