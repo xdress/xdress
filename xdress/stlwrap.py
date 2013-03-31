@@ -489,27 +489,55 @@ cdef object pyxd_{fncname}_getitem(void * data, void * arr):
     pyval = {c2pyrtn}
     return pyval
 
+#cdef int pyxd_{fncname}_setitem(object value, void * data, void * arr):
+#    cdef {ctype} * cvalue = new {ctype}()
+#    print "in pyxd_{fncname}_setitem()"
+#    print "pos = ", (<long> data - <long> arr) / sizeof({ctype})
+#    if {isinst}:
+#        print "am zero: ", value, type(value)
+#{py2cdecl.indent8}
+#{py2cbody.indent8}
+#        #(<{ctype} *> data)[0] = {py2crtn}
+#        cvalue[0] = {py2crtn}
+#        print "converted to C", cvalue.c_str()
+#        #(<{ctype} *> data)[0] = cvalue
+#        #(<{ctype} *> data)[0] = {ctype}()
+#        print "new here"
+#        #deref(<{ctype} *> data).assign(cvalue)
+#        memcpy(data, <void *> cvalue, sizeof({ctype}))
+#        print "data val:", (<std_string *> data).c_str()
+#        print "returning"
+#        return 0
+#    else:
+#        print "am neg one"
+#        return -1
+
+#cdef int pyxd_{fncname}_setitem(object value, void * data, void * arr):
+#    cdef {ctype} * cvalue = new {ctype}()
+#    if {isinst}:
+#{py2cdecl.indent8}
+#{py2cbody.indent8}
+#        cvalue[0] = {py2crtn}
+#        #(<{ctype} *> data)[0] = {ctype}(cvalue)
+#        pyxd_{fncname}_copyswap(data, cvalue, 0, arr)
+#        print "data val" 
+#        print "cval", cvalue.c_str()
+#        print <char *> (<std_string *> data).c_str()
+#        if cvalue != NULL:
+#            print "freeing"
+#            #del cvalue
+#            #free(cvalue)
+#        return 0
+#    else:
+#        return -1
+
 cdef int pyxd_{fncname}_setitem(object value, void * data, void * arr):
-    cdef {ctype} cvalue 
-    print "in pyxd_{fncname}_setitem()"
-    print "pos = ", (<long> data - <long> arr) / sizeof({ctype})
     if {isinst}:
-        print "am zero: ", value, type(value)
 {py2cdecl.indent8}
 {py2cbody.indent8}
-        #(<{ctype} *> data)[0] = {py2crtn}
-        cvalue = {py2crtn}
-        print "converted to C", cvalue.c_str()
-        #(<{ctype} *> data)[0] = cvalue
-        #(<{ctype} *> data)[0] = {ctype}()
-        print "new here"
-        #deref(<{ctype} *> data).assign(cvalue)
-        memcpy(data, <void *> &cvalue, sizeof({ctype}))
-        print "data val:", (<std_string *> data).c_str()
-        print "returning"
+        (<{ctype} *> data)[0] = {py2crtn}
         return 0
     else:
-        print "am neg one"
         return -1
 
 cdef void pyxd_{fncname}_copyswapn(void * dest, np.npy_intp dstride, void * src, np.npy_intp sstride, np.npy_intp n, int swap, void * arr):
@@ -549,18 +577,28 @@ cdef void pyxd_{fncname}_copyswap(void * dest, void * src, int swap, void * arr)
     cdef char c = 0
     cdef int j
     cdef int m
+    cdef {ctype} cdest = new sizeof({ctype}), dest
     if src != NULL:
-        memcpy(dest, src, sizeof({ctype}))
-    if swap:
-        m = sizeof({ctype}) / 2
-        a = <char *> dest
-        b = a + (sizeof({ctype}) - 1);
-        for j in range(m):
-            c = a[0]
-            a[0] = b[0]
-            a += 1
-            b[0] = c
-            b -= 1
+        print "memcopy'ing !!!"
+        print (<{ctype} *> src).c_str()
+        #memcpy(dest, src, sizeof({ctype}))
+        #(<{ctype} *> dest)[0] = (<{ctype} *> src)[0]
+        cdest = (<{ctype} *> src)[0]
+        #deref(<{ctype} *> dest) = (<{ctype} *> src)[0]
+        #(<PyXD_{clsname}_Type *> dest).obval = "wakka jawakka"
+        print "memcopy'd"
+    #if swap:
+    #    print "swapp'ing"
+    #    m = sizeof({ctype}) / 2
+    #    a = <char *> dest
+    #    b = a + (sizeof({ctype}) - 1);
+    #    for j in range(m):
+    #        c = a[0]
+    #        a[0] = b[0]
+    #        a += 1
+    #        b[0] = c
+    #        b -= 1
+    #    print "swapp'd"
 
 cdef np.npy_bool pyxd_{fncname}_nonzero(void * data, void * arr):
     cdef int i = 0
@@ -585,6 +623,15 @@ PyXD_{clsname}_ArrFuncs.nonzero = <PyArray_NonzeroFunc *> (&pyxd_{fncname}_nonze
 #for i_ in range(np.NPY_TYPES):
 #    PyXD_{clsname}_ArrFuncs.cast[i_] = NULL
 
+cdef object pyxd_{fncname}_type_new(PyTypeObject * type_, object args, object kwds):
+    cdef {ctype} value
+    cdef object a
+    print "making new"
+    #a = PyArray_Scalar(&value, &c_pyxd_{fncname}_descr, <object> NULL)
+    a = PyArray_Scalar(&value, &c_pyxd_{fncname}_descr, <object> NULL)
+    print "made a"
+    return a
+
 cdef object pyxd_{fncname}_type_str(object self):
     cdef PyXD_{clsname}_Type * cself = <PyXD_{clsname}_Type *> self
 {cself2pydecl.indent4}
@@ -596,10 +643,10 @@ cdef object pyxd_{fncname}_type_str(object self):
 cdef object pyxd_{fncname}_type_repr(object self):
     cdef PyXD_{clsname}_Type * cself = <PyXD_{clsname}_Type *> self
     print "type of self:", type(self)
-    print "cstring:", cself.obval.c_str()
-    print "csize", cself.obval.size()
-    print "clength:", cself.obval.length()
-    print "empty:", cself.obval.empty()
+    #print "cstring:", cself.obval.c_str()
+    #print "csize", cself.obval.size()
+    #print "clength:", cself.obval.length()
+    #print "empty:", cself.obval.empty()
 {cself2pydecl.indent4}
 {cself2pybody.indent4}
     pyval = {cself2pyrtn}
@@ -607,12 +654,14 @@ cdef object pyxd_{fncname}_type_repr(object self):
     return s
 
 cdef type PyXD_{clsname} = type("PyXD_{clsname}", (type,), {{}})
-(<PyTypeObject *> PyXD_{clsname}).tp_basicsize = 2 + sizeof({ctype})
+#(<PyTypeObject *> PyXD_{clsname}).tp_basicsize = 2 + sizeof({ctype})
+(<PyTypeObject *> PyXD_{clsname}).tp_basicsize = sizeof(PyXD_{clsname}_Type)
+(<PyTypeObject *> PyXD_{clsname}).tp_itemsize = 0
+#(<PyTypeObject *> PyXD_{clsname}).tp_dealloc = pyxd_{fncname}_type_dealloc
+(<PyTypeObject *> PyXD_{clsname}).tp_new = pyxd_{fncname}_type_new
 (<PyTypeObject *> PyXD_{clsname}).tp_str = pyxd_{fncname}_type_str
 (<PyTypeObject *> PyXD_{clsname}).tp_repr = pyxd_{fncname}_type_repr
 (<PyTypeObject *> PyXD_{clsname}).tp_base = (<PyTypeObject *> PyArray_API[10])  # PyGenericArrType_Type
-
-#PyXD_{clsname}_ = PyXD_{clsname}
 
 cdef PyArray_Descr c_pyxd_{fncname}_descr = PyArray_Descr(
     0, # ob_refcnt
@@ -868,8 +917,10 @@ cdef extern from "Python.h":
         char * tp_name
         int tp_basicsize
         int tp_itemsize
-        object tp_repr(object)
+        void tp_dealloc(object)
+        object tp_new(PyTypeObject *, object, object)
         object tp_str(object)
+        object tp_repr(object)
         PyTypeObject * tp_base
 
 cdef extern from "numpy/arrayobject.h":
@@ -938,6 +989,10 @@ cdef extern from "numpy/arrayobject.h":
         PyArray_ArrFuncs * f
 
     cdef int PyArray_RegisterDataType(PyArray_Descr *)
+
+    cdef object PyArray_Scalar(void *, PyArray_Descr *, object)
+
+    #ctypedef struct PyArrayObject:
 
 """
 def genpxd(template, header=None):
