@@ -577,15 +577,19 @@ cdef void pyxd_{fncname}_copyswap(void * dest, void * src, int swap, void * arr)
     cdef char c = 0
     cdef int j
     cdef int m
-    cdef {ctype} cdest = new sizeof({ctype}), dest
+    #cdef NewInplace[{ctype}] ni = NewInplace[{ctype}]()
+    cdef NewInplace[{ctype}] * ni = new NewInplace[{ctype}]()
+    cdef {ctype} * new_dest
     if src != NULL:
         print "memcopy'ing !!!"
-        print (<{ctype} *> src).c_str()
+        #print (<{ctype} *> src).c_str()
         #memcpy(dest, src, sizeof({ctype}))
         #(<{ctype} *> dest)[0] = (<{ctype} *> src)[0]
-        cdest = (<{ctype} *> src)[0]
+        #cdest = (<{ctype} *> src)[0]
         #deref(<{ctype} *> dest) = (<{ctype} *> src)[0]
         #(<PyXD_{clsname}_Type *> dest).obval = "wakka jawakka"
+        new_dest = deref(ni).reinit(dest)
+        del ni
         print "memcopy'd"
     #if swap:
     #    print "swapp'ing"
@@ -992,7 +996,10 @@ cdef extern from "numpy/arrayobject.h":
 
     cdef object PyArray_Scalar(void *, PyArray_Descr *, object)
 
-    #ctypedef struct PyArrayObject:
+cdef extern from "new_inplace.h":
+    cdef cppclass NewInplace[T]:
+        NewInplace() nogil except +
+        T * reinit(void *) nogil except +
 
 """
 def genpxd(template, header=None):

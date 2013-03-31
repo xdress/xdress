@@ -3,6 +3,8 @@
 file( COPY setup.py configure.py xdtest DESTINATION "${CMAKE_ARGV3}"
     FILES_MATCHING PATTERN "*.py" 
                    PATTERN "*.pyw" 
+                   PATTERN "*.h" 
+                   PATTERN "*.cpp" 
                    PATTERN "*.csv" 
                    PATTERN "*.txt" 
                    PATTERN "*.html" 
