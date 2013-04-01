@@ -496,8 +496,8 @@ cdef int pyxd_{fncname}_setitem(object value, void * data, void * arr):
 {py2cdecl.indent8}
 {py2cbody.indent8}
         new_data = ni.reinit(data)
-        #new_data[0] = {py2crtn}
-        new_data[0] = "wakka"
+        new_data[0] = {py2crtn}
+        #new_data[0] = "wakka"
         return 0
     else:
         return -1
@@ -588,12 +588,26 @@ PyXD_{clsname}_ArrFuncs.nonzero = <PyArray_NonzeroFunc *> (&pyxd_{fncname}_nonze
 #for i_ in range(np.NPY_TYPES):
 #    PyXD_{clsname}_ArrFuncs.cast[i_] = NULL
 
+cdef object pyxd_{fncname}_type_alloc(PyTypeObject * self, Py_ssize_t nitems):
+    cdef NewInplace[PyXD_{clsname}_Type] ni = NewInplace[PyXD_{clsname}_Type]()
+    cdef PyXD_{clsname}_Type * cval
+    cdef object pyval
+    print "making alloc"
+    cval = ni.newinit()
+    cval.ob_typ = self
+    pyval = <object> cval
+    #Py_INCREF(pyval)
+    return pyval
+
 cdef object pyxd_{fncname}_type_new(PyTypeObject * type_, object args, object kwds):
-    cdef {ctype} value
+    cdef NewInplace[{ctype}] ni = NewInplace[{ctype}]()
+    cdef {ctype} * value = new {ctype}()
     cdef object a
+    ni.reinit(value)
     print "making new"
     #a = PyArray_Scalar(&value, &c_pyxd_{fncname}_descr, <object> NULL)
-    a = PyArray_Scalar(&value, &c_pyxd_{fncname}_descr, <object> NULL)
+    #a = PyArray_Scalar(&value, &c_pyxd_{fncname}_descr, <object> NULL)
+    a = PyArray_Scalar(value, &c_pyxd_{fncname}_descr, <object> NULL)
     print "made a"
     return a
 
@@ -621,16 +635,19 @@ cdef long pyxd_{fncname}_type_hash(object self):
 
 cdef void pyxd_{fncname}_type_dealloc(object self):
     cdef PyXD_{clsname}_Type * cself = <PyXD_{clsname}_Type *> self
-    cdef NewInplace[{ctype}] ni = NewInplace[{ctype}]()
+    cdef NewInplace[PyXD_{clsname}_Type] ni = NewInplace[PyXD_{clsname}_Type]()
+    #cdef NewInplace[{ctype}] ni = NewInplace[{ctype}]()
     print "copying"
     print "setting to null"
-    ni.delnull(&(cself.obval))
+    #ni.delnull(&(cself.obval))
+    #ni.delnull((cself.obval))
     print "calling dellaoc()"
+    ni.deldeall(cself)
     print "calling free()"
     #free(<void *> self)
     #free(<void *> cself)
     #free(<void *> cself.ob_typ)
-    PyMem_Del(<void *> self)
+    #PyMem_Del(<void *> self)
     #pyxd_{fncname}_type_free(<void *> self)
     print "called dealloc()"
     #del oval
@@ -659,6 +676,7 @@ print "Is type {clsname} ready: ", pyxd_{fncname}_is_ready
 (<PyTypeObject *> PyXD_{clsname}).tp_itemsize = 0
 (<PyTypeObject *> PyXD_{clsname}).tp_doc = "Python scalar type for {ctype}"
 (<PyTypeObject *> PyXD_{clsname}).tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES
+(<PyTypeObject *> PyXD_{clsname}).tp_alloc = pyxd_{fncname}_type_alloc
 (<PyTypeObject *> PyXD_{clsname}).tp_dealloc = pyxd_{fncname}_type_dealloc
 (<PyTypeObject *> PyXD_{clsname}).tp_new = pyxd_{fncname}_type_new
 (<PyTypeObject *> PyXD_{clsname}).tp_str = pyxd_{fncname}_type_str
@@ -714,6 +732,9 @@ def genpyx_vector(t):
     kw.update([(k, indentstr(v or '')) for k, v in zip(c2pykeys, c2py)])
     cself2pykeys = ['cself2pydecl', 'cself2pybody', 'cself2pyrtn']
     cself2py = ts.cython_c2py("(cself.obval)", t, cached=False)
+    #cself2py = ts.cython_c2py("deref(<{0} *> cself.obval)".format(kw['ctype']), t, cached=False)
+    #cself2py = ts.cython_c2py("(<{0} *> cself.obval)".format(kw['ctype']), t, cached=False)
+    #cself2py = ts.cython_c2py("data", t, cached=False)
     kw.update([(k, indentstr(v or '')) for k, v in zip(cself2pykeys, cself2py)])
     py2ckeys = ['py2cdecl', 'py2cbody', 'py2crtn']
     py2c = ts.cython_py2c("value", t)
@@ -725,8 +746,6 @@ ctypedef struct PyXD_{clsname}_Type:
     Py_ssize_t ob_refcnt
     PyTypeObject *ob_typ
     {ctype} obval
-    #char obval [sizeof({ctype})]
-    #char * obval 
 
 cdef object pyxd_{fncname}_getitem(void * data, void * arr)
 cdef int pyxd_{fncname}_setitem(object value, void * data, void * arr)
@@ -940,6 +959,7 @@ cdef extern from "Python.h":
         char * tp_name
         int tp_basicsize
         int tp_itemsize
+        object tp_alloc(PyTypeObject *, Py_ssize_t)
         void tp_dealloc(object)
         object tp_richcompare(object, object, int)
         object tp_new(PyTypeObject *, object, object)
@@ -1032,7 +1052,9 @@ cdef extern from "new_inplace.h":
     cdef cppclass NewInplace[T]:
         NewInplace() nogil except +
         T * reinit(void *) nogil except +
+        T * newinit() nogil except +
         void delnull(T *) nogil except +
+        void deldeall(T *) nogil except +
 
 """
 def genpxd(template, header=None):
