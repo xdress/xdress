@@ -559,15 +559,8 @@ cdef void pyxd_{fncname}_copyswap(void * dest, void * src, int swap, void * arr)
             b -= 1
 
 cdef np.npy_bool pyxd_{fncname}_nonzero(void * data, void * arr):
-    cdef int i = 0
-    cdef int tot = 0
-    cdef char * dat = <char *> data
-    for i in range(sizeof({ctype})):
-        tot += <int> dat[i]
-    if tot == 0:
-        return 0
-    else:
-        return 1
+    cdef {ctype} zero = {ctype}()
+    return ((<{ctype} *> data)[0] != zero)
 
 cdef PyArray_ArrFuncs PyXD_{clsname}_ArrFuncs 
 PyArray_InitArrFuncs(&PyXD_{clsname}_ArrFuncs)
