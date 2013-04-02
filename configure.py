@@ -10,7 +10,7 @@ from copy import deepcopy
 
 
 INFO = {
-    'version': '0.1-dev',
+    'version': '0.1',
     }
 
 

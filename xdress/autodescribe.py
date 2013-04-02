@@ -8,8 +8,8 @@ Descriptions
 A key component of API wrapper generation is having a a top-level, abstract 
 representation of the software that is being wrapped.  In C++ there are three
 basic constructs which may be wrapped: variables, functions, and classes.  
-Here we restrict ourselves to wrapping classes (though ironically these are
-the most complex of the three).  
+Here we restrict ourselves to wrapping classes and functions, though variables 
+may be added in the future.
 
 The abstract representation of a C++ class is known as a **description** (abbr. 
 *desc*).  This description is simply a Python dictionary with a specific structure.

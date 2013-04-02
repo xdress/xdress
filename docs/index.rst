@@ -30,6 +30,28 @@ Contents
 
     tutorial
     libref/index
+    previous/index
+
+===============
+Examples of Use
+===============
+To see examples of xdress in action (and sample run control files), here are a
+few places to look:
+
+* `xdress/tests <https://github.com/scopatz/xdress/tree/master/tests>`_: This is 
+  a fully functioning sample project which uses xdress locally (no install needed).
+* `PyNE <http://pynesim.org/>`_: This uses xdress to generate STL container wrappers.
+* `Bright <http://bright-dev.github.com/>`_: This uses xdress to automatically
+  wrap a suite of interacting C++ class.  This was the motivating use case for the
+  xdress project.
+
+======
+Author
+======
+This tool was written by `Anthony Scopatz <http://scopatz.com/>`_, who had many
+type system discussions with John Bachan over coffee at the Div school, and was
+polished up and released under the encouragement of Christopher Jordan-Squire at
+`PyCon 2013 <https://us.pycon.org/2013/>`_.
 
 =============
 Helpful Links
@@ -39,7 +61,3 @@ Helpful Links
 * :ref:`modindex`
 * :ref:`search`
 
-======
-Author
-======
-This tool was written by `Anthony Scopatz <http://scopatz.com/>`_.

@@ -1,0 +1,95 @@
+========================
+XDress 0.1 Release Notes
+========================
+XDress is an automatic wrapper generator for C/C++ written in pure Python. Currently,
+xdress may generate Python bindings (via Cython) for C++ classes & functions
+and in-memory wrappers for C++ standard library containers (sets, vectors, maps).
+In the future, other tools and bindings will be supported.
+
+The main enabling feature of xdress is a dynamic type system that was designed with
+the purpose of API generation in mind.
+
+Release highlights:
+
+  - Dynamic system for specifying types
+  - Automatically describes C/C++ APIs from source code with no modifications.
+  - Python extension module generation (via Cython) from C++ API descriptions
+  - Python views into C++ STL containers.  Vectors are NumPy arrays while maps
+    and sets have custom collections.MutableMapping and collections.MutableSet
+    subclasses.
+  - Command line interface to the above tools.
+
+Please visit the website for more information: http://bit.ly/xdress-code
+
+Or grab the code from GitHub: http://github.com/scopatz/xdress
+
+XDress is free & open source (BSD 2-clause license) and requires Python 2.7, 
+NumPy 1.5+, PyTables 2.1+, Cython 0.18+, GCC-XML, and lxml.
+
+New Features
+============
+
+Type System
+-----------
+This module provides a suite of tools for denoting, describing, and converting
+between various data types and the types coming from various systems.  This is
+achieved by providing canonical abstractions of various kinds of types:
+
+* Base types (int, str, float, non-templated classes)
+* Refined types (even or odd ints, strings containing the letter 'a')
+* Dependent types (templates such arrays, maps, sets, vectors)
+
+All types are known by their name (a string identifier) and may be aliased with 
+other names.  However, the string id of a type is not sufficient to fully describe
+most types.  The system here implements a canonical form for all kinds of types.
+This canonical form is itself hashable, being comprised only of strings, ints, 
+and tuples.
+
+Descriptions
+------------
+A key component of API wrapper generation is having a a top-level, abstract 
+representation of the software that is being wrapped.  In C++ there are three
+basic constructs which may be wrapped: variables, functions, and classes.  
+Here we restrict ourselves to wrapping classes and functions, though variables  
+may be added in the future.
+
+The abstract representation of a C++ class is known as a description (abbr. desc).  
+This description is simply a Python dictionary with a specific structure.
+This structure makes heavy use of the type system to declare the types of all needed
+parameters.
+
+Mini-FAQ
+========
+* Why not use an existing solution (eg, SWIG)?
+
+    Their type systems don't support run-time, user provided refinement types, 
+    and thus are unsuited for verification & validation use cases that often 
+    arise in computational science.  
+
+    Furthermore, they tend to not handle C++ dependent types well (i.e. vector<T> 
+    does not come back as a np.view(..., dtype=T)).
+
+* Why GCC-XML and not Clang's AST?
+
+    I tried using Clang's AST (and the remnants of a broken visitor class remain
+    in the code base).  However, the official Clang AST Python bindings lack 
+    support for template argument types.  This is a really big deal. Other C++ ASTs
+    may be supported in the future -- including Clang's.
+
+* I run xdress and it creates these files, now what?!
+
+    It is your job to integrate the files created by xdress into your build system.
+
+Join in the Fun!
+================
+If you are interested in using xdress on your project (and need help), contributing 
+back to xdress, starting up a development team, or writing your own code generation
+front end tool on top of the type system and autodescriber, please let me know.
+Participation is very welcome!
+
+Authors
+=======
+XDress was written by `Anthony Scopatz <http://scopatz.com/>`_, who had many
+type system discussions with John Bachan over coffee at the Div school, and was
+polished up and released under the encouragement of Christopher Jordan-Squire at
+`PyCon 2013 <https://us.pycon.org/2013/>`_.
