@@ -19,8 +19,8 @@ testvals = {
     }
 
 for t, tval in testvals.items():
-    testvals[('vector', t, 0)] = [tval, tval[::-1], tval[::2]*2, tval[1::2]*2]
     testvals[('set', t, 0)] = map(set, [tval, tval[::-1], tval[::2]*2, tval[1::2]*2])
+    testvals[('vector', t, 0)] = [tval, tval[::-1], tval[::2]*2, tval[1::2]*2]
 
 items = testvals.items()
 for t, tval in items:
@@ -31,7 +31,6 @@ for t, tval in items:
                                       dict(zip(tval[::-1], uval[::-1])), 
                                       dict(zip(tval[::2]*2, uval[::2]*2)),
                                       dict(zip(tval[1::2]*2, uval[1::2]*2))]
-
 del t, u, tval, uval, items
 
 #
@@ -469,6 +468,8 @@ def gentest_map(t, u):
         ulowt, ulowu = ulowu[-3:-1]
     a = '_array' if ulowt == 'vector' else ''
     a += '_almost' if ulowu not in ['str', 'char'] else ''
+    if a != '' and "NPY_" not in ts.cython_nptype(ulowu):
+        return ""
     return _testmap.format(*[repr(i) for i in testvals[t] + testvals[u][::-1]], 
                            tclsname=ts.cython_classname(t)[1], 
                            uclsname=ts.cython_classname(u)[1],
@@ -700,7 +701,8 @@ cdef object xd_{fncname}_descr = <object> (<void *> &c_xd_{fncname}_descr)
 Py_INCREF(<object> xd_{fncname}_descr)
 xd_{fncname} = xd_{fncname}_descr
 cdef int xd_{fncname}_num = PyArray_RegisterDataType(&c_xd_{fncname}_descr)
-dtypes[{fncname}] = xd_{fncname}
+dtypes['{fncname}'] = xd_{fncname}
+dtypes['xd_{fncname}'] = xd_{fncname}
 dtypes[xd_{fncname}_num] = xd_{fncname}
 
 """
@@ -713,7 +715,10 @@ def genpyx_vector(t):
               ctype=ts.cython_ctype(t), pytype=ts.cython_pytype(t), 
               cytype=ts.cython_cytype(t), stlcontainers=ts.STLCONTAINERS, 
               extra_types=ts.EXTRA_TYPES)
-    fpt = ts.from_pytypes[t]
+    t0 = t
+    while not isinstance(t0, basestring):
+        t0 = t[0]
+    fpt = ts.from_pytypes[t0]
     kw['isinst'] = " or ".join(["isinstance(value, {0})".format(x) for x in fpt])
     c2pykeys = ['c2pydecl', 'c2pybody', 'c2pyrtn']
     c2py = ts.cython_c2py("deref(<{0} *> data)".format(kw['ctype']), t, cached=False)
@@ -768,10 +773,14 @@ def test_vector_{fncname}():
 def gentest_vector(t):
     """Returns the test snippet for a set of type t."""
     t = ts.canon(t)
-    return _testvector.format(*[repr(i) for i in testvals['vector', t, 0]], 
-                              clsname=ts.cython_classname(t)[1],
-                              fncname=ts.cython_functionname(t)[1],
-                              stlcontainers=ts.STLCONTAINERS)
+    if ('vector', t, 0) in testvals:
+        s = _testvector.format(*[repr(i) for i in testvals['vector', t, 0]], 
+                               clsname=ts.cython_classname(t)[1],
+                               fncname=ts.cython_functionname(t)[1],
+                               stlcontainers=ts.STLCONTAINERS)
+    else:
+        s = ""
+    return s
 
 
 #
@@ -1116,6 +1125,11 @@ def genfiles(template, fname='temp', pxdname=None, testname=None,
     testname = 'test_' + fname if testname is None else testname
     testname = testname + '.py' if not testname.endswith('.py') else testname
     fname += '.pyx'
+
+    # register dtypes
+    for t in template:
+        if t[0] == 'vector':
+            ts.register_numpy_dtype(t[1])
 
     pyx = genpyx(template, pyxheader)
     pxd = genpxd(template, pxdheader)

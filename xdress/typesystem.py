@@ -248,48 +248,6 @@ base_types = set(['char', 'str', 'int32', 'int64', 'uint32', 'uint64', 'float32'
                   'float64', 'complex128', 'void', 'bool'])
 """Base types in the type system."""
 
-type_aliases = {
-    'i': 'int32',
-    'i4': 'int32',
-    'i8': 'int64',
-    'int': 'int32',
-    'ui': 'uint32',
-    'ui4': 'uint32',
-    'ui8': 'uint64',
-    'uint': 'uint32',
-    'f': 'float64',
-    'f4': 'float32',
-    'f8': 'float64',
-    'float': 'float64',
-    'complex': 'complex128',
-    'b': 'bool',
-    'v': 'void',
-    's': 'str',
-    'string': 'str',
-    # 'c' has char / complex ambiquity, not included
-    'NPY_BYTE': 'char',
-    'NPY_STRING': 'str',
-    'NPY_INT32': 'int32',
-    'NPY_UINT32': 'uint32',
-    'NPY_FLOAT32': 'float32',
-    'NPY_FLOAT64': 'float64',
-    'NPY_COMPLEX128': 'complex128',
-    'NPY_BOOL': 'bool',
-    'NPY_VOID': 'void',
-    'NPY_OBJECT': 'void',
-    'np.NPY_BYTE': 'char',
-    'np.NPY_STRING': 'str',
-    'np.NPY_INT32': 'int32',
-    'np.NPY_UINT32': 'uint32',
-    'np.NPY_FLOAT32': 'float32',
-    'np.NPY_FLOAT64': 'float64',
-    'np.NPY_COMPLEX128': 'complex128',
-    'np.NPY_BOOL': 'bool',
-    'np.NPY_VOID': 'void',
-    'np.NPY_OBJECT': 'void',
-    }
-"""Aliases that may be used to subsitute one type name for another."""
-
 template_types = {
     'map': ('key_type', 'value_type'),
     'dict': ('key_type', 'value_type'),
@@ -556,6 +514,49 @@ class _LazyConverterDict(MutableMapping):
     def __delitem__(self, key):
         del self._d[key]
 
+type_aliases = _LazyConfigDict({
+    'i': 'int32',
+    'i4': 'int32',
+    'i8': 'int64',
+    'int': 'int32',
+    'ui': 'uint32',
+    'ui4': 'uint32',
+    'ui8': 'uint64',
+    'uint': 'uint32',
+    'f': 'float64',
+    'f4': 'float32',
+    'f8': 'float64',
+    'float': 'float64',
+    'complex': 'complex128',
+    'b': 'bool',
+    'v': 'void',
+    's': 'str',
+    'string': 'str',
+    # 'c' has char / complex ambiquity, not included
+    'NPY_BYTE': 'char',
+    'NPY_STRING': 'str',
+    'NPY_INT32': 'int32',
+    'NPY_UINT32': 'uint32',
+    'NPY_FLOAT32': 'float32',
+    'NPY_FLOAT64': 'float64',
+    'NPY_COMPLEX128': 'complex128',
+    'NPY_BOOL': 'bool',
+    'NPY_VOID': 'void',
+    'NPY_OBJECT': 'void',
+    'np.NPY_BYTE': 'char',
+    'np.NPY_STRING': 'str',
+    'np.NPY_INT32': 'int32',
+    'np.NPY_UINT32': 'uint32',
+    'np.NPY_FLOAT32': 'float32',
+    'np.NPY_FLOAT64': 'float64',
+    'np.NPY_COMPLEX128': 'complex128',
+    'np.NPY_BOOL': 'bool',
+    'np.NPY_VOID': 'void',
+    'np.NPY_OBJECT': 'void',
+    })
+"""Aliases that may be used to subsitute one type name for another."""
+
+
 #########################   Cython Functions   ################################
 
 _cython_ctypes = _LazyConfigDict({
@@ -776,6 +777,7 @@ def cython_imports(x):
     """
     if not isinstance(x, Set):
         x = cython_import_tuples(x)
+    x = [tup for tup in x if 0 < len(tup)]
     return set([_cython_import_cases[len(tup)](tup) for tup in x])
 
 
@@ -819,7 +821,7 @@ _cython_functionnames = _LazyConfigDict({
 
 @_memoize
 def cython_functionname(t, cycyt=None):
-    """Computes function names for cython types."""
+    """Computes variable or function names for cython types."""
     if cycyt is None:
         t = canon(t)
         if isinstance(t, basestring):
@@ -838,6 +840,7 @@ def cython_functionname(t, cycyt=None):
         d[key] = val
     return t, cycyt.format(**d)
 
+cython_variablename = cython_functionname
 
 _cython_classnames = _LazyConfigDict({
     # base types
@@ -997,9 +1000,9 @@ def cython_pytype(t):
 
 
 
-_numpy_types = {
+_numpy_types = _LazyConfigDict({
     'char': 'np.NPY_BYTE',
-    'str': 'np.NPY_STRING',
+    #'str': 'np.NPY_STRING',
     'int32': 'np.NPY_INT32',
     'uint32': 'np.NPY_UINT32',
     'float32': 'np.NPY_FLOAT32',
@@ -1007,14 +1010,14 @@ _numpy_types = {
     'complex128': 'np.NPY_COMPLEX128',
     'bool': 'np.NPY_BOOL',
     'void': 'np.NPY_VOID',     
-    }
+    })
 
 @_memoize
 def cython_nptype(t):
     """Given a type t, returns the cooresponding NumPy type."""
     t = canon(t)
     if isinstance(t, basestring):
-        return _numpy_types.get(t, 'np.NPY_OBJECT')
+        return _numpy_types[t] if t in _numpy_types else 'np.NPY_OBJECT'
     # must be tuple below this line
     tlen = len(t)
     if 2 == tlen:
@@ -1028,7 +1031,8 @@ def cython_nptype(t):
             #return cython_pytype(t[0]) + ' {0}'.format(last)
             return cython_nptype(t[0])
     elif 3 <= tlen:
-        return _numpy_types.get(t, 'np.NPY_OBJECT')
+        return _numpy_types[t] if t in _numpy_types else 'np.NPY_OBJECT'
+        #return _numpy_types.get(t, 'np.NPY_OBJECT')
 
 _cython_c2py_conv = _LazyConverterDict({
     # Has tuple form of (copy, [view, [cached_view]])
@@ -1226,7 +1230,7 @@ _cython_py2c_conv = _LazyConverterDict({
                 'cdef int {var}_size\n'
                 'cdef {npctype} * {var}_data\n'
                 '{var}_size = len({var})\n'
-                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
+                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == <int> {nptype}:\n'
                 '    {var}_data = <{npctype} *> np.PyArray_DATA(<np.ndarray> {var})\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
                 '    for i in range({var}_size):\n'
@@ -1236,21 +1240,6 @@ _cython_py2c_conv = _LazyConverterDict({
                 '    for i in range({var}_size):\n'
                 '        _ = str({var}[i])[0]\n'
                 '        {proxy_name}[i] = deref(<char *> _)\n'),
-               '{proxy_name}'),
-    ('vector', 'str', 0): ((
-                'cdef int i\n'
-                'cdef int {var}_size\n'
-                'cdef {npctype} * {var}_data\n'
-                '{var}_size = len({var})\n'
-                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
-                '    {var}_data = <{npctype} *> np.PyArray_DATA(<np.ndarray> {var})\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
-                '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = {var}[i]\n'
-                'else:\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
-                '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = std_string(<char *> {var}[i])\n'),
                '{proxy_name}'),
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
@@ -1488,6 +1477,36 @@ def deregister_specialization(t):
     _cython_cimports.pop(t, None)
     _cython_cyimports.pop(t, None)
     _cython_pyimports.pop(t, None)
+
+
+def register_numpy_dtype(t, cython_cimport=None, cython_cyimport=None, cython_pyimport=None):
+    """This function will add a type to the system as numpy dtype that lives in
+    the stlcontainers module.
+    """
+    t = canon(t)
+    if t in _numpy_types:
+        return
+    varname = cython_variablename(t)[1]
+    _numpy_types[t] = '{stlcontainers}xd_' + varname + '.num'
+    type_aliases[_numpy_types[t]] = t
+    type_aliases['xd_' + varname] = t
+    type_aliases['xd_' + varname + '.num'] = t
+    type_aliases['{stlcontainers}xd_' + varname] = t
+    type_aliases['{stlcontainers}xd_' + varname + '.num'] = t
+    if cython_cimport is not None:
+        x = _ensure_importable(_cython_cimports._d.get(t, None))
+        x = x + _ensure_importable(cython_cimport)
+        _cython_cimports[t] = x
+    # cython imports
+    x = (('{stlcontainers}',),)
+    x = x + _ensure_importable(_cython_cyimports._d.get(t, None))
+    x = x + _ensure_importable(cython_cyimport)
+    _cython_cyimports[t] = x
+    # python imports
+    x = (('{stlcontainers}',),)
+    x = x + _ensure_importable(_cython_pyimports._d.get(t, None))
+    x = x + _ensure_importable(cython_pyimport)
+    _cython_pyimports[t] = x
 
 
 #################### Type system helpers #######################################

@@ -236,7 +236,11 @@ def genbindings(ns, rc):
     for i, fnc in enumerate(rc.functions):
         if len(fnc) == 2:
             rc.functions[i] = (fnc[0], fnc[1], fnc[1])
-        load_pysrcmod(fnc[1], ns, rc)        
+        load_pysrcmod(fnc[1], ns, rc)
+    # register dtypes
+    for t in rc.stlcontainers:
+        if t[0] == 'vector':
+            ts.register_numpy_dtype(t[1])
 
     # compute all class descriptions first 
     classes = {}
