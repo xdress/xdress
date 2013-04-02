@@ -693,6 +693,7 @@ pyxd_{fncname}_is_ready = PyType_Ready(<object> PyXD_{clsname})
 (<PyTypeObject *> PyXD_{clsname}).tp_getset = pyxd_{fncname}_type_getset
 pyxd_{fncname}_is_ready = PyType_Ready(<object> PyXD_{clsname})
 Py_INCREF(PyXD_{clsname})
+XD{clsname} = PyXD_{clsname}
 
 cdef PyArray_Descr c_xd_{fncname}_descr = PyArray_Descr(
     0, # ob_refcnt
@@ -706,7 +707,7 @@ cdef PyArray_Descr c_xd_{fncname}_descr = PyArray_Descr(
     sizeof({ctype}),  # elsize, 
     8,  # alignment
     NULL,  # subarray
-    NULL,  # fields
+    <PyObject *> None,  # fields
     &PyXD_{clsname}_ArrFuncs,  # f == PyArray_ArrFuncs
     )
 cdef object xd_{fncname}_descr = <object> (<void *> &c_xd_{fncname}_descr)
