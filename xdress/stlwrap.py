@@ -208,7 +208,6 @@ def gentest_set(t):
     return _testset.format(*[repr(i) for i in testvals[t]], 
                            clsname=ts.cython_classname(t)[1],
                            fncname=ts.cython_functionname(t)[1],
- #if isinstance(t, basestring) else t[0], 
                            stlcontainers=ts.STLCONTAINERS)
 
 #
@@ -562,6 +561,13 @@ cdef np.npy_bool pyxd_{fncname}_nonzero(void * data, void * arr):
     cdef {ctype} zero = {ctype}()
     return ((<{ctype} *> data)[0] != zero)
 
+cdef int pyxd_{fncname}_compare(const void * d1, const void * d2, void * arr):
+    print "comparing numpy"
+    if deref(<{ctype} *> d1) == deref(<{ctype} *> d2):
+        return 0
+    else:
+        return -1
+
 cdef PyArray_ArrFuncs PyXD_{clsname}_ArrFuncs 
 PyArray_InitArrFuncs(&PyXD_{clsname}_ArrFuncs)
 PyXD_{clsname}_ArrFuncs.getitem = <PyArray_GetItemFunc *> (&pyxd_{fncname}_getitem)
@@ -569,6 +575,7 @@ PyXD_{clsname}_ArrFuncs.setitem = <PyArray_SetItemFunc *> (&pyxd_{fncname}_setit
 PyXD_{clsname}_ArrFuncs.copyswapn = <PyArray_CopySwapNFunc *> (&pyxd_{fncname}_copyswapn)
 PyXD_{clsname}_ArrFuncs.copyswap = <PyArray_CopySwapFunc *> (&pyxd_{fncname}_copyswap)
 PyXD_{clsname}_ArrFuncs.nonzero = <PyArray_NonzeroFunc *> (&pyxd_{fncname}_nonzero)
+PyXD_{clsname}_ArrFuncs.compare = <PyArray_CompareFunc *> (&pyxd_{fncname}_compare)
 
 cdef object pyxd_{fncname}_type_alloc(PyTypeObject * self, Py_ssize_t nitems):
     cdef PyXD{clsname}_Type * cval
@@ -605,6 +612,22 @@ cdef object pyxd_{fncname}_type_repr(object self):
     s = repr(pyval)
     return s
 
+cdef int pyxd_{fncname}_type_compare(object a, object b):
+    cdef PyXD{clsname}_Type * x
+    cdef PyXD{clsname}_Type * y
+    if type(a) is not type(b):
+        raise NotImplementedError
+    x = <PyXD{clsname}_Type *> a
+    y = <PyXD{clsname}_Type *> b
+    if (x.obval == y.obval):
+        return 0
+    elif (x.obval < y.obval):
+        return -1
+    elif (x.obval > y.obval):
+        return 1
+    else:
+        raise NotImplementedError
+
 cdef object pyxd_{fncname}_type_richcompare(object a, object b, int op):
     cdef PyXD{clsname}_Type * x
     cdef PyXD{clsname}_Type * y
@@ -637,7 +660,7 @@ cdef PyGetSetDef pyxd_{fncname}_type_getset[1]
 pyxd_{fncname}_type_getset[0] = PyGetSetDef(NULL)
 
 cdef bint pyxd_{fncname}_is_ready
-cdef type PyXD_{clsname} = type("PyXD_{clsname}", ((<object> PyArray_API[10]),), {{}})
+cdef type PyXD_{clsname} = type("xd_{fncname}", ((<object> PyArray_API[10]),), {{}})
 pyxd_{fncname}_is_ready = PyType_Ready(<object> PyXD_{clsname})
 (<PyTypeObject *> PyXD_{clsname}).tp_basicsize = sizeof(PyXD{clsname}_Type)
 (<PyTypeObject *> PyXD_{clsname}).tp_itemsize = 0
@@ -651,13 +674,14 @@ pyxd_{fncname}_is_ready = PyType_Ready(<object> PyXD_{clsname})
 (<PyTypeObject *> PyXD_{clsname}).tp_repr = pyxd_{fncname}_type_repr
 (<PyTypeObject *> PyXD_{clsname}).tp_base = (<PyTypeObject *> PyArray_API[10])  # PyGenericArrType_Type
 (<PyTypeObject *> PyXD_{clsname}).tp_hash = pyxd_{fncname}_type_hash
+(<PyTypeObject *> PyXD_{clsname}).tp_compare = pyxd_{fncname}_type_compare
 (<PyTypeObject *> PyXD_{clsname}).tp_richcompare = pyxd_{fncname}_type_richcompare
 (<PyTypeObject *> PyXD_{clsname}).tp_members = pyxd_{fncname}_type_members
 (<PyTypeObject *> PyXD_{clsname}).tp_getset = pyxd_{fncname}_type_getset
 pyxd_{fncname}_is_ready = PyType_Ready(<object> PyXD_{clsname})
 Py_INCREF(PyXD_{clsname})
 
-cdef PyArray_Descr c_pyxd_{fncname}_descr = PyArray_Descr(
+cdef PyArray_Descr c_xd_{fncname}_descr = PyArray_Descr(
     0, # ob_refcnt
     (<PyTypeObject *> PyArray_API[3]), # ob_type == PyArrayDescr_Type
     <PyTypeObject *> PyXD_{clsname}, # typeobj
@@ -672,10 +696,12 @@ cdef PyArray_Descr c_pyxd_{fncname}_descr = PyArray_Descr(
     NULL,  # fields
     &PyXD_{clsname}_ArrFuncs,  # f == PyArray_ArrFuncs
     )
-cdef object pyxd_{fncname}_descr = <object> (<void *> &c_pyxd_{fncname}_descr)
-Py_INCREF(<object> pyxd_{fncname}_descr)
-pyxd_{fncname} = pyxd_{fncname}_descr
-cdef int pyxd_{fncname}_num = PyArray_RegisterDataType(&c_pyxd_{fncname}_descr)
+cdef object xd_{fncname}_descr = <object> (<void *> &c_xd_{fncname}_descr)
+Py_INCREF(<object> xd_{fncname}_descr)
+xd_{fncname} = xd_{fncname}_descr
+cdef int xd_{fncname}_num = PyArray_RegisterDataType(&c_xd_{fncname}_descr)
+dtypes[{fncname}] = xd_{fncname}
+dtypes[xd_{fncname}_num] = xd_{fncname}
 
 """
 
@@ -685,7 +711,8 @@ def genpyx_vector(t):
     kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.humanname(t)[1], 
               fncname=ts.cython_functionname(t)[1], 
               ctype=ts.cython_ctype(t), pytype=ts.cython_pytype(t), 
-              cytype=ts.cython_cytype(t),)
+              cytype=ts.cython_cytype(t), stlcontainers=ts.STLCONTAINERS, 
+              extra_types=ts.EXTRA_TYPES)
     fpt = ts.from_pytypes[t]
     kw['isinst'] = " or ".join(["isinstance(value, {0})".format(x) for x in fpt])
     c2pykeys = ['c2pydecl', 'c2pybody', 'c2pyrtn']
@@ -721,9 +748,30 @@ def genpxd_vector(t):
               cytype=ts.cython_cytype(t),)
     return _pxdvector.format(**kw)
 
+
+_testvector = """# Vector{clsname}
+def test_vector_{fncname}():
+    a = np.array({0}, dtype={stlcontainers}.xd_{fncname})
+    for x, y in zip(a, np.array({0}, dtype={stlcontainers}.xd_{fncname})):
+        assert_equal(x, y)
+    a[:] = {1}
+    for x, y in zip(a, np.array({1}, dtype={stlcontainers}.xd_{fncname})):
+        assert_equal(x, y)
+    a = np.array({2} + {3}, dtype={stlcontainers}.xd_{fncname})
+    for x, y in zip(a, np.array({2} + {3}, dtype={stlcontainers}.xd_{fncname})):
+        assert_equal(x, y)
+    b =  np.array(({2} + {3})[::2], dtype={stlcontainers}.xd_{fncname})
+    for x, y in zip(a[::2], b):
+        assert_equal(x, y)
+
+"""
 def gentest_vector(t):
     """Returns the test snippet for a set of type t."""
-    return ""
+    t = ts.canon(t)
+    return _testvector.format(*[repr(i) for i in testvals['vector', t, 0]], 
+                              clsname=ts.cython_classname(t)[1],
+                              fncname=ts.cython_functionname(t)[1],
+                              stlcontainers=ts.STLCONTAINERS)
 
 
 #
@@ -864,6 +912,8 @@ np.import_array()
 
 cimport {extra_types}
 
+dtypes = {{}}
+
 """
 def genpyx(template, header=None):
     """Returns a string of a pyx file representing the given template."""
@@ -918,6 +968,7 @@ cdef extern from "Python.h":
         int tp_itemsize
         object tp_alloc(PyTypeObject *, Py_ssize_t)
         void tp_dealloc(object)
+        int tp_compare(object, object)
         object tp_richcompare(object, object, int)
         object tp_new(PyTypeObject *, object, object)
         object tp_str(object)
