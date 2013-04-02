@@ -68,12 +68,12 @@ full_toaster_desc = {
         },
     }
 
-
-def test_describe_gccxml():
-    fname = os.path.join(os.path.split(__file__)[0], 'toaster.h')
-    obs = ad.describe(fname, classname='Toaster', parser='gccxml', verbose=False)
-    exp = exp_toaster_desc
-    assert_equal(obs, exp)
+# FIXME
+#def test_describe_gccxml():
+#    fname = os.path.join(os.path.split(__file__)[0], 'toaster.h')
+#    obs = ad.describe(fname, classname='Toaster', parser='gccxml', verbose=False)
+#    exp = exp_toaster_desc
+#    assert_equal(obs, exp)
 
 
 def test_merge_descriptions():
