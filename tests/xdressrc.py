@@ -6,10 +6,10 @@ extra_types = 'xdtest_extra_types'  # non-default value
 
 stlcontainers = [
     ('vector', 'float32'),
-    #('vector', 'float64'),  # doesn't work because double isn't a cython type 
+    ('vector', 'float64'),
     ('vector', 'str'),
     ('vector', 'int32'),
-    #('vector', 'complex'),  # Need to define comparison opperators for complex_t
+    ('vector', 'complex'),
     ('vector', ('vector', 'float64')),
     ('set', 'int'),
     ('set', 'str'),
@@ -38,14 +38,14 @@ stlcontainers = [
     ('map', 'int', ('vector', 'char')),
     ('map', 'int', ('vector', 'bool')),
     ('map', 'int', ('vector', 'float')),
-    #('map', 'int', ('vector', ('vector', 'float'))),
+    ('map', 'int', ('vector', ('vector', 'float64'))),
     ('map', 'int', ('map', 'int', 'bool')),
     ('map', 'int', ('map', 'int', 'char')),
     ('map', 'int', ('map', 'int', 'float')),
     ('map', 'int', ('map', 'int', ('vector', 'bool'))),
     ('map', 'int', ('map', 'int', ('vector', 'char'))),
     ('map', 'int', ('map', 'int', ('vector', 'float'))),
-    # the right way to do this is register new numpy dtypes
+    # May be bug in Cython?
     #('map', 'int', ('vector', 'complex')),
     ]
 

@@ -425,6 +425,14 @@ STLCONTAINERS = 'stlcontainers'
 _ensuremod = lambda x: x if x is not None and 0 < len(x) else ''
 _ensuremoddot = lambda x: x + '.' if x is not None and 0 < len(x) else ''
 
+def _recurse_replace(x, a, b):
+    if isinstance(x, basestring):
+        return x.replace(a, b)
+    elif isinstance(x, Sequence):
+        return tuple([_recurse_replace(y, a, b) for y in x])
+    else:
+        return x
+    
 class _LazyConfigDict(MutableMapping):
     def __init__(self, items):
         self._d = dict(items)
@@ -444,7 +452,7 @@ class _LazyConfigDict(MutableMapping):
         kw = {'extra_types': _ensuremoddot(EXTRA_TYPES),
               'stlcontainers': _ensuremoddot(STLCONTAINERS),}
         for k, v in kw.items():
-            value = value.replace('{' + k + '}', v)
+            value = _recurse_replace(value, '{' + k + '}', v)
         return value
 
     def __setitem__(self, key, value):
