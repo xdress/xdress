@@ -60,7 +60,7 @@ name, namespace, signatures, docstring, and extra.
     the second element is the argument type, and the third element (if present) is
     the default value. Unlike constuctors and destructors, the return type may not
     be None (only 'void' values are allowed).
-:docstring: str, optional, this dictionary is meant for a documentation string.  
+:docstring: str, optional, this is a documentation string for the function.  
 :extra: dict, optional, this stores arbitrary metadata that may be used with 
     different backends. It is not added by any auto-describe routine but may be
     inserted later if needed.  One example use case is that the Cython generation

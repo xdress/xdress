@@ -18,8 +18,19 @@ This config file has the following form:
 
     # List of C++ standard library container template types 
     # to instantiate and wrap with Cython. See the type 
-    # system documentation for more details.
+    # system documentation for more details.  Note that 
+    # vectors are wrapped as numpy arrays of the approriate
+    # type.  If the type has no corresponding primitive C++
+    # type, then a new numpy dtype is created to handle it.
+    # For example, this allows the wrapping of vector< vector<int> >
+    # as an np.array(..., dtype=xd_vector_int).
     stlcontainers = [
+        ('vector', 'str'),
+        ('vector', 'int32'),
+        ('vector', 'complex'),
+        ('vector', 'float32'),
+        ('vector', 'float64'),
+        ('vector', ('vector', 'float64')),
         ('set', 'int'),
         ('set', 'str'),
         ('set', 'uint'),
@@ -41,11 +52,13 @@ This config file has the following form:
         ('map', 'int', ('set', 'str')),
         ('map', 'int', ('set', 'uint')),
         ('map', 'int', ('set', 'char')),
+        ('map', 'int', ('vector', 'str')),
         ('map', 'int', ('vector', 'int')),
         ('map', 'int', ('vector', 'uint')),
         ('map', 'int', ('vector', 'char')),
         ('map', 'int', ('vector', 'bool')),
         ('map', 'int', ('vector', 'float')),
+        ('map', 'int', ('vector', ('vector', 'float64'))),
         ('map', 'int', ('map', 'int', 'bool')),
         ('map', 'int', ('map', 'int', 'char')),
         ('map', 'int', ('map', 'int', 'float')),
@@ -77,6 +90,9 @@ This config file has the following form:
         ('Reprocess', 'reprocess'), 
         ]
 
-    # List of functions to wrap, not yet supported
-    functions = []
+    # List of functions to wrap
+    functions = [
+        ('myfunc', 'reprocess'),
+        ('fillUraniumEnrichmentDefaults', 'enrichment_parameters'),
+        ]
 
