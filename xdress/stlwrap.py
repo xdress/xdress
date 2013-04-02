@@ -606,7 +606,26 @@ cdef object pyxd_{fncname}_type_repr(object self):
     return s
 
 cdef object pyxd_{fncname}_type_richcompare(object a, object b, int op):
-    return NotImplemented
+    cdef PyXD{clsname}_Type * x
+    cdef PyXD{clsname}_Type * y
+    if type(a) is not type(b):
+        return NotImplemented
+    x = <PyXD{clsname}_Type *> a
+    y = <PyXD{clsname}_Type *> b
+    if op == Py_LT:
+        return (x.obval < y.obval)
+    elif op == Py_LE:
+        return (x.obval <= y.obval)
+    elif op == Py_EQ:
+        return (x.obval == y.obval)
+    elif op == Py_NE:
+        return (x.obval != y.obval)
+    elif op == Py_GT:
+        return (x.obval > y.obval)
+    elif op == Py_GE:
+        return (x.obval >= y.obval)
+    else:
+        return NotImplemented    
 
 cdef long pyxd_{fncname}_type_hash(object self):
     return id(self)
@@ -833,6 +852,7 @@ from libcpp.map cimport map as cpp_map
 from libcpp.vector cimport vector as cpp_vector
 from cpython.ref cimport PyTypeObject
 from cpython.type cimport PyType_Ready
+from cpython.object cimport Py_LT, Py_LE, Py_EQ, Py_NE, Py_GT, Py_GE
 
 # Python Imports
 import collections
@@ -875,6 +895,7 @@ from libc cimport stdio
 from cpython.ref cimport PyTypeObject, Py_INCREF, Py_XDECREF
 from cpython.type cimport PyType_Ready
 from cpython.object cimport PyObject
+from cpython.object cimport Py_LT, Py_LE, Py_EQ, Py_NE, Py_GT, Py_GE
 
 # Python Imports
 cimport numpy as np
