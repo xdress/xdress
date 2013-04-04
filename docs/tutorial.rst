@@ -88,6 +88,9 @@ project,
 
 .. code-block:: bash
 
+    scopatz@ares ~/mypack $ mkdir src
+    scopatz@ares ~/mypack $ mkdir mypack
+    scopatz@ares ~/mypack $ touch mypack/__init__.py
     scopatz@ares ~/mypack $ ls *
     xdressrc.py
 

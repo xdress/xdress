@@ -122,6 +122,7 @@ Main API
 ========
 """
 import os
+import sys
 import argparse
 from pprint import pprint
 from hashlib import md5
@@ -399,14 +400,28 @@ def dumpdesc(ns):
     """
     print str(DescriptionCache())
 
-
-defaultrc = dict(
-    package='<xdtest-pkg>',
-    packagedir='<xdtest-pkgdir>',
-    extra_types='xdress_extra_types',
-    stlcontainers=[],
-    stlcontainers_module='stlcontainers',
-    )
+def setuprc(ns):
+    """Makes and validates a run control namespace."""
+    rc = dict(
+        package=None,
+        packagedir=None,
+        sourcedir='src',
+        extra_types='xdress_extra_types',
+        stlcontainers=[],
+        stlcontainers_module='stlcontainers',
+        )
+    execfile(ns.rc, rc, rc)
+    rc = argparse.Namespace(**rc)
+    rc.includes = list(rc.includes) if hasattr(rc, 'includes') else []
+    if rc.package is None:
+        sys.exit("no package name given; please add 'package' to xdressrc.py")
+    if rc.packagedir is None:
+        rc.packagedir = rc.package.replace('.', os.path.sep)
+    if not os.path.isdir(rc.packagedir):
+        os.makedirs(rc.packagedir)
+    if not os.path.isdir(rc.sourcedir):
+        os.makedirs(rc.sourcedir)
+    return rc
 
 def main():
     """Entry point for xdress API generation."""
@@ -431,18 +446,15 @@ def main():
                         default=False, help="print more output")
     ns = parser.parse_args()
 
-    rc = dict(defaultrc)
-    execfile(ns.rc, rc, rc)
-    rc = argparse.Namespace(**rc)
-    rc.includes = list(rc.includes) if hasattr(rc, 'includes') else []
+    if ns.dumpdesc:
+        dumpdesc(ns)
+        return 
+
+    rc = setuprc(ns)
 
     # set typesystem defaults
     ts.EXTRA_TYPES = rc.extra_types
     ts.STLCONTAINERS = rc.stlcontainers_module
-
-    if ns.dumpdesc:
-        dumpdesc(ns)
-        return 
 
     if ns.extratypes:
         genextratypes(ns, rc)
