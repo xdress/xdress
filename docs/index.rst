@@ -31,6 +31,7 @@ Contents
     tutorial
     libref/index
     previous/index
+    other/index
 
 ===============
 Examples of Use
