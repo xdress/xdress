@@ -56,12 +56,71 @@ perspective are the short hand notations that should be used by mortals::
     # And any combination of the above!
     (('map', 'posint', ('set', ('intrange', 1, 2))),)
 
+========================
+STL Containers (stlwrap)
+========================
+The first tool we discuss is the C++ STL container wrapper generator.  This tool 
+relies soley on the type system.  XDress is governed by a run control file, called 
+``xdressrc.py`` by default.  This is a pure Python file that should be placed 
+in the directory where you will run the ``xdress`` command.  A simple stlwrap run
+control file would contain the following variables.
+
+**xdressrc.py**::
+
+    package = 'mypack'     # top-level python package name
+    packagedir = 'mypack'  # loation of the python package
+    sourcedir = 'src'      # location of C/C++ source
+    
+    stlcontainers = [
+        ('vector', 'str'),
+        ('set', 'uint'),
+        ('map', 'int', 'float'),
+        ]
+
+    # will be used later, but need to be present now
+    classes = []
+    functions = []
+
+This would tell ``xdress`` to generate a numpy dtype for ``std::string`` (to be used
+with normal numpy arrays), a wrapper class for ``std::set<unsigned int>``,  and a
+wrapper class for ``std::map<int, double>``.  Suppose we started with an empty 
+project,
+
+.. code-block:: bash
+
+    scopatz@ares ~/mypack $ ls *
+    xdressrc.py
+
+    mypack:
+    __init__.py
+
+    src:
+
+We would then run xdress with the "no-cython" option to only execute stlwrap. 
+This then generates the following files:
+
+.. code-block:: bash
+
+    scopatz@ares ~/mypack $ xdress --no-cython
+    generating C++ standard library wrappers & converters
+    scopatz@ares ~/mypack $ ls *
+    xdressrc.py
+
+    mypack:
+    stlcontainers.pxd       stlcontainers.pyx  tests  xdress_extra_types.pxd  
+    xdress_extra_types.pyx  __init__.py
+
+    src:
+    xdress_extra_types.h
+
+It is then our job to pass these files off to Cython and a C++ compiler, typically 
+as part of a larger build system.
+
 =======================
 Putting It All Together
 =======================
-XDress is governed by a run control file called ``xdressrc.py``.  
-Place this file in the directory where you will run the ``xdress`` command.
-This config file has the following form:
+The foillowing is a more complete, realistic example of an xdressrc.py file that 
+one might run across in a production level environment.
 
 .. code-block:: python
 
