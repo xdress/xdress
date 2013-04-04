@@ -1,10 +1,10 @@
 .. _tutorial:
 
 *******************
-The XDress Tutorial
+Tutorial
 *******************
-At its core, xdress is type system on which code generation utilites are written.
-These utilites may be executed via the ``xdress`` command line interface.  This 
+At its core, xdress is type system on which code generation utilities are written.
+These utilities may be executed via the ``xdress`` command line interface.  This 
 tutorial presents a brief walk through of the type system, the STL container wrapper
 generator, and the C/C++ API wrapper generator.
 
@@ -60,7 +60,7 @@ perspective are the short hand notations that should be used by mortals::
 STL Containers (stlwrap)
 ========================
 The first tool we discuss is the C++ STL container wrapper generator.  This tool 
-relies soley on the type system.  XDress is governed by a run control file, called 
+relies solely on the type system.  XDress is governed by a run control file, called 
 ``xdressrc.py`` by default.  This is a pure Python file that should be placed 
 in the directory where you will run the ``xdress`` command.  A simple stlwrap run
 control file would contain the following variables.
@@ -68,7 +68,7 @@ control file would contain the following variables.
 **xdressrc.py**::
 
     package = 'mypack'     # top-level python package name
-    packagedir = 'mypack'  # loation of the python package
+    packagedir = 'mypack'  # location of the python package
     sourcedir = 'src'      # location of C/C++ source
     
     stlcontainers = [
@@ -142,29 +142,104 @@ we simply need to tell xdress that they live in hoover.  We do this by adding to
 
     classes = [
         ('A', 'hoover'),
-        ('B', 'hoover'),
+        ('B', 'hoover', 'hoover_b'),
         ]
 
     functions = [('do_nothing_ab', 'hoover')]
 
-Note that do do this we need only give the construct names -- no signatures need 
+Note that to do this we need only give the construct names -- no signatures need 
 be specified.  That is the point of API generation!  Also note that we only give
-the base file name without the preceeding ``src/`` directory or the file extension
-(``.cpp``, ``.h``).  We may then run xdress normally:
+the base file name without the preceding ``src/`` directory or the file extension
+(``.cpp``, ``.h``).  Furthermore, the base names of the source and target files need
+not be the same...even for APIs which share the same source file!  We may then run 
+xdress normally:
 
 .. code-block:: bash
+
+    scopatz@ares ~/mypack $ xdress 
+    generating C++ standard library wrappers & converters
+    parsing A
+    registering A
+    parsing B
+    registering B
+    parsing B
+    making cython bindings
+    scopatz@ares ~/mypack $ ls *
+    xdressrc.py
+
+    build:
+    desc.cache
+
+    mypack:
+    cpp_hoover.pxd    hoover.pyx    stlcontainers.pxd  xdress_extra_types.pxd
+    cpp_hoover_b.pxd  hoover_b.pxd  stlcontainers.pyx  xdress_extra_types.pyx
+    hoover.pxd        hoover_b.pyx  tests              __init__.py
+
+    src:
+    hoover.cpp  hoover.h  xdress_extra_types.h
+
+Since C/C++ API scraping may be an expensive task for large codes or files, 
+the descriptions of classes and functions that are generated are stored in the 
+``build/desc.cache``.  This cache is simply a pickled dictionary that maps 
+names, source files, and kinds to a hash of the source file and the description.
+Thus API elements are not re-described if the source file has not changed.  
+You may view the contents of a description cache with the ``dump-desc`` option.
+
+.. code-block:: bash
+
+    scopatz@ares ~/mypack $ xdress --dump-desc
+    {('A', 'src/hoover.cpp', 'class'): ('54a508b1e10845f26d9888a6ad2a470e',
+                                        {'attrs': {'y': ('map',
+                                                         'int32',
+                                                         'float64')},
+                                         'methods': {('A', ('x', 'int32', 5)): None,
+                                                     ('~A',): None},
+                                         'name': 'A',
+                                         'namespace': 'hoover',
+                                         'parents': None}),
+     ('B', 'src/hoover.cpp', 'class'): ('54a508b1e10845f26d9888a6ad2a470e',
+                                        {'attrs': {'z': 'int32'},
+                                         'methods': {('B',): None,
+                                                     ('~B',): None},
+                                         'name': 'B',
+                                         'namespace': 'hoover',
+                                         'parents': ['A']}),
+     ('do_nothing_ab', 'src/hoover.cpp', 'func'): ('54a508b1e10845f26d9888a6ad2a470e',
+                                                   {'name': 'do_nothing_ab',
+                                                    'namespace': 'hoover',
+                                                    'signatures': {('do_nothing_ab', ('a', 'A'), ('b', 'B')): 'void'}})}
+
+Be aware that the ``y`` member variable on class ``A`` -- which has type 
+``map<int, double>`` -- requires that stlwrap tool also have a matching container.
+Luckily, we declared ``('map', 'int', 'float')`` in the ``stlcontainers`` list 
+previously =).
+
+Once again, it is up to the user to integrate the files created by xdress into their
+own build system.
+
+=============
+Code Listings
+=============
+The following are code listings of the files generated above, since they are too 
+large to in-line into the tutorial text.
+
+
+.. toctree::
+    :maxdepth: 4
+
+    mypack/index
 
 
 =======================
 Putting It All Together
 =======================
-The foillowing is a more complete, realistic example of an xdressrc.py file that 
+The following is a more complete, realistic example of an xdressrc.py file that 
 one might run across in a production level environment.
 
 .. code-block:: python
 
     package = 'mypack'     # top-level python package name
-    packagedir = 'mypack'  # loation of the python package
+    packagedir = 'mypack'  # location of the python package
     sourcedir = 'src'      # location of C/C++ source
 
     # wrappers for non-standard types (uints, complex)
@@ -173,7 +248,7 @@ one might run across in a production level environment.
     # List of C++ standard library container template types 
     # to instantiate and wrap with Cython. See the type 
     # system documentation for more details.  Note that 
-    # vectors are wrapped as numpy arrays of the approriate
+    # vectors are wrapped as numpy arrays of the appropriate
     # type.  If the type has no corresponding primitive C++
     # type, then a new numpy dtype is created to handle it.
     # For example, this allows the wrapping of vector< vector<int> >
@@ -235,7 +310,7 @@ one might run across in a production level environment.
     # In the first case, the base source filename will be used as 
     # the base package name as well. In the last case, a None value
     # will register this class for the purpose of generating other 
-    # APIs, but will not create the cooresponding bindings.
+    # APIs, but will not create the corresponding bindings.
     classes = [
         ('FCComp', 'fccomp'), 
         ('EnrichmentParameters', 'enrichment_parameters'), 
