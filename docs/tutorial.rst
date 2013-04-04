@@ -116,6 +116,45 @@ This then generates the following files:
 It is then our job to pass these files off to Cython and a C++ compiler, typically 
 as part of a larger build system.
 
+================================
+C/C++ API Generation (cythongen)
+================================
+The next tool that is built off of the xdress type system may be used for 
+automatically creating Python wrappers of C/C++ APIs.  This requires that the user
+has GCC-XML and lxml installed are their system.  Now suppose we had some C++ code
+living in the ``src/`` directory.
+
+**src/hoover.h**:
+
+.. literalinclude:: mypack/src/hoover.h
+   :language: cpp
+
+**src/hoover.cpp**:
+
+.. literalinclude:: mypack/src/hoover.cpp
+   :language: cpp
+
+To tell xdress that we what to wrap the A & B classes and the do nothing function, 
+we simply need to tell xdress that they live in hoover.  We do this by adding to the
+``classes`` and ``functions`` lists in the run control file.  
+
+**xdressrc.py**::
+
+    classes = [
+        ('A', 'hoover'),
+        ('B', 'hoover'),
+        ]
+
+    functions = [('do_nothing_ab', 'hoover')]
+
+Note that do do this we need only give the construct names -- no signatures need 
+be specified.  That is the point of API generation!  Also note that we only give
+the base file name without the preceeding ``src/`` directory or the file extension
+(``.cpp``, ``.h``).  We may then run xdress normally:
+
+.. code-block:: bash
+
+
 =======================
 Putting It All Together
 =======================
