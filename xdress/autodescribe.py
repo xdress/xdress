@@ -134,6 +134,7 @@ import linecache
 import subprocess
 import itertools
 from pprint import pprint, pformat
+from warnings import warn
 
 # CLang conditional imports
 #try:
@@ -277,10 +278,15 @@ class GccxmlBaseDescriber(object):
         self.name = name
         self.verbose = verbose
         self._root = root
+        origonlyin = onlyin
         onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
         onlyin = set() if onlyin is None else set(onlyin)
-        self.onlyin = set([root.find("File[@name='{0}']".format(oi)).attrib['id'] \
-                           for oi in onlyin])
+        onlyin = [root.find("File[@name='{0}']".format(oi)) for oi in onlyin]
+        self.onlyin = set([oi.attrib['id'] for oi in onlyin if oi is not None])
+        if 0 == len(self.onlyin):
+            msg = "{0!r} is not present in {1!r}; autodescribing will probably fail."
+            msg = msg.format(name, origonlyin)
+            warn(msg, RuntimeWarning)
         self._currfunc = []  # this must be a stack to handle nested functions
         self._currfuncsig = None
         self._currclass = []  # this must be a stack to handle nested classes  
@@ -561,7 +567,11 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
             node = self._root.find("Class[@name='{0}']".format(self.name))
             if node is None:
                 node = self._root.find("Struct[@name='{0}']".format(self.name))
-            assert node.attrib['file'] in self.onlyin
+            if node.attrib['file'] not in self.onlyin:
+                msg = ("{0} autodescribing failed: found class in {1!r} but "
+                       "expected it in {2!r}.")
+                msg = msg.format(self.name, node.attrib['file'], self.onlyin)
+                raise RuntimeError(msg)
             self.visit_class(node)
         members = node.attrib.get('members', '').strip().split()
         children = [self._root.find(".//*[@id='{0}']".format(m)) for m in members]
@@ -599,7 +609,7 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
         self.desc[self._funckey] = {}
 
     def visit(self, node=None):
-        """Visits the class node and all sub-nodes, generating the description
+        """Visits the function node and all sub-nodes, generating the description
         dictionary as it goes.
 
         Parameters
@@ -613,7 +623,11 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
         for n in root.iterfind("Function[@name='{0}']".format(self.name)):
             if n.attrib['file'] in self.onlyin:
                 self.visit_function(n)
-
+            else:
+                msg = ("{0} autodescribing failed: found function in {1!r} but "
+                       "expected it in {2!r}.")
+                msg = msg.format(self.name, node.attrib['file'], self.onlyin)
+                raise RuntimeError(msg)
 #
 # Clang Describers
 #
