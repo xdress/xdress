@@ -287,7 +287,7 @@ def genextratypes(ns, rc):
             newoverwrite(s, tar, ns.verbose)
 
 def genstlcontainers(ns, rc):
-    print "generating C++ standard library wrappers & converters"
+    print "stlwrap: generating C++ standard library wrappers & converters"
     fname = os.path.join(rc.packagedir, rc.stlcontainers_module)
     ensuredirs(fname)
     testname = os.path.join(rc.packagedir, 'tests', 'test_' + rc.stlcontainers_module)
@@ -314,6 +314,8 @@ def _adddesc2env(desc, env, name, srcname, tarname):
 def genbindings(ns, rc):
     """Generates bidnings using the command line setting specified in ns.
     """
+    print("cythongen: scraping C/C++ APIs from source")
+
     ns.cyclus = False  # FIXME cyclus bindings don't exist yet!
     for i, cls in enumerate(rc.classes):
         if len(cls) == 2:
@@ -370,7 +372,7 @@ def genbindings(ns, rc):
 
     # then compute all function descriptions
     for funcname, srcname, tarname in rc.functions:
-        print("parsing " + classname)
+        print("parsing " + funcname)
         desc = compute_desc(funcname, srcname, tarname, 'func', ns, rc)
         if ns.verbose:
             pprint(desc)
@@ -380,7 +382,7 @@ def genbindings(ns, rc):
     # next, make cython bindings
     # generate first, then write out to ensure this is atomic per-class
     if ns.cython:
-        print("making cython bindings")
+        print("cythongen: creating C/C++ API wrappers")
         cpppxds = gencpppxd(env)
         pxds = genpxd(env)
         pyxs = genpyx(env, classes)
