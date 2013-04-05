@@ -38,7 +38,7 @@ def expand_default_args(methods):
     return methitems
 
 
-def newoverwrite(s, filename):
+def newoverwrite(s, filename, verbose=False):
     """Useful for not forcing re-compiles and thus playing nicely with the 
     build system.  This is acomplished by not writing the file if the existsing
     contents are exactly the same as what would be written out.
@@ -58,8 +58,10 @@ def newoverwrite(s, filename):
             return
     with open(filename, 'w') as f:
         f.write(s)
+    if verbose:
+        print "  wrote " + filename
 
-def newcopyover(f1, f2):
+def newcopyover(f1, f2, verbose=False):
     """Useful for not forcing re-compiles and thus playing nicely with the 
     build system.  This is acomplished by not writing the file if the existsing
     contents are exactly the same as what would be written out.
@@ -75,7 +77,7 @@ def newcopyover(f1, f2):
     if os.path.isfile(f1):
         with open(f1, 'r') as f:
             s = f.read()
-        return newoverwrite(s, f2)
+        return newoverwrite(s, f2, verbose)
 
 def ensuredirs(f):
     """For a file path, ensure that its directory path exists."""

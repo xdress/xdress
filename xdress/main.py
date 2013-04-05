@@ -284,7 +284,7 @@ def genextratypes(ns, rc):
         with open(src, 'r') as f:
             s = f.read()
             s = s.format(extra_types=rc.extra_types)
-            newoverwrite(s, tar)
+            newoverwrite(s, tar, ns.verbose)
 
 def genstlcontainers(ns, rc):
     print "generating C++ standard library wrappers & converters"
@@ -293,7 +293,7 @@ def genstlcontainers(ns, rc):
     testname = os.path.join(rc.packagedir, 'tests', 'test_' + rc.stlcontainers_module)
     ensuredirs(testname)
     stlwrap.genfiles(rc.stlcontainers, fname=fname, testname=testname, 
-                     package=rc.package)
+                     package=rc.package, verbose=ns.verbose)
 
 
 def _adddesc2env(desc, env, name, srcname, tarname):
@@ -385,11 +385,11 @@ def genbindings(ns, rc):
         pxds = genpxd(env)
         pyxs = genpyx(env, classes)
         for key, cpppxd in cpppxds.iteritems():
-            newoverwrite(cpppxd, os.path.join(rc.package, env[key]['cpppxd_filename']))
+            newoverwrite(cpppxd, os.path.join(rc.package, env[key]['cpppxd_filename']), ns.verbose)
         for key, pxd in pxds.iteritems():
-            newoverwrite(pxd, os.path.join(rc.package, env[key]['pxd_filename']))
+            newoverwrite(pxd, os.path.join(rc.package, env[key]['pxd_filename']), ns.verbose)
         for key, pyx in pyxs.iteritems():
-            newoverwrite(pyx, os.path.join(rc.package, env[key]['pyx_filename']))
+            newoverwrite(pyx, os.path.join(rc.package, env[key]['pyx_filename']), ns.verbose)
 
     # next, make cyclus bindings
     if ns.cyclus:

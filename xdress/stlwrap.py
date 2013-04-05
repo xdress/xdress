@@ -1029,7 +1029,8 @@ def gentest(template, header=None, package='..'):
 
 
 def genfiles(template, fname='temp', pxdname=None, testname=None, 
-             pyxheader=None, pxdheader=None, testheader=None, package='..'):
+             pyxheader=None, pxdheader=None, testheader=None, package='..', 
+             verbose=False):
     """Generates all cython source files needed to create the wrapper."""
     # munge some filenames
     fname = fname[:-4] if fname.endswith('.pyx') else fname
@@ -1048,9 +1049,9 @@ def genfiles(template, fname='temp', pxdname=None, testname=None,
     pxd = genpxd(template, pxdheader)
     test = gentest(template, testheader, package)
 
-    newoverwrite(pyx, fname)
-    newoverwrite(pxd, pxdname)
-    newoverwrite(test, testname)
+    newoverwrite(pyx, fname, verbose)
+    newoverwrite(pxd, pxdname, verbose)
+    newoverwrite(test, testname, verbose)
 
 if __name__ == "__main__":
     #t = [('set', 'int')]
