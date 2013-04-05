@@ -131,7 +131,7 @@ try:
 except ImportError:
     import pickle
 
-from utils import newoverwrite, newcopyover, ensuredirs
+from utils import newoverwrite, newcopyover, ensuredirs, writenewonly
 import typesystem as ts
 import stlwrap
 from cythongen import gencpppxd, genpxd, genpyx
@@ -421,6 +421,8 @@ def setuprc(ns):
         os.makedirs(rc.packagedir)
     if not os.path.isdir(rc.sourcedir):
         os.makedirs(rc.sourcedir)
+    writenewonly("", os.path.join(rc.packagedir, '__init__.py'), ns.verbose)
+    writenewonly("", os.path.join(rc.packagedir, '__init__.pxd'), ns.verbose)
     return rc
 
 def main():

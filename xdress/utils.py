@@ -49,6 +49,8 @@ def newoverwrite(s, filename, verbose=False):
         string contents of file to possible
     filename : str
         Path to file.
+    vebose : bool, optional
+        prints extra message
 
     """
     if os.path.isfile(filename):
@@ -72,12 +74,35 @@ def newcopyover(f1, f2, verbose=False):
         Path to file to copy from
     f2 : str
         Path to file to copy over
+    vebose : bool, optional
+        prints extra message
 
     """
     if os.path.isfile(f1):
         with open(f1, 'r') as f:
             s = f.read()
         return newoverwrite(s, f2, verbose)
+
+def writenewonly(s, filename, verbose=False):
+    """Only writes the contents of the string to a file if the file does not exist.
+    Useful for not tocuhing files. 
+
+    Parameters
+    ----------
+    s : str
+        string contents of file to possible
+    filename : str
+        Path to file.
+    vebose : bool, optional
+        prints extra message
+
+    """
+    if os.path.isfile(filename):
+        return
+    with open(filename, 'w') as f:
+        f.write(s)
+    if verbose:
+        print "  wrote " + filename
 
 def ensuredirs(f):
     """For a file path, ensure that its directory path exists."""
