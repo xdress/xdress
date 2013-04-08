@@ -1,0 +1,63 @@
+SciPy 2013 Tutorial Abstract
+=============================
+
+:title: Let's Wrap C++ Together
+
+:author: Scopatz, Anthony, The University of Chicago & NumFOCUS, Inc.
+
+:bio: Anthony Scopatz is a Research Scientist at the FLASH Center at the
+      University of Chicago as well as being the treasurer for NumFOCUS.
+      With interests spanning the domains of science and computation,
+      Anthony is probably just your type of guy.  
+
+:email: scopatz@gmail.com
+
+:submission type: Intermediate
+
+:description: Our tools just keep getting better and better.  One of the best things
+    about Python is its ability to function as a super glue language.  This tutorial 
+    will teach participants about how to glue C++ and Python together in a natural
+    and easy way.  The first half of this tutorial will be a lecture (with examples)
+    on the Cython and xdress tools.  The second half will be a hands-on tutorial 
+    where the particpants and the instructor will work through real world examples.
+    Participants are encouraged to bring their own codes and problems to the workshop 
+    portion.
+
+XDress is an automatic wrapper generator for C/C++ written 
+    in pure Python. Currently, xdress may generate Python bindings (via Cython) for 
+    C++ classes & functions and in-memory wrappers for C++ standard library 
+    containers (sets, vectors, maps). In the future, other tools and bindings 
+    will be supported.
+
+    The main enabling feature of xdress is a dynamic type system that was designed 
+    with the purpose of API generation in mind.  This type system provides a 
+    canonical abstraction of various kinds of types: base types (int, str, float, 
+    non-templated classes), refined types (even or odd ints, strings containing the 
+    letter ‘a’), and dependent types (templates such arrays, maps, sets, vectors).
+    This canonical form is itself hashable, being comprised only of strings, ints, 
+    and tuples.
+
+    On top of this type system, xdress provides a tool for auto-generating classes
+    which are views into template instantiations of C++ standard library maps and sets.
+    Additionally, this tool also creates custom numpy dtypes for any C++ type, class
+    or struct.  This allows the user to have numpy array views into C++ vectors.
+
+    Furthermore, xdress also has a tool which inspects a C++ code base and 
+    automatically generates Cython wrappers for all user-specified classes and 
+    functions.  This significantly eases the burden of supporting mixed language
+    projects.
+
+    The above code generators, however, are just the beginning.  The xdress type 
+    system is flexible and powerful enough to engender a suite of other tools which
+    take advantage of less obvious features.  For example, an automatic verification 
+    & validation utility could take advantage of refinement type predicate functions 
+    to interdict parameter constraints into the API right under the users nose!
+
+    This talk will focus on xdress's type system and its use cases.
+
+:outline:
+
+:package list: CPython, C++ compiler, Cython, NumPy, XDress
+
+:documentation: http://bit.ly/xdress-code, https://github.com/scopatz/xdress
+
