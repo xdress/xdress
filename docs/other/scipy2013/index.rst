@@ -7,3 +7,4 @@ SciPy 2013 in Austin, TX:
     :maxdepth: 1
 
     abstract
+    tutorial_abstract
