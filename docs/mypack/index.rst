@@ -6,4 +6,5 @@ mypack
 
     mypack/index
     src/index
+    setup.py
     xdressrc.py

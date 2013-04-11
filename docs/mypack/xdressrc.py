@@ -13,5 +13,5 @@ classes = [
         ('B', 'hoover', 'hoover_b'),
         ]
 
-functions = [('do_nothing_ab', 'hoover')]
+functions = [('do_nothing_ab', 'hoover', 'hoover_b')]
 

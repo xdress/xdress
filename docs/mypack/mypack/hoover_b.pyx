@@ -8,10 +8,14 @@
 ################################################
 """
 """
+cimport cpp_hoover_b
 cimport hoover
+cimport hoover_b
 from mypack cimport cpp_hoover
+from mypack cimport cpp_hoover_b
 
 import hoover
+import hoover_b
 
 cdef class B(hoover.A):
     """no docstring for B, please file a bug report!"""
@@ -43,6 +47,17 @@ cdef class B(hoover.A):
     
     # methods
 
+
+
+
+def do_nothing_ab(self, a, b):
+    """do_nothing_ab(self, a, b)
+    no docstring for do_nothing_ab, please file a bug report!"""
+    cdef hoover.A a_proxy
+    cdef hoover_b.B b_proxy
+    a_proxy = <hoover.A> a
+    b_proxy = <hoover_b.B> b
+    cpp_hoover_b.do_nothing_ab((<cpp_hoover.A *> a_proxy._inst)[0], (<cpp_hoover_b.B *> b_proxy._inst)[0])
 
 
 

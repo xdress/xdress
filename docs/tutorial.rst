@@ -90,7 +90,6 @@ project,
 
     scopatz@ares ~/mypack $ mkdir src
     scopatz@ares ~/mypack $ mkdir mypack
-    scopatz@ares ~/mypack $ touch mypack/__init__.py
     scopatz@ares ~/mypack $ ls *
     xdressrc.py
 
@@ -110,8 +109,8 @@ This then generates the following files:
     xdressrc.py
 
     mypack:
-    stlcontainers.pxd       stlcontainers.pyx  tests  xdress_extra_types.pxd  
-    xdress_extra_types.pyx  __init__.py
+    stlcontainers.pxd       stlcontainers.pyx  tests        xdress_extra_types.pxd  
+    xdress_extra_types.pyx  __init__.pxd       __init__.py
 
     src:
     xdress_extra_types.h
@@ -176,7 +175,8 @@ xdress normally:
     mypack:
     cpp_hoover.pxd    hoover.pyx    stlcontainers.pxd  xdress_extra_types.pxd
     cpp_hoover_b.pxd  hoover_b.pxd  stlcontainers.pyx  xdress_extra_types.pyx
-    hoover.pxd        hoover_b.pyx  tests              __init__.py
+    hoover.pxd        hoover_b.pyx  tests              __init__.pxd
+    __init__.py
 
     src:
     hoover.cpp  hoover.h  xdress_extra_types.h
@@ -217,14 +217,21 @@ Be aware that the ``y`` member variable on class ``A`` -- which has type
 Luckily, we declared ``('map', 'int', 'float')`` in the ``stlcontainers`` list 
 previously =).
 
-Once again, it is up to the user to integrate the files created by xdress into their
-own build system.
+**Once again, it is up to the user to integrate the files created by xdress into their
+own build system.**  However, for the above example the following ``setup.py`` file 
+will work:
+
+**setup.py**:
+
+.. literalinclude:: mypack/setup.py
+   :language: py
 
 =============
 Code Listings
 =============
 The following are code listings of the files generated above, since they are too 
-large to in-line into the tutorial text.
+large to in-line into the tutorial text.  You may also find `this example implemented
+in the xdress repo <https://github.com/scopatz/xdress/tree/master/docs/mypack>`_
 
 
 .. toctree::

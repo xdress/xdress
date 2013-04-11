@@ -8,17 +8,10 @@
 ################################################
 """
 """
-cimport cpp_hoover
-cimport hoover
-cimport hoover_b
 cimport stlcontainers
 from libc.stdlib cimport free
 from libcpp.map cimport map as cpp_map
-from mypack cimport cpp_hoover
-from mypack cimport cpp_hoover_b
 
-import hoover
-import hoover_b
 import stlcontainers
 
 cdef class A:
@@ -62,17 +55,6 @@ cdef class A:
     
     # methods
 
-
-
-
-def do_nothing_ab(self, a, b):
-    """do_nothing_ab(self, a, b)
-    no docstring for do_nothing_ab, please file a bug report!"""
-    cdef hoover.A a_proxy
-    cdef hoover_b.B b_proxy
-    a_proxy = <hoover.A> a
-    b_proxy = <hoover_b.B> b
-    cpp_hoover.do_nothing_ab((<cpp_hoover.A *> a_proxy._inst)[0], (<cpp_hoover_b.B *> b_proxy._inst)[0])
 
 
 
