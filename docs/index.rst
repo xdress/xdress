@@ -54,10 +54,19 @@ type system discussions with John Bachan over coffee at the Div school, and was
 polished up and released under the encouragement of Christopher Jordan-Squire at
 `PyCon 2013 <https://us.pycon.org/2013/>`_.
 
+==========
+Contact Us
+==========
+If you have questions or comments, please send them to the mailing list
+xdress@googlegroups.com or contact the author directly or open an issue on
+GitHub.
+
 =============
 Helpful Links
 =============
-	
+
+* `Documentation <http://bit.ly/xdress-code>`_
+* `Mailing list <mailto:xdress@googlegroups.com>`_
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
