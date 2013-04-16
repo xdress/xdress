@@ -121,10 +121,11 @@ used to declare additional attr and method APIs.
 Main API
 ========
 """
+from __future__ import print_function
 import os
 import sys
 import argparse
-from pprint import pprint
+from pprint import pprint, pformat
 from hashlib import md5
 try:
     import cPickle as pickle
@@ -192,7 +193,6 @@ class DescriptionCache(object):
             pickle.dump(self.cache, f, pickle.HIGHEST_PROTOCOL)
 
     def __str__(self):
-        from pprint import pformat
         return pformat(self.cache)
 
 
@@ -287,7 +287,7 @@ def genextratypes(ns, rc):
             newoverwrite(s, tar, ns.verbose)
 
 def genstlcontainers(ns, rc):
-    print "stlwrap: generating C++ standard library wrappers & converters"
+    print("stlwrap: generating C++ standard library wrappers & converters")
     fname = os.path.join(rc.packagedir, rc.stlcontainers_module)
     ensuredirs(fname)
     testname = os.path.join(rc.packagedir, 'tests', 'test_' + rc.stlcontainers_module)
@@ -400,7 +400,7 @@ def genbindings(ns, rc):
 def dumpdesc(ns):
     """Prints the current contents of the description cache using ns.
     """
-    print str(DescriptionCache())
+    print(str(DescriptionCache()))
 
 def setuprc(ns):
     """Makes and validates a run control namespace."""

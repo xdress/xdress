@@ -127,6 +127,7 @@ for the moment.
 Automatic Descriptions API
 ==========================
 """
+from __future__ import print_function
 import os
 import re
 from copy import deepcopy
@@ -240,7 +241,7 @@ def gccxml_describe(filename, name, kind, includes=(), verbose=False):
     cmd = ['gccxml', filename, '-fxml=' + f.name]
     cmd += map(lambda i: '-I' + i,  includes)
     if verbose:
-        print " ".join(cmd)
+        print(" ".join(cmd))
     subprocess.call(cmd)
     f.seek(0)
     root = etree.parse(f)
@@ -640,7 +641,7 @@ def clang_describe(filename, name, includes=(), verbose=False):
     onlyin = set([filename.replace('.cpp', '.h')])
     describer = ClangClassDescriber(name, onlyin=onlyin, verbose=verbose)
     describer.visit(tu.cursor)
-    from pprint import pprint; pprint(describer.desc)
+    pprint(describer.desc)
     return describer.desc
 
 
@@ -972,7 +973,7 @@ class ClangTypeVisitor(object):
 
         #import pdb; pdb.set_trace()
 #        self.visit(cur)
-        print "   canon: ",  cur.type.get_canonical().get_declaration().displayname
+        print("   canon: ",  cur.type.get_canonical().get_declaration().displayname)
 
     def visit_template_type_parameter(self, cur):
         self._pprint(cur, "template type param")
@@ -1004,8 +1005,8 @@ def clang_canonize(t):
     elif kind == cindex.TypeKind.UNEXPOSED:
         name = t.get_declaration().spelling
     elif kind == cindex.TypeKind.TYPEDEF:
-        print [n.displayname for n in t.get_declaration().get_children()]
-        print [n.kind.name for n in t.get_declaration().get_children()]
+        print([n.displayname for n in t.get_declaration().get_children()])
+        print([n.kind.name for n in t.get_declaration().get_children()])
         name = "<fixme>"
     else:
         name = "<error:{0}>".format(kind)

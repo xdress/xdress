@@ -1,5 +1,5 @@
 """Helper functions for bright API generation."""
-
+from __future__ import print_function
 import os
 
 def indent(s, n=4, join=True):
@@ -61,7 +61,7 @@ def newoverwrite(s, filename, verbose=False):
     with open(filename, 'w') as f:
         f.write(s)
     if verbose:
-        print "  wrote " + filename
+        print("  wrote " + filename)
 
 def newcopyover(f1, f2, verbose=False):
     """Useful for not forcing re-compiles and thus playing nicely with the 
@@ -102,7 +102,7 @@ def writenewonly(s, filename, verbose=False):
     with open(filename, 'w') as f:
         f.write(s)
     if verbose:
-        print "  wrote " + filename
+        print("  wrote " + filename)
 
 def ensuredirs(f):
     """For a file path, ensure that its directory path exists."""
