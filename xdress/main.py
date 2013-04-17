@@ -123,6 +123,7 @@ Main API
 """
 from __future__ import print_function
 import os
+import io
 import sys
 import argparse
 from pprint import pprint, pformat
@@ -132,7 +133,7 @@ try:
 except ImportError:
     import pickle
 
-from utils import newoverwrite, newcopyover, ensuredirs, writenewonly
+from utils import newoverwrite, newcopyover, ensuredirs, writenewonly, exec_file
 import typesystem as ts
 import stlwrap
 from cythongen import gencpppxd, genpxd, genpyx
@@ -153,7 +154,7 @@ class DescriptionCache(object):
         """
         self.cachefile = cachefile
         if os.path.isfile(cachefile):
-            with open(cachefile, 'r') as f:
+            with io.open(cachefile, 'r') as f:
                 self.cache = pickle.load(f)
         else:
             self.cache = {}
@@ -165,8 +166,8 @@ class DescriptionCache(object):
         if key not in self.cache:
             return False
         cachehash = self.cache[key][0]
-        with open(filename, 'r') as f:
-            filestr = f.read()
+        with io.open(filename, 'r') as f:
+            filestr = f.read().encode()
         currhash = md5(filestr).hexdigest()
         return cachehash == currhash
 
@@ -175,8 +176,8 @@ class DescriptionCache(object):
 
     def __setitem__(self, key, value):
         name, filename, kind = key
-        with open(filename, 'r') as f:
-            filestr = f.read()
+        with io.open(filename, 'r') as f:
+            filestr = f.read().encode()
         currhash = md5(filestr).hexdigest()
         self.cache[key] = (currhash, value)
 
@@ -189,7 +190,8 @@ class DescriptionCache(object):
             pardir = os.path.split(self.cachefile)[0]
             if not os.path.exists(pardir):
                 os.makedirs(pardir)
-        with open(self.cachefile, 'w') as f:
+        with io.open(self.cachefile, 'w') as f:
+            pprint(self.cache)
             pickle.dump(self.cache, f, pickle.HIGHEST_PROTOCOL)
 
     def __str__(self):
@@ -209,7 +211,7 @@ def load_pysrcmod(srcname, ns, rc):
     if os.path.isfile(pyfilename):
         glbs = globals()
         locs = {}
-        execfile(pyfilename, glbs, locs)
+        exec_file(pyfilename, glbs, locs)
         if 'mod' not in locs:
             pymod = {}
         elif callable(locs['mod']):
@@ -281,7 +283,7 @@ def genextratypes(ns, rc):
             os.path.join(rc.packagedir, rc.extra_types + '.pxd'), 
             os.path.join(rc.packagedir, rc.extra_types + '.pyx')]
     for src, tar in zip(srcs, tars):
-        with open(src, 'r') as f:
+        with io.open(src, 'r') as f:
             s = f.read()
             s = s.format(extra_types=rc.extra_types)
             newoverwrite(s, tar, ns.verbose)
@@ -412,7 +414,7 @@ def setuprc(ns):
         stlcontainers=[],
         stlcontainers_module='stlcontainers',
         )
-    execfile(ns.rc, rc, rc)
+    exec_file(ns.rc, rc, rc)
     rc = argparse.Namespace(**rc)
     rc.includes = list(rc.includes) if hasattr(rc, 'includes') else []
     if rc.package is None:

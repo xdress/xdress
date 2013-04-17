@@ -11,6 +11,7 @@ code -- their implementations do a lot of heavy lifting.
 Cython Generation API
 =====================
 """
+from __future__ import print_function
 import math
 from copy import deepcopy
 

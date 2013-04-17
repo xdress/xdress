@@ -217,9 +217,14 @@ Type System API
 ===============
 
 """
+from __future__ import print_function
+import sys
 import functools
 from contextlib import contextmanager
 from collections import Sequence, Set, Iterable, MutableMapping
+
+if sys.version_info[0] >= 3: 
+    basestring = str
 
 def _ishashable(x):
     try:
@@ -1521,7 +1526,7 @@ def register_numpy_dtype(t, cython_cimport=None, cython_cyimport=None, cython_py
 
 def clearmemo():
     """Clears all function memoizations."""
-    for x in globals().itervalues():
+    for x in globals().values():
         if callable(x) and hasattr(x, 'cache'):
             x.cache.clear()
 

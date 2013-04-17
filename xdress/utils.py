@@ -1,6 +1,11 @@
 """Helper functions for bright API generation."""
 from __future__ import print_function
 import os
+import io
+import sys
+
+if sys.version_info[0] >= 3: 
+    basestring = str
 
 def indent(s, n=4, join=True):
     """Indents all lines in the string or list s by n spaces."""
@@ -54,11 +59,11 @@ def newoverwrite(s, filename, verbose=False):
 
     """
     if os.path.isfile(filename):
-        with open(filename, 'r') as f:
+        with io.open(filename, 'r') as f:
             old = f.read()
         if s == old:
             return
-    with open(filename, 'w') as f:
+    with io.open(filename, 'w') as f:
         f.write(s)
     if verbose:
         print("  wrote " + filename)
@@ -79,7 +84,7 @@ def newcopyover(f1, f2, verbose=False):
 
     """
     if os.path.isfile(f1):
-        with open(f1, 'r') as f:
+        with io.open(f1, 'r') as f:
             s = f.read()
         return newoverwrite(s, f2, verbose)
 
@@ -99,7 +104,7 @@ def writenewonly(s, filename, verbose=False):
     """
     if os.path.isfile(filename):
         return
-    with open(filename, 'w') as f:
+    with io.open(filename, 'w') as f:
         f.write(s)
     if verbose:
         print("  wrote " + filename)
@@ -118,3 +123,10 @@ def isclassdesc(desc):
 def isfuncdesc(desc):
     """Tests if a description is a function-type description."""
     return 'signatures' in desc
+
+
+def exec_file(filename, glb=None, loc=None):
+    """A function equivalent to the Python 2.x execfile statement."""
+    with io.open(filename, 'r') as f:
+        src = f.read()
+    exec(compile(src, filename, "exec"), glb, loc)

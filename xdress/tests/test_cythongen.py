@@ -1,3 +1,4 @@
+from __future__ import print_function
 from bright.apigen import typesystem as ts
 from bright.apigen import cythongen as cg
 
@@ -73,7 +74,7 @@ def test_gencpppxd():
     exp = exp_cpppxd.splitlines()
     ts.deregister_class('FCComp')
     ts.deregister_class('Toaster')
-    print "\n".join(obs)
+    print("\n".join(obs))
     assert_equal(len(obs), len(exp))
     for o, e in zip(obs, exp):
         assert_equal(o, e)
@@ -105,7 +106,7 @@ def test_genpxd():
     obs = cg.genpxd(toaster_desc).splitlines()
     ts.deregister_class('FCComp')
     ts.deregister_class('Toaster')
-    print "\n".join(obs)
+    print("\n".join(obs))
     exp = exp_pxd.splitlines()
     assert_equal(len(obs), len(exp))
     for o, e in zip(obs, exp):
@@ -200,7 +201,7 @@ def test_genpyx():
         'FCComp': {'name': 'FCComp', 'parents': []}}).splitlines()
     ts.deregister_class('FCComp')
     ts.deregister_class('Toaster')
-    print "\n".join(obs)
+    print("\n".join(obs))
     exp = exp_pyx.splitlines()
     assert_equal(len(obs), len(exp))
     for o, e in zip(obs, exp):

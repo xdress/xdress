@@ -1,3 +1,4 @@
+from __future__ import print_function
 from bright.apigen import typesystem as ts
 
 from nose.tools import assert_equal, with_setup

@@ -130,6 +130,7 @@ Automatic Descriptions API
 from __future__ import print_function
 import os
 import re
+import sys
 from copy import deepcopy
 import linecache
 import subprocess
@@ -168,6 +169,9 @@ except ImportError:
                 except ImportError:
                     pass
 import tempfile
+
+if sys.version_info[0] >= 3: 
+    basestring = str
 
 RE_INT = re.compile('^\d+$')
 RE_FLOAT = re.compile('^[+-]?\.?\d+\.?\d*?(e[+-]?\d+)?$')
@@ -934,7 +938,7 @@ class ClangTypeVisitor(object):
         #typ = typ.get_canonical()
         decl = typ.get_declaration()
         self._currtype.append(decl.spelling)
-        print "   canon: ",  typ.get_canonical().get_declaration().displayname
+        print("   canon: ",  typ.get_canonical().get_declaration().displayname)
         #import pdb; pdb.set_trace()        
         #self.visit(decl)
         #self.visit(typ.get_canonical().get_declaration())
