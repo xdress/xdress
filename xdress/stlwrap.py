@@ -692,7 +692,14 @@ pyxd_{fncname}_is_ready = PyType_Ready(<object> PyXD_{clsname})
 (<PyTypeObject *> PyXD_{clsname}).tp_repr = pyxd_{fncname}_type_repr
 (<PyTypeObject *> PyXD_{clsname}).tp_base = (<PyTypeObject *> PyArray_API[10])  # PyGenericArrType_Type
 (<PyTypeObject *> PyXD_{clsname}).tp_hash = pyxd_{fncname}_type_hash
-(<PyTypeObject *> PyXD_{clsname}).tp_compare = pyxd_{fncname}_type_compare
+if PY_MAJOR_VERSION >= 3:
+    #(<PyTypeObject *> PyXD_{clsname}).tp_reserved = <void *> &pyxd_{fncname}_type_compare
+    #(<PyTypeObject *> PyXD_{clsname}).tp_reserved = <cmpfunc_py3k (*)(object, object)> &pyxd_{fncname}_type_compare
+    (<PyTypeObject *> PyXD_{clsname}).tp_reserved = &pyxd_{fncname}_type_compare
+else:
+    #(<PyTypeObject *> PyXD_{clsname}).tp_compare = <int *> &pyxd_{fncname}_type_compare
+    #(<PyTypeObject *> PyXD_{clsname}).tp_compare = <cmpfunc_py2k> &pyxd_{fncname}_type_compare
+    (<PyTypeObject *> PyXD_{clsname}).tp_compare = &pyxd_{fncname}_type_compare
 (<PyTypeObject *> PyXD_{clsname}).tp_richcompare = pyxd_{fncname}_type_richcompare
 (<PyTypeObject *> PyXD_{clsname}).tp_members = pyxd_{fncname}_type_members
 (<PyTypeObject *> PyXD_{clsname}).tp_getset = pyxd_{fncname}_type_getset
@@ -869,6 +876,7 @@ from libcpp.utility cimport pair
 from libcpp.map cimport map as cpp_map
 from libcpp.vector cimport vector as cpp_vector
 from libc cimport stdio
+from cpython.version cimport PY_MAJOR_VERSION
 from cpython.ref cimport PyTypeObject, Py_INCREF, Py_XDECREF
 from cpython.type cimport PyType_Ready
 from cpython.object cimport PyObject
@@ -882,6 +890,10 @@ cimport {extra_types}
 
 cimport numpy as np
 
+ctypedef int (*cmpfunc_py2k)(object, object)     # Python 2
+ctypedef void * (*cmpfunc_py3k)(object, object)  # Python 3
+
+
 cdef extern from "Python.h":
     ctypedef Py_ssize_t Py_ssize_t
 
@@ -889,13 +901,18 @@ cdef extern from "Python.h":
     cdef long Py_TPFLAGS_BASETYPE 
     cdef long Py_TPFLAGS_CHECKTYPES
 
+    ctypedef struct PyMemberDef:
+        char * name
+
+    ctypedef struct PyGetSetDef:
+        char * name
+
     ctypedef struct PyTypeObject:
         char * tp_name
         int tp_basicsize
         int tp_itemsize
         object tp_alloc(PyTypeObject *, Py_ssize_t)
         void tp_dealloc(object)
-        int tp_compare(object, object)
         object tp_richcompare(object, object, int)
         object tp_new(PyTypeObject *, object, object)
         object tp_str(object)
@@ -907,12 +924,13 @@ cdef extern from "Python.h":
         PyGetSetDef * tp_getset
         PyTypeObject * tp_base
         void tp_free(void *)
-
-    ctypedef struct PyMemberDef:
-        char * name
-
-    ctypedef struct PyGetSetDef:
-        char * name
+        # This is a dirty hack by declaring to Cython both the Python 2 & 3 APIs
+        #cmpfunc_py2k tp_compare(object, object)   # Python 2
+        #cmpfunc_py3k tp_reserved(object, object)  # Python 3
+        #cmpfunc_py2k tp_compare   # Python 2
+        #cmpfunc_py3k tp_reserved  # Python 3
+        int (*tp_compare)(object, object)   # Python 2
+        void * (*tp_reserved)(object, object)  # Python 3
 
 cdef extern from "numpy/arrayobject.h":
 
