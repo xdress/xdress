@@ -154,7 +154,7 @@ class DescriptionCache(object):
         """
         self.cachefile = cachefile
         if os.path.isfile(cachefile):
-            with io.open(cachefile, 'r') as f:
+            with io.open(cachefile, 'rb') as f:
                 self.cache = pickle.load(f)
         else:
             self.cache = {}
@@ -190,8 +190,7 @@ class DescriptionCache(object):
             pardir = os.path.split(self.cachefile)[0]
             if not os.path.exists(pardir):
                 os.makedirs(pardir)
-        with io.open(self.cachefile, 'w') as f:
-            pprint(self.cache)
+        with io.open(self.cachefile, 'wb') as f:
             pickle.dump(self.cache, f, pickle.HIGHEST_PROTOCOL)
 
     def __str__(self):
@@ -388,11 +387,11 @@ def genbindings(ns, rc):
         cpppxds = gencpppxd(env)
         pxds = genpxd(env)
         pyxs = genpyx(env, classes)
-        for key, cpppxd in cpppxds.iteritems():
+        for key, cpppxd in cpppxds.items():
             newoverwrite(cpppxd, os.path.join(rc.package, env[key]['cpppxd_filename']), ns.verbose)
-        for key, pxd in pxds.iteritems():
+        for key, pxd in pxds.items():
             newoverwrite(pxd, os.path.join(rc.package, env[key]['pxd_filename']), ns.verbose)
-        for key, pyx in pyxs.iteritems():
+        for key, pyx in pyxs.items():
             newoverwrite(pyx, os.path.join(rc.package, env[key]['pyx_filename']), ns.verbose)
 
     # next, make cyclus bindings

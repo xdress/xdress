@@ -51,7 +51,7 @@ def gencpppxd(env, exception_type='+'):
 
     """
     cpppxds = {}
-    for name, mod in env.iteritems():
+    for name, mod in env.items():
         if mod['cpppxd_filename'] is None:
             continue
         cpppxds[name] = modcpppxd(mod, exception_type)
@@ -80,7 +80,7 @@ def modcpppxd(mod, exception_type='+'):
          "cpppxd_filename": mod.get("cpppxd_filename", "")}
     attrs = []
     cimport_tups = set()
-    for name, desc in mod.iteritems():
+    for name, desc in mod.items():
         if isclassdesc(desc):
             ci_tup, attr_str = classcpppxd(desc, exception_type)
         elif isfuncdesc(desc):
@@ -263,7 +263,7 @@ def genpxd(env):
 
     """
     pxds = {}
-    for name, mod in env.iteritems():
+    for name, mod in env.items():
         if mod['pxd_filename'] is None:
             continue
         pxds[name] = modpxd(mod)
@@ -289,7 +289,7 @@ def modpxd(mod):
          "pxd_filename": mod.get("pxd_filename", "")}
     attrs = []
     cimport_tups = set()
-    for name, desc in mod.iteritems():
+    for name, desc in mod.items():
         if isclassdesc(desc):
             ci_tup, attr_str = classpxd(desc)
         # no need to wrap functions again
@@ -390,13 +390,13 @@ def genpyx(env, classes=None):
     if classes is None:
         # get flat namespace of class descriptions
         classes = {}
-        for envname, mod in env.iteritems():
-            for modname, desc in mod.iteritems():
+        for envname, mod in env.items():
+            for modname, desc in mod.items():
                 if isclassdesc(desc):
                     classes[desc['name']] = desc
     # gen files
     pyxs = {}
-    for name, mod in env.iteritems():
+    for name, mod in env.items():
         if mod['pyx_filename'] is None:
             continue
         pyxs[name] = modpyx(mod, classes=classes)
@@ -440,7 +440,7 @@ def modpyx(mod, classes=None):
     attrs = []
     import_tups = set()
     cimport_tups = set()
-    for name, desc in mod.iteritems():
+    for name, desc in mod.items():
         if isclassdesc(desc):
             i_tup, ci_tup, attr_str = classpyx(desc, classes=classes)
         elif isfuncdesc(desc):
@@ -577,7 +577,7 @@ def _gen_dispatcher(name, name_mangled, doc=None, hasrtn=True):
     lines  = ['def {0}({1}):'.format(name, argfill)]
     lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
     types = ["types = set([(i, type(a)) for i, a in enumerate(args)])",
-             "types.update([(k, type(v)) for k, v in kwargs.iteritems()])",]
+             "types.update([(k, type(v)) for k, v in kwargs.items()])",]
     lines += indent(types, join=False)
     refinenum = lambda x: (sum([int(isrefinement(a[1])) for a in x[0][1:]]), len(x[0]), x[1])
     mangitems = sorted(name_mangled.items(), key=refinenum)
@@ -775,7 +775,7 @@ def classpyx(desc, classes=None):
                                        inst_name=minst_name)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
-                nm = {k: v for k, v in mangled_mnames.iteritems() if k[0] == mname}
+                nm = {k: v for k, v in mangled_mnames.items() if k[0] == mname}
                 clines += _gen_dispatcher('__init__', nm, doc=mdoc, hasrtn=False)
         else:
             # this is a normal method
@@ -788,7 +788,7 @@ def classpyx(desc, classes=None):
                                   inst_name=minst_name)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
-                nm = {k: v for k, v in mangled_mnames.iteritems() if k[0] == mname}
+                nm = {k: v for k, v in mangled_mnames.items() if k[0] == mname}
                 mlines += _gen_dispatcher(mname, nm, doc=mdoc)
     if desc['parents'] is None:
         clines += ["def __dealloc__(self):"]
@@ -854,7 +854,7 @@ def funcpyx(desc):
                               inst_name=inst_name)
         if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
             # write dispatcher
-            nm = {k: v for k, v in mangled_fnames.iteritems() if k[0] == fname}
+            nm = {k: v for k, v in mangled_fnames.items() if k[0] == fname}
             flines += _gen_dispatcher(fname, nm, doc=fdoc)
 
     flines.append(desc.get('extra', {}).get('pyx', ''))
