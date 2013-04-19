@@ -692,14 +692,9 @@ pyxd_{fncname}_is_ready = PyType_Ready(<object> PyXD_{clsname})
 (<PyTypeObject *> PyXD_{clsname}).tp_repr = pyxd_{fncname}_type_repr
 (<PyTypeObject *> PyXD_{clsname}).tp_base = (<PyTypeObject *> PyArray_API[10])  # PyGenericArrType_Type
 (<PyTypeObject *> PyXD_{clsname}).tp_hash = pyxd_{fncname}_type_hash
-if PY_MAJOR_VERSION >= 3:
-    #(<PyTypeObject *> PyXD_{clsname}).tp_reserved = <void *> &pyxd_{fncname}_type_compare
-    #(<PyTypeObject *> PyXD_{clsname}).tp_reserved = <cmpfunc_py3k (*)(object, object)> &pyxd_{fncname}_type_compare
-    (<PyTypeObject *> PyXD_{clsname}).tp_reserved = &pyxd_{fncname}_type_compare
-else:
-    #(<PyTypeObject *> PyXD_{clsname}).tp_compare = <int *> &pyxd_{fncname}_type_compare
-    #(<PyTypeObject *> PyXD_{clsname}).tp_compare = <cmpfunc_py2k> &pyxd_{fncname}_type_compare
-    (<PyTypeObject *> PyXD_{clsname}).tp_compare = &pyxd_{fncname}_type_compare
+emit_ifpy2k()
+(<PyTypeObject *> PyXD_{clsname}).tp_compare = &pyxd_{fncname}_type_compare
+emit_endif()
 (<PyTypeObject *> PyXD_{clsname}).tp_richcompare = pyxd_{fncname}_type_richcompare
 (<PyTypeObject *> PyXD_{clsname}).tp_members = pyxd_{fncname}_type_members
 (<PyTypeObject *> PyXD_{clsname}).tp_getset = pyxd_{fncname}_type_getset
@@ -707,25 +702,47 @@ pyxd_{fncname}_is_ready = PyType_Ready(<object> PyXD_{clsname})
 Py_INCREF(PyXD_{clsname})
 XD{clsname} = PyXD_{clsname}
 
-cdef PyArray_Descr c_xd_{fncname}_descr = PyArray_Descr(
-    0, # ob_refcnt
-    (<PyTypeObject *> PyArray_API[3]), # ob_type == PyArrayDescr_Type
-    <PyTypeObject *> PyXD_{clsname}, # typeobj
-    'x',  # kind, for xdress
-    'x',  # type
-    '=',  # byteorder
-    0,    # flags
-    0,    # type_num, assigned at registration
-    sizeof({ctype}),  # elsize, 
-    8,  # alignment
-    NULL,  # subarray
-    <PyObject *> None,  # fields
-    &PyXD_{clsname}_ArrFuncs,  # f == PyArray_ArrFuncs
-    )
+#cdef PyArray_Descr c_xd_{fncname}_descr = PyArray_Descr(
+#    0, # ob_refcnt
+#    (<PyTypeObject *> PyArray_API[3]), # ob_type == PyArrayDescr_Type
+#    <PyTypeObject *> PyXD_{clsname}, # typeobj
+#    'x',  # kind, for xdress
+#    'x',  # type
+#    '=',  # byteorder
+#    0,    # flags
+#    0,    # type_num, assigned at registration
+#    sizeof({ctype}),  # elsize, 
+#    8,  # alignment
+#    NULL,  # subarray
+#    <PyObject *> None,  # fields
+#    &PyXD_{clsname}_ArrFuncs,  # f == PyArray_ArrFuncs
+#    )
+
+#cdef PyArray_Descr * c_xd_{fncname}_descr = PyArray_Descr()
+#cdef PyArray_Descr ** _c_xd_{fncname}_descr = np.dtype()
+cdef PyArray_Descr * c_xd_{fncname}_descr = <PyArray_Descr *> malloc(sizeof(PyArray_Descr))
+(<object> c_xd_{fncname}_descr).ob_refcnt = 0 # ob_refcnt
+#(<object> c_xd_{fncname}_descr).ob_type = (<PyTypeObject *> PyArray_API[3]) # ob_type == PyArrayDescr_Type
+#c_xd_{fncname}_descr.ob_type = (<PyTypeObject *> PyArray_API[3]) # ob_type == PyArrayDescr_Type
+(<object> c_xd_{fncname}_descr).ob_type = PyArrayDescr_Type
+c_xd_{fncname}_descr.typeobj = <PyTypeObject *> PyXD_{clsname} # typeobj
+c_xd_{fncname}_descr.kind = 'x'  # kind, for xdress
+c_xd_{fncname}_descr.type = 'x'  # type
+c_xd_{fncname}_descr.byteorder = '='  # byteorder
+c_xd_{fncname}_descr.flags = 0    # flags
+c_xd_{fncname}_descr.type_num = 0    # type_num, assigned at registration
+c_xd_{fncname}_descr.elsize = sizeof({ctype})  # elsize, 
+c_xd_{fncname}_descr.alignment = 8  # alignment
+c_xd_{fncname}_descr.subarray = NULL  # subarray
+c_xd_{fncname}_descr.fields = <PyObject *> None  # fields
+c_xd_{fncname}_descr.f = &PyXD_{clsname}_ArrFuncs  # f == PyArray_ArrFuncs
+
+
 cdef object xd_{fncname}_descr = <object> (<void *> &c_xd_{fncname}_descr)
 Py_INCREF(<object> xd_{fncname}_descr)
 xd_{fncname} = xd_{fncname}_descr
-cdef int xd_{fncname}_num = PyArray_RegisterDataType(&c_xd_{fncname}_descr)
+#cdef int xd_{fncname}_num = PyArray_RegisterDataType(&c_xd_{fncname}_descr)
+cdef int xd_{fncname}_num = PyArray_RegisterDataType(c_xd_{fncname}_descr)
 dtypes['{fncname}'] = xd_{fncname}
 dtypes['xd_{fncname}'] = xd_{fncname}
 dtypes[xd_{fncname}_num] = xd_{fncname}
@@ -832,6 +849,7 @@ from libcpp.string cimport string as std_string
 from libcpp.utility cimport pair
 from libcpp.map cimport map as cpp_map
 from libcpp.vector cimport vector as cpp_vector
+from cpython.version cimport PY_MAJOR_VERSION
 from cpython.ref cimport PyTypeObject
 from cpython.type cimport PyType_Ready
 from cpython.object cimport Py_LT, Py_LE, Py_EQ, Py_NE, Py_GT, Py_GE
@@ -847,6 +865,15 @@ np.import_array()
 cimport {extra_types}
 
 dtypes = {{}}
+
+
+# Dirty ifdef, else, else preprocessor hack
+# see http://comments.gmane.org/gmane.comp.python.cython.user/4080
+cdef extern from *:
+    cdef void emit_ifpy2k "#if PY_MAJOR_VERSION == 2 //" ()
+    cdef void emit_ifpy3k "#if PY_MAJOR_VERSION == 3 //" ()
+    cdef void emit_else "#else //" ()
+    cdef void emit_endif "#endif //" ()
 
 """
 def genpyx(template, header=None):
@@ -979,6 +1006,8 @@ cdef extern from "numpy/arrayobject.h":
         PyObject  *shape
 
     cdef void ** PyArray_API
+
+    cdef PyTypeObject * PyArrayDescr_Type
     
     ctypedef struct PyArray_Descr:
         Py_ssize_t ob_refcnt
