@@ -718,15 +718,9 @@ XD{clsname} = PyXD_{clsname}
 #    &PyXD_{clsname}_ArrFuncs,  # f == PyArray_ArrFuncs
 #    )
 
-#cdef PyArray_Descr * c_xd_{fncname}_descr = PyArray_Descr()
-#cdef PyArray_Descr ** _c_xd_{fncname}_descr = np.dtype()
 cdef PyArray_Descr * c_xd_{fncname}_descr = <PyArray_Descr *> malloc(sizeof(PyArray_Descr))
-#(<object> c_xd_{fncname}_descr).ob_refcnt = 0 # ob_refcnt
+print "Malloc size: ", sizeof(PyArray_Descr)
 (<PyObject *> c_xd_{fncname}_descr).ob_refcnt = 0 # ob_refcnt
-#(<object> c_xd_{fncname}_descr).ob_type = (<PyTypeObject *> PyArray_API[3]) # ob_type == PyArrayDescr_Type
-#c_xd_{fncname}_descr.ob_type = (<PyTypeObject *> PyArray_API[3]) # ob_type == PyArrayDescr_Type
-#(<object> c_xd_{fncname}_descr).ob_type = PyArrayDescr_Type
-#(<object> c_xd_{fncname}_descr).ob_type = <object> PyArray_API[3]
 (<PyObject *> c_xd_{fncname}_descr).ob_type = <PyTypeObject *> PyArray_API[3]
 c_xd_{fncname}_descr.typeobj = <PyTypeObject *> PyXD_{clsname} # typeobj
 c_xd_{fncname}_descr.kind = 'x'  # kind, for xdress
@@ -738,13 +732,11 @@ c_xd_{fncname}_descr.elsize = sizeof({ctype})  # elsize,
 c_xd_{fncname}_descr.alignment = 8  # alignment
 c_xd_{fncname}_descr.subarray = NULL  # subarray
 c_xd_{fncname}_descr.fields = <PyObject *> None  # fields
-c_xd_{fncname}_descr.f = &PyXD_{clsname}_ArrFuncs  # f == PyArray_ArrFuncs
+(<PyArray_Descr *> c_xd_{fncname}_descr).f = <PyArray_ArrFuncs *> &PyXD_{clsname}_ArrFuncs  # f == PyArray_ArrFuncs
 
-
-cdef object xd_{fncname}_descr = <object> (<void *> &c_xd_{fncname}_descr)
+cdef object xd_{fncname}_descr = <object> (<void *> c_xd_{fncname}_descr)
 Py_INCREF(<object> xd_{fncname}_descr)
 xd_{fncname} = xd_{fncname}_descr
-#cdef int xd_{fncname}_num = PyArray_RegisterDataType(&c_xd_{fncname}_descr)
 cdef int xd_{fncname}_num = PyArray_RegisterDataType(c_xd_{fncname}_descr)
 dtypes['{fncname}'] = xd_{fncname}
 dtypes['xd_{fncname}'] = xd_{fncname}
