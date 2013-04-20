@@ -122,7 +122,7 @@ cdef class _Set{clsname}:
         si.init(self.set_ptr)
         return si
 
-    def add(self, {cytype} value):
+    def add(self, value):
         cdef {ctype} v
 {py2cdecl.indent8}
 {py2cbody.indent8}
@@ -719,7 +719,6 @@ XD{clsname} = PyXD_{clsname}
 #    )
 
 cdef PyArray_Descr * c_xd_{fncname}_descr = <PyArray_Descr *> malloc(sizeof(PyArray_Descr))
-print "Malloc size: ", sizeof(PyArray_Descr)
 (<PyObject *> c_xd_{fncname}_descr).ob_refcnt = 0 # ob_refcnt
 (<PyObject *> c_xd_{fncname}_descr).ob_type = <PyTypeObject *> PyArray_API[3]
 c_xd_{fncname}_descr.typeobj = <PyTypeObject *> PyXD_{clsname} # typeobj

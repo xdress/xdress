@@ -1051,7 +1051,8 @@ _cython_c2py_conv = _LazyConverterDict({
     # Has tuple form of (copy, [view, [cached_view]])
     # base types
     'char': ('str(&{var})[0]',),
-    'str': ('str(<char *> {var}.c_str())',),
+    #'str': ('str(<char *> {var}.c_str())',),
+    'str': ('bytes(<char *> {var}.c_str()).decode()',),
     'int32': ('int({var})',),
     'uint32': ('int({var})',),
     'float32': ('float({var})',),
@@ -1207,8 +1208,13 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
 _cython_py2c_conv = _LazyConverterDict({
     # Has tuple form of (body or return,  return or False)
     # base types
-    'char': ('(<char *> {var})[0]', False),
-    'str': ('std_string(<char *> {var})', False),
+    #'char': ('(<char *> {var})[0]', False),
+    'char': ('{var}_bytes = bytes({var})', '({var}_bytes[0])'),
+    #'str': ('std_string(<char *> {var})', False),
+    #'str': ('std_string(<char *> bytes({var}))', False),
+    #'str': ('{var}_bytes = bytes({var})', 'std_string({var}_bytes)'),
+    'str': ('{var}_bytes = {var}.encode()', 'std_string(<char *> {var}_bytes)'),
+    #'str': ('{var}_bytes = bytearray({var})', 'std_string({var}_bytes)'),
     'int32': ('<int> {var}', False),
     'uint32': ('<{ctype}> long({var})', False),
     'float32': ('<float> {var}', False),
