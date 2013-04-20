@@ -1120,20 +1120,24 @@ _cython_c2py_conv = _LazyConverterDict({
     ('vector', 'char', 0): (  # C/C++ chars are ints while Python Chars are length-1 strings
                ('cdef int i\n'
                 '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.empty({proxy_name}_shape[0], "S1")\n'
+#                '{proxy_name} = np.empty({proxy_name}_shape[0], "S1")\n'
+                '{proxy_name} = np.empty({proxy_name}_shape[0], "U1")\n'
                 'for i in range({proxy_name}_shape[0]):\n' 
-                '    {proxy_name}[i] = str(&{var}[i])[0]\n'),
+#                '    {proxy_name}[i] = str(&{var}[i])[0]\n'),
+                '    {proxy_name}[i] = chr(<int> {var}[i])\n'),
                ('cdef int i\n'
                 '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.empty({proxy_name}_shape[0], "S1")\n'
+#                '{proxy_name} = np.empty({proxy_name}_shape[0], "S1")\n'
+                '{proxy_name} = np.empty({proxy_name}_shape[0], "U1")\n'
                 'for i in range({proxy_name}_shape[0]):\n' 
-                '    {proxy_name}[i] = str(&{var}[i])[0]\n'),
+#                '    {proxy_name}[i] = str(&{var}[i])[0]\n'),
+                '    {proxy_name}[i] = chr(<int> {var}[i])\n'),
                ('cdef int i\n'
                 'if {cache_name} is None:\n'
                 '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '    for i in range({proxy_name}_shape[0]):\n' 
-                '        {proxy_name}[i] = str(&{var}[i])[0]\n'
+                '    for i in range({proxy_name}_shape[0]):\n'
+#                '        {proxy_name}[i] = str(&{var}[i])[0]\n'
+                '        {proxy_name}[i] = chr(<int> {var}[i])\n'
                 '    {cache_name} = {proxy_name}\n'
                 )),
     'nucid': ('nucname.zzaaam({var})',),
@@ -1259,7 +1263,8 @@ _cython_py2c_conv = _LazyConverterDict({
                 'else:\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
                 '    for i in range({var}_size):\n'
-                '        _ = str({var}[i])[0]\n'
+#                '        _ = str({var}[i])[0].encode()\n'
+                '        _ = {var}[i].encode()\n'
                 '        {proxy_name}[i] = deref(<char *> _)\n'),
                '{proxy_name}'),
     # refinement types
