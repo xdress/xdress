@@ -1146,12 +1146,14 @@ _cython_c2py_conv = _LazyConverterDict({
 
 
 from_pytypes = {
-    'str': ['basestring'],
-    'char': ['basestring'],
-    'int32': ['int', 'long'],
-    'uint32': ['int', 'long'],
-    'float32': ['float', 'int', 'long'],
-    'float64': ['float', 'int', 'long'],
+    #'str': ['basestring'],
+    #'char': ['basestring'],
+    'str': ['str'],
+    'char': ['str'],
+    'int32': ['int'],
+    'uint32': ['int'],
+    'float32': ['float', 'int'],
+    'float64': ['float', 'int'],
     'complex128': ['complex', 'float'],
     'set': ['set', 'list', 'basestring', 'tuple'],
     'vector': ['list', 'tuple', 'np.ndarray'],
