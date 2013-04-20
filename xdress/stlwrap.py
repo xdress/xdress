@@ -702,22 +702,6 @@ pyxd_{fncname}_is_ready = PyType_Ready(<object> PyXD_{clsname})
 Py_INCREF(PyXD_{clsname})
 XD{clsname} = PyXD_{clsname}
 
-#cdef PyArray_Descr c_xd_{fncname}_descr = PyArray_Descr(
-#    0, # ob_refcnt
-#    (<PyTypeObject *> PyArray_API[3]), # ob_type == PyArrayDescr_Type
-#    <PyTypeObject *> PyXD_{clsname}, # typeobj
-#    'x',  # kind, for xdress
-#    'x',  # type
-#    '=',  # byteorder
-#    0,    # flags
-#    0,    # type_num, assigned at registration
-#    sizeof({ctype}),  # elsize, 
-#    8,  # alignment
-#    NULL,  # subarray
-#    <PyObject *> None,  # fields
-#    &PyXD_{clsname}_ArrFuncs,  # f == PyArray_ArrFuncs
-#    )
-
 cdef PyArray_Descr * c_xd_{fncname}_descr = <PyArray_Descr *> malloc(sizeof(PyArray_Descr))
 (<PyObject *> c_xd_{fncname}_descr).ob_refcnt = 0 # ob_refcnt
 (<PyObject *> c_xd_{fncname}_descr).ob_type = <PyTypeObject *> PyArray_API[3]
@@ -860,6 +844,9 @@ cimport {extra_types}
 
 dtypes = {{}}
 
+if PY_MAJOR_VERSION >= 3:
+    basestring = str
+
 
 # Dirty ifdef, else, else preprocessor hack
 # see http://comments.gmane.org/gmane.comp.python.cython.user/4080
@@ -911,10 +898,6 @@ cimport {extra_types}
 
 cimport numpy as np
 
-ctypedef int (*cmpfunc_py2k)(object, object)     # Python 2
-ctypedef void * (*cmpfunc_py3k)(object, object)  # Python 3
-
-
 cdef extern from "Python.h":
     ctypedef Py_ssize_t Py_ssize_t
 
@@ -946,11 +929,7 @@ cdef extern from "Python.h":
         PyTypeObject * tp_base
         void tp_free(void *)
         # This is a dirty hack by declaring to Cython both the Python 2 & 3 APIs
-        #cmpfunc_py2k tp_compare(object, object)   # Python 2
-        #cmpfunc_py3k tp_reserved(object, object)  # Python 3
-        #cmpfunc_py2k tp_compare   # Python 2
-        #cmpfunc_py3k tp_reserved  # Python 3
-        int (*tp_compare)(object, object)   # Python 2
+        int (*tp_compare)(object, object)      # Python 2
         void * (*tp_reserved)(object, object)  # Python 3
 
 cdef extern from "numpy/arrayobject.h":

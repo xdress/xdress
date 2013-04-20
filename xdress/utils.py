@@ -59,12 +59,12 @@ def newoverwrite(s, filename, verbose=False):
 
     """
     if os.path.isfile(filename):
-        with io.open(filename, 'r') as f:
+        with io.open(filename, 'rb') as f:
             old = f.read()
         if s == old:
             return
-    with io.open(filename, 'w') as f:
-        f.write(s)
+    with io.open(filename, 'wb') as f:
+        f.write(s.encode())
     if verbose:
         print("  wrote " + filename)
 
