@@ -721,10 +721,13 @@ XD{clsname} = PyXD_{clsname}
 #cdef PyArray_Descr * c_xd_{fncname}_descr = PyArray_Descr()
 #cdef PyArray_Descr ** _c_xd_{fncname}_descr = np.dtype()
 cdef PyArray_Descr * c_xd_{fncname}_descr = <PyArray_Descr *> malloc(sizeof(PyArray_Descr))
-(<object> c_xd_{fncname}_descr).ob_refcnt = 0 # ob_refcnt
+#(<object> c_xd_{fncname}_descr).ob_refcnt = 0 # ob_refcnt
+(<PyObject *> c_xd_{fncname}_descr).ob_refcnt = 0 # ob_refcnt
 #(<object> c_xd_{fncname}_descr).ob_type = (<PyTypeObject *> PyArray_API[3]) # ob_type == PyArrayDescr_Type
 #c_xd_{fncname}_descr.ob_type = (<PyTypeObject *> PyArray_API[3]) # ob_type == PyArrayDescr_Type
-(<object> c_xd_{fncname}_descr).ob_type = PyArrayDescr_Type
+#(<object> c_xd_{fncname}_descr).ob_type = PyArrayDescr_Type
+#(<object> c_xd_{fncname}_descr).ob_type = <object> PyArray_API[3]
+(<PyObject *> c_xd_{fncname}_descr).ob_type = <PyTypeObject *> PyArray_API[3]
 c_xd_{fncname}_descr.typeobj = <PyTypeObject *> PyXD_{clsname} # typeobj
 c_xd_{fncname}_descr.kind = 'x'  # kind, for xdress
 c_xd_{fncname}_descr.type = 'x'  # type
