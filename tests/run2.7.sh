@@ -1,7 +1,6 @@
 #!/bin/bash
 export INST=$(pwd)/inst
 export SITEPATH=${INST}/lib/python2.7/site-packages
-#python ../xdress/main.py --no-cyclus && \
 python2.7 ../xdress/main.py --no-cyclus && \
 python2.7 setup.py install --prefix=$INST -- -- && \
 cd xdtest/tests && \

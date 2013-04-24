@@ -22,8 +22,8 @@ This has the following usage::
 
     optional arguments:
       -h, --help            show this help message and exit
-      --rc RC               path to run control file.
-      --debug               build with debugging flags
+      --rc RC               path to run control file
+      --debug               build in debugging mode
       --no-extratypes       don't make extr types wrapper
       --no-stlcont          don't make STL container wrappers
       --no-cython           don't make cython bindings
@@ -412,6 +412,7 @@ def setuprc(ns):
         extra_types='xdress_extra_types',
         stlcontainers=[],
         stlcontainers_module='stlcontainers',
+        debug=False,
         )
     exec_file(ns.rc, rc, rc)
     rc = argparse.Namespace(**rc)
@@ -428,13 +429,13 @@ def setuprc(ns):
     writenewonly("", os.path.join(rc.packagedir, '__init__.pxd'), ns.verbose)
     return rc
 
-def main():
-    """Entry point for xdress API generation."""
+def main_setup():
+    """Setup xdress API generation."""
     parser = argparse.ArgumentParser("Generates XDress API")
     parser.add_argument('--rc', default="xdressrc.py", 
-                        help="path to run control file.")
+                        help="path to run control file")
     parser.add_argument('--debug', action='store_true', default=False, 
-                        help='build with debugging flags')    
+                        help='build in debugging mode')    
     parser.add_argument('--no-extratypes', action='store_false', dest='extratypes', 
                         default=True, help="don't make extr types wrapper")
     parser.add_argument('--no-stlcont', action='store_false', dest='stlcont', 
@@ -445,7 +446,7 @@ def main():
                         default=True, help="don't make cyclus bindings")
     parser.add_argument('--dump-desc', action='store_true', dest='dumpdesc', 
                         default=False, help="print description cache")
-    parser.add_argument('-I', action='store', dest='includes', nargs="+",
+    parser.add_argument('-I', '--includes', action='store', dest='includes', nargs="+",
                         default=[], help="additional include dirs")
     parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', 
                         default=False, help="print more output")
@@ -453,10 +454,13 @@ def main():
 
     if ns.dumpdesc:
         dumpdesc(ns)
-        return 
+        return ns, Namespace(debug=False)
 
     rc = setuprc(ns)
+    return ns, rc
 
+def main_body(ns, rc):
+    """Body for xdress API generation."""
     # set typesystem defaults
     ts.EXTRA_TYPES = rc.extra_types
     ts.STLCONTAINERS = rc.stlcontainers_module
@@ -470,6 +474,25 @@ def main():
     if ns.cython or ns.cyclus:
         genbindings(ns, rc)
 
+def main():
+    """Entry point for xdress API generation."""
+    ns, rc = main_setup()
+    try:
+        main_body(ns, rc)
+    except Exception as e:
+        if ns.debug or rc.debug:
+            import traceback
+            sep = ':( ' * 23 + '\n\n'
+            df = os.path.join('build', 'debug.txt')
+            with io.open(df, 'a') as f:
+                f.write('{0}xdress failed with the following error:\n\n'.format(sep))
+            traceback.print_exc(None, df)
+            with io.open(df, 'a') as f:
+                msg = '{0}Current descripton cache contents:\n\n{1}\n'
+                f.write(msg.format(sep, str(cache)))
+            raise 
+        else:
+            sys.exit(str(e))
 
 if __name__ == '__main__':
     main()
