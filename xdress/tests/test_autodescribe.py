@@ -1,9 +1,9 @@
 from __future__ import print_function
 import os
 
-from bright.apigen import typesystem as ts
-from bright.apigen import cythongen as cg
-from bright.apigen import autodescribe as ad
+from xdress import typesystem as ts
+from xdress import cythongen as cg
+from xdress import autodescribe as ad
 
 from nose.tools import assert_equal
 

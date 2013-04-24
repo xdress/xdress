@@ -1,6 +1,6 @@
 from __future__ import print_function
-from bright.apigen import typesystem as ts
-from bright.apigen import cythongen as cg
+from xdress import typesystem as ts
+from xdress import cythongen as cg
 
 from nose.tools import assert_equal
 

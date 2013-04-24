@@ -133,12 +133,12 @@ try:
 except ImportError:
     import pickle
 
-from utils import newoverwrite, newcopyover, ensuredirs, writenewonly, exec_file
+from utils import newoverwrite, newcopyover, ensuredirs, writenewonly, exec_file, \
+    NotSpecified, RunControl
 import typesystem as ts
 import stlwrap
 from cythongen import gencpppxd, genpxd, genpyx
 import autodescribe 
-
 
 class DescriptionCache(object):
     """A quick persistent cache for descriptions from files.  
@@ -403,18 +403,11 @@ def dumpdesc(ns):
     """
     print(str(DescriptionCache()))
 
-def setuprc(ns):
+def setuprc(rc):
     """Makes and validates a run control namespace."""
-    rc = dict(
-        package=None,
-        packagedir=None,
-        sourcedir='src',
-        extra_types='xdress_extra_types',
-        stlcontainers=[],
-        stlcontainers_module='stlcontainers',
-        debug=False,
-        )
-    exec_file(ns.rc, rc, rc)
+    d = {}
+    exec_file(ns.rc, d, d)
+    rc._update(d)
     rc = argparse.Namespace(**rc)
     rc.includes = list(rc.includes) if hasattr(rc, 'includes') else []
     if rc.package is None:
@@ -428,6 +421,16 @@ def setuprc(ns):
     writenewonly("", os.path.join(rc.packagedir, '__init__.py'), ns.verbose)
     writenewonly("", os.path.join(rc.packagedir, '__init__.pxd'), ns.verbose)
     return rc
+
+defaultrc = RunControl(
+    package=NotSpecified,
+    packagedir=NotSpecified,
+    sourcedir='src',
+    extra_types='xdress_extra_types',
+    stlcontainers=[],
+    stlcontainers_module='stlcontainers',
+    debug=False,
+    )
 
 def main_setup():
     """Setup xdress API generation."""
@@ -451,6 +454,9 @@ def main_setup():
     parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', 
                         default=False, help="print more output")
     ns = parser.parse_args()
+
+    rc = RunControl()
+    rc._update(defaultrc)
 
     if ns.dumpdesc:
         dumpdesc(ns)
