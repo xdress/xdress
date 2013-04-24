@@ -197,12 +197,9 @@ class DescriptionCache(object):
         return pformat(self.cache)
 
 
-# singleton
-cache = DescriptionCache()
-
 pysrcenv = {}
 
-def load_pysrcmod(srcname, ns, rc):
+def load_pysrcmod(srcname, rc):
     """Loads a module dictionary from a src file into the pysrcenv cache."""
     if srcname in pysrcenv:
         return 
@@ -222,7 +219,7 @@ def load_pysrcmod(srcname, ns, rc):
     pysrcenv[srcname] = pymod
 
 
-def compute_desc(name, srcname, tarname, kind, ns, rc):
+def compute_desc(name, srcname, tarname, kind, rc):
     """Returns a description dictionary for a class or function
     implemented in a source file and bound into a target file.
 
@@ -247,12 +244,13 @@ def compute_desc(name, srcname, tarname, kind, ns, rc):
     """
     # C++ description
     cppfilename = os.path.join(rc.sourcedir, srcname + '.cpp')
+    cache = rc._cache
     if cache.isvalid(name, cppfilename, kind):
         cppdesc = cache[name, cppfilename, kind]
     else:
         cppdesc = autodescribe.describe(cppfilename, name=name, kind=kind,
-                                        includes=ns.includes + rc.includes,
-                                        verbose=ns.verbose)
+                                        includes=rc.includes,
+                                        verbose=rc.verbose)
         cache[name, cppfilename, kind] = cppdesc
 
     # python description
@@ -273,7 +271,7 @@ def compute_desc(name, srcname, tarname, kind, ns, rc):
         desc['cpppxd_filename'] = 'cpp_{0}.pxd'.format(tarname)
     return desc
 
-def genextratypes(ns, rc):
+def genextratypes(rc):
     d = os.path.split(__file__)[0]
     srcs = [os.path.join(d, 'xdress_extra_types.h'), 
             os.path.join(d, 'xdress_extra_types.pxd'), 
@@ -285,16 +283,16 @@ def genextratypes(ns, rc):
         with io.open(src, 'r') as f:
             s = f.read()
             s = s.format(extra_types=rc.extra_types)
-            newoverwrite(s, tar, ns.verbose)
+            newoverwrite(s, tar, rc.verbose)
 
-def genstlcontainers(ns, rc):
+def genstlcontainers(rc):
     print("stlwrap: generating C++ standard library wrappers & converters")
     fname = os.path.join(rc.packagedir, rc.stlcontainers_module)
     ensuredirs(fname)
     testname = os.path.join(rc.packagedir, 'tests', 'test_' + rc.stlcontainers_module)
     ensuredirs(testname)
     stlwrap.genfiles(rc.stlcontainers, fname=fname, testname=testname, 
-                     package=rc.package, verbose=ns.verbose)
+                     package=rc.package, verbose=rc.verbose)
 
 
 def _adddesc2env(desc, env, name, srcname, tarname):
@@ -312,20 +310,20 @@ def _adddesc2env(desc, env, name, srcname, tarname):
         env[tarname].update(mod)
         env[tarname]['extra'] += pysrcenv[srcname].get('extra', '')
 
-def genbindings(ns, rc):
-    """Generates bidnings using the command line setting specified in ns.
+def genbindings(rc):
+    """Generates bidnings using the command line setting specified in rc.
     """
     print("cythongen: scraping C/C++ APIs from source")
-
-    ns.cyclus = False  # FIXME cyclus bindings don't exist yet!
+    cache = rc._cache
+    rc.make_cyclus = False  # FIXME cyclus bindings don't exist yet!
     for i, cls in enumerate(rc.classes):
         if len(cls) == 2:
             rc.classes[i] = (cls[0], cls[1], cls[1])
-        load_pysrcmod(cls[1], ns, rc)        
+        load_pysrcmod(cls[1], rc)        
     for i, fnc in enumerate(rc.functions):
         if len(fnc) == 2:
             rc.functions[i] = (fnc[0], fnc[1], fnc[1])
-        load_pysrcmod(fnc[1], ns, rc)
+        load_pysrcmod(fnc[1], rc)
     # register dtypes
     for t in rc.stlcontainers:
         if t[0] == 'vector':
@@ -337,8 +335,8 @@ def genbindings(ns, rc):
     for classname, srcname, tarname in rc.classes:
         print("parsing " + classname)
         desc = classes[classname] = compute_desc(classname, srcname, tarname, 
-                                                 'class', ns, rc)
-        if ns.verbose:
+                                                 'class', rc)
+        if rc.verbose:
             pprint(desc)
 
         print("registering " + classname)
@@ -374,119 +372,147 @@ def genbindings(ns, rc):
     # then compute all function descriptions
     for funcname, srcname, tarname in rc.functions:
         print("parsing " + funcname)
-        desc = compute_desc(funcname, srcname, tarname, 'func', ns, rc)
-        if ns.verbose:
+        desc = compute_desc(funcname, srcname, tarname, 'func', rc)
+        if rc.verbose:
             pprint(desc)
         cache.dump()
         _adddesc2env(desc, env, funcname, srcname, tarname)
 
     # next, make cython bindings
     # generate first, then write out to ensure this is atomic per-class
-    if ns.cython:
+    if rc.make_cythongen:
         print("cythongen: creating C/C++ API wrappers")
         cpppxds = gencpppxd(env)
         pxds = genpxd(env)
         pyxs = genpyx(env, classes)
         for key, cpppxd in cpppxds.items():
-            newoverwrite(cpppxd, os.path.join(rc.package, env[key]['cpppxd_filename']), ns.verbose)
+            newoverwrite(cpppxd, os.path.join(rc.package, env[key]['cpppxd_filename']), rc.verbose)
         for key, pxd in pxds.items():
-            newoverwrite(pxd, os.path.join(rc.package, env[key]['pxd_filename']), ns.verbose)
+            newoverwrite(pxd, os.path.join(rc.package, env[key]['pxd_filename']), rc.verbose)
         for key, pyx in pyxs.items():
-            newoverwrite(pyx, os.path.join(rc.package, env[key]['pyx_filename']), ns.verbose)
+            newoverwrite(pyx, os.path.join(rc.package, env[key]['pyx_filename']), rc.verbose)
 
     # next, make cyclus bindings
-    if ns.cyclus:
+    if rc.cyclus:
         print("making cyclus bindings")
 
-def dumpdesc(ns):
-    """Prints the current contents of the description cache using ns.
+def dumpdesc(rc):
+    """Prints the current contents of the description cache using rc.
     """
-    print(str(DescriptionCache()))
+    print(str(rc._cache))
 
 def setuprc(rc):
-    """Makes and validates a run control namespace."""
-    d = {}
-    exec_file(ns.rc, d, d)
-    rc._update(d)
-    rc = argparse.Namespace(**rc)
-    rc.includes = list(rc.includes) if hasattr(rc, 'includes') else []
-    if rc.package is None:
-        sys.exit("no package name given; please add 'package' to xdressrc.py")
-    if rc.packagedir is None:
+    """Makes and validates a run control object and the environment it specifies."""
+    if rc.package is NotSpecified:
+        sys.exit("no package name given; please add 'package' to {0}".format(rc.rc))
+    if rc.packagedir is NotSpecified:
         rc.packagedir = rc.package.replace('.', os.path.sep)
     if not os.path.isdir(rc.packagedir):
         os.makedirs(rc.packagedir)
     if not os.path.isdir(rc.sourcedir):
         os.makedirs(rc.sourcedir)
-    writenewonly("", os.path.join(rc.packagedir, '__init__.py'), ns.verbose)
-    writenewonly("", os.path.join(rc.packagedir, '__init__.pxd'), ns.verbose)
-    return rc
+    writenewonly("", os.path.join(rc.packagedir, '__init__.py'), rc.verbose)
+    writenewonly("", os.path.join(rc.packagedir, '__init__.pxd'), rc.verbose)
 
 defaultrc = RunControl(
+    rc="xdressrc.py", 
+    debug=False,
+    make_extratypes=True,
+    make_stlcontainers=True,
+    make_cythongen=True,
+    make_cyclus=False,
+    dumpdesc=False,
+    includes=[],
+    verbose=False,
     package=NotSpecified,
     packagedir=NotSpecified,
     sourcedir='src',
+    builddir='build',
     extra_types='xdress_extra_types',
     stlcontainers=[],
     stlcontainers_module='stlcontainers',
-    debug=False,
     )
 
 def main_setup():
     """Setup xdress API generation."""
     parser = argparse.ArgumentParser("Generates XDress API")
-    parser.add_argument('--rc', default="xdressrc.py", 
+    parser.add_argument('--rc', default=NotSpecified, 
                         help="path to run control file")
-    parser.add_argument('--debug', action='store_true', default=False, 
-                        help='build in debugging mode')    
-    parser.add_argument('--no-extratypes', action='store_false', dest='extratypes', 
-                        default=True, help="don't make extr types wrapper")
-    parser.add_argument('--no-stlcont', action='store_false', dest='stlcont', 
-                        default=True, help="don't make STL container wrappers")
-    parser.add_argument('--no-cython', action='store_false', dest='cython', 
-                        default=True, help="don't make cython bindings")
-    parser.add_argument('--no-cyclus', action='store_false', dest='cyclus', 
-                        default=True, help="don't make cyclus bindings")
-    parser.add_argument('--dump-desc', action='store_true', dest='dumpdesc', 
-                        default=False, help="print description cache")
-    parser.add_argument('-I', '--includes', action='store', dest='includes', nargs="+",
-                        default=[], help="additional include dirs")
     parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', 
-                        default=False, help="print more output")
+                        default=NotSpecified, help="print more output")
+    parser.add_argument('--debug', action='store_true', default=NotSpecified, 
+                        help='build in debugging mode')    
+    parser.add_argument('--make-extratypes', action='store_true', 
+                        dest='make_extratypes', default=NotSpecified, 
+                        help="make extra types wrapper")
+    parser.add_argument('--no-make-extratypes', action='store_false', 
+                        dest='make_extratypes', default=NotSpecified, 
+                        help="don't make extra types wrapper")
+    parser.add_argument('--make-stlcontainers', action='store_true', 
+                        dest='make_stlcontainers', default=NotSpecified,
+                        help="make STL container wrappers")
+    parser.add_argument('--no-make-stlcontainers', action='store_false', 
+                        dest='make_stlcontainers', default=NotSpecified,
+                        help="don't make STL container wrappers")
+    parser.add_argument('--make-cythongen', action='store_true', 
+                        dest='make_cythongen', default=NotSpecified,
+                        help="make cython bindings")
+    parser.add_argument('--no-make-cythongen', action='store_false', 
+                        dest='make_cythongen', default=NotSpecified,
+                        help="don't make cython bindings")
+    parser.add_argument('--make-cyclus', action='store_true', 
+                        dest='make_cyclus', default=NotSpecified, 
+                        help="make cyclus bindings")
+    parser.add_argument('--no-make-cyclus', action='store_false', 
+                        dest='make_cyclus', default=NotSpecified, 
+                        help="don't make cyclus bindings")
+    parser.add_argument('--dumpdesc', action='store_true', dest='dumpdesc', 
+                        default=NotSpecified, help="print description cache")
+    parser.add_argument('-I', '--includes', action='store', dest='includes', nargs="+",
+                        default=NotSpecified, help="additional include dirs")
+    parser.add_argument('--builddir', action='store', dest='builddir', 
+                        default=NotSpecified, help="path to build directory")
     ns = parser.parse_args()
 
     rc = RunControl()
     rc._update(defaultrc)
+    rc.rc = ns.rc
+    if os.path.isfile(rc.rcfile):
+        d = {}
+        exec_file(rcfile, d, d)
+        rc._update(d)
+    rc._update([(k, v) for k, v in ns.__dict__.items() if not k.startswith('_')])
+    rc._cache = DescriptionCache(cachefile=os.path.join(rc.builddir, 'desc.cache'))
 
-    if ns.dumpdesc:
-        dumpdesc(ns)
-        return ns, Namespace(debug=False)
+    if rc.dumpdesc:
+        dumpdesc(rc)
+        return rc
 
-    rc = setuprc(ns)
-    return ns, rc
+    setuprc(rc)
+    return rc
 
-def main_body(ns, rc):
+def main_body(rc):
     """Body for xdress API generation."""
     # set typesystem defaults
     ts.EXTRA_TYPES = rc.extra_types
     ts.STLCONTAINERS = rc.stlcontainers_module
 
-    if ns.extratypes:
-        genextratypes(ns, rc)
+    if rc.make_extratypes:
+        genextratypes(rc)
 
-    if ns.stlcont:
-        genstlcontainers(ns, rc)
+    if rc.make_stlcontainers:
+        genstlcontainers(rc)
 
-    if ns.cython or ns.cyclus:
-        genbindings(ns, rc)
+    if rc.make_cythongen:
+        genbindings(rc)
 
 def main():
     """Entry point for xdress API generation."""
-    ns, rc = main_setup()
+    rc = main_setup()
     try:
-        main_body(ns, rc)
+        main_body(rc)
     except Exception as e:
-        if ns.debug or rc.debug:
+        if rc.debug:
             import traceback
             sep = ':( ' * 23 + '\n\n'
             df = os.path.join('build', 'debug.txt')
@@ -495,7 +521,7 @@ def main():
             traceback.print_exc(None, df)
             with io.open(df, 'a') as f:
                 msg = '{0}Current descripton cache contents:\n\n{1}\n'
-                f.write(msg.format(sep, str(cache)))
+                f.write(msg.format(sep, str(rc._cache)))
             raise 
         else:
             sys.exit(str(e))
