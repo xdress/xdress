@@ -1,8 +1,8 @@
 #!/bin/bash
 export INST=$(pwd)/inst
 export SITEPATH=${INST}/lib/python3.2/site-packages
-#python3.2 ../xdress/main.py --no-cyclus && \
-python3.2 ../xdress/main.py --no-cyclus && \
+python3.2 ../xdress/main.py --debug && \
+python3.2 ../xdress/main.py && \
 python3.2 setup.py install --prefix=$INST -- -- && \
 cd xdtest/tests && \
 PYTHONPATH=$SITEPATH nosetests-3.2 test_xdstlc.py && \

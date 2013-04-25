@@ -16,3 +16,16 @@ tests/xdtest/tests/
 tests/xdtest/xdstlc.*
 tests/xdtest/stlcontainers.*
 tests/xdtest/xdtest_extra_types.*
+tests/src/xdtest_extra_types.h
+tests/xdtest/cpp_enrichment.pxd
+tests/xdtest/cpp_enrichment_parameters.pxd
+tests/xdtest/cpp_fccomp.pxd
+tests/xdtest/cpp_reprocess.pxd
+tests/xdtest/enrichment.pxd
+tests/xdtest/enrichment.pyx
+tests/xdtest/enrichment_parameters.pxd
+tests/xdtest/enrichment_parameters.pyx
+tests/xdtest/fccomp.pxd
+tests/xdtest/fccomp.pyx
+tests/xdtest/reprocess.pxd
+tests/xdtest/reprocess.pyx

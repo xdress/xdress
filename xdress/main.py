@@ -249,8 +249,8 @@ def compute_desc(name, srcname, tarname, kind, rc):
         cppdesc = cache[name, cppfilename, kind]
     else:
         cppdesc = autodescribe.describe(cppfilename, name=name, kind=kind,
-                                        includes=rc.includes,
-                                        verbose=rc.verbose)
+                                        includes=rc.includes, verbose=rc.verbose, 
+                                        debug=rc.debug, builddir=rc.builddir)
         cache[name, cppfilename, kind] = cppdesc
 
     # python description
@@ -393,7 +393,7 @@ def genbindings(rc):
             newoverwrite(pyx, os.path.join(rc.package, env[key]['pyx_filename']), rc.verbose)
 
     # next, make cyclus bindings
-    if rc.cyclus:
+    if rc.make_cyclus:
         print("making cyclus bindings")
 
 def dumpdesc(rc):
@@ -411,6 +411,8 @@ def setuprc(rc):
         os.makedirs(rc.packagedir)
     if not os.path.isdir(rc.sourcedir):
         os.makedirs(rc.sourcedir)
+    if not os.path.isdir(rc.builddir):
+        os.makedirs(rc.builddir)
     writenewonly("", os.path.join(rc.packagedir, '__init__.py'), rc.verbose)
     writenewonly("", os.path.join(rc.packagedir, '__init__.pxd'), rc.verbose)
 
@@ -477,9 +479,9 @@ def main_setup():
     rc = RunControl()
     rc._update(defaultrc)
     rc.rc = ns.rc
-    if os.path.isfile(rc.rcfile):
+    if os.path.isfile(rc.rc):
         d = {}
-        exec_file(rcfile, d, d)
+        exec_file(rc.rc, d, d)
         rc._update(d)
     rc._update([(k, v) for k, v in ns.__dict__.items() if not k.startswith('_')])
     rc._cache = DescriptionCache(cachefile=os.path.join(rc.builddir, 'desc.cache'))
@@ -514,13 +516,13 @@ def main():
     except Exception as e:
         if rc.debug:
             import traceback
-            sep = ':( ' * 23 + '\n\n'
-            df = os.path.join('build', 'debug.txt')
-            with io.open(df, 'a') as f:
+            sep = r'~\_/' * 17 + '~=[,,_,,]:3\n\n'
+            with io.open(os.path.join(rc.builddir, 'debug.txt'), 'a+b') as f:
                 f.write('{0}xdress failed with the following error:\n\n'.format(sep))
-            traceback.print_exc(None, df)
-            with io.open(df, 'a') as f:
-                msg = '{0}Current descripton cache contents:\n\n{1}\n'
+                traceback.print_exc(None, f)
+                msg = '\n{0}Run control run-time contents:\n\n{1}\n\n'
+                f.write(msg.format(sep, rc._pformat()))
+                msg = '\n{0}Current descripton cache contents:\n\n{1}\n\n'
                 f.write(msg.format(sep, str(rc._cache)))
             raise 
         else:

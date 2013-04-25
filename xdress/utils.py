@@ -3,6 +3,7 @@ from __future__ import print_function
 import os
 import io
 import sys
+from pprint import pformat
 from collections import Mapping
 
 if sys.version_info[0] >= 3: 
@@ -187,6 +188,12 @@ class RunControl(object):
         s = ", ".join(["{0!s}={1!r}".format(k, self._dict[k]) for k in keys])
         return "{0}({1})".format(self.__class__.__name__, s)
 
+    def _pformat(self):
+        keys = sorted(self._dict.keys())
+        f = lambda k: "{0!s}={1}".format(k, pformat(self._dict[k], indent=2))
+        s = ",\n ".join(map(f, keys))
+        return "{0}({1})".format(self.__class__.__name__, s)
+
     def __contains__(self, key):
         return key in self._dict or key in self.__dict__ or \
                                     key in self.__class__.__dict__
@@ -212,7 +219,11 @@ class RunControl(object):
     def _update(self, other):
         if hasattr(other, '_dict'):
             other = other._dict
+        elif not hasattr(other, 'items'):
+            other = dict(other)
         for k, v in other.items():
-            if k in self._update_as_list and v is not NotSpecified and hasattr(self, k):
+            if v is NotSpecified:
+                pass
+            elif k in self._update_as_list and hasattr(self, k):
                 v = list(v) + list(getattr(self, k))
             setattr(self, k, v)

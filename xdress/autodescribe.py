@@ -254,7 +254,7 @@ def gccxml_describe(filename, name, kind, includes=(), verbose=False, debug=Fals
     """
     if debug:
         xmlname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.xml'
-        f = io.open(xmlname, 'w+b')
+        f = io.open(os.path.join(builddir, xmlname), 'w+b')
     else:
         f = tempfile.NamedTemporaryFile()
     cmd = ['gccxml', filename, '-fxml=' + f.name]
