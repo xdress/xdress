@@ -224,6 +224,6 @@ class RunControl(object):
         for k, v in other.items():
             if v is NotSpecified:
                 pass
-            elif k in self._update_as_list and hasattr(self, k):
+            elif k in self._update_as_list and k in self:
                 v = list(v) + list(getattr(self, k))
             setattr(self, k, v)

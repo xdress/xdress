@@ -16,22 +16,31 @@ The main module is normally run via the command line interface as follows:
 This has the following usage::
 
     path/to/proj/ $ xdress -h 
-    usage: Generates XDress API [-h] [--rc RC] [--debug] [--no-extratypes]
-                                [--no-stlcont] [--no-cython] [--no-cyclus]
-                                [--dump-desc] [-I INCLUDES [INCLUDES ...]] [-v]
+    usage: Generates XDress API [-h] [--rc RC] [-v] [--debug] [--make-extratypes]
+                                [--no-make-extratypes] [--make-stlcontainers]
+                                [--no-make-stlcontainers] [--make-cythongen]
+                                [--no-make-cythongen] [--make-cyclus]
+                                [--no-make-cyclus] [--dumpdesc]
+                                [-I INCLUDES [INCLUDES ...]] [--builddir BUILDDIR]
 
     optional arguments:
       -h, --help            show this help message and exit
       --rc RC               path to run control file
-      --debug               build in debugging mode
-      --no-extratypes       don't make extr types wrapper
-      --no-stlcont          don't make STL container wrappers
-      --no-cython           don't make cython bindings
-      --no-cyclus           don't make cyclus bindings
-      --dump-desc           print description cache
-      -I INCLUDES [INCLUDES ...]
-                            additional include dirs
       -v, --verbose         print more output
+      --debug               build in debugging mode
+      --make-extratypes     make extra types wrapper
+      --no-make-extratypes  don't make extra types wrapper
+      --make-stlcontainers  make STL container wrappers
+      --no-make-stlcontainers
+                            don't make STL container wrappers
+      --make-cythongen      make cython bindings
+      --no-make-cythongen   don't make cython bindings
+      --make-cyclus         make cyclus bindings
+      --no-make-cyclus      don't make cyclus bindings
+      --dumpdesc            print description cache
+      -I INCLUDES [INCLUDES ...], --includes INCLUDES [INCLUDES ...]
+                            additional include dirs
+      --builddir BUILDDIR   path to build directory
 
 .. warning:: 
 
@@ -133,12 +142,12 @@ try:
 except ImportError:
     import pickle
 
-from utils import newoverwrite, newcopyover, ensuredirs, writenewonly, exec_file, \
+from .utils import newoverwrite, newcopyover, ensuredirs, writenewonly, exec_file, \
     NotSpecified, RunControl
-import typesystem as ts
-import stlwrap
-from cythongen import gencpppxd, genpxd, genpyx
-import autodescribe 
+from . import typesystem as ts
+from . import stlwrap
+from .cythongen import gencpppxd, genpxd, genpyx
+from . import autodescribe 
 
 class DescriptionCache(object):
     """A quick persistent cache for descriptions from files.  

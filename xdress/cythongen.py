@@ -15,9 +15,9 @@ from __future__ import print_function
 import math
 from copy import deepcopy
 
-from utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc
-import typesystem as ts
-from typesystem import cython_ctype, cython_cimport_tuples, \
+from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc
+from . import typesystem as ts
+from .typesystem import cython_ctype, cython_cimport_tuples, \
     cython_cimports, register_class, cython_cytype, cython_pytype, cython_c2py, \
     cython_py2c, cython_import_tuples, cython_imports, isrefinement
 

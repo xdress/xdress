@@ -1,8 +1,9 @@
 #!/bin/bash
 export INST=$(pwd)/inst
+export LOCPATH=$(pwd)/..
 export SITEPATH=${INST}/lib/python2.7/site-packages
-python2.7 ../xdress/main.py --debug && \
-python2.7 ../xdress/main.py && \
+PYTHONPATH=$LOCPATH python2.7 ../scripts/xdress --debug && \
+PYTHONPATH=$LOCPATH python2.7 ../scripts/xdress && \
 python2.7 setup.py install --prefix=$INST -- -- && \
 cd xdtest/tests && \
 PYTHONPATH=$SITEPATH nosetests-2.7 test_xdstlc.py && \

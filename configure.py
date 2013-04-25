@@ -1,5 +1,5 @@
 #!/usr/bin/env python
- 
+from __future__ import print_function 
 import os
 import sys
 import glob
@@ -59,11 +59,11 @@ def final_message(success=True):
         msg = "\n\nCURRENT METADATA:\n"
         for k, v in sorted(metadata.items()):
             msg += "  {0} = {1}\n".format(k, repr(v))
-        print msg[:-1]
+        print(msg[:-1])
 
     if os.name != 'nt':
         return
-    print msg
+    print(msg)
 
 
 def setup():

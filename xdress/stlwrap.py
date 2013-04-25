@@ -5,8 +5,8 @@ from __future__ import print_function
 import sys
 import pprint
 
-from utils import newoverwrite, newcopyover, ensuredirs, indent, indentstr
-import typesystem as ts
+from .utils import newoverwrite, newcopyover, ensuredirs, indent, indentstr
+from . import typesystem as ts
 
 if sys.version_info[0] >= 3: 
     basestring = str
