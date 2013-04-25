@@ -69,8 +69,8 @@ def final_message(success=True):
 def setup():
     from distutils import core
     scripts = [os.path.join('scripts', f) for f in os.listdir('scripts')]
-    scripts = [s for s in scripts if (os.name == 'nt' and s.endswith('.bat')) or 
-                                     (os.name != 'nt' and not s.endswith('.bat'))]
+    #scripts = [s for s in scripts if (os.name == 'nt' and s.endswith('.bat')) or 
+    #                                 (os.name != 'nt' and not s.endswith('.bat'))]
     packages = ['xdress', ]
     pack_dir = {'xdress': 'xdress',}
     pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp']}
