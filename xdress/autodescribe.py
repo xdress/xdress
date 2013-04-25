@@ -139,6 +139,11 @@ import itertools
 from pprint import pprint, pformat
 from warnings import warn
 
+if os.name == 'nt':
+    import ntpath
+    import posixpath
+
+
 # CLang conditional imports
 #try:
 #    from clang import cindex
@@ -257,6 +262,9 @@ def gccxml_describe(filename, name, kind, includes=(), verbose=False, debug=Fals
         f = io.open(os.path.join(builddir, xmlname), 'w+b')
     else:
         f = tempfile.NamedTemporaryFile()
+    if os.name == 'nt':
+        # GCC-XML and/or Cygwin wants posix paths on Windows.
+        filename = posixpath.join(*ntpath.split(filename)) 
     cmd = ['gccxml', filename, '-fxml=' + f.name]
     cmd += map(lambda i: '-I' + i,  includes)
     if verbose:
