@@ -207,12 +207,12 @@ class RunControl(object):
         else:
             return NotImplemented
 
-    _listkeys = set(['includes'])
+    _update_as_list = set(['includes'])
 
     def _update(self, other):
         if hasattr(other, '_dict'):
             other = other._dict
         for k, v in other.items():
-            if k in self._listkeys and v is not NotSpecified and hasattr(self, k):
+            if k in self._update_as_list and v is not NotSpecified and hasattr(self, k):
                 v = list(v) + list(getattr(self, k))
             setattr(self, k, v)

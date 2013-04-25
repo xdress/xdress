@@ -129,6 +129,7 @@ Automatic Descriptions API
 """
 from __future__ import print_function
 import os
+import io
 import re
 import sys
 from copy import deepcopy
@@ -178,7 +179,7 @@ RE_FLOAT = re.compile('^[+-]?\.?\d+\.?\d*?(e[+-]?\d+)?$')
 
 
 def describe(filename, name=None, kind='class', includes=(), parser='gccxml', 
-    verbose=False):
+    verbose=False, debug=False, builddir='build'):
     """Automatically describes a class in a file.  This is the main entry point.
 
     Parameters
@@ -198,6 +199,10 @@ def describe(filename, name=None, kind='class', includes=(), parser='gccxml',
         implemented in the future.
     verbose : bool, optional
         Flag to diplay extra information while describing the class.
+    debug : bool, optional
+        Flag to enable/disable debug mode.
+    builddir : str, optional
+        Location of -- often temporary -- build files.
 
     Returns
     -------
@@ -209,7 +214,8 @@ def describe(filename, name=None, kind='class', includes=(), parser='gccxml',
         name = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
     describers = {'clang': clang_describe, 'gccxml': gccxml_describe}
     describer = describers[parser]
-    desc = describer(filename, name, kind, includes=includes, verbose=verbose)
+    desc = describer(filename, name, kind, includes=includes, verbose=verbose, 
+                     debug=debug, builddir=builddir)
     return desc
 
 
@@ -218,7 +224,8 @@ def describe(filename, name=None, kind='class', includes=(), parser='gccxml',
 #
 
 
-def gccxml_describe(filename, name, kind, includes=(), verbose=False):
+def gccxml_describe(filename, name, kind, includes=(), verbose=False, debug=False, 
+                    builddir='build'):
     """Use GCC-XML to describe the class.
 
     Parameters
@@ -234,6 +241,10 @@ def gccxml_describe(filename, name, kind, includes=(), verbose=False):
         The list of extra include directories to search for header files.
     verbose : bool, optional
         Flag to diplay extra information while describing the class.
+    debug : bool, optional
+        Flag to enable/disable debug mode.
+    builddir : str, optional
+        Location of -- often temporary -- build files.
 
     Returns
     -------
@@ -241,7 +252,11 @@ def gccxml_describe(filename, name, kind, includes=(), verbose=False):
         A dictionary describing the class which may be used to generate
         API bindings.
     """
-    f = tempfile.NamedTemporaryFile()
+    if debug:
+        xmlname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.xml'
+        f = io.open(xmlname, 'w+b')
+    else:
+        f = tempfile.NamedTemporaryFile()
     cmd = ['gccxml', filename, '-fxml=' + f.name]
     cmd += map(lambda i: '-I' + i,  includes)
     if verbose:
@@ -637,7 +652,8 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 # Clang Describers
 #
 
-def clang_describe(filename, name, includes=(), verbose=False):
+def clang_describe(filename, name, includes=(), verbose=False, debug=False, 
+                   builddir='build'):
     """Use clang to describe the class."""
     index = cindex.Index.create()
     tu = index.parse(filename, args=['-cc1', '-I' + pyne.includes])
