@@ -83,7 +83,7 @@ the refinement as the predicate of the super-type in a length-2 tuple, as above:
 
 It is these refinement types that give the second index in the tuple its 'predicate'
 name.  Additionally, the predicate is used to look up the converter and validation
-functions in when doing code generation or type verification.
+functions when doing code generation or type verification.
 
 The last kind of type are known as **dependent types** or **template types**, 
 similar in concept to C++ template classes.  These are meta-types whose 
