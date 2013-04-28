@@ -50,16 +50,16 @@ Function Description Top-Level Keys
 The following are valid top-level keys in a function description dictionary: 
 name, namespace, signatures, docstring, and extra.
 
-:name: str, the class name
-:namespace: str or None, the namespace or module the class lives in.
-:signatures: dict or dict-like, similar to the attrs except that the keys are now
-    function signatures and the values are the method return types.  The signatures
-    themselves are tuples. The first element of these tuples is the method name.
+:name: str, the function name
+:namespace: str or None, the namespace or module the function lives in.
+:signatures: dict or dict-like, the keys of this dictionary are function call 
+    signatures and the values are the function return types. The signatures
+    themselves are tuples. The first element of these tuples is the function name.
     The remaining elements (if any) are the function arguments.  Arguments are 
     themselves length-2 or -3 tuples whose first elements are the argument names, 
     the second element is the argument type, and the third element (if present) is
-    the default value. Unlike constuctors and destructors, the return type may not
-    be None (only 'void' values are allowed).
+    the default value. Unlike class constuctors and destructors, the return type may 
+    not be None (only 'void' values are allowed).
 :docstring: str, optional, this is a documentation string for the function.  
 :extra: dict, optional, this stores arbitrary metadata that may be used with 
     different backends. It is not added by any auto-describe routine but may be
