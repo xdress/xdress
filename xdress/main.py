@@ -497,7 +497,7 @@ def main_setup():
 
     if rc.dumpdesc:
         dumpdesc(rc)
-        return rc
+        sys.exit()
 
     setuprc(rc)
     return rc
