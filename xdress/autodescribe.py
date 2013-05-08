@@ -136,22 +136,13 @@ from copy import deepcopy
 import linecache
 import subprocess
 import itertools
+import tempfile
 from pprint import pprint, pformat
 from warnings import warn
 
 if os.name == 'nt':
     import ntpath
     import posixpath
-
-
-# CLang conditional imports
-#try:
-#    from clang import cindex
-#except ImportError:
-#    try:
-#        from clang.v3_1 import cindex
-#    except ImportError:
-#        pass
 
 # GCC-XML conditional imports
 try:
@@ -174,54 +165,18 @@ except ImportError:
                   import elementtree.ElementTree as etree
                 except ImportError:
                     pass
-import tempfile
+
+# pycparser conditional imports
+try:
+    import pycparser
+except ImportError:
+    pycparser = None
 
 if sys.version_info[0] >= 3: 
     basestring = str
 
 RE_INT = re.compile('^\d+$')
 RE_FLOAT = re.compile('^[+-]?\.?\d+\.?\d*?(e[+-]?\d+)?$')
-
-
-def describe(filename, name=None, kind='class', includes=(), parser='gccxml', 
-    verbose=False, debug=False, builddir='build'):
-    """Automatically describes a class in a file.  This is the main entry point.
-
-    Parameters
-    ----------
-    filename : str
-        The path to the file.
-    name : str or None, optional
-        The name, a 'None' value will attempt to infer this from the 
-        filename.
-    kind : str, optional
-        The kind of type to describe, currently valid flags are 'class' and 'func'.
-    includes: list of str, optional
-        The list of extra include directories to search for header files.
-    parser : str, optional
-        The parser / AST to use to use for the C++ file.  Currently only
-        'clang' and 'gccxml' are supported, though others may be 
-        implemented in the future.
-    verbose : bool, optional
-        Flag to diplay extra information while describing the class.
-    debug : bool, optional
-        Flag to enable/disable debug mode.
-    builddir : str, optional
-        Location of -- often temporary -- build files.
-
-    Returns
-    -------
-    desc : dict
-        A dictionary describing the class which may be used to generate
-        API bindings.
-    """
-    if name is None:
-        name = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
-    describers = {'clang': clang_describe, 'gccxml': gccxml_describe}
-    describer = describers[parser]
-    desc = describer(filename, name, kind, includes=includes, verbose=verbose, 
-                     debug=debug, builddir=builddir)
-    return desc
 
 
 #
@@ -1043,9 +998,131 @@ def clang_canonize(t):
 
 
 #
+# pycparser Describers
+#
+
+
+def pycparser_describe(filename, name, kind, includes=(), verbose=False, debug=False, 
+                       builddir='build'):
+    """Use pycparser to describe the fucntion or struct (class).
+
+    Parameters
+    ----------
+    filename : str
+        The path to the file.
+    name : str or None, optional
+        The name, a 'None' value will attempt to infer this from the 
+        filename.
+    kind : str
+        The kind of type to describe, currently valid flags are 'class' and 'func'.
+    includes: list of str, optional
+        The list of extra include directories to search for header files.
+    verbose : bool, optional
+        Flag to diplay extra information while describing the class.
+    debug : bool, optional
+        Flag to enable/disable debug mode.
+    builddir : str, optional
+        Location of -- often temporary -- build files.
+
+    Returns
+    -------
+    desc : dict
+        A dictionary describing the class which may be used to generate
+        API bindings.
+    """
+    root = pycparser.parse_file(filename, use_cpp=True)
+    onlyin = set([filename, filename.replace('.c', '.h')])
+    describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber}
+    describer = describers[kind](name, root, onlyin=onlyin, verbose=verbose)
+    describer.visit()
+    f.close()
+    return describer.desc
+
+
+class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
+
+    def __init__(self, name, root, onlyin=None, verbose=False):
+        """Parameters
+        -------------
+        name : str
+            The name, this may not have a None value.
+        root : pycparser AST
+            The root of the abstract syntax tree.
+        onlyin :  str, optional
+            Filename the class or struct described must live in.  Prevents 
+            finding classes of the same name coming from other libraries.
+        verbose : bool, optional
+            Flag to display extra information while visiting the class.
+
+        """
+        self.desc = {'name': name}
+        self.name = name
+        self.verbose = verbose
+        self._root = root
+        origonlyin = onlyin
+        onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
+        onlyin = set() if onlyin is None else set(onlyin)
+        onlyin = [root.find("File[@name='{0}']".format(oi)) for oi in onlyin]
+        self.onlyin = set([oi.attrib['id'] for oi in onlyin if oi is not None])
+        if 0 == len(self.onlyin):
+            msg = "{0!r} is not present in {1!r}; autodescribing will probably fail."
+            msg = msg.format(name, origonlyin)
+            warn(msg, RuntimeWarning)
+        self._currfunc = []  # this must be a stack to handle nested functions
+        self._currfuncsig = None
+        self._currclass = []  # this must be a stack to handle nested classes  
+        self._level = -1
+
+
+
+#
 #  General utilities
 #
 
+_describers = {
+    'clang': clang_describe, 
+    'gccxml': gccxml_describe,
+    'pycparser': pycparser_describe,
+    }
+
+def describe(filename, name=None, kind='class', includes=(), parser='gccxml', 
+    verbose=False, debug=False, builddir='build'):
+    """Automatically describes a class in a file.  This is the main entry point.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the file.
+    name : str or None, optional
+        The name, a 'None' value will attempt to infer this from the 
+        filename.
+    kind : str, optional
+        The kind of type to describe, currently valid flags are 'class' and 'func'.
+    includes: list of str, optional
+        The list of extra include directories to search for header files.
+    parser : str, optional
+        The parser / AST to use to use for the C++ file.  Currently only
+        'clang' and 'gccxml' are supported, though others may be 
+        implemented in the future.
+    verbose : bool, optional
+        Flag to diplay extra information while describing the class.
+    debug : bool, optional
+        Flag to enable/disable debug mode.
+    builddir : str, optional
+        Location of -- often temporary -- build files.
+
+    Returns
+    -------
+    desc : dict
+        A dictionary describing the class which may be used to generate
+        API bindings.
+    """
+    if name is None:
+        name = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
+    describer = _describers[parser]
+    desc = describer(filename, name, kind, includes=includes, verbose=verbose, 
+                     debug=debug, builddir=builddir)
+    return desc
 
 def merge_descriptions(descriptions):
     """Given a sequence of descriptions, in order of increasing precedence, 
