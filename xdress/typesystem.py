@@ -85,7 +85,7 @@ It is these refinement types that give the second index in the tuple its 'predic
 name.  Additionally, the predicate is used to look up the converter and validation
 functions when doing code generation or type verification.
 
-The last kind of type are known as **dependent types** or **template types**, 
+The last kind of types are known as **dependent types** or **template types**, 
 similar in concept to C++ template classes.  These are meta-types whose 
 instantiation requires one or more parameters to be filled in by further values or
 types. Dependent types may nest with themselves or other dependent types.  Fully 
