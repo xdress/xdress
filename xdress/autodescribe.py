@@ -1030,12 +1030,18 @@ def pycparser_describe(filename, name, kind, includes=(), verbose=False, debug=F
         A dictionary describing the class which may be used to generate
         API bindings.
     """
-    root = pycparser.parse_file(filename, use_cpp=True)
+    kwargs = {'cpp_args': 
+               # Workaround usage of __attribute__() in GNU libc:
+               [r'-D__attribute__(x)=', r'-D__asm__(x)=', r'-D__const=', 
+                r'-D__builtin_va_list=int', # just fake this
+                r'-D__restrict=', r'-D__extension__=', r'-D__inline__=',]}
+    if 0 < len(includes):
+        kwargs['cpp_args'] += ['-I' + i for i in includes]
+    root = pycparser.parse_file(filename, use_cpp=True, **kwargs)
     onlyin = set([filename, filename.replace('.c', '.h')])
-    describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber}
+    describers = {'class': PycparserClassDescriber, 'func': PycparserFuncDescriber}
     describer = describers[kind](name, root, onlyin=onlyin, verbose=verbose)
     describer.visit()
-    f.close()
     return describer.desc
 
 
@@ -1055,24 +1061,74 @@ class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
             Flag to display extra information while visiting the class.
 
         """
+        super(PycparserBaseDescriber, self).__init__()
         self.desc = {'name': name}
         self.name = name
         self.verbose = verbose
         self._root = root
-        origonlyin = onlyin
-        onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
-        onlyin = set() if onlyin is None else set(onlyin)
-        onlyin = [root.find("File[@name='{0}']".format(oi)) for oi in onlyin]
-        self.onlyin = set([oi.attrib['id'] for oi in onlyin if oi is not None])
-        if 0 == len(self.onlyin):
-            msg = "{0!r} is not present in {1!r}; autodescribing will probably fail."
-            msg = msg.format(name, origonlyin)
-            warn(msg, RuntimeWarning)
+        #origonlyin = onlyin
+        #onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
+        #onlyin = set() if onlyin is None else set(onlyin)
+        #onlyin = [root.find("File[@name='{0}']".format(oi)) for oi in onlyin]
+        #self.onlyin = set([oi.attrib['id'] for oi in onlyin if oi is not None])
+        #if 0 == len(self.onlyin):
+        #    msg = "{0!r} is not present in {1!r}; autodescribing will probably fail."
+        #    msg = msg.format(name, origonlyin)
+        #    warn(msg, RuntimeWarning)
         self._currfunc = []  # this must be a stack to handle nested functions
         self._currfuncsig = None
         self._currclass = []  # this must be a stack to handle nested classes  
         self._level = -1
 
+    def _pprint(self, node):
+        if self.verbose:
+            node.show()
+
+    def visit_FuncDef(self, node):
+        self._pprint(node)
+        name = node.decl.name
+        if name.startswith('_'):
+            return
+        self._currfunc.append(name)
+        self._currfuncsig = []
+        self._level += 1
+        #for child_name, child in node.decl.children():
+        #    self.visit(child)
+        self._level -= 1
+        #rtntype = self.type(node.attrib['returns'])
+        print("type = ", node.decl.type.type.declname)
+        #rtntype = self.type(node.attrib['returns'])
+        funcname = self._currfunc.pop()
+        if self._currfuncsig is None:
+            return 
+        key = (funcname,) + tuple(self._currfuncsig)
+        self.desc[self._funckey][key] = rtntype
+
+
+class PycparserClassDescriber(PycparserBaseDescriber):
+    pass
+
+class PycparserFuncDescriber(PycparserBaseDescriber):
+
+    def visit(self, node=None):
+        """Visits the class node and all sub-nodes, generating the description
+        dictionary as it goes.
+
+        Parameters
+        ----------
+        node : element tree node, optional
+            The element tree node to start from.  If this is None, then the 
+            top-level class node is found and visited.
+
+        """
+        if node is not None:
+            super(PycparserFuncDescriber, self).visit(node)
+        for child_name, child in self._root.children():
+            if not isinstance(child, pycparser.c_ast.FuncDef):
+                continue
+            if child.decl.name != self.name:
+                continue
+            self.visit_FuncDef(child)
 
 
 #

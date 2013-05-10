@@ -5,7 +5,12 @@ from xdress import typesystem as ts
 from xdress import cythongen as cg
 from xdress import autodescribe as ad
 
+import nose
 from nose.tools import assert_equal
+
+from numpy.testing import dec
+
+import pprint
 
 exp_toaster_desc = {
     'name': 'Toaster',
@@ -82,3 +87,13 @@ def test_merge_descriptions():
     exp = full_toaster_desc
     assert_equal(obs, exp)
 
+
+@dec.skipif(ad.pycparser is None)
+def test_pycparser_describe_func():
+    obs = ad.pycparser_describe('device.c', 'Device_measure', 'func', verbose=True)
+    exp = {'name': 'Device_measure'}
+    pprint.pprint(obs)
+    assert_equal(obs, exp)
+
+if __name__ == '__main__':
+    nose.runmodule()
