@@ -1081,6 +1081,7 @@ class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
         self._currfuncsig = None
         self._currclass = []  # this must be a stack to handle nested classes  
         self._level = -1
+        self._currtype = None
 
     def _pprint(self, node):
         if self.verbose:
@@ -1121,20 +1122,23 @@ class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
 
     def visit_IdentifierType(self, node):
         self._pprint(node)
-        return node.names[0]
+        self._currtype = node.names[0]
 
     def visit_TypeDecl(self, node):
         self._pprint(node)
-        return self.visit(node.type)
+        self.visit(node.type)
 
     def visit_PtrDecl(self, node):
         self._pprint(node)
-        baset = self.visit(node.type)
-        return (baset, '*')
+        self.visit(node.type)
+        self._currtype = (self._currtype, '*')
 
     def type(self, node):
         self._pprint(node)
-        return self.visit(node)
+        self.visit(node)
+        t = self._currtype
+        self._currtype = None
+        return t
         
 
 
