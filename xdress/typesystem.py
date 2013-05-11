@@ -249,8 +249,9 @@ def _memoize(obj):
     return memoizer
 
 
-base_types = set(['char', 'str', 'int32', 'int64', 'uint32', 'uint64', 'float32', 
-                  'float64', 'complex128', 'void', 'bool'])
+base_types = set(['char', 'uchar', 'str', 'int16', 'int32', 'int64', 'int128', 
+                  'uint16', 'uint32', 'uint64', 'uint128', 'float32', 'float64', 
+                  'float128', 'complex128', 'void', 'bool'])
 """Base types in the type system."""
 
 template_types = {
@@ -275,6 +276,7 @@ def istemplate(t):
 refined_types = {
     'nucid': 'int32',
     'nucname': 'str',
+    ('enum', ('name', 'str'), ('aliases', ('dict', 'str', 'int32', 0))): 'int32',
     }
 """This is a mapping from refinement type names to the parent types.
 The parent types may either be base types, compound types, template 
@@ -284,12 +286,20 @@ types, or other refined types!"""
 
 _humannames = {
     'char': 'character',
+    'uchar': 'unsigned character',
     'str': 'string',
     'bool': 'boolean',
+    'int16': 'short integer',
     'int32': 'integer',
+    'int64': 'long integer',
+    'int128': 'very long integer',
+    'uint16': 'unsigned short integer',
     'uint32': 'unsigned integer',
+    'uint64': 'unsigned long integer',
+    'uint128': 'unsigned very long integer',
     'float32': 'float',
     'float64': 'double',
+    'float128': 'long double',
     'complex128': 'complex',
     'dict': 'dict of ({key_type}, {value_type}) items',
     'map': 'map of ({key_type}, {value_type}) items',
@@ -529,16 +539,21 @@ class _LazyConverterDict(MutableMapping):
 
 type_aliases = _LazyConfigDict({
     'i': 'int32',
+    'i2': 'int16',
     'i4': 'int32',
     'i8': 'int64',
+    'i16': 'int128',
     'int': 'int32',
     'ui': 'uint32',
+    'ui2': 'uint16',
     'ui4': 'uint32',
     'ui8': 'uint64',
+    'ui16': 'uint128',
     'uint': 'uint32',
     'f': 'float64',
     'f4': 'float32',
     'f8': 'float64',
+    'f16': 'float128',
     'float': 'float64',
     'complex': 'complex128',
     'b': 'bool',

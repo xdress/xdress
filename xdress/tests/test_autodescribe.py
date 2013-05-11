@@ -90,9 +90,18 @@ def test_merge_descriptions():
 
 @dec.skipif(ad.pycparser is None)
 def test_pycparser_describe_func():
-    obs = ad.pycparser_describe('device.c', 'Device_measure', 'func', verbose=True)
-    exp = {'name': 'Device_measure'}
+    obs = ad.pycparser_describe('device.c', 'Device_measure', 'func')
+    exp = {'name': 'Device_measure', 
+           'namespace': None,
+           'signatures': {
+            ('Device_measure', ('deviceNumber', 'uchar'), 
+                               ('aiValue', ('uint32', '*'))): ('enum', 
+                                    'ErrorStatusTag', (('ERROR_OK', 0), 
+                                                       ('ERROR_FAILED_INIT', 1))),
+            }
+           }
     pprint.pprint(obs)
+    pprint.pprint(exp)
     assert_equal(obs, exp)
 
 if __name__ == '__main__':

@@ -1064,40 +1064,61 @@ class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
 
         """
         super(PycparserBaseDescriber, self).__init__()
-        self.desc = {'name': name}
+        self.desc = {'name': name, 'namespace': None}
         self.name = name
         self.verbose = verbose
         self._root = root
-        #origonlyin = onlyin
-        #onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
-        #onlyin = set() if onlyin is None else set(onlyin)
-        #onlyin = [root.find("File[@name='{0}']".format(oi)) for oi in onlyin]
-        #self.onlyin = set([oi.attrib['id'] for oi in onlyin if oi is not None])
-        #if 0 == len(self.onlyin):
-        #    msg = "{0!r} is not present in {1!r}; autodescribing will probably fail."
-        #    msg = msg.format(name, origonlyin)
-        #    warn(msg, RuntimeWarning)
         self._currfunc = []  # this must be a stack to handle nested functions
         self._currfuncsig = None
         self._currclass = []  # this must be a stack to handle nested classes  
         self._level = -1
         self._currtype = None
+        self._currenum = None
+        self._basetypes = {
+            'char': 'char', 
+            'signed char': 'char', 
+            'unsigned char': 'uchar',
+            'short': 'int16',
+            'short int': 'int16',
+            'signed short': 'int16',
+            'signed short int': 'int16',
+            'int': 'int32', 
+            'signed int': 'int32', 
+            'long' : 'int32', 
+            'long int' : 'int32', 
+            'signed long' : 'int32', 
+            'signed long int' : 'int32', 
+            'long long' : 'int64', 
+            'long long int' : 'int64', 
+            'signed long long' : 'int64', 
+            'signed long long int' : 'int64', 
+            'unsigned short': 'uint16',
+            'unsigned short int': 'uint16',
+            'unsigned': 'uint32', 
+            'unsigned int': 'uint32', 
+            'unsigned long': 'uint32',
+            'unsigned long int': 'uint32',
+            'unsigned long long' : 'uint64', 
+            'unsigned long long int' : 'uint64', 
+            'float': 'float32',
+            'double': 'float64',
+            'long double': 'float128',
+            'void': 'void',
+            }
 
     def _pprint(self, node):
         if self.verbose:
             node.show()
 
-    #def visit_FuncDecl(self, node):
-    #    self._pprint(node)
-        #for child_name, child in node.decl.children():
-        #    self.visit(child)
-        #rtntype = self.type(node.attrib['returns'])
-        #print("type = ", node.type.declname)
-        #print("type = ", node.type.type.names)
-        #rtntype = self.type(node.attrib['returns'])
-
-    #def visit_ParamList(self, node):
-    #    self._pprint(node)
+    def load_basetypes(self):
+        for child_name, child in self._root.children():
+            if isinstance(child, pycparser.c_ast.Typedef):
+                self._basetypes[child.name] = self.type(child)
+            #else:
+            #    child.show()
+        if self.verbose:
+            print("Base type mapping = ")
+            pprint(self._basetypes)
 
     def visit_FuncDef(self, node):
         self._pprint(node)
@@ -1108,11 +1129,11 @@ class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
         self._currfunc.append(name)
         self._currfuncsig = []
         self._level += 1
-        #self.visit(ftype.args)
         for _, child in ftype.args.children():
-            print(self.type(child))
+            arg = (child.name, self.type(child))
+            self._currfuncsig.append(arg)
         self._level -= 1
-        rtntype = ftype.type.type.names[0]
+        rtntype = self.type(ftype.type)
         funcname = self._currfunc.pop()
         if self._currfuncsig is None:
             return 
@@ -1122,13 +1143,39 @@ class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
 
     def visit_IdentifierType(self, node):
         self._pprint(node)
-        self._currtype = node.names[0]
+        t = " ".join(node.names)
+        t = self._basetypes.get(t, t)
+        self._currtype = t
 
     def visit_TypeDecl(self, node):
         self._pprint(node)
         self.visit(node.type)
 
+    def visit_Enumerator(self, node):
+        self._pprint(node)
+        if node.value is None:
+            if len(self._currenum) == 0:
+                value = 0
+            else:
+                value = self._currenum[-1][-1] + 1
+        else:
+            value = node.value
+        self._currenum.append((node.name, value))
+
+    def visit_Enum(self, node):
+        self._pprint(node)
+        self._currenum = []
+        for _, child in node.children():
+            self.visit(child)
+        self._currtype = ('enum', node.name, tuple(self._currenum))
+        self._currenum = None
+
     def visit_PtrDecl(self, node):
+        self._pprint(node)
+        self.visit(node.type)
+        self._currtype = (self._currtype, '*')
+
+    def visit_ArrayDecl(self, node):
         self._pprint(node)
         self.visit(node.type)
         self._currtype = (self._currtype, '*')
@@ -1207,6 +1254,7 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
         #        continue
         #    self.visit_FuncDef(child)
         if node is None:
+            self.load_basetypes()
             for child_name, child in self._root.children():
                 if not isinstance(child, pycparser.c_ast.FuncDef):
                     continue
