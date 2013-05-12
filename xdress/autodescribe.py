@@ -1180,6 +1180,10 @@ class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
         self.visit(node.type)
         self._currtype = (self._currtype, '*')
 
+    def visit_Struct(self, node):
+        self._pprint(node)
+        self._currtype = node.name        
+
     def type(self, node):
         self._pprint(node)
         self.visit(node)

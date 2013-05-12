@@ -22,6 +22,7 @@ typedef struct DeviceParamTag
 
 extern ErrorStatus Device_Init(DeviceParam*);
 
+extern ErrorStatus Device_measure(Uint32*);
 extern ErrorStatus Device_measure(Uint8 , Uint32*);
 
 

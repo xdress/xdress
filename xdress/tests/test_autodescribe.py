@@ -89,13 +89,31 @@ def test_merge_descriptions():
 
 
 @dec.skipif(ad.pycparser is None)
-def test_pycparser_describe_func():
+def test_pycparser_describe_device_measure():
     obs = ad.pycparser_describe('device.c', 'Device_measure', 'func')
     exp = {'name': 'Device_measure', 
            'namespace': None,
            'signatures': {
+            ('Device_measure', ('aiValue', ('uint32', '*'))): ('enum', 
+                                    'ErrorStatusTag', (('ERROR_OK', 0), 
+                                                       ('ERROR_FAILED_INIT', 1))),
             ('Device_measure', ('deviceNumber', 'uchar'), 
                                ('aiValue', ('uint32', '*'))): ('enum', 
+                                    'ErrorStatusTag', (('ERROR_OK', 0), 
+                                                       ('ERROR_FAILED_INIT', 1))),
+            }
+           }
+    pprint.pprint(obs)
+    pprint.pprint(exp)
+    assert_equal(obs, exp)
+
+@dec.skipif(ad.pycparser is None)
+def test_pycparser_describe_device_init():
+    obs = ad.pycparser_describe('device.c', 'Device_Init', 'func')
+    exp = {'name': 'Device_Init', 
+           'namespace': None,
+           'signatures': {
+            ('Device_Init', ('param', ('DeviceParamTag', '*'))): ('enum', 
                                     'ErrorStatusTag', (('ERROR_OK', 0), 
                                                        ('ERROR_FAILED_INIT', 1))),
             }

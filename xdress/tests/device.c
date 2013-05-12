@@ -24,6 +24,11 @@ extern ErrorStatus Device_Init(DeviceParam* param)
 	return retVal;
 }
 
+extern ErrorStatus Device_measure(Uint32* aiValue)
+{
+	return deviceParam.deviceDescriptor->deviceMeasurement(aiValue);
+}
+
 extern ErrorStatus Device_measure(Uint8 deviceNumber, Uint32* aiValue)
 {
 	return deviceParam.deviceDescriptor->deviceMeasurement(aiValue);
