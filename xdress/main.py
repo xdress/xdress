@@ -149,6 +149,9 @@ from . import stlwrap
 from .cythongen import gencpppxd, genpxd, genpyx
 from . import autodescribe 
 
+if sys.version_info[0] >= 3:
+    basestring = str
+
 class DescriptionCache(object):
     """A quick persistent cache for descriptions from files.  
     The keys are (classname, filename) tuples.  The values are 
@@ -258,8 +261,9 @@ def compute_desc(name, srcname, tarname, kind, rc):
         cppdesc = cache[name, cppfilename, kind]
     else:
         cppdesc = autodescribe.describe(cppfilename, name=name, kind=kind,
-                                        includes=rc.includes, verbose=rc.verbose, 
-                                        debug=rc.debug, builddir=rc.builddir)
+                                        includes=rc.includes, parser=rc.parsers,
+                                        verbose=rc.verbose, debug=rc.debug, 
+                                        builddir=rc.builddir)
         cache[name, cppfilename, kind] = cppdesc
 
     # python description
@@ -414,6 +418,9 @@ def setuprc(rc):
     """Makes and validates a run control object and the environment it specifies."""
     if rc.package is NotSpecified:
         sys.exit("no package name given; please add 'package' to {0}".format(rc.rc))
+    if isinstance(rc.parsers, basestring):
+        if '[' in rc.parsers or '{' in  rc.parsers:
+            rc.parsers = eval(rc.parsers)
     if rc.packagedir is NotSpecified:
         rc.packagedir = rc.package.replace('.', os.path.sep)
     if not os.path.isdir(rc.packagedir):
@@ -442,6 +449,8 @@ defaultrc = RunControl(
     extra_types='xdress_extra_types',
     stlcontainers=[],
     stlcontainers_module='stlcontainers',
+    parsers={'c': ['pycparser', 'gccxml', 'clang'], 
+             'cpp':['gccxml', 'clang', 'pycparser'] },
     )
 
 def main_setup():
@@ -483,6 +492,8 @@ def main_setup():
                         default=NotSpecified, help="additional include dirs")
     parser.add_argument('--builddir', action='store', dest='builddir', 
                         default=NotSpecified, help="path to build directory")
+    parser.add_argument('-p', action='store', dest='parsers', 
+                        default=NotSpecified, help="parser(s) name, list, or dict")
     ns = parser.parse_args()
 
     rc = RunControl()

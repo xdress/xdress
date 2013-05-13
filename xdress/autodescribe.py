@@ -137,6 +137,8 @@ import linecache
 import subprocess
 import itertools
 import tempfile
+import pickle
+import collections
 from pprint import pprint, pformat
 from warnings import warn
 
@@ -171,6 +173,14 @@ try:
     import pycparser
 except ImportError:
     pycparser = None
+
+PARSERS_AVAILABLE = {
+    'clang': False, 
+    'pycparser': pycparser is not None,
+    }
+with tempfile.NamedTemporaryFile() as f:
+    PARSERS_AVAILABLE['gccxml'] = 0 == subprocess.call(['gccxml'], stdout=f, stderr=f)
+del f
 
 if sys.version_info[0] >= 3: 
     basestring = str
@@ -1038,6 +1048,10 @@ def pycparser_describe(filename, name, kind, includes=(), verbose=False, debug=F
     if 0 < len(includes):
         kwargs['cpp_args'] += ['-I' + i for i in includes]
     root = pycparser.parse_file(filename, use_cpp=True, **kwargs)
+    if debug:
+        pklname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.pkl'
+        with io.open(os.path.join(builddir, pklname), 'w+b') as f:
+            pickle.dump(root, f)
     onlyin = set([filename, filename.replace('.c', '.h')])
     describers = {'class': PycparserClassDescriber, 'func': PycparserFuncDescriber}
     describer = describers[kind](name, root, onlyin=onlyin, verbose=verbose)
@@ -1208,6 +1222,8 @@ class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
         self._pprint(node)
         for _, child in node.children():
             name = child.name
+            if name.startswith('_'):
+                continue
             t = self.type(child)
             self.desc['attrs'][name] = t
         
@@ -1227,6 +1243,11 @@ class PycparserClassDescriber(PycparserBaseDescriber):
             finding classes of the same name coming from other libraries.
         verbose : bool, optional
             Flag to display extra information while visiting the class.
+
+        Notes
+        -----
+        It is impossible for C structs to have true member functions, only 
+        function pointers.
 
         """
         super(PycparserClassDescriber, self).__init__(name, root, onlyin=onlyin, 
@@ -1252,7 +1273,6 @@ class PycparserClassDescriber(PycparserBaseDescriber):
                    isinstance(child.type, pycparser.c_ast.TypeDecl) and \
                    isinstance(child.type.type, pycparser.c_ast.Struct):
                     child = child.type.type
-                #print(child.name)
                 if not isinstance(child, pycparser.c_ast.Struct):
                     continue
                 if child.name != self.name:
@@ -1331,10 +1351,13 @@ def describe(filename, name=None, kind='class', includes=(), parser='gccxml',
         The kind of type to describe, currently valid flags are 'class' and 'func'.
     includes: list of str, optional
         The list of extra include directories to search for header files.
-    parser : str, optional
-        The parser / AST to use to use for the C++ file.  Currently only
-        'clang' and 'gccxml' are supported, though others may be 
-        implemented in the future.
+    parser : str, list, or dict, optional
+        The parser / AST to use to use for the file.  Currently 'clang', 'gccxml', 
+        and 'pycparser' are supported, though others may be implemented in the 
+        future.  If this is a string, then this parser is used.  If this is a list, 
+        this specifies the parser order to use based on availability.  If this is
+        a dictionary, it specifies the order to use parser based on language, i.e.
+        ``{'c' ['pycparser', 'gccxml'], 'c++': ['gccxml', 'pycparser']}``.
     verbose : bool, optional
         Flag to diplay extra information while describing the class.
     debug : bool, optional
@@ -1350,6 +1373,23 @@ def describe(filename, name=None, kind='class', includes=(), parser='gccxml',
     """
     if name is None:
         name = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
+    if isinstance(parser, basestring):
+        pass
+    elif isinstance(parser, collections.Sequence):
+        parsers = [p for p in parser if PARSERS_AVAILABLE[p.lower()]]
+        if len(parsers) == 0:
+            msg = "Parsers not available: {0}".format(", ".join(parsers))
+            raise RuntimeError(msg)
+        parser = parsers[0].lower()
+    elif isinstance(parser, collections.Mapping):
+        lang = guess_language(filename)
+        parsers = parser[lang]
+        parsers = [p for p in parser if PARSERS_AVAILABLE[p.lower()]]
+        if len(parsers) == 0:
+            msg = "{0} parsers not available: {1}"
+            msg = msg.format(lang.capitalize(), ", ".join(parsers))
+            raise RuntimeError(msg)
+        parser = parsers[0].lower()
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, verbose=verbose, 
                      debug=debug, builddir=builddir)
@@ -1383,3 +1423,27 @@ def merge_descriptions(descriptions):
         if methval is None and not methkey[0].endswith(name):
             del methods[methkey]  # constructor for parent
     return desc
+
+_lang_exts = {
+    'c': 'c',
+    'h': 'c',
+    'cpp': 'c++',
+    'hpp': 'c++',
+    'cxx': 'c++',
+    'hxx': 'c++',
+    'c++': 'c++',
+    'h++': 'c++',
+    'f': 'f77',
+    'f77': 'f77',
+    'f90': 'f90',
+    'py': 'python',
+    'pyx': 'cython',
+    'pxd': 'cython',
+    'pxi': 'cython',
+    }
+
+def guess_language(filename, default='c++'):
+    """Try to guess a files' language from its extention, defaults to C++."""
+    ext = filename.rsplit('.', 1).lower()
+    lang = _lang_exts.get(ext, default)
+    return lang
