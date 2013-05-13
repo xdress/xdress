@@ -259,6 +259,8 @@ template_types = {
     'dict': ('key_type', 'value_type'),
     'pair': ('key_type', 'value_type'),
     'set': ('value_type',),
+    'list': ('value_type',),
+    'tuple': ('value_type',),
     'vector': ('value_type',),
     }
 """Template types are types whose instantiations are based on meta-types.
@@ -277,6 +279,7 @@ refined_types = {
     'nucid': 'int32',
     'nucname': 'str',
     ('enum', ('name', 'str'), ('aliases', ('dict', 'str', 'int32', 0))): 'int32',
+    ('function', ('arguments', 'tuple'), ('returns', 'rtntype')): 'rtntype', 
     }
 """This is a mapping from refinement type names to the parent types.
 The parent types may either be base types, compound types, template 

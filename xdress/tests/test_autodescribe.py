@@ -122,5 +122,23 @@ def test_pycparser_describe_device_init():
     pprint.pprint(exp)
     assert_equal(obs, exp)
 
+@dec.skipif(ad.pycparser is None)
+def test_pycparser_describe_device_descriptor_tag():
+    obs = ad.pycparser_describe('device.c', 'DeviceDescriptorTag', 'class')
+    exp = {'name': 'DeviceDescriptorTag', 
+           'namespace': None,
+           'attrs': {
+            'deviceNumber': 'uchar',
+            'deviceMeasurement': (('function', (('_0', ('uint32', '*')),), 
+                                    ('enum', 'ErrorStatusTag', (
+                                        ('ERROR_OK', 0),
+                                        ('ERROR_FAILED_INIT', 1)))), '*'),
+            },
+           'methods': {},
+           }
+    pprint.pprint(obs)
+    pprint.pprint(exp)
+    assert_equal(obs, exp)
+
 if __name__ == '__main__':
     nose.runmodule()

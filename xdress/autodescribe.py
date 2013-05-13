@@ -1114,8 +1114,6 @@ class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
         for child_name, child in self._root.children():
             if isinstance(child, pycparser.c_ast.Typedef):
                 self._basetypes[child.name] = self.type(child)
-            #else:
-            #    child.show()
         if self.verbose:
             print("Base type mapping = ")
             pprint(self._basetypes)
@@ -1180,19 +1178,39 @@ class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
         self.visit(node.type)
         self._currtype = (self._currtype, '*')
 
+    def visit_FuncDecl(self, node):
+        self._pprint(node)
+        args = []
+        for i, arg in enumerate(node.args.params):
+            argname = arg.name or '_{0}'.format(i)
+            argtype = self.type(arg, safe=True)
+            args.append((argname, argtype))
+        rtntype = self.type(node.type, safe=True)
+        self._currtype = ('function', tuple(args), rtntype)
+
     def visit_Struct(self, node):
         self._pprint(node)
         self._currtype = node.name        
 
-    def type(self, node):
+    def type(self, node, safe=False):
         self._pprint(node)
+        if safe:
+            stashtype = self._currtype
+            self._currtype = None
         self.visit(node)
         t = self._currtype
         self._currtype = None
+        if safe:
+            self._currtype = stashtype
         return t
+
+    def visit_members(self, node):
+        self._pprint(node)
+        for _, child in node.children():
+            name = child.name
+            t = self.type(child)
+            self.desc['attrs'][name] = t
         
-
-
 class PycparserClassDescriber(PycparserBaseDescriber):
 
     _funckey = 'methods'
@@ -1216,6 +1234,33 @@ class PycparserClassDescriber(PycparserBaseDescriber):
         self.desc['attrs'] = {}
         self.desc[self._funckey] = {}
 
+    def visit(self, node=None):
+        """Visits the struct (class) node and all sub-nodes, generating the 
+        description dictionary as it goes.
+
+        Parameters
+        ----------
+        node : element tree node, optional
+            The element tree node to start from.  If this is None, then the 
+            top-level struct (class) node is found and visited.
+
+        """
+        if node is None:
+            self.load_basetypes()
+            for child_name, child in self._root.children():
+                if isinstance(child, pycparser.c_ast.Typedef) and \
+                   isinstance(child.type, pycparser.c_ast.TypeDecl) and \
+                   isinstance(child.type.type, pycparser.c_ast.Struct):
+                    child = child.type.type
+                #print(child.name)
+                if not isinstance(child, pycparser.c_ast.Struct):
+                    continue
+                if child.name != self.name:
+                    continue
+                self.visit_members(child)
+        else:
+            super(PycparserClassDescriber, self).visit(node)
+
 class PycparserFuncDescriber(PycparserBaseDescriber):
 
     _funckey = 'signatures'
@@ -1224,7 +1269,7 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
         """Parameters
         -------------
         name : str
-            The name, this may not have a None value.
+            The function name.
         root : pycparser AST
             The root of the abstract syntax tree.
         onlyin :  str, optional
@@ -1239,7 +1284,7 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
         self.desc[self._funckey] = {}
 
     def visit(self, node=None):
-        """Visits the class node and all sub-nodes, generating the description
+        """Visits the function node and all sub-nodes, generating the description
         dictionary as it goes.
 
         Parameters
@@ -1249,14 +1294,6 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
             top-level class node is found and visited.
 
         """
-        #if node is not None:
-        #    return super(PycparserFuncDescriber, self).visit(node)
-        #for child_name, child in self._root.children():
-        #    if not isinstance(child, pycparser.c_ast.FuncDef):
-        #        continue
-        #    if child.decl.name != self.name:
-        #        continue
-        #    self.visit_FuncDef(child)
         if node is None:
             self.load_basetypes()
             for child_name, child in self._root.children():
@@ -1265,8 +1302,8 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
                 if child.decl.name != self.name:
                     continue
                 self.visit(child)
-            return 
-        return super(PycparserFuncDescriber, self).visit(node)
+        else:
+            super(PycparserFuncDescriber, self).visit(node)
 
 
 #
