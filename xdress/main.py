@@ -143,7 +143,7 @@ except ImportError:
     import pickle
 
 from .utils import newoverwrite, newcopyover, ensuredirs, writenewonly, exec_file, \
-    NotSpecified, RunControl
+    NotSpecified, RunControl, guess_language, find_source
 from . import typesystem as ts
 from . import stlwrap
 from .cythongen import gencpppxd, genpxd, genpyx
@@ -254,17 +254,18 @@ def compute_desc(name, srcname, tarname, kind, rc):
         Description dictionary.
 
     """
-    # C++ description
-    cppfilename = os.path.join(rc.sourcedir, srcname + '.cpp')
+    # description
+    srcfname, hdrfname, lang, ext = find_source(srcname, sourcedir=rc.sourcedir)
+    filename = os.path.join(rc.sourcedir, srcfname)
     cache = rc._cache
-    if cache.isvalid(name, cppfilename, kind):
-        cppdesc = cache[name, cppfilename, kind]
+    if cache.isvalid(name, filename, kind):
+        cppdesc = cache[name, filename, kind]
     else:
-        cppdesc = autodescribe.describe(cppfilename, name=name, kind=kind,
+        cppdesc = autodescribe.describe(filename, name=name, kind=kind,
                                         includes=rc.includes, parser=rc.parsers,
                                         verbose=rc.verbose, debug=rc.debug, 
                                         builddir=rc.builddir)
-        cache[name, cppfilename, kind] = cppdesc
+        cache[name, filename, kind] = cppdesc
 
     # python description
     pydesc = pysrcenv[srcname].get(name, {})

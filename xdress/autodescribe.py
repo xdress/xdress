@@ -174,6 +174,8 @@ try:
 except ImportError:
     pycparser = None
 
+from .utils import guess_language
+
 PARSERS_AVAILABLE = {
     'clang': False, 
     'pycparser': pycparser is not None,
@@ -1423,27 +1425,3 @@ def merge_descriptions(descriptions):
         if methval is None and not methkey[0].endswith(name):
             del methods[methkey]  # constructor for parent
     return desc
-
-_lang_exts = {
-    'c': 'c',
-    'h': 'c',
-    'cpp': 'c++',
-    'hpp': 'c++',
-    'cxx': 'c++',
-    'hxx': 'c++',
-    'c++': 'c++',
-    'h++': 'c++',
-    'f': 'f77',
-    'f77': 'f77',
-    'f90': 'f90',
-    'py': 'python',
-    'pyx': 'cython',
-    'pxd': 'cython',
-    'pxi': 'cython',
-    }
-
-def guess_language(filename, default='c++'):
-    """Try to guess a files' language from its extention, defaults to C++."""
-    ext = filename.rsplit('.', 1).lower()
-    lang = _lang_exts.get(ext, default)
-    return lang

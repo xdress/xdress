@@ -227,3 +227,73 @@ class RunControl(object):
             elif k in self._update_as_list and k in self:
                 v = list(v) + list(getattr(self, k))
             setattr(self, k, v)
+
+_lang_exts = {
+    'c': 'c',
+    'c++': 'cpp',
+    'f': 'f77',
+    'fortran': 'f77',
+    'f77': 'f77',
+    'f90': 'f90',
+    'python': 'py',
+    'cython': 'pyx',
+    }
+
+_head_exts = {
+    'c': 'h',
+    'c++': 'hpp',
+    'f': 'h',
+    'fortran': 'h',
+    'f77': 'h',
+    'f90': 'h',
+    'python': None,
+    'cython': 'pxd',
+    }
+
+_exts_lang = {
+    'c': 'c',
+    'h': 'c',
+    'cpp': 'c++',
+    'hpp': 'c++',
+    'cxx': 'c++',
+    'hxx': 'c++',
+    'c++': 'c++',
+    'h++': 'c++',
+    'f': 'f77',
+    'f77': 'f77',
+    'f90': 'f90',
+    'py': 'python',
+    'pyx': 'cython',
+    'pxd': 'cython',
+    'pxi': 'cython',
+    }
+
+_hdr_exts = frozenset(['h', 'hpp', 'hxx', 'h++', 'pxd'])
+_src_exts = frozenset(['c', 'cpp', 'cxx', 'c++', 'f', 'f77', 'f90', 'py', 'pyx'])
+
+def guess_language(filename, default='c++'):
+    """Try to guess a files' language from its extention, defaults to C++."""
+    ext = filename.rsplit('.', 1)[-1].lower()
+    lang = _exts_lang.get(ext, default)
+    return lang
+
+def find_source(basename, sourcedir='.'):
+    """Finds a source filename, header filename, language name, and language
+    source extension given a basename and source directory."""
+    files = os.listdir(sourcedir)
+    files = [f for f in files if f.startswith(basename)]
+    langs = dict([(f, guess_language(f, None)) for f in files])
+    lang = src = hdr = srcext = None
+    for f, l in langs.items():
+        ext = f.rsplit('.', 1)[-1]
+        if ext in _hdr_exts:
+            hdr = f
+        elif ext in _src_exts and (src is None or l != 'python'):
+            lang = l
+            src = f
+            srcext = ext
+    if src is None and hdr is not None:
+        src = hdr
+        lang = langs[hdr]
+        srcext = _lang_exts[lang]
+    return src, hdr, lang, srcext
