@@ -350,8 +350,8 @@ def _resolve_dependent_type(tname, tinst=None):
         return depkey
     elif istemplated:
         assert len(tinst) == len(depkey)
-        typemap = {k: tinst[i] for i, k in enumerate(depkey[1:], 1) \
-                                                    if isinstance(k, basestring)}
+        typemap = dict([(k, tinst[i]) for i, k in enumerate(depkey[1:], 1) \
+                                                    if isinstance(k, basestring)])
         for k in typemap:
             if k in type_aliases:
                 raise TypeError('template type {0} already exists'.format(k))
