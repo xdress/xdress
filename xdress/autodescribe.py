@@ -267,6 +267,7 @@ def gccxml_describe(filename, name, kind, includes=(), verbose=False, debug=Fals
         filename = posixpath.join(*ntpath.split(filename)) 
     cmd = ['gccxml', filename, '-fxml=' + f.name]
     cmd += map(lambda i: '-I' + i,  includes)
+    cmd += ['-D', 'XDRESS']
     if verbose:
         print(" ".join(cmd))
     subprocess.call(cmd)
@@ -664,7 +665,7 @@ def clang_describe(filename, name, includes=(), verbose=False, debug=False,
                    builddir='build'):
     """Use clang to describe the class."""
     index = cindex.Index.create()
-    tu = index.parse(filename, args=['-cc1', '-I' + pyne.includes])
+    tu = index.parse(filename, args=['-cc1', '-I' + pyne.includes, '-D', 'XDRESS'])
     #onlyin = set([filename, filename.replace('.cpp', '.h')])
     onlyin = set([filename.replace('.cpp', '.h')])
     describer = ClangClassDescriber(name, onlyin=onlyin, verbose=verbose)
