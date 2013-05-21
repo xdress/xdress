@@ -363,8 +363,8 @@ def _resolve_dependent_type(tname, tinst=None):
         return depkey
     elif istemplated:
         assert len(tinst) == len(depkey)
-        typemap = {k: tinst[i] for i, k in enumerate(depkey[1:], 1) \
-                                                    if isinstance(k, basestring)}
+        typemap = dict([(k, tinst[i]) for i, k in enumerate(depkey[1:], 1) \
+                                                    if isinstance(k, basestring)])
         for k in typemap:
             if k in type_aliases:
                 raise TypeError('template type {0} already exists'.format(k))
@@ -641,10 +641,10 @@ _cython_cimports = _LazyImportDict({
     'char': (None,),
     'str': (('libcpp.string', 'string', 'std_string'),),
     'int32': (None,),
-    'uint32': (('{extra_types}'),),  # 'unsigned int'
+    'uint32': (('{extra_types}',),),  # 'unsigned int'
     'float32': (None,),
     'float64': (None,),
-    'complex128': (('{extra_types}'),),
+    'complex128': (('{extra_types}',),),
     'bool': (None,), 
     'void': (None,), 
     'map': (('libcpp.map', 'map', 'cpp_map'),),

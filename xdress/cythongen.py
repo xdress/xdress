@@ -739,7 +739,7 @@ def classpyx(desc, classes=None):
     mlines = []
     clines = []
     methcounts = _count0(desc['methods'])
-    currcounts = {k: 0 for k in methcounts}
+    currcounts = dict([(k, 0) for k in methcounts])
     mangled_mnames = {}
     methitems = sorted(desc['methods'].items())
     for mkey, mrtn in methitems:
@@ -775,7 +775,7 @@ def classpyx(desc, classes=None):
                                        inst_name=minst_name)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
-                nm = {k: v for k, v in mangled_mnames.items() if k[0] == mname}
+                nm = dict([(k, v) for k, v in mangled_mnames.items() if k[0] == mname])
                 clines += _gen_dispatcher('__init__', nm, doc=mdoc, hasrtn=False)
         else:
             # this is a normal method
@@ -788,7 +788,7 @@ def classpyx(desc, classes=None):
                                   inst_name=minst_name)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
-                nm = {k: v for k, v in mangled_mnames.items() if k[0] == mname}
+                nm = dict([(k, v) for k, v in mangled_mnames.items() if k[0] == mname])
                 mlines += _gen_dispatcher(mname, nm, doc=mdoc)
     if desc['parents'] is None:
         clines += ["def __dealloc__(self):"]
@@ -829,7 +829,7 @@ def funcpyx(desc):
 
     flines = []
     funccounts = _count0(desc['signatures'])
-    currcounts = {k: 0 for k in funccounts}
+    currcounts = dict([(k, 0) for k in funccounts])
     mangled_fnames = {}
     funcitems = sorted(desc['signatures'].items())
     for fkey, frtn in funcitems:
@@ -854,7 +854,7 @@ def funcpyx(desc):
                               inst_name=inst_name)
         if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
             # write dispatcher
-            nm = {k: v for k, v in mangled_fnames.items() if k[0] == fname}
+            nm = dict([(k, v) for k, v in mangled_fnames.items() if k[0] == fname])
             flines += _gen_dispatcher(fname, nm, doc=fdoc)
 
     flines.append(desc.get('extra', {}).get('pyx', ''))

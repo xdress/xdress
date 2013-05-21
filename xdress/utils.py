@@ -106,8 +106,8 @@ def writenewonly(s, filename, verbose=False):
     """
     if os.path.isfile(filename):
         return
-    with io.open(filename, 'w') as f:
-        f.write(s)
+    with open(filename, 'w') as f:
+        f.write(str(s))
     if verbose:
         print("  wrote " + filename)
 

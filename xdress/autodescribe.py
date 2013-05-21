@@ -196,8 +196,8 @@ RE_FLOAT = re.compile('^[+-]?\.?\d+\.?\d*?(e[+-]?\d+)?$')
 #
 
 
-def gccxml_describe(filename, name, kind, includes=(), verbose=False, debug=False, 
-                    builddir='build'):
+def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',), 
+                    undefines=(), verbose=False, debug=False, builddir='build'):
     """Use GCC-XML to describe the class.
 
     Parameters
@@ -211,6 +211,10 @@ def gccxml_describe(filename, name, kind, includes=(), verbose=False, debug=Fals
         The kind of type to describe, currently valid flags are 'class' and 'func'.
     includes: list of str, optional
         The list of extra include directories to search for header files.
+    defines: list of str, optional
+        The list of extra macro definitions to apply.
+    undefines: list of str, optional
+        The list of extra macro undefinitions to apply.
     verbose : bool, optional
         Flag to diplay extra information while describing the class.
     debug : bool, optional
@@ -234,6 +238,8 @@ def gccxml_describe(filename, name, kind, includes=(), verbose=False, debug=Fals
         filename = posixpath.join(*ntpath.split(filename)) 
     cmd = ['gccxml', filename, '-fxml=' + f.name]
     cmd += map(lambda i: '-I' + i,  includes)
+    cmd += map(lambda d: '-D' + d,  defines)
+    cmd += map(lambda u: '-U' + u,  undefines)
     if verbose:
         print(" ".join(cmd))
     subprocess.call(cmd)
@@ -627,11 +633,11 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 # Clang Describers
 #
 
-def clang_describe(filename, name, includes=(), verbose=False, debug=False, 
-                   builddir='build'):
+def clang_describe(filename, name, includes=(), defines=('XDRESS',),
+                   undefines=(), verbose=False, debug=False, builddir='build'):
     """Use clang to describe the class."""
     index = cindex.Index.create()
-    tu = index.parse(filename, args=['-cc1', '-I' + pyne.includes])
+    tu = index.parse(filename, args=['-cc1', '-I' + pyne.includes, '-D', 'XDRESS'])
     #onlyin = set([filename, filename.replace('.cpp', '.h')])
     onlyin = set([filename.replace('.cpp', '.h')])
     describer = ClangClassDescriber(name, onlyin=onlyin, verbose=verbose)
@@ -1338,8 +1344,9 @@ _describers = {
     'pycparser': pycparser_describe,
     }
 
-def describe(filename, name=None, kind='class', includes=(), parser='gccxml', 
-    verbose=False, debug=False, builddir='build'):
+def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',),
+             undefines=(), parser='gccxml', verbose=False, debug=False, 
+             builddir='build'):
     """Automatically describes a class in a file.  This is the main entry point.
 
     Parameters
@@ -1353,6 +1360,10 @@ def describe(filename, name=None, kind='class', includes=(), parser='gccxml',
         The kind of type to describe, currently valid flags are 'class' and 'func'.
     includes: list of str, optional
         The list of extra include directories to search for header files.
+    defines: list of str, optional
+        The list of extra macro definitions to apply.
+    undefines: list of str, optional
+        The list of extra macro undefinitions to apply.
     parser : str, list, or dict, optional
         The parser / AST to use to use for the file.  Currently 'clang', 'gccxml', 
         and 'pycparser' are supported, though others may be implemented in the 
