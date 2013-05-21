@@ -3,6 +3,12 @@ set(XDTEST_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} ${XDTEST_INCLUDE_DIRS}
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
+# device
+add_library(cdevice device.c)
+set_target_properties(cdevice PROPERTIES 
+                      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/xdtest/lib")
+install_lib(cdevice)
+
 # bright
 add_library(bright_bright bright.cpp)
 set_target_properties(bright_bright PROPERTIES 
