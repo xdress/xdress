@@ -21,7 +21,10 @@ This has the following usage::
                                 [--no-make-stlcontainers] [--make-cythongen]
                                 [--no-make-cythongen] [--make-cyclus]
                                 [--no-make-cyclus] [--dumpdesc]
-                                [-I INCLUDES [INCLUDES ...]] [--builddir BUILDDIR]
+                                [-I INCLUDES [INCLUDES ...]]
+                                [-D DEFINES [DEFINES ...]]
+                                [-U UNDEFINES [UNDEFINES ...]]
+                                [--builddir BUILDDIR]
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -40,7 +43,12 @@ This has the following usage::
       --dumpdesc            print description cache
       -I INCLUDES [INCLUDES ...], --includes INCLUDES [INCLUDES ...]
                             additional include dirs
+      -D DEFINES [DEFINES ...], --defines DEFINES [DEFINES ...]
+                            set additional macro definitions
+      -U UNDEFINES [UNDEFINES ...], --undefines UNDEFINES [UNDEFINES ...]
+                            unset additional macro definitions
       --builddir BUILDDIR   path to build directory
+
 
 .. warning:: 
 
@@ -258,7 +266,8 @@ def compute_desc(name, srcname, tarname, kind, rc):
         cppdesc = cache[name, cppfilename, kind]
     else:
         cppdesc = autodescribe.describe(cppfilename, name=name, kind=kind,
-                                        includes=rc.includes, verbose=rc.verbose, 
+                                        includes=rc.includes, defines=rc.defines,
+                                        undefines=rc.undefines, verbose=rc.verbose, 
                                         debug=rc.debug, builddir=rc.builddir)
         cache[name, cppfilename, kind] = cppdesc
 
@@ -434,6 +443,8 @@ defaultrc = RunControl(
     make_cyclus=False,
     dumpdesc=False,
     includes=[],
+    defines=["XDRESS"],
+    undefines=[],
     verbose=False,
     package=NotSpecified,
     packagedir=NotSpecified,
@@ -481,6 +492,11 @@ def main_setup():
                         default=NotSpecified, help="print description cache")
     parser.add_argument('-I', '--includes', action='store', dest='includes', nargs="+",
                         default=NotSpecified, help="additional include dirs")
+    parser.add_argument('-D', '--defines', action='append', dest='defines', nargs="+",
+                        default=NotSpecified, help="set additional macro definitions")
+    parser.add_argument('-U', '--undefines', action='append', dest='undefines', 
+                        nargs="+", default=NotSpecified, type=str,
+                        help="unset additional macro definitions")
     parser.add_argument('--builddir', action='store', dest='builddir', 
                         default=NotSpecified, help="path to build directory")
     ns = parser.parse_args()
