@@ -1404,8 +1404,9 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
             raise RuntimeError(msg)
         parser = parsers[0].lower()
     describer = _describers[parser]
-    desc = describer(filename, name, kind, includes=includes, verbose=verbose, 
-                     debug=debug, builddir=builddir)
+    desc = describer(filename, name, kind, includes=includes, defines=defines,
+                     undefines=undefines, verbose=verbose, debug=debug, 
+                     builddir=builddir)
     return desc
 
 def merge_descriptions(descriptions):
