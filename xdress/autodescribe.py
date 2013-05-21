@@ -224,8 +224,9 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
         name = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
     describers = {'clang': clang_describe, 'gccxml': gccxml_describe}
     describer = describers[parser]
-    desc = describer(filename, name, kind, includes=includes, verbose=verbose, 
-                     debug=debug, builddir=builddir)
+    desc = describer(filename, name, kind, includes=includes, defines=defines,
+                     undefines=undefines, verbose=verbose, debug=debug, 
+                     builddir=builddir)
     return desc
 
 
