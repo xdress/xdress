@@ -271,7 +271,8 @@ def compute_desc(name, srcname, tarname, kind, rc):
     else:
         cppdesc = autodescribe.describe(filename, name=name, kind=kind,
                                         includes=rc.includes, defines=rc.defines,
-                                        undefines=rc.undefines, verbose=rc.verbose, 
+                                        undefines=rc.undefines, parsers=rc.parsers,
+                                        verbose=rc.verbose, 
                                         debug=rc.debug, builddir=rc.builddir)
         cache[name, filename, kind] = cppdesc
 
@@ -461,7 +462,7 @@ defaultrc = RunControl(
     stlcontainers=[],
     stlcontainers_module='stlcontainers',
     parsers={'c': ['pycparser', 'gccxml', 'clang'], 
-             'cpp':['gccxml', 'clang', 'pycparser'] },
+             'c++':['gccxml', 'clang', 'pycparser'] },
     )
 
 def main_setup():
@@ -558,6 +559,8 @@ def main():
                 traceback.print_exc(None, f)
                 msg = '\n{0}Run control run-time contents:\n\n{1}\n\n'
                 f.write(msg.format(sep, rc._pformat()))
+                msg = '\n{0}Autodescriber parsers available:\n\n{1}\n\n'
+                f.write(msg.format(sep, pformat(autodescribe.PARSERS_AVAILABLE)))
                 msg = '\n{0}Current descripton cache contents:\n\n{1}\n\n'
                 f.write(msg.format(sep, str(rc._cache)))
             raise 

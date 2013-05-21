@@ -1020,8 +1020,8 @@ def clang_canonize(t):
 #
 
 
-def pycparser_describe(filename, name, kind, includes=(), verbose=False, debug=False, 
-                       builddir='build'):
+def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
+                       undefines=(), verbose=False, debug=False, builddir='build'):
     """Use pycparser to describe the fucntion or struct (class).
 
     Parameters
@@ -1035,6 +1035,10 @@ def pycparser_describe(filename, name, kind, includes=(), verbose=False, debug=F
         The kind of type to describe, currently valid flags are 'class' and 'func'.
     includes: list of str, optional
         The list of extra include directories to search for header files.
+    defines: list of str, optional
+        The list of extra macro definitions to apply.
+    undefines: list of str, optional
+        The list of extra macro undefinitions to apply.
     verbose : bool, optional
         Flag to diplay extra information while describing the class.
     debug : bool, optional
@@ -1345,7 +1349,7 @@ _describers = {
     }
 
 def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',),
-             undefines=(), parser='gccxml', verbose=False, debug=False, 
+             undefines=(), parsers='gccxml', verbose=False, debug=False, 
              builddir='build'):
     """Automatically describes a class in a file.  This is the main entry point.
 
@@ -1364,7 +1368,7 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
-    parser : str, list, or dict, optional
+    parsers : str, list, or dict, optional
         The parser / AST to use to use for the file.  Currently 'clang', 'gccxml', 
         and 'pycparser' are supported, though others may be implemented in the 
         future.  If this is a string, then this parser is used.  If this is a list, 
@@ -1386,23 +1390,23 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     """
     if name is None:
         name = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
-    if isinstance(parser, basestring):
-        pass
-    elif isinstance(parser, collections.Sequence):
-        parsers = [p for p in parser if PARSERS_AVAILABLE[p.lower()]]
-        if len(parsers) == 0:
+    if isinstance(parsers, basestring):
+        parser = parsers
+    elif isinstance(parsers, collections.Sequence):
+        ps = [p for p in parsers if PARSERS_AVAILABLE[p.lower()]]
+        if len(ps) == 0:
             msg = "Parsers not available: {0}".format(", ".join(parsers))
             raise RuntimeError(msg)
-        parser = parsers[0].lower()
-    elif isinstance(parser, collections.Mapping):
+        parser = ps[0].lower()
+    elif isinstance(parsers, collections.Mapping):
         lang = guess_language(filename)
-        parsers = parser[lang]
-        parsers = [p for p in parser if PARSERS_AVAILABLE[p.lower()]]
-        if len(parsers) == 0:
+        ps = parsers[lang]
+        ps = [p for p in ps if PARSERS_AVAILABLE[p.lower()]]
+        if len(ps) == 0:
             msg = "{0} parsers not available: {1}"
             msg = msg.format(lang.capitalize(), ", ".join(parsers))
             raise RuntimeError(msg)
-        parser = parsers[0].lower()
+        parser = ps[0].lower()
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, defines=defines,
                      undefines=undefines, verbose=verbose, debug=debug, 

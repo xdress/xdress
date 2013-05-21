@@ -52,6 +52,7 @@ stlcontainers = [
 stlcontainers_module = 'xdstlc'
 
 classes = [
+    ('ErrorStatusTag', 'device'),
     ('FCComp', 'fccomp'), 
     ('EnrichmentParameters', 'enrichment_parameters'), 
     ('Enrichment', 'bright_enrichment', 'enrichment'), 
