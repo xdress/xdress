@@ -7,7 +7,7 @@ from nose.tools import assert_equal
 toaster_desc = {
     'name': 'Toaster',
     'header_filename': 'toaster.h',
-    'cpppxd_filename': 'cpp_toaster.pxd',
+    'srcpxd_filename': 'cpp_toaster.pxd',
     'namespace': 'bright',
     'docstrings': {
         'module': "I am the Toaster lib! Hear me sizzle!", 

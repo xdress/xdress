@@ -267,14 +267,14 @@ def compute_desc(name, srcname, tarname, kind, rc):
     filename = os.path.join(rc.sourcedir, srcfname)
     cache = rc._cache
     if cache.isvalid(name, filename, kind):
-        cppdesc = cache[name, filename, kind]
+        srcdesc = cache[name, filename, kind]
     else:
-        cppdesc = autodescribe.describe(filename, name=name, kind=kind,
+        srcdesc = autodescribe.describe(filename, name=name, kind=kind,
                                         includes=rc.includes, defines=rc.defines,
                                         undefines=rc.undefines, parsers=rc.parsers,
                                         verbose=rc.verbose, 
                                         debug=rc.debug, builddir=rc.builddir)
-        cache[name, filename, kind] = cppdesc
+        cache[name, filename, kind] = srcdesc
 
     # python description
     pydesc = pysrcenv[srcname].get(name, {})
@@ -282,16 +282,16 @@ def compute_desc(name, srcname, tarname, kind, rc):
     #if tarname is None:
     #    tarname = "<dont-build>"
 
-    desc = autodescribe.merge_descriptions([cppdesc, pydesc])
-    desc['cpp_filename'] = '{0}.cpp'.format(srcname)
-    desc['header_filename'] = '{0}.h'.format(srcname)
+    desc = autodescribe.merge_descriptions([srcdesc, pydesc])
+    desc['source_filename'] = srcfname
+    desc['header_filename'] = hdrfname
     desc['metadata_filename'] = '{0}.py'.format(srcname)
     if tarname is None:
-        desc['pxd_filename'] = desc['pyx_filename'] = desc['cpppxd_filename'] = None
+        desc['pxd_filename'] = desc['pyx_filename'] = desc['srcpxd_filename'] = None
     else:
         desc['pxd_filename'] = '{0}.pxd'.format(tarname)
         desc['pyx_filename'] = '{0}.pyx'.format(tarname)
-        desc['cpppxd_filename'] = 'cpp_{0}.pxd'.format(tarname)
+        desc['srcpxd_filename'] = '{0}_{1}.pxd'.format(ext, tarname)
     return desc
 
 def genextratypes(rc):
@@ -323,7 +323,7 @@ def _adddesc2env(desc, env, name, srcname, tarname):
     # Add to target environment
     # docstrings overwrite, extras accrete 
     mod = {name: desc, 'docstring': pysrcenv[srcname].get('docstring', ''),
-           'cpppxd_filename': desc['cpppxd_filename'],
+           'srcpxd_filename': desc['srcpxd_filename'],
            'pxd_filename': desc['pxd_filename'], 
            'pyx_filename': desc['pyx_filename']}
     if tarname not in env:
@@ -365,7 +365,7 @@ def genbindings(rc):
         print("registering " + classname)
         #pxd_base = desc['pxd_filename'].rsplit('.', 1)[0]         # eg, fccomp
         pxd_base = tarname or srcname  # eg, fccomp
-        #cpppxd_base = desc['cpppxd_filename'].rsplit('.', 1)[0]   # eg, cpp_fccomp
+        #cpppxd_base = desc['srcpxd_filename'].rsplit('.', 1)[0]   # eg, cpp_fccomp
         cpppxd_base = 'cpp_' + (tarname or srcname)   # eg, cpp_fccomp
         class_c2py = ('{pytype}({var})', 
                       ('{proxy_name} = {pytype}()\n'
@@ -409,7 +409,7 @@ def genbindings(rc):
         pxds = genpxd(env)
         pyxs = genpyx(env, classes)
         for key, cpppxd in cpppxds.items():
-            newoverwrite(cpppxd, os.path.join(rc.package, env[key]['cpppxd_filename']), rc.verbose)
+            newoverwrite(cpppxd, os.path.join(rc.package, env[key]['srcpxd_filename']), rc.verbose)
         for key, pxd in pxds.items():
             newoverwrite(pxd, os.path.join(rc.package, env[key]['pxd_filename']), rc.verbose)
         for key, pyx in pyxs.items():

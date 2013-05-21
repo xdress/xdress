@@ -31,7 +31,7 @@ exp_toaster_desc = {
 meta_toaster_desc = {
     'name': 'Toaster',
     'header_filename': 'toaster.h',
-    'cpppxd_filename': 'cpp_toaster.pxd',
+    'srcpxd_filename': 'cpp_toaster.pxd',
     'docstrings': {
         'module': "I am the Toaster lib! Hear me sizzle!", 
         'class': "I am the Toaster! FORKS DO NOT GO IN ME!",
@@ -48,7 +48,7 @@ meta_toaster_desc = {
 full_toaster_desc = {
     'name': 'Toaster',
     'header_filename': 'toaster.h',
-    'cpppxd_filename': 'cpp_toaster.pxd',
+    'srcpxd_filename': 'cpp_toaster.pxd',
     'namespace': 'bright',
     'docstrings': {
         'module': "I am the Toaster lib! Hear me sizzle!", 

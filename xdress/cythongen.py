@@ -52,7 +52,7 @@ def gencpppxd(env, exception_type='+'):
     """
     cpppxds = {}
     for name, mod in env.items():
-        if mod['cpppxd_filename'] is None:
+        if mod['srcpxd_filename'] is None:
             continue
         cpppxds[name] = modcpppxd(mod, exception_type)
     return cpppxds
@@ -77,7 +77,7 @@ def modcpppxd(mod, exception_type='+'):
 
     """
     m = {'extra': mod.get('extra', ''), 
-         "cpppxd_filename": mod.get("cpppxd_filename", "")}
+         "srcpxd_filename": mod.get("srcpxd_filename", "")}
     attrs = []
     cimport_tups = set()
     for name, desc in mod.items():
@@ -181,8 +181,8 @@ def classcpppxd(desc, exception_type='+'):
 
     d['extra'] = desc.get('extra', {}).get('cpppxd', '')
     cpppxd = _cpppxd_class_template.format(**d)
-    if 'cpppxd_filename' not in desc:
-        desc['cpppxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
+    if 'srcpxd_filename' not in desc:
+        desc['srcpxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
     return cimport_tups, cpppxd
 
 
@@ -242,8 +242,8 @@ def funccpppxd(desc, exception_type='+'):
 
     d['extra'] = desc.get('extra', {}).get('cpppxd', '')
     cpppxd = _cpppxd_func_template.format(**d)
-    if 'cpppxd_filename' not in desc:
-        desc['cpppxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
+    if 'srcpxd_filename' not in desc:
+        desc['srcpxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
     return cimport_tups, cpppxd
    
 
@@ -342,7 +342,7 @@ def classpxd(desc):
         cython_cimport_tuples(parent, cimport_tups, set(['cy']))
     
 
-    from_cpppxd = desc['cpppxd_filename'].rsplit('.', 1)[0]
+    from_cpppxd = desc['srcpxd_filename'].rsplit('.', 1)[0]
     # This is taken care of in main!
     #register_class(desc['name'], cython_cimport=from_cpppxd,
     #               cython_c_type="{0}.{1}".format(from_cpppxd, desc['name']),)
@@ -546,7 +546,7 @@ def _gen_method(name, name_mangled, args, rtn, doc=None, inst_name="self._inst")
 
 
 def _gen_constructor(name, name_mangled, classname, args, doc=None, 
-                     cpppxd_filename=None, inst_name="self._inst"):
+                     srcpxd_filename=None, inst_name="self._inst"):
     argfill = ", ".join(['self'] + [a[0] for a in args if 2 == len(a)] + \
                         ["{0}={1}".format(a[0], a[2]) for a in args if 3 == len(a)])
     lines  = ['def {0}({1}):'.format(name_mangled, argfill)]
@@ -562,8 +562,8 @@ def _gen_constructor(name, name_mangled, classname, args, doc=None,
             argbodies += indent(abody, join=False)
         argrtns[a[0]] = artn
     argvals = ', '.join([argrtns[a[0]] for a in args])
-    classname = classname if cpppxd_filename is None else \
-                    "{0}.{1}".format(cpppxd_filename.rsplit('.', 1)[0], classname)
+    classname = classname if srcpxd_filename is None else \
+                    "{0}.{1}".format(srcpxd_filename.rsplit('.', 1)[0], classname)
     fcall = 'self._inst = new {0}({1})'.format(classname, argvals)
     func_call = indent(fcall, join=False)
     lines += decls
@@ -771,7 +771,7 @@ def classpyx(desc, classes=None):
             mdoc = _doc_add_sig(mdoc, mname, margs)
             clines += _gen_constructor(mname, mname_mangled, 
                                        desc['name'], margs, doc=mdoc, 
-                                       cpppxd_filename=desc['cpppxd_filename'],
+                                       srcpxd_filename=desc['srcpxd_filename'],
                                        inst_name=minst_name)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
@@ -822,7 +822,7 @@ def funcpyx(desc):
 
     """
     nodocmsg = "no docstring for {0}, please file a bug report!"
-    inst_name = desc['cpppxd_filename'].rsplit('.', 1)[0]
+    inst_name = desc['srcpxd_filename'].rsplit('.', 1)[0]
 
     import_tups = set()
     cimport_tups = set(((inst_name,),))
