@@ -251,8 +251,8 @@ def compute_desc(name, srcname, tarname, kind, rc):
         File basename of implementation.  
     tarname : str
         File basename where the bindings will be generated.  
-    kind : str          
-        The kind of type to describe, currently valid flags are 'class' and 'func'.
+    kind : str
+        The kind of type to describe, valid flags are 'class', 'func', and 'var'.
     verbose : bool, optional
         Flag for printing extra information during description process.
 
@@ -278,9 +278,6 @@ def compute_desc(name, srcname, tarname, kind, rc):
 
     # python description
     pydesc = pysrcenv[srcname].get(name, {})
-
-    #if tarname is None:
-    #    tarname = "<dont-build>"
 
     desc = autodescribe.merge_descriptions([srcdesc, pydesc])
     desc['source_filename'] = srcfname
@@ -339,14 +336,18 @@ def genbindings(rc):
     print("cythongen: scraping C/C++ APIs from source")
     cache = rc._cache
     rc.make_cyclus = False  # FIXME cyclus bindings don't exist yet!
-    for i, cls in enumerate(rc.classes):
-        if len(cls) == 2:
-            rc.classes[i] = (cls[0], cls[1], cls[1])
-        load_pysrcmod(cls[1], rc)        
+    for i, var in enumerate(rc.variables):
+        if len(var) == 2:
+            rc.variables[i] = (var[0], var[1], var[1])
+        load_pysrcmod(var[1], rc)
     for i, fnc in enumerate(rc.functions):
         if len(fnc) == 2:
             rc.functions[i] = (fnc[0], fnc[1], fnc[1])
         load_pysrcmod(fnc[1], rc)
+    for i, cls in enumerate(rc.classes):
+        if len(cls) == 2:
+            rc.classes[i] = (cls[0], cls[1], cls[1])
+        load_pysrcmod(cls[1], rc)        
     # register dtypes
     for t in rc.stlcontainers:
         if t[0] == 'vector':
@@ -400,6 +401,15 @@ def genbindings(rc):
             pprint(desc)
         cache.dump()
         _adddesc2env(desc, env, funcname, srcname, tarname)
+
+    # then compute all variable descriptions
+    for varname, srcname, tarname in rc.variables:
+        print("parsing " + varname)
+        desc = compute_desc(varname, srcname, tarname, 'var', rc)
+        if rc.verbose:
+            pprint(desc)
+        cache.dump()
+        _adddesc2env(desc, env, varname, srcname, tarname)
 
     # next, make cython bindings
     # generate first, then write out to ensure this is atomic per-class
@@ -461,6 +471,9 @@ defaultrc = RunControl(
     extra_types='xdress_extra_types',
     stlcontainers=[],
     stlcontainers_module='stlcontainers',
+    variables=(),
+    functions=(),
+    classes=(),
     parsers={'c': ['pycparser', 'gccxml', 'clang'], 
              'c++':['gccxml', 'clang', 'pycparser'] },
     )
