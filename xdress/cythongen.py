@@ -499,10 +499,12 @@ def modpyx(mod, classes=None):
     import_tups = set()
     cimport_tups = set()
     for name, desc in mod.items():
-        if isclassdesc(desc):
-            i_tup, ci_tup, attr_str = classpyx(desc, classes=classes)
+        if isvardesc(desc):
+            i_tup, ci_tup, attr_str = varpyx(desc)
         elif isfuncdesc(desc):
             i_tup, ci_tup, attr_str = funcpyx(desc)
+        elif isclassdesc(desc):
+            i_tup, ci_tup, attr_str = classpyx(desc, classes=classes)
         else:
             continue
         import_tups |= i_tup
@@ -864,6 +866,53 @@ def classpyx(desc, classes=None):
     return import_tups, cimport_tups, pyx
 
 
+def varpyx(desc):
+    """Generates a ``*.pyx`` Cython wrapper implementation for exposing a C/C++ 
+    variable based off of a dictionary description.  
+
+    Parameters
+    ----------
+    desc : dict
+        Variable description dictonary.
+
+    Returns
+    -------
+    pyx : str
+        Cython ``*.pyx`` implementation as in-memory string.
+
+    """
+    nodocmsg = "no docstring for {0}, please file a bug report!"
+    inst_name = desc['srcpxd_filename'].rsplit('.', 1)[0]
+    import_tups = set()
+    cimport_tups = set(((inst_name,),))
+    name = desc['name']
+    t = ts.canon(desc['type'])
+
+    vlines = []
+    if ts.isenum(t):
+        doc = '"' * 3 +  "{0} is enumeration {1} of {2}" + '"' * 3
+        for ename, val in t[1][2][2]:
+            vlines.append("{0} = {1}.{0}".format(ename, inst_name))
+            vlines.append(doc.format(ename, val, name))
+            vlines.append("")
+    else:
+        decl, body, rtn, iscached = cython_c2py(name, t, view=False, cached=False, 
+                                                inst_name=inst_name)
+        vlines.append(decl)
+        vlines.append(body)
+        vlines.append(name + " = " + rtn)        
+        docstring = desc.get('docstring', None)
+        if docstring is None:
+            docstring = '"' * 3 + nodocmsg.format(name) + '"' * 3
+        vlines.append(docstring)
+
+    vlines.append(desc.get('extra', {}).get('pyx', ''))
+    pyx = '\n'.join(vlines)
+    if 'pyx_filename' not in desc:
+        desc['pyx_filename'] = '{0}.pyx'.format(desc['name'].lower())
+    return import_tups, cimport_tups, pyx
+
+
 def funcpyx(desc):
     """Generates a ``*.pyx`` Cython wrapper implementation for exposing a C/C++ 
     function based off of a dictionary description.  
@@ -871,7 +920,7 @@ def funcpyx(desc):
     Parameters
     ----------
     desc : dict
-        Class description dictonary.
+        function description dictonary.
 
     Returns
     -------
