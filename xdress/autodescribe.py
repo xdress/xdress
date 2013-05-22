@@ -1282,7 +1282,8 @@ class PycparserVarDescriber(PycparserBaseDescriber):
         if node is None:
             self.load_basetypes()
             for child_name, child in self._root.children():
-                if child.decl.name == self.name:
+                #if child.decl.name == self.name:
+                if getattr(child, 'name', None) == self.name:
                     if isinstance(child, pycparser.c_ast.FuncDef):
                         raise TypeError(_type_error_msg.format(self.name, 'function', 
                                                             'PycparserFuncDescriber'))

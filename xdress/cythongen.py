@@ -100,7 +100,7 @@ def modcpppxd(mod, exception_type='+'):
 
 _cpppxd_var_template = \
 """# function signatures
-cdef extern from "{header_filename}" namespace "{namespace}":
+cdef extern from "{header_filename}" {namespace}:
 
 {variables_block}
 
@@ -127,10 +127,11 @@ def varcpppxd(desc, exception_type='+'):
 
     """
     d = {}
-    t = desc['type']
-    copy_from_desc = ['name', 'namespace', 'header_filename']
+    t = ts.canon(desc['type'])
+    copy_from_desc = ['name', 'header_filename']
     for key in copy_from_desc:
         d[key] = desc[key]
+    d['namespace'] = _format_ns(desc)
 
     inc = set(['c'])
     cimport_tups = set()
@@ -154,7 +155,7 @@ def varcpppxd(desc, exception_type='+'):
 
 _cpppxd_func_template = \
 """# function signatures
-cdef extern from "{header_filename}" namespace "{namespace}":
+cdef extern from "{header_filename}" {namespace}:
 
 {functions_block}
 
@@ -182,9 +183,10 @@ def funccpppxd(desc, exception_type='+'):
 
     """
     d = {}
-    copy_from_desc = ['name', 'namespace', 'header_filename']
+    copy_from_desc = ['name', 'header_filename']
     for key in copy_from_desc:
         d[key] = desc[key]
+    d['namespace'] = _format_ns(desc)
     inc = set(['c'])
     cimport_tups = set()
 
@@ -213,7 +215,7 @@ def funccpppxd(desc, exception_type='+'):
     return cimport_tups, cpppxd
 
 _cpppxd_class_template = \
-"""cdef extern from "{header_filename}" namespace "{namespace}":
+"""cdef extern from "{header_filename}" {namespace}:
 
     cdef cppclass {name}{parents}:
         # constructors
@@ -251,9 +253,10 @@ def classcpppxd(desc, exception_type='+'):
     """
     pars = ', '.join([cython_ctype(p) for p in desc['parents'] or ()])
     d = {'parents': pars if 0 == len(pars) else '('+pars+')'}
-    copy_from_desc = ['name', 'namespace', 'header_filename']
+    copy_from_desc = ['name', 'header_filename']
     for key in copy_from_desc:
         d[key] = desc[key]
+    d['namespace'] = _format_ns(desc)
     inc = set(['c'])
 
     cimport_tups = set()
@@ -917,3 +920,17 @@ def funcpyx(desc):
     if 'pyx_filename' not in desc:
         desc['pyx_filename'] = '{0}.pyx'.format(desc['name'].lower())
     return import_tups, cimport_tups, pyx
+
+
+#
+# Misc Helpers Below
+#
+
+def _format_ns(desc):
+    ns = desc.get('namespace', None)
+    if ns is None:
+        return ""
+    elif len(ns) == 0:
+        return ""
+    else:
+        return 'namespace "{0}"'.format(ns)
