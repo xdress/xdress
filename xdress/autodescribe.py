@@ -57,7 +57,8 @@ The following are valid top-level keys in a class description dictionary:
 name, parents, namespace, attrs, methods, docstrings, and extra.
 
 :name: str, the class name
-:parents: list of strings, the immediate parents of the class (not grandparents)
+:parents: list of strings or None, the immediate parents of the class
+    (not grandparents).
 :namespace: str or None, the namespace or module the class lives in.
 :attrs: dict or dict-like, the names of the attributes (member variables) of the
     class mapped to their types, given in the format of the type system.
@@ -1366,6 +1367,7 @@ class PycparserClassDescriber(PycparserBaseDescriber):
                                                                   verbose=verbose)
         self.desc['attrs'] = {}
         self.desc[self._funckey] = {}
+        self.desc['parents'] = None
 
     def visit(self, node=None):
         """Visits the struct (class) node and all sub-nodes, generating the 
