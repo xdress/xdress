@@ -15,7 +15,8 @@ from __future__ import print_function
 import math
 from copy import deepcopy
 
-from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc
+from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
+    isvardesc
 from . import typesystem as ts
 from .typesystem import cython_ctype, cython_cimport_tuples, \
     cython_cimports, register_class, cython_cytype, cython_pytype, cython_c2py, \
@@ -81,10 +82,12 @@ def modcpppxd(mod, exception_type='+'):
     attrs = []
     cimport_tups = set()
     for name, desc in mod.items():
-        if isclassdesc(desc):
-            ci_tup, attr_str = classcpppxd(desc, exception_type)
+        if isvardesc(desc):
+            ci_tup, attr_str = varcpppxd(desc, exception_type)
         elif isfuncdesc(desc):
             ci_tup, attr_str = funccpppxd(desc, exception_type)
+        elif isclassdesc(desc):
+            ci_tup, attr_str = classcpppxd(desc, exception_type)
         else:
             continue
         cimport_tups |= ci_tup
@@ -95,6 +98,119 @@ def modcpppxd(mod, exception_type='+'):
     cpppxd = t.format(**m)
     return cpppxd
 
+_cpppxd_var_template = \
+"""# function signatures
+cdef extern from "{header_filename}" namespace "{namespace}":
+
+{variables_block}
+
+{extra}
+"""
+
+def varcpppxd(desc, exception_type='+'):
+    """Generates a cpp_*.pxd Cython header snippet for exposing a C/C++ variable 
+    to other Cython wrappers based off of a dictionary description.
+
+    Parameters
+    ----------
+    desc : dict
+        Function description dictonary.
+    exception_type : str, optional
+        Cython exception annotation.  Ignored here.
+
+    Returns
+    -------
+    cimport_tups : set of tuples
+        Set of Cython cimport tuples for cpp_*.pxd header file.
+    cpppxd : str
+        Cython cpp_*.pxd header file as in-memory string.
+
+    """
+    d = {}
+    t = desc['type']
+    copy_from_desc = ['name', 'namespace', 'header_filename']
+    for key in copy_from_desc:
+        d[key] = desc[key]
+
+    inc = set(['c'])
+    cimport_tups = set()
+    cython_cimport_tuples(t, cimport_tups, inc)
+
+    vlines = []
+    if ts.isenum(t):
+        vlines.append("cdef enum {0}:".format(d['name']))
+        enames = [name for name, val in t[1][2][2]]
+        vlines += indent(enames, 4, join=False)
+    else:
+        ct = cython_ctype(t)
+        vlines.append("{0} {1}".format(ct, d['name']))
+    d['variables_block'] = indent(vlines, 4)
+
+    d['extra'] = desc.get('extra', {}).get('cpppxd', '')
+    cpppxd = _cpppxd_var_template.format(**d)
+    if 'srcpxd_filename' not in desc:
+        desc['srcpxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
+    return cimport_tups, cpppxd
+
+_cpppxd_func_template = \
+"""# function signatures
+cdef extern from "{header_filename}" namespace "{namespace}":
+
+{functions_block}
+
+{extra}
+"""
+
+def funccpppxd(desc, exception_type='+'):
+    """Generates a cpp_*.pxd Cython header snippet for exposing a C/C++ function 
+    to other Cython wrappers based off of a dictionary description.
+
+    Parameters
+    ----------
+    desc : dict
+        Function description dictonary.
+    exception_type : str, optional
+        Cython exception annotation.  Set to None when exceptions should not 
+        be included.
+
+    Returns
+    -------
+    cimport_tups : set of tuples
+        Set of Cython cimport tuples for cpp_*.pxd header file.
+    cpppxd : str
+        Cython cpp_*.pxd header file as in-memory string.
+
+    """
+    d = {}
+    copy_from_desc = ['name', 'namespace', 'header_filename']
+    for key in copy_from_desc:
+        d[key] = desc[key]
+    inc = set(['c'])
+    cimport_tups = set()
+
+    flines = []
+    estr = str() if exception_type is None else  ' except {0}'.format(exception_type)
+    funcitems = sorted(expand_default_args(desc['signatures'].items()))
+    for fkey, frtn in funcitems:
+        fname, fargs = fkey[0], fkey[1:]
+        if fname.startswith('_'):
+            continue  # private 
+        argfill = ", ".join([cython_ctype(a[1]) for a in fargs])
+        for a in fargs:
+            cython_cimport_tuples(a[1], cimport_tups, inc)
+        line = "{0}({1}){2}".format(fname, argfill, estr)
+        rtype = cython_ctype(frtn)
+        cython_cimport_tuples(frtn, cimport_tups, inc)
+        line = rtype + " " + line
+        if line not in flines:
+            flines.append(line)
+    d['functions_block'] = indent(flines, 4)
+
+    d['extra'] = desc.get('extra', {}).get('cpppxd', '')
+    cpppxd = _cpppxd_func_template.format(**d)
+    if 'srcpxd_filename' not in desc:
+        desc['srcpxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
+    return cimport_tups, cpppxd
 
 _cpppxd_class_template = \
 """cdef extern from "{header_filename}" namespace "{namespace}":
@@ -181,67 +297,6 @@ def classcpppxd(desc, exception_type='+'):
 
     d['extra'] = desc.get('extra', {}).get('cpppxd', '')
     cpppxd = _cpppxd_class_template.format(**d)
-    if 'srcpxd_filename' not in desc:
-        desc['srcpxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
-    return cimport_tups, cpppxd
-
-
-_cpppxd_func_template = \
-"""# function signatures
-cdef extern from "{header_filename}" namespace "{namespace}":
-
-{functions_block}
-
-{extra}
-"""
-
-def funccpppxd(desc, exception_type='+'):
-    """Generates a cpp_*.pxd Cython header snippet for exposing a C/C++ function 
-    to other Cython wrappers based off of a dictionary description.
-
-    Parameters
-    ----------
-    desc : dict
-        Function description dictonary.
-    exception_type : str, optional
-        Cython exception annotation.  Set to None when exceptions should not 
-        be included.
-
-    Returns
-    -------
-    cimport_tups : set of tuples
-        Set of Cython cimport tuples for cpp_*.pxd header file.
-    cpppxd : str
-        Cython cpp_*.pxd header file as in-memory string.
-
-    """
-    d = {}
-    copy_from_desc = ['name', 'namespace', 'header_filename']
-    for key in copy_from_desc:
-        d[key] = desc[key]
-    inc = set(['c'])
-    cimport_tups = set()
-
-    flines = []
-    estr = str() if exception_type is None else  ' except {0}'.format(exception_type)
-    funcitems = sorted(expand_default_args(desc['signatures'].items()))
-    for fkey, frtn in funcitems:
-        fname, fargs = fkey[0], fkey[1:]
-        if fname.startswith('_'):
-            continue  # private 
-        argfill = ", ".join([cython_ctype(a[1]) for a in fargs])
-        for a in fargs:
-            cython_cimport_tuples(a[1], cimport_tups, inc)
-        line = "{0}({1}){2}".format(fname, argfill, estr)
-        rtype = cython_ctype(frtn)
-        cython_cimport_tuples(frtn, cimport_tups, inc)
-        line = rtype + " " + line
-        if line not in flines:
-            flines.append(line)
-    d['functions_block'] = indent(flines, 4)
-
-    d['extra'] = desc.get('extra', {}).get('cpppxd', '')
-    cpppxd = _cpppxd_func_template.format(**d)
     if 'srcpxd_filename' not in desc:
         desc['srcpxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
     return cimport_tups, cpppxd

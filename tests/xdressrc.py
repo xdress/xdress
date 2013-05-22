@@ -51,11 +51,9 @@ stlcontainers = [
 
 stlcontainers_module = 'xdstlc'
 
-classes = [
-    ('FCComp', 'fccomp'), 
-    ('EnrichmentParameters', 'enrichment_parameters'), 
-    ('Enrichment', 'bright_enrichment', 'enrichment'), 
-    ('Reprocess', 'reprocess'), 
+
+variables = [
+    ('ErrorStatus', 'device'),
     ]
 
 functions = [
@@ -63,6 +61,9 @@ functions = [
     ('fillUraniumEnrichmentDefaults', 'enrichment_parameters'),
     ]
 
-variables = [
-    ('ErrorStatusTag', 'device'),
+classes = [
+    ('FCComp', 'fccomp'), 
+    ('EnrichmentParameters', 'enrichment_parameters'), 
+    ('Enrichment', 'bright_enrichment', 'enrichment'), 
+    ('Reprocess', 'reprocess'), 
     ]

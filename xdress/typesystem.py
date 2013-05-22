@@ -286,6 +286,11 @@ The parent types may either be base types, compound types, template
 types, or other refined types!"""
 
 
+@_memoize
+def isenum(t):
+    t = canon(t)
+    return isinstance(t, Sequence) and t[0] == 'int32' and \
+           isinstance(t[1], Sequence) and t[1][0] == 'enum'
 
 _humannames = {
     'char': 'character',
