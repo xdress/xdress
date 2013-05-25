@@ -251,7 +251,7 @@ def _memoize(obj):
 
 base_types = set(['char', 'uchar', 'str', 'int16', 'int32', 'int64', 'int128', 
                   'uint16', 'uint32', 'uint64', 'uint128', 'float32', 'float64', 
-                  'float128', 'complex128', 'void', 'bool'])
+                  'float128', 'complex128', 'void', 'bool', 'type', ])
 """Base types in the type system."""
 
 template_types = {
@@ -279,7 +279,8 @@ refined_types = {
     'nucid': 'int32',
     'nucname': 'str',
     ('enum', ('name', 'str'), ('aliases', ('dict', 'str', 'int32', 0))): 'int32',
-    ('function', ('arguments', 'tuple'), ('returns', 'rtntype')): 'rtntype', 
+    ('function_pointer', ('arguments', ('list', ('pair', 'str', 'type'))), 
+                         ('returns', 'type')): ('void', '*'), 
     }
 """This is a mapping from refinement type names to the parent types.
 The parent types may either be base types, compound types, template 

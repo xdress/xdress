@@ -58,6 +58,10 @@ def test_canon():
                                         ('range', ('int32', 'nucid'),
                                             ('low', ('int32', 'nucid'), 92000), 
                                             ('high', ('int32', 'nucid'), 93000)))), 
+        (('function_pointer', (('_0', ('uint32', '*')),), 'int'), 
+            (('void', '*'), ('function_pointer', ('arguments', ('list', 
+                ('pair', 'str', 'type', 0), 0), (('_0', ('uint32', '*')),)), 
+                ('returns', 'type', 'int')))),
     )
     for t, exp in cases:
         yield check_canon, t, exp            # Check that the case works,

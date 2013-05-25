@@ -1206,7 +1206,10 @@ class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
     def visit_PtrDecl(self, node):
         self._pprint(node)
         self.visit(node.type)
-        self._currtype = (self._currtype, '*')
+        if self._currtype is not None and self._currtype[0] == 'function':
+            self._currtype = ('function_pointer',) + self._currtype[1:]
+        else:
+            self._currtype = (self._currtype, '*')
 
     def visit_ArrayDecl(self, node):
         self._pprint(node)
