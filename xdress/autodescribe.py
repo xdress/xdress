@@ -70,6 +70,9 @@ name, parents, namespace, attrs, methods, docstrings, and extra.
     the second element is the argument type, and the third element (if present) is
     the default value.  If the return type is None (as opposed to 'void'), then 
     this method is assumed to be a constructor or destructor.
+:construct: str, optional, this is a flag for how the class is implemented. 
+    Accepted values are 'class' and 'struct'.  If this is not present, then 'class'
+    is assumed.  This is most useful from wrapping C structs as Python classes.
 :docstrings: dict, optional, this dictionary is meant for storing documentation 
     strings.  All values are thus either strings or dictionaries of strings.  
     Valid keys include: class, attrs, and methods.  The attrs and methods
@@ -548,6 +551,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
     """Class used to generate class descriptions via GCC-XML output."""
 
     _funckey = 'methods'
+    _constructvalue = 'class'
 
     def __init__(self, name, root=None, onlyin=None, verbose=False):
         """Parameters
@@ -567,6 +571,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
                                                    verbose=verbose)
         self.desc['attrs'] = {}
         self.desc[self._funckey] = {}
+        self.desc['construct'] = self._constructvalue
 
     def visit(self, node=None):
         """Visits the class node and all sub-nodes, generating the description
@@ -1346,6 +1351,7 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
 class PycparserClassDescriber(PycparserBaseDescriber):
 
     _funckey = 'methods'
+    _constructvalue = 'struct'
 
     def __init__(self, name, root, onlyin=None, verbose=False):
         """Parameters
@@ -1371,6 +1377,7 @@ class PycparserClassDescriber(PycparserBaseDescriber):
         self.desc['attrs'] = {}
         self.desc[self._funckey] = {}
         self.desc['parents'] = None
+        self.desc['construct'] = self._constructvalue
 
     def visit(self, node=None):
         """Visits the struct (class) node and all sub-nodes, generating the 

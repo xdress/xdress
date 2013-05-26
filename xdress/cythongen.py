@@ -217,7 +217,7 @@ def funccpppxd(desc, exception_type='+'):
 _cpppxd_class_template = \
 """cdef extern from "{header_filename}" {namespace}:
 
-    cdef cppclass {name}{parents}:
+    cdef {construct_kind} {name}{parents}:
         # constructors
 {constructors_block}
 
@@ -257,6 +257,8 @@ def classcpppxd(desc, exception_type='+'):
     for key in copy_from_desc:
         d[key] = desc[key]
     d['namespace'] = _format_ns(desc)
+    construct_kinds = {'struct': 'struct', 'class': 'cppclass'}
+    d['construct_kind'] = construct_kinds[desc.get('construct', 'class')]
     inc = set(['c'])
 
     cimport_tups = set()

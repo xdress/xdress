@@ -1397,7 +1397,7 @@ _cython_py2c_conv = _LazyConverterDict({
     'nucname': ('nucname.name({var})', False),
     #'function_pointer': (NotImplemented, False),
     #'function_pointer': NotImplemented,
-    'function_pointer': ('', False),
+    'function_pointer': ('NULL', False),
     })
 
 @_memoize
