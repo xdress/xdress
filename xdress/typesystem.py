@@ -501,6 +501,8 @@ class _LazyImportDict(MutableMapping):
 
     def __getitem__(self, key):
         value = self._d[key]
+        if callable(value):
+            return value
         kw = {'extra_types': _ensuremod(EXTRA_TYPES),
               'stlcontainers': _ensuremod(STLCONTAINERS),}
         newvalue = tuple(tuple(x.format(**kw) or None for x in imp if x is not None) \
@@ -677,6 +679,12 @@ _cython_cimports = _LazyImportDict({
     'nucname': (('pyne', 'cpp_nucname'), ('libcpp.string', 'string', 'std_string')),
     })
 
+def _cython_cimports_function_pointer(t, seen):
+    for n, argt in t[1][2]:
+        cython_cimport_tuples(argt, seen=seen, inc=('c',))
+    cython_cimport_tuples(t[2][2], seen=seen, inc=('c',))
+_cython_cimports['function_pointer'] = _cython_cimports_function_pointer
+
 _cython_cyimports = _LazyImportDict({
     'char': (None,),
     'uchar': (None,),
@@ -701,6 +709,12 @@ _cython_cyimports = _LazyImportDict({
     'nucid': (('pyne', 'nucname'),),
     'nucname': (('pyne', 'nucname'),),
     })
+
+def _cython_cyimports_function_pointer(t, seen):
+    for n, argt in t[1][2]:
+        cython_cimport_tuples(argt, seen=seen, inc=('cy',))
+    cython_cimport_tuples(t[2][2], seen=seen, inc=('cy',))
+_cython_cyimports['function_pointer'] = _cython_cyimports_function_pointer
 
 @_memoize
 def cython_cimport_tuples(t, seen=None, inc=frozenset(['c', 'cy'])):
@@ -731,9 +745,17 @@ def cython_cimport_tuples(t, seen=None, inc=frozenset(['c', 'cy'])):
     tlen = len(t)
     if 2 == tlen:
         if 'c' in inc:
+            if isrefinement(t[1]) and t[1][0] in _cython_cimports:
+                f = _cython_cimports[t[1][0]]
+                if callable(f):
+                    f(t[1], seen)
             seen.update(_cython_cimports.get(t[0], (None,)))
             seen.update(_cython_cimports.get(t[1], (None,)))
         if 'cy' in inc:
+            if isrefinement(t[1]) and t[1][0] in _cython_cyimports:
+                f = _cython_cyimports[t[1][0]]
+                if callable(f):
+                    f(t[1], seen)
             seen.update(_cython_cyimports.get(t[0], (None,)))
             seen.update(_cython_cyimports.get(t[1], (None,)))
         seen -= set((None, (None,)))
@@ -791,6 +813,13 @@ _cython_pyimports = _LazyImportDict({
     'nucname': (('pyne', 'nucname'),),
     })
 
+def _cython_pyimports_function_pointer(t, seen):
+    for n, argt in t[1][2]:
+        cython_import_tuples(argt, seen=seen)
+    cython_import_tuples(t[2][2], seen=seen)
+_cython_pyimports['function_pointer'] = _cython_pyimports_function_pointer
+
+
 @_memoize
 def cython_import_tuples(t, seen=None):
     """Given a type t, and possibily previously seen import tuples (set), 
@@ -816,6 +845,10 @@ def cython_import_tuples(t, seen=None):
     # must be tuple below this line
     tlen = len(t)
     if 2 == tlen:
+        if isrefinement(t[1]) and t[1][0] in _cython_pyimports:
+            f = _cython_cimports[t[1][0]]
+            if callable(f):
+                f(t[1], seen)
         seen.update(_cython_pyimports.get(t[0], (None,)))
         seen.update(_cython_pyimports.get(t[1], (None,)))
         seen -= set((None, (None,)))
@@ -866,6 +899,7 @@ _cython_cytypes = _LazyConfigDict({
     'pair': '{stlcontainers}_Pair{value_type}',
     'set': '{stlcontainers}_Set{value_type}',
     'vector': 'np.ndarray',
+    'function_pointer': 'object',
     })
 
 _cython_functionnames = _LazyConfigDict({
@@ -893,6 +927,7 @@ _cython_functionnames = _LazyConfigDict({
     'vector': 'vector_{value_type}',    
     'nucid': 'nucid', 
     'nucname': 'nucname',
+    'function_pointer': 'functionpointer', 
     })
 
 @_memoize
@@ -979,14 +1014,44 @@ def cython_classname(t, cycyt=None):
             _, val = cython_classname(x, _cython_classnames[x[0]])
         d[key] = val
     return t, cycyt.format(**d)
-    
+
+#@_memoize
+#def cython_cytype(t):
+#    """Given a type t, returns the cooresponding Cython type."""
+#    t = canon(t)
+#    if isinstance(t, basestring):
+#        if t in base_types:
+#            return _cython_cytypes[t]
+#    # must be tuple below this line
+#    tlen = len(t)
+#    if 2 == tlen:
+#        if 0 == t[1]:
+#            return cython_cytype(t[0])
+#        elif isrefinement(t[1]):
+#            return cython_cytype(t[0])
+#        else:
+#            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+#            return cython_cytype(t[0]) + ' {0}'.format(last)
+#    elif 3 <= tlen:
+#        if t in _cython_cytypes:
+#            return _cython_cytypes[t]
+#        assert t[0] in template_types
+#        assert len(t) == len(template_types[t[0]]) + 2
+#        template_name = _cython_cytypes[t[0]]
+#        assert template_name is not NotImplemented        
+#        cycyt = _cython_cytypes[t[0]]
+#        cycyt, t = _fill_cycyt(cycyt, t)
+#        if 0 != t[-1]:
+#            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+#            cycyt += ' {0}'.format(last)
+#        return cycyt    
 
 @_memoize
 def cython_cytype(t):
     """Given a type t, returns the cooresponding Cython type."""
     t = canon(t)
     if isinstance(t, basestring):
-        if  t in base_types:
+        if t in base_types or t in _cython_cytypes:
             return _cython_cytypes[t]
     # must be tuple below this line
     tlen = len(t)
@@ -994,7 +1059,10 @@ def cython_cytype(t):
         if 0 == t[1]:
             return cython_cytype(t[0])
         elif isrefinement(t[1]):
-            return cython_cytype(t[0])
+            if t[1][0] in _cython_cytypes:
+                return _cython_cytypes[t[1][0]]
+            else:
+                return cython_cytype(t[0])
         else:
             last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
             return cython_cytype(t[0]) + ' {0}'.format(last)
@@ -1257,9 +1325,11 @@ def _cython_c2py_conv_function_pointer(t):
     s = s.format(arglist=", ".join(argnames), argdecls=argdecls,
                  argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
                  carglist=", ".join(argrtns), rtnbody=rtnbody, rtnrtn=rtnrtn)
-    return s, s, s
+    caches = 'if {cache_name} is None:\n' + _indent4([s]) 
+    caches += '\n    {cache_name} = {proxy_name}\n'
+    return s, s, caches
 
-_cython_c2py_conv['enum'] = _cython_c2py_conv['int32']
+#_cython_c2py_conv['enum'] = _cython_c2py_conv['int32']
 _cython_c2py_conv['function_pointer'] = _cython_c2py_conv_function_pointer
 
 from_pytypes = {
@@ -1282,13 +1352,12 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     and return statements) to convert the variable from C/C++ to Python."""
     tkey = t = canon(t)
     while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
-        tkey = tkey[0]
-        #tkey = tkey[1] if (0 < len(tkey) and isrefinement(tkey[1])) else tkey[0]
-    print(tkey)
-    #if tkey not in _cython_c2py_conv:
-    #    tkey = t
-    #    while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
-    #        tkey = tkey[0]
+        #tkey = tkey[0]
+        tkey = tkey[1] if (0 < len(tkey) and isrefinement(tkey[1])) else tkey[0]
+    if tkey not in _cython_c2py_conv:
+        tkey = t
+        while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
+            tkey = tkey[0]
     c2pyt = _cython_c2py_conv[tkey]
     if callable(c2pyt):
         _cython_c2py_conv[t] = c2pyt(t)
