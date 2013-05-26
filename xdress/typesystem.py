@@ -529,6 +529,8 @@ class _LazyConverterDict(MutableMapping):
 
     def __getitem__(self, key):
         value = self._d[key]
+        if value is None or value is NotImplemented or callable(value):
+            return value
         kw = {'extra_types': _ensuremoddot(EXTRA_TYPES),
               'stlcontainers': _ensuremoddot(STLCONTAINERS),}
         newvalue = []
@@ -598,11 +600,17 @@ type_aliases = _LazyConfigDict({
 
 _cython_ctypes = _LazyConfigDict({
     'char': 'char',
+    'uchar': 'unsigned char',
     'str': 'std_string',
+    'int16': 'short',
     'int32': 'int',
+    'int64': 'long long',
+    'uint16': 'unsigned short',
     'uint32': '{extra_types}uint',  # 'unsigned int'
+    'uint64': 'unsigned long long',
     'float32': 'float',
     'float64': 'double',
+    'float128': 'long double',
     'complex128': '{extra_types}complex_t',
     'bool': 'bint',
     'void': 'void', 
@@ -611,6 +619,7 @@ _cython_ctypes = _LazyConfigDict({
     'pair': 'cpp_pair',
     'set': 'cpp_set',
     'vector': 'cpp_vector',
+    'function_pointer': "none"
     })
 
 @_memoize
@@ -645,11 +654,17 @@ def cython_ctype(t):
 
 _cython_cimports = _LazyImportDict({
     'char': (None,),
+    'uchar': (None,),
     'str': (('libcpp.string', 'string', 'std_string'),),
+    'int16': (None,),
     'int32': (None,),
+    'int64': (None,),
+    'uint16': (None,),
     'uint32': (('{extra_types}',),),  # 'unsigned int'
+    'uint64': (None,),
     'float32': (None,),
     'float64': (None,),
+    'float128': (('numpy', 'as', 'np'),),
     'complex128': (('{extra_types}',),),
     'bool': (None,), 
     'void': (None,), 
@@ -664,11 +679,17 @@ _cython_cimports = _LazyImportDict({
 
 _cython_cyimports = _LazyImportDict({
     'char': (None,),
+    'uchar': (None,),
     'str': (None,),
+    'int16': (None,),
     'int32': (None,),
+    'int64': (None,),
+    'uint16': (None,),
     'uint32': (None,),
+    'uint64': (None,),
     'float32': (None,),
     'float64': (None,),
+    'float128': (('numpy', 'as', 'np'),),
     'complex128': (('{extra_types}',),),  # for py2c_complex()
     'bool': (None,), 
     'void': (None,), 
@@ -747,11 +768,17 @@ def cython_cimports(x, inc=frozenset(['c', 'cy'])):
 
 _cython_pyimports = _LazyImportDict({
     'char': (None,),
+    'uchar': (None,),
     'str': (None,),
+    'int16': (None,),
     'int32': (None,),
+    'int64': (None,),
+    'uint16': (None,),
     'uint32': (None,),
+    'uint64': (None,),
     'float32': (None,),
     'float64': (None,),
+    'float128': (('numpy', 'as', 'np'),),
     'complex128': (None,),
     'bool': (None,), 
     'void': (None,), 
@@ -820,11 +847,17 @@ def cython_imports(x):
 
 _cython_cytypes = _LazyConfigDict({
     'char': 'char *',
+    'uchar': 'unsigned char',
     'str': 'char *',
+    'int16': 'short',
     'int32': 'int',
-    'uint32': 'long',  # 'unsigned int'
+    'int64': 'long long',
+    'uint16': 'unsigned short',  
+    'uint32': 'unsigned long',  # 'unsigned int'
+    'uint64': 'unsigned long long', 
     'float32': 'float',
     'float64': 'float',
+    'float128': 'long double',
     'complex128': 'object',
     'bool': 'bint',
     'void': 'void',
@@ -838,11 +871,17 @@ _cython_cytypes = _LazyConfigDict({
 _cython_functionnames = _LazyConfigDict({
     # base types
     'char': 'char',
+    'uchar': 'uchar',
     'str': 'str',
+    'int16': 'short',
     'int32': 'int',
+    'int64': 'long',
+    'uint16': 'ushort',
     'uint32': 'uint',
+    'uint64': 'ulong',
     'float32': 'float',
     'float64': 'double',
+    'float128': 'longdouble',
     'complex128': 'complex',
     'bool': 'bool',
     'void': 'void',
@@ -882,11 +921,17 @@ cython_variablename = cython_functionname
 _cython_classnames = _LazyConfigDict({
     # base types
     'char': 'Char',
+    'uchar': 'UChar',
     'str': 'Str',
+    'int32': 'Short',
     'int32': 'Int',
+    'int64': 'Long',
+    'uint16': 'UShort',
     'uint32': 'UInt',
+    'uint64': 'ULong',
     'float32': 'Float',
     'float64': 'Double',
+    'float128': 'Longdouble',
     'complex128': 'Complex',
     'bool': 'Bool',
     'void': 'Void',
@@ -970,11 +1015,17 @@ def cython_cytype(t):
 
 _cython_pytypes = _LazyConfigDict({
     'char': 'str',
+    'uchar': 'str',
     'str': 'str',
+    'int16': 'int',
     'int32': 'int',
+    'int64': 'int',
+    'uint16': 'int',  # 'unsigned int'
     'uint32': 'int',  # 'unsigned int'
+    'uint64': 'int',  # 'unsigned int'
     'float32': 'float',
     'float64': 'float',
+    'float128': 'np.float128',
     'complex128': 'object',
     'bool': 'bool',
     'void': 'object',
@@ -1075,11 +1126,17 @@ _cython_c2py_conv = _LazyConverterDict({
     # Has tuple form of (copy, [view, [cached_view]])
     # base types
     'char': ('chr(<int> {var})',),
+    'uchar': ('chr(<unsigned int> {var})',),
     'str': ('bytes(<char *> {var}.c_str()).decode()',),
+    'int16': ('int({var})',),
     'int32': ('int({var})',),
+    'int64': ('int({var})',),
+    'uint16': ('int({var})',),
     'uint32': ('int({var})',),
+    'uint64': ('int({var})',),
     'float32': ('float({var})',),
     'float64': ('float({var})',),
+    'float128': ('np.array({var}, dtype=np.float128)',),
     'complex128': ('complex(float({var}.re), float({var}.im))',),
     'bool': ('bool({var})',),
     'void': ('None',),
@@ -1160,6 +1217,50 @@ _cython_c2py_conv = _LazyConverterDict({
     'nucname': ('nucname.name({var})',),
     })
 
+_indent4 = lambda x: '' if x is None else "\n".join(["    " + l for l in "\n".join(
+                     [xx for xx in x if xx is not None]).splitlines()])
+
+def _cython_c2py_conv_function_pointer(t):
+    t = t[1]
+    argnames = []
+    argdecls = []
+    argbodys = []
+    argrtns = []
+    for n, argt in t[1][2]:
+        argnames.append(n)
+        decl, body, rtn = cython_py2c(n, argt, proxy_name="c_" + n)
+        argdecls.append(decl)
+        argbodys.append(body)
+        argrtns.append(rtn)
+    rtnname = 'rtn'
+    rtnprox = 'c_' + rtnname
+    while rtnname in argnames or rtnprox in argnames:
+        rtnname += '_'
+        rtnprox += '_'
+    argdecls = _indent4(argdecls)
+    argbodys = _indent4(argbodys)
+    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtnname, t[2][2], cached=False, 
+                                              proxy_name=rtnprox)
+    if rtndecl is None and rtnbody is None:
+        rtnprox = rtnname
+    rtndecl = _indent4(rtndecl)
+    rtnbody = _indent4(rtnbody)
+    s = """def {{proxy_name}}({arglist}):
+{argdecls}
+{argbodys}
+{rtndecl}
+    #{rtnprox} = (*{{var}})({carglist})
+    {rtnprox} = {{var}}({carglist})
+{rtnbody}
+    return {rtnrtn}
+"""
+    s = s.format(arglist=", ".join(argnames), argdecls=argdecls,
+                 argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
+                 carglist=", ".join(argrtns), rtnbody=rtnbody, rtnrtn=rtnrtn)
+    return s, s, s
+
+_cython_c2py_conv['enum'] = _cython_c2py_conv['int32']
+_cython_c2py_conv['function_pointer'] = _cython_c2py_conv_function_pointer
 
 from_pytypes = {
     'str': ['basestring'],
@@ -1179,11 +1280,19 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
                 cache_name=None, cache_prefix='self', existing_name=None):
     """Given a varibale name and type, returns cython code (declaration, body, 
     and return statements) to convert the variable from C/C++ to Python."""
-    tkey = canon(t)
-    #while not isinstance(tkey, basestring):
+    tkey = t = canon(t)
     while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
         tkey = tkey[0]
+        #tkey = tkey[1] if (0 < len(tkey) and isrefinement(tkey[1])) else tkey[0]
+    print(tkey)
+    #if tkey not in _cython_c2py_conv:
+    #    tkey = t
+    #    while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
+    #        tkey = tkey[0]
     c2pyt = _cython_c2py_conv[tkey]
+    if callable(c2pyt):
+        _cython_c2py_conv[t] = c2pyt(t)
+        c2pyt = _cython_c2py_conv[t]
     ind = int(view) + int(cached)
     if cached and not view:
         raise ValueError('cached views require view=True.')
@@ -1231,11 +1340,17 @@ _cython_py2c_conv = _LazyConverterDict({
     # Has tuple form of (body or return,  return or False)
     # base types
     'char': ('{var}_bytes = {var}.encode()', '(<char *> {var}_bytes)[0]'),
+    'uchar': ('{var}_bytes = {var}.encode()', '(<unsigned char *> {var}_bytes)[0]'),
     'str': ('{var}_bytes = {var}.encode()', 'std_string(<char *> {var}_bytes)'),
+    'int16': ('<short> {var}', False),
     'int32': ('<int> {var}', False),
+    'int64': ('<long long> {var}', False),
+    'uint16': ('<unsigned short> {var}', False),
     'uint32': ('<{ctype}> long({var})', False),
+    'uint64': ('<unsigned long long> {var}', False),
     'float32': ('<float> {var}', False),
     'float64': ('<double> {var}', False),
+    'float128': ('<long double> {var}', False),
     'complex128': ('{extra_types}py2c_complex({var})', False),
     'bool': ('<bint> {var}', False),
     'void': ('NULL', False),
@@ -1280,6 +1395,9 @@ _cython_py2c_conv = _LazyConverterDict({
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
     'nucname': ('nucname.name({var})', False),
+    #'function_pointer': (NotImplemented, False),
+    #'function_pointer': NotImplemented,
+    'function_pointer': ('', False),
     })
 
 @_memoize
@@ -1301,7 +1419,7 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
     py2ct = _cython_py2c_conv[tkey]
     if py2ct is NotImplemented or py2ct is None:
         raise NotImplementedError('conversion from Python to C/C++ for ' + \
-                                  t + 'has not been implemented.')
+                                  str(t) + ' has not been implemented.')
     body_template, rtn_template = py2ct
     ct = cython_ctype(t)
     cyt = cython_cytype(t)
