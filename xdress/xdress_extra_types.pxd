@@ -1,6 +1,6 @@
 """C++ wrapper for extra types header."""
 
-ctypedef unsigned int uint
+#ctypedef unsigned int uint
 
 cdef extern from "{extra_types}.h" namespace "{extra_types}":
 
