@@ -1,6 +1,11 @@
 """C++ wrapper for extra types header."""
 
-#ctypedef unsigned int uint
+ctypedef unsigned char uchar
+ctypedef long long int64
+ctypedef unsigned short uint16
+ctypedef unsigned int uint32
+ctypedef unsigned long long uint64
+ctypedef long double float128
 
 cdef extern from "{extra_types}.h" namespace "{extra_types}":
 

@@ -270,7 +270,12 @@ def classcpppxd(desc, exception_type='+'):
     for aname, atype in attritems:
         if aname.startswith('_'):
             continue
-        alines.append("{0} {1}".format(cython_ctype(atype), aname))
+        actype = cython_ctype(atype)
+        if '{type_name}' in actype:
+            aline = actype.format(type_name=aname)
+        else:
+            aline = "{0} {1}".format(actype, aname)
+        alines.append(aline)
         cython_cimport_tuples(atype, cimport_tups, inc)
     d['attrs_block'] = indent(alines, 8)
 

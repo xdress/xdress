@@ -612,18 +612,24 @@ type_aliases = _LazyConfigDict({
 
 _cython_ctypes = _LazyConfigDict({
     'char': 'char',
-    'uchar': 'unsigned char',
+    #'uchar': 'unsigned char',
+    'uchar': '{extra_types}uchar',
     'str': 'std_string',
     'int16': 'short',
+    #'int32': 'long',
     'int32': 'int',
-    'int64': 'long long',
-    'uint16': 'unsigned short',
-    #'uint32': '{extra_types}uint',  # 'unsigned int'
-    'uint32': 'unsigned int',  
-    'uint64': 'unsigned long long',
+    #'int64': 'long long',
+    'int64': '{extra_types}int64',
+    #'uint16': 'unsigned short',
+    'uint16': '{extra_types}uint16',
+    #'uint32': 'unsigned long',
+    'uint32': '{extra_types}uint32',  
+    #'uint64': 'unsigned long long',
+    'uint64': '{extra_types}uint64',
     'float32': 'float',
     'float64': 'double',
-    'float128': 'long double',
+    #'float128': 'long double',
+    'float128': '{extra_types}float128',
     'complex128': '{extra_types}complex_t',
     'bool': 'bint',
     'void': 'void', 
@@ -632,8 +638,13 @@ _cython_ctypes = _LazyConfigDict({
     'pair': 'cpp_pair',
     'set': 'cpp_set',
     'vector': 'cpp_vector',
-    'function_pointer': "none"
     })
+
+def _cython_ctypes_function_pointer(t):
+    rtnct = cython_ctype(t[2][2])
+    argcts = [cython_ctype(argt) for n, argt in t[1][2]]
+    return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
+_cython_ctypes['function_pointer'] = _cython_ctypes_function_pointer
 
 @_memoize
 def cython_ctype(t):
@@ -648,7 +659,13 @@ def cython_ctype(t):
         if 0 == t[1]:
             return cython_ctype(t[0])
         elif isrefinement(t[1]):
-            return cython_ctype(t[0])
+            if t[1][0] in _cython_ctypes:
+                subtype = _cython_ctypes[t[1][0]]
+                if callable(subtype):
+                    subtype = subtype(t[1])
+                return subtype
+            else:
+                return cython_ctype(t[0])
         else:
             last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
             return cython_ctype(t[0]) + ' {0}'.format(last)
@@ -667,18 +684,17 @@ def cython_ctype(t):
 
 _cython_cimports = _LazyImportDict({
     'char': (None,),
-    'uchar': (None,),
+    'uchar':  (('{extra_types}',),),
     'str': (('libcpp.string', 'string', 'std_string'),),
     'int16': (None,),
     'int32': (None,),
-    'int64': (None,),
-    'uint16': (None,),
-    #'uint32': (('{extra_types}',),),  # 'unsigned int'
-    'uint32': (None,),
-    'uint64': (None,),
+    'int64':  (('{extra_types}',),),
+    'uint16':  (('{extra_types}',),),
+    'uint32': (('{extra_types}',),),  
+    'uint64':  (('{extra_types}',),),
     'float32': (None,),
     'float64': (None,),
-    'float128': (('numpy', 'as', 'np'),),
+    'float128':  (('{extra_types}',),),
     'complex128': (('{extra_types}',),),
     'bool': (None,), 
     'void': (None,), 
@@ -709,7 +725,7 @@ _cython_cyimports = _LazyImportDict({
     'uint64': (None,),
     'float32': (None,),
     'float64': (None,),
-    'float128': (('numpy', 'as', 'np'),),
+    'float128': (None,),
     'complex128': (('{extra_types}',),),  # for py2c_complex()
     'bool': (None,), 
     'void': (None,), 
@@ -812,7 +828,7 @@ _cython_pyimports = _LazyImportDict({
     'uint64': (None,),
     'float32': (None,),
     'float64': (None,),
-    'float128': (('numpy', 'as', 'np'),),
+    'float128': (None,),
     'complex128': (None,),
     'bool': (None,), 
     'void': (None,), 
@@ -895,6 +911,7 @@ _cython_cytypes = _LazyConfigDict({
     'uchar': 'unsigned char',
     'str': 'char *',
     'int16': 'short',
+    #'int32': 'long',
     'int32': 'int',
     'int64': 'long long',
     'uint16': 'unsigned short',  
@@ -1027,37 +1044,6 @@ def cython_classname(t, cycyt=None):
         d[key] = val
     return t, cycyt.format(**d)
 
-#@_memoize
-#def cython_cytype(t):
-#    """Given a type t, returns the cooresponding Cython type."""
-#    t = canon(t)
-#    if isinstance(t, basestring):
-#        if t in base_types:
-#            return _cython_cytypes[t]
-#    # must be tuple below this line
-#    tlen = len(t)
-#    if 2 == tlen:
-#        if 0 == t[1]:
-#            return cython_cytype(t[0])
-#        elif isrefinement(t[1]):
-#            return cython_cytype(t[0])
-#        else:
-#            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-#            return cython_cytype(t[0]) + ' {0}'.format(last)
-#    elif 3 <= tlen:
-#        if t in _cython_cytypes:
-#            return _cython_cytypes[t]
-#        assert t[0] in template_types
-#        assert len(t) == len(template_types[t[0]]) + 2
-#        template_name = _cython_cytypes[t[0]]
-#        assert template_name is not NotImplemented        
-#        cycyt = _cython_cytypes[t[0]]
-#        cycyt, t = _fill_cycyt(cycyt, t)
-#        if 0 != t[-1]:
-#            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-#            cycyt += ' {0}'.format(last)
-#        return cycyt    
-
 @_memoize
 def cython_cytype(t):
     """Given a type t, returns the cooresponding Cython type."""
@@ -1072,7 +1058,10 @@ def cython_cytype(t):
             return cython_cytype(t[0])
         elif isrefinement(t[1]):
             if t[1][0] in _cython_cytypes:
-                return _cython_cytypes[t[1][0]]
+                subtype = _cython_cytypes[t[1][0]]
+                if callable(subtype):
+                    subtype = subtype(t[1])
+                return subtype
             else:
                 return cython_cytype(t[0])
         else:
@@ -1335,7 +1324,6 @@ def _cython_c2py_conv_function_pointer(t):
 {argdecls}
 {argbodys}
 {rtndecl}
-    #{rtnprox} = (*{{var}})({carglist})
     {rtnprox} = {{var}}({carglist})
 {rtnbody}
     return {rtnrtn}
@@ -1347,7 +1335,6 @@ def _cython_c2py_conv_function_pointer(t):
     caches += '\n    {cache_name} = {proxy_name}\n'
     return s, s, caches
 
-#_cython_c2py_conv['enum'] = _cython_c2py_conv['int32']
 _cython_c2py_conv['function_pointer'] = _cython_c2py_conv_function_pointer
 
 from_pytypes = {
@@ -1438,8 +1425,10 @@ _cython_py2c_conv = _LazyConverterDict({
     'int32': ('<int> {var}', False),
     'int64': ('<long long> {var}', False),
     'uint16': ('<unsigned short> {var}', False),
-    #'uint32': ('<{ctype}> long({var})', False),
-    'uint32': ('<unsigned int> {var}', False),
+    'uint32': ('<{ctype}> long({var})', False),
+    #'uint32': ('<unsigned long> {var}', False),
+    #('uint32', '*'): ('cdef unsigned long {proxy_name}_ = {var}', '&{proxy_name}_'),
+    ('uint32', '*'): ('cdef unsigned int {proxy_name}_ = {var}', '&{proxy_name}_'),
     'uint64': ('<unsigned long long> {var}', False),
     'float32': ('<float> {var}', False),
     'float64': ('<double> {var}', False),
@@ -1488,8 +1477,6 @@ _cython_py2c_conv = _LazyConverterDict({
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
     'nucname': ('nucname.name({var})', False),
-    #'function_pointer': (NotImplemented, False),
-    #'function_pointer': NotImplemented,
     'function_pointer': ('NULL', False),
     })
 
