@@ -611,6 +611,20 @@ def _gen_method(name, name_mangled, args, rtn, doc=None, inst_name="self._inst")
     lines += ['', ""]
     return lines
 
+def _gen_default_constructor(classname, attrs, doc=None, srcpxd_filename=None):
+    args = ['self'] + [a + "=None" for a, _ in attrs] + ['*args', '**kwargs']
+    argfill = ", ".join(args)
+    lines  = ['def __init__({0}):'.format(argfill)]
+    lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
+    classname = classname if srcpxd_filename is None else \
+                    "{0}.{1}".format(srcpxd_filename.rsplit('.', 1)[0], classname)
+    fcall = 'self._inst = malloc(sizeof({0}))'.format(classname)
+    lines.append(indent(fcall))
+    for a, _ in attrs:
+        lines.append(indent("if {0} is not None:".format(a)))
+        lines.append(indent("self.{0} = {0}".format(a), 8))
+    lines += ['', ""]
+    return lines
 
 def _gen_constructor(name, name_mangled, classname, args, doc=None, 
                      srcpxd_filename=None, inst_name="self._inst"):
@@ -857,6 +871,15 @@ def classpyx(desc, classes=None):
                 # write dispatcher
                 nm = dict([(k, v) for k, v in mangled_mnames.items() if k[0] == mname])
                 mlines += _gen_dispatcher(mname, nm, doc=mdoc)
+    if 0 == len(desc['methods']):
+        # provide a default constructor
+        mdocs = desc.get('docstrings', {}).get('methods', {})
+        mdoc = mdocs.get(desc['name'], False) or mdocs.get('__init__', '')
+        mdoc = _doc_add_sig(mdoc, '__init__', 
+                            [(_a, _t, "None") for _a, _t in attritems])
+        clines += _gen_default_constructor(desc['name'], attritems, doc=mdoc,
+                                           srcpxd_filename=desc['srcpxd_filename'],)
+        cimport_tups.add(('libc.stdlib', 'malloc'))
     if desc['parents'] is None:
         clines += ["def __dealloc__(self):"]
         clines += indent("if self._free_inst:", join=False)
