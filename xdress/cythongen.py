@@ -20,7 +20,8 @@ from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncde
 from . import typesystem as ts
 from .typesystem import cython_ctype, cython_cimport_tuples, \
     cython_cimports, register_class, cython_cytype, cython_pytype, cython_c2py, \
-    cython_py2c, cython_import_tuples, cython_imports, isrefinement
+    cython_py2c, cython_import_tuples, cython_imports, isrefinement, \
+    isfunctionpointer
 
 AUTOGEN_WARNING = \
 """################################################
@@ -370,7 +371,9 @@ def modpxd(mod):
 
 
 _pxd_class_template = \
-"""cdef class {name}{parents}:
+"""{function_pointer_block}
+
+cdef class {name}{parents}:
 {body}
 
 {extra}
@@ -417,6 +420,7 @@ def classpxd(desc):
     parentless_body = ['cdef void * _inst', 'cdef public bint _free_inst'] 
     body = parentless_body if desc['parents'] is None else []
     attritems = sorted(desc['attrs'].items())
+    fplines = []
     for aname, atype in attritems:
         if aname.startswith('_'):
             continue  # skip private
@@ -426,8 +430,14 @@ def classpxd(desc):
             cyt = cython_cytype(atype)
             decl = "cdef public {0} {1}".format(cyt, cachename)
             body.append(decl)
+        if isfunctionpointer(atype):
+            apyname, acname = _mangle_function_pointer_name(aname, desc['name'])
+            fplines += ["cdef public object " + apyname, "", '']
+            acdecl = "cdef public " + cython_ctype(('function',)+ atype[1:])
+            fplines.append(acdecl.format(type_name=acname))
 
     d['body'] = indent(body or ['pass'])
+    d['function_pointer_block'] = '\n'.join(fplines)
     d['extra'] = desc.get('extra', {}).get('pxd', '')
     pxd = _pxd_class_template.format(**d)
     return cimport_tups, pxd
@@ -572,6 +582,40 @@ def _gen_property(name, t, doc=None, cached_names=None, inst_name="self._inst"):
     lines += ['', ""]
     return lines
 
+def _gen_function_pointer_property(name, t, doc=None, cached_names=None, 
+        inst_name="self._inst", classname=''):
+    """This generates a Cython property for a function pointer variable."""
+    lines  = ['property {0}:'.format(name)] 
+    lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
+    oldcnlen = 0 if cached_names is None else len(cached_names)
+    lines += indent(_gen_property_get(name, t, cached_names=cached_names, 
+                                      inst_name=inst_name), join=False)
+    lines += ['']
+    newcnlen = 0 if cached_names is None else len(cached_names)
+    cached_name = cached_names[-1] if newcnlen == 1 + oldcnlen else None
+    lines += indent(_gen_property_set(name, ('void', '*'), inst_name=inst_name, 
+                                      cached_name=cached_name), join=False)
+    pyname, cname = _mangle_function_pointer_name(name, classname)
+    extraset = ('if callable(value):\n'
+                '    global {pyname}\n'
+                '    {pyname} = value\n'
+                '    {cached_name} = value\n'
+                '    {inst_name}.{name} = &{cname}\n'
+                ).format(name=name, pyname=pyname, cached_name=cached_name, 
+                         inst_name=inst_name, cname=cname)
+    lines += indent(indent(extraset, join=False), join=False)
+    lines += ['', ""]
+    return lines
+
+def _gen_function_pointer_wrapper(name, t, classname=''):
+    """This generates a Cython wrapper for a function pointer variable."""
+    pyname, cname = _mangle_function_pointer_name(name, classname)
+    decl, body, rtn = cython_py2c(pyname, t, proxy_name=cname)
+    lines = [pyname + " = None", '', ""]
+    lines += decl.splitlines()
+    lines += body.splitlines()
+    lines += ['', ""]
+    return lines
 
 def _gen_method(name, name_mangled, args, rtn, doc=None, inst_name="self._inst"):
     argfill = ", ".join(['self'] + [a[0] for a in args if 2 == len(a)] + \
@@ -740,7 +784,9 @@ def _doc_add_sig(doc, name, args, ismethod=True):
 
 
 _pyx_class_template = \
-'''cdef class {name}{parents}:
+'''{function_pointer_block}
+
+cdef class {name}{parents}:
 {class_docstring}
 
     # constuctors
@@ -802,6 +848,7 @@ def classpyx(desc, classes=None):
         cython_cimport_tuples(parent, cimport_tups)
 
     alines = []
+    fplines = []
     cached_names = []
     attritems = sorted(desc['attrs'].items())
     for aname, atype in attritems:
@@ -809,11 +856,19 @@ def classpyx(desc, classes=None):
             continue  # skip private
         adoc = desc.get('docstrings', {}).get('attrs', {})\
                                          .get(aname, nodocmsg.format(aname))
-        alines += _gen_property(aname, atype, adoc, cached_names=cached_names, 
-                                inst_name=inst_name)
+        if isfunctionpointer(atype):
+            alines += _gen_function_pointer_property(aname, atype, adoc, 
+                        cached_names=cached_names, inst_name=inst_name, 
+                        classname=desc['name'])
+            fplines += _gen_function_pointer_wrapper(aname, atype, 
+                                                     classname=desc['name'])
+        else:
+            alines += _gen_property(aname, atype, adoc, cached_names=cached_names, 
+                                    inst_name=inst_name)
         cython_import_tuples(atype, import_tups)
         cython_cimport_tuples(atype, cimport_tups)
     d['attrs_block'] = indent(alines)
+    d['function_pointer_block'] = "\n".join(fplines)
     pd = ["{0} = None".format(n) for n in cached_names]
     d['property_defaults'] = indent(indent(pd, join=False))
 
@@ -1013,3 +1068,8 @@ def _format_ns(desc):
         return ""
     else:
         return 'namespace "{0}"'.format(ns)
+
+def _mangle_function_pointer_name(name, classname):
+    pyref = "_xdress_{0}_{1}_proxy".format(classname, name)
+    cref = pyref + "_func"
+    return pyref, cref

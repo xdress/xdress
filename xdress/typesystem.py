@@ -279,6 +279,8 @@ refined_types = {
     'nucid': 'int32',
     'nucname': 'str',
     ('enum', ('name', 'str'), ('aliases', ('dict', 'str', 'int32', 0))): 'int32',
+    ('function', ('arguments', ('list', ('pair', 'str', 'type'))), 
+                 ('returns', 'type')): 'void', 
     ('function_pointer', ('arguments', ('list', ('pair', 'str', 'type'))), 
                          ('returns', 'type')): ('void', '*'), 
     }
@@ -292,6 +294,12 @@ def isenum(t):
     t = canon(t)
     return isinstance(t, Sequence) and t[0] == 'int32' and \
            isinstance(t[1], Sequence) and t[1][0] == 'enum'
+
+@_memoize
+def isfunctionpointer(t):
+    t = canon(t)
+    return isinstance(t, Sequence) and t[0] == ('void', '*') and \
+           isinstance(t[1], Sequence) and t[1][0] == 'function_pointer'
 
 _humannames = {
     'char': 'character',
@@ -640,11 +648,18 @@ _cython_ctypes = _LazyConfigDict({
     'vector': 'cpp_vector',
     })
 
+def _cython_ctypes_function(t):
+    rtnct = cython_ctype(t[2][2])
+    argcts = [cython_ctype(argt) for n, argt in t[1][2]]
+    return rtnct + " {type_name}(" + ", ".join(argcts) + ")"
+_cython_ctypes['function'] = _cython_ctypes_function
+
 def _cython_ctypes_function_pointer(t):
     rtnct = cython_ctype(t[2][2])
     argcts = [cython_ctype(argt) for n, argt in t[1][2]]
     return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
 _cython_ctypes['function_pointer'] = _cython_ctypes_function_pointer
+
 
 @_memoize
 def cython_ctype(t):
@@ -707,11 +722,12 @@ _cython_cimports = _LazyImportDict({
     'nucname': (('pyne', 'cpp_nucname'), ('libcpp.string', 'string', 'std_string')),
     })
 
-def _cython_cimports_function_pointer(t, seen):
+def _cython_cimports_functionish(t, seen):
     for n, argt in t[1][2]:
         cython_cimport_tuples(argt, seen=seen, inc=('c',))
     cython_cimport_tuples(t[2][2], seen=seen, inc=('c',))
-_cython_cimports['function_pointer'] = _cython_cimports_function_pointer
+_cython_cimports['function'] = _cython_cimports_functionish
+_cython_cimports['function_pointer'] = _cython_cimports_functionish
 
 _cython_cyimports = _LazyImportDict({
     'char': (None,),
@@ -738,11 +754,12 @@ _cython_cyimports = _LazyImportDict({
     'nucname': (('pyne', 'nucname'),),
     })
 
-def _cython_cyimports_function_pointer(t, seen):
+def _cython_cyimports_functionish(t, seen):
     for n, argt in t[1][2]:
         cython_cimport_tuples(argt, seen=seen, inc=('cy',))
     cython_cimport_tuples(t[2][2], seen=seen, inc=('cy',))
-_cython_cyimports['function_pointer'] = _cython_cyimports_function_pointer
+_cython_cyimports['function'] = _cython_cyimports_functionish
+_cython_cyimports['function_pointer'] = _cython_cyimports_functionish
 
 @_memoize
 def cython_cimport_tuples(t, seen=None, inc=frozenset(['c', 'cy'])):
@@ -841,11 +858,12 @@ _cython_pyimports = _LazyImportDict({
     'nucname': (('pyne', 'nucname'),),
     })
 
-def _cython_pyimports_function_pointer(t, seen):
+def _cython_pyimports_functionish(t, seen):
     for n, argt in t[1][2]:
         cython_import_tuples(argt, seen=seen)
     cython_import_tuples(t[2][2], seen=seen)
-_cython_pyimports['function_pointer'] = _cython_pyimports_function_pointer
+_cython_pyimports['function'] = _cython_pyimports_functionish
+_cython_pyimports['function_pointer'] = _cython_pyimports_functionish
 
 
 @_memoize
@@ -928,6 +946,7 @@ _cython_cytypes = _LazyConfigDict({
     'pair': '{stlcontainers}_Pair{value_type}',
     'set': '{stlcontainers}_Set{value_type}',
     'vector': 'np.ndarray',
+    'function': 'object',
     'function_pointer': 'object',
     })
 
@@ -956,6 +975,7 @@ _cython_functionnames = _LazyConfigDict({
     'vector': 'vector_{value_type}',    
     'nucid': 'nucid', 
     'nucname': 'nucname',
+    'function': 'function', 
     'function_pointer': 'functionpointer', 
     })
 
@@ -1208,6 +1228,7 @@ _cython_c2py_conv = _LazyConverterDict({
     'int64': ('int({var})',),
     'uint16': ('int({var})',),
     'uint32': ('int({var})',),
+    ('uint32', '*'): ('int({var}[0])',),
     'uint64': ('int({var})',),
     'float32': ('float({var})',),
     'float64': ('float({var})',),
@@ -1292,9 +1313,6 @@ _cython_c2py_conv = _LazyConverterDict({
     'nucname': ('nucname.name({var})',),
     })
 
-_indent4 = lambda x: '' if x is None else "\n".join(["    " + l for l in "\n".join(
-                     [xx for xx in x if xx is not None]).splitlines()])
-
 def _cython_c2py_conv_function_pointer(t):
     t = t[1]
     argnames = []
@@ -1322,8 +1340,8 @@ def _cython_c2py_conv_function_pointer(t):
     rtnbody = _indent4(rtnbody)
     s = """def {{proxy_name}}({arglist}):
 {argdecls}
-{argbodys}
 {rtndecl}
+{argbodys}
     {rtnprox} = {{var}}({carglist})
 {rtnbody}
     return {rtnrtn}
@@ -1436,6 +1454,7 @@ _cython_py2c_conv = _LazyConverterDict({
     'complex128': ('{extra_types}py2c_complex({var})', False),
     'bool': ('<bint> {var}', False),
     'void': ('NULL', False),
+    ('void', '*'): ('NULL', False),
     # template types
     'map': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
             '{proxy_name}.map_ptr[0]'),
@@ -1477,8 +1496,54 @@ _cython_py2c_conv = _LazyConverterDict({
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
     'nucname': ('nucname.name({var})', False),
-    'function_pointer': ('NULL', False),
+    #'function_pointer': ('NULL', False),
     })
+
+def _cython_py2c_conv_function_pointer(t):
+    t = t[1]
+    argnames = []
+    argcts = []
+    argdecls = []
+    argbodys = []
+    argrtns = []
+    for n, argt in t[1][2]:
+        argnames.append(n)
+        decl, body, rtn, _ = cython_c2py(n, argt, proxy_name="c_" + n, cached=False)
+        argdecls.append(decl)
+        argbodys.append(body)
+        argrtns.append(rtn)
+        argct = cython_ctype(argt)
+        argcts.append(argct)
+    rtnname = 'rtn'
+    rtnprox = 'c_' + rtnname
+    while rtnname in argnames or rtnprox in argnames:
+        rtnname += '_'
+        rtnprox += '_'
+    rtnct = cython_ctype(t[2][2])
+    argdecls = _indent4(argdecls)
+    argbodys = _indent4(argbodys)
+    rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtnprox)
+    if rtndecl is None and rtnbody is None:
+        rtnprox = rtnname
+    rtndecl = _indent4(rtndecl)
+    rtnbody = _indent4(rtnbody)
+    s = """cdef {rtnct} {{proxy_name}}({arglist}):
+{argdecls}
+{rtndecl}
+{argbodys}
+    {rtnprox} = {{var}}({pyarglist})
+{rtnbody}
+    return {rtnrtn}
+"""
+    arglist = ", ".join(["{0} {1}".format(*x) for x in zip(argcts, argnames)])
+    pyarglist=", ".join(argrtns)
+    s = s.format(rtnct=rtnct, arglist=arglist, argdecls=argdecls, rtndecl=rtndecl,
+                 argbodys=argbodys, rtnprox=rtnprox, pyarglist=pyarglist,
+                 rtnbody=rtnbody, rtnrtn=rtnrtn)
+    return s, '{proxy_name}'
+
+_cython_py2c_conv['function_pointer'] = _cython_py2c_conv_function_pointer
+
 
 @_memoize
 def cython_py2c(name, t, inst_name=None, proxy_name=None):
@@ -1496,7 +1561,14 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
     while tkey not in _cython_py2c_conv and not isinstance(tkey, basestring):
         tinst = tkey
         tkey = tkey[1] if (0 < len(tkey) and isrefinement(tkey[1])) else tkey[0]
+    if tkey not in _cython_py2c_conv:
+        tkey = t
+        while tkey not in _cython_py2c_conv and not isinstance(tkey, basestring):
+            tkey = tkey[0]
     py2ct = _cython_py2c_conv[tkey]
+    if callable(py2ct):
+        _cython_py2c_conv[t] = py2ct(t)
+        py2ct = _cython_py2c_conv[t]
     if py2ct is NotImplemented or py2ct is None:
         raise NotImplementedError('conversion from Python to C/C++ for ' + \
                                   str(t) + ' has not been implemented.')
@@ -1762,3 +1834,6 @@ def swap_stlcontainers(s):
     yield
     clearmemo()
     STLCONTAINERS = old
+
+_indent4 = lambda x: '' if x is None else "\n".join(["    " + l for l in "\n".join(
+                     [xx for xx in x if xx is not None]).splitlines()])
