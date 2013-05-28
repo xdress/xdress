@@ -26,8 +26,8 @@ set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/typeconverters.pyx
 cython_add_module(typeconverters typeconverters.pyx)
 
 # device
-cython_add_module(device device.pyx)
-target_link_libraries(device cdevice)
+cython_add_module(pydevice pydevice.pyx)
+target_link_libraries(pydevice cdevice)
 
 # fccomp
 set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/fccomp.pyx

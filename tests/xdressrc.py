@@ -61,7 +61,8 @@ functions = [
     ]
 
 classes = [
-    ('DeviceDescriptorTag', 'device'),
+    #('DeviceDescriptorTag', 'device'),
+    ('DeviceDescriptorTag', 'device', 'pydevice'),
     #('DeviceDescriptor', 'device'),
     ('FCComp', 'fccomp'), 
     ('EnrichmentParameters', 'enrichment_parameters'), 

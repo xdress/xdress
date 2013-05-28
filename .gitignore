@@ -29,6 +29,6 @@ tests/xdtest/fccomp.pxd
 tests/xdtest/fccomp.pyx
 tests/xdtest/reprocess.pxd
 tests/xdtest/reprocess.pyx
-tests/xdtest/c_device.pxd
-tests/xdtest/device.pxd
-tests/xdtest/device.pyx
+tests/xdtest/c_pydevice.pxd
+tests/xdtest/pydevice.pxd
+tests/xdtest/pydevice.pyx
