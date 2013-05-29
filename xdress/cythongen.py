@@ -600,7 +600,6 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
                 '    global {pyname}\n'
                 '    {pyname} = value\n'
                 '    {cached_name} = value\n'
-                '    #{inst_name}.{name} = &{cname}\n'
                 '    {inst_name}.{name} = {cname}\n'
                 ).format(name=name, pyname=pyname, cached_name=cached_name, 
                          inst_name=inst_name, cname=cname)
@@ -613,8 +612,6 @@ def _gen_function_pointer_wrapper(name, t, classname=''):
     pyname, cname = _mangle_function_pointer_name(name, classname)
     decl, body, rtn = cython_py2c(pyname, t, proxy_name=cname)
     lines = [pyname + " = None", '']
-    #lines += decl.splitlines()
-    #lines += body.splitlines()
     lines += rtn.splitlines()
     lines += ['', ""]
     return lines
