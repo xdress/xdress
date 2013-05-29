@@ -32,3 +32,16 @@ v = x.op(14, 16)
 print("result of x.op(14, 16) = ", v)
 v = x.call_from_c(14, 16)
 print("result of x.call_from_c(14, 16) = ", v)
+
+print("-"*40)
+
+# test two instances
+y = d.TwoNums(5, 10)
+x.op = lambda a_, b_: a_ + b_
+print("x.op = ", x.op)
+y.op = lambda a_, b_: 2*a_ + b_**2
+print("y.op = ", y.op)
+v = x.op(14, 16)
+print("result of x.op(14, 16) = ", v)
+v = x.call_from_c(14, 16)
+print("result of x.call_from_c(14, 16) = ", v)
