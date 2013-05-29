@@ -52,7 +52,7 @@ stlcontainers = [
 stlcontainers_module = 'xdstlc'
 
 variables = [
-    ('ErrorStatus', 'device'),
+    ('ErrorStatus', 'device', 'pydevice'),
     ]
 
 functions = [
@@ -61,9 +61,8 @@ functions = [
     ]
 
 classes = [
-    #('DeviceDescriptorTag', 'device'),
-    ('DeviceDescriptorTag', 'device', 'pydevice'),
-    #('DeviceDescriptor', 'device'),
+    ('TwoNums', 'device', 'pydevice'),
+    #('DeviceDescriptorTag', 'device', 'pydevice'),
     ('FCComp', 'fccomp'), 
     ('EnrichmentParameters', 'enrichment_parameters'), 
     ('Enrichment', 'bright_enrichment', 'enrichment'), 

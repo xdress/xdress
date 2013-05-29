@@ -723,6 +723,7 @@ _cython_cimports = _LazyImportDict({
     })
 
 def _cython_cimports_functionish(t, seen):
+    seen.add(('cython.operator', 'dereference', 'deref'))
     for n, argt in t[1][2]:
         cython_cimport_tuples(argt, seen=seen, inc=('c',))
     cython_cimport_tuples(t[2][2], seen=seen, inc=('c',))
@@ -1313,8 +1314,8 @@ _cython_c2py_conv = _LazyConverterDict({
     'nucname': ('nucname.name({var})',),
     })
 
-def _cython_c2py_conv_function_pointer(t):
-    t = t[1]
+def _cython_c2py_conv_function_pointer(t_):
+    t = t_[1]
     argnames = []
     argdecls = []
     argbodys = []
@@ -1338,15 +1339,22 @@ def _cython_c2py_conv_function_pointer(t):
         rtnprox = rtnname
     rtndecl = _indent4(rtndecl)
     rtnbody = _indent4(rtnbody)
-    s = """def {{proxy_name}}({arglist}):
+    s = """print "got to caller"
+def {{proxy_name}}({arglist}):
 {argdecls}
 {rtndecl}
+    #ctypedef {cvartypeptr} 
+    #cdef cvartypeptr cvartype = {{var}}
+    #cdef {cvartypeptr}
 {argbodys}
     {rtnprox} = {{var}}({carglist})
+    #{rtnprox} = deref({{var}})({carglist})
+    #cvartype = {{var}}
+    #{rtnprox} = cvartype({carglist})
 {rtnbody}
     return {rtnrtn}
 """
-    s = s.format(arglist=", ".join(argnames), argdecls=argdecls,
+    s = s.format(arglist=", ".join(argnames), argdecls=argdecls, cvartypeptr=cython_ctype(t_).format(type_name='cvartype'), 
                  argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
                  carglist=", ".join(argrtns), rtnbody=rtnbody, rtnrtn=rtnrtn)
     caches = 'if {cache_name} is None:\n' + _indent4([s]) 
@@ -1496,7 +1504,6 @@ _cython_py2c_conv = _LazyConverterDict({
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
     'nucname': ('nucname.name({var})', False),
-    #'function_pointer': ('NULL', False),
     })
 
 def _cython_py2c_conv_function_pointer(t):
@@ -1530,6 +1537,7 @@ def _cython_py2c_conv_function_pointer(t):
     s = """cdef {rtnct} {{proxy_name}}({arglist}):
 {argdecls}
 {rtndecl}
+    global {{var}}
 {argbodys}
     {rtnprox} = {{var}}({pyarglist})
 {rtnbody}
@@ -1540,7 +1548,7 @@ def _cython_py2c_conv_function_pointer(t):
     s = s.format(rtnct=rtnct, arglist=arglist, argdecls=argdecls, rtndecl=rtndecl,
                  argbodys=argbodys, rtnprox=rtnprox, pyarglist=pyarglist,
                  rtnbody=rtnbody, rtnrtn=rtnrtn)
-    return s, '{proxy_name}'
+    return s, False
 
 _cython_py2c_conv['function_pointer'] = _cython_py2c_conv_function_pointer
 

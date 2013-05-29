@@ -432,7 +432,7 @@ def classpxd(desc):
             body.append(decl)
         if isfunctionpointer(atype):
             apyname, acname = _mangle_function_pointer_name(aname, desc['name'])
-            fplines += ["cdef public object " + apyname, "", '']
+            fplines += ["cdef public object " + apyname, ""]
             acdecl = "cdef public " + cython_ctype(('function',)+ atype[1:])
             fplines.append(acdecl.format(type_name=acname))
 
@@ -600,7 +600,8 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
                 '    global {pyname}\n'
                 '    {pyname} = value\n'
                 '    {cached_name} = value\n'
-                '    {inst_name}.{name} = &{cname}\n'
+                '    #{inst_name}.{name} = &{cname}\n'
+                '    {inst_name}.{name} = {cname}\n'
                 ).format(name=name, pyname=pyname, cached_name=cached_name, 
                          inst_name=inst_name, cname=cname)
     lines += indent(indent(extraset, join=False), join=False)
@@ -611,9 +612,10 @@ def _gen_function_pointer_wrapper(name, t, classname=''):
     """This generates a Cython wrapper for a function pointer variable."""
     pyname, cname = _mangle_function_pointer_name(name, classname)
     decl, body, rtn = cython_py2c(pyname, t, proxy_name=cname)
-    lines = [pyname + " = None", '', ""]
-    lines += decl.splitlines()
-    lines += body.splitlines()
+    lines = [pyname + " = None", '']
+    #lines += decl.splitlines()
+    #lines += body.splitlines()
+    lines += rtn.splitlines()
     lines += ['', ""]
     return lines
 

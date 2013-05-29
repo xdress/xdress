@@ -25,5 +25,15 @@ extern ErrorStatus Device_Init(DeviceParam*);
 extern ErrorStatus Device_measure1(Uint32*);
 extern ErrorStatus Device_measure2(Uint8 , Uint32*);
 
+// typedef double (*TwoNumsOp)(TwoNums *);
+
+typedef struct TwoNums
+{
+  double a;
+  double b;
+  //TwoNumsOp op;
+  //double (*op)(TwoNumsTag *);
+  double (*op)(double, double);
+} TwoNums;
 
 #endif /* DEVICE_H_ */
