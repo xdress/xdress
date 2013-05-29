@@ -62,7 +62,7 @@ functions = [
 
 classes = [
     ('TwoNums', 'device', 'pydevice'),
-    #('DeviceDescriptorTag', 'device', 'pydevice'),
+    ('DeviceDescriptorTag', 'device', 'pydevice'),
     ('FCComp', 'fccomp'), 
     ('EnrichmentParameters', 'enrichment_parameters'), 
     ('Enrichment', 'bright_enrichment', 'enrichment'), 

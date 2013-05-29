@@ -1339,18 +1339,13 @@ def _cython_c2py_conv_function_pointer(t_):
         rtnprox = rtnname
     rtndecl = _indent4(rtndecl)
     rtnbody = _indent4(rtnbody)
-    s = """print "got to caller"
-def {{proxy_name}}({arglist}):
+    s = """def {{proxy_name}}({arglist}):
 {argdecls}
 {rtndecl}
-    #ctypedef {cvartypeptr} 
-    #cdef cvartypeptr cvartype = {{var}}
-    #cdef {cvartypeptr}
+    if {{var}} == NULL:
+        raise RuntimeError("{{var}} is NULL and may not be safely called!")
 {argbodys}
     {rtnprox} = {{var}}({carglist})
-    #{rtnprox} = deref({{var}})({carglist})
-    #cvartype = {{var}}
-    #{rtnprox} = cvartype({carglist})
 {rtnbody}
     return {rtnrtn}
 """
