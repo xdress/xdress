@@ -615,8 +615,10 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
                 ('    raise ValueError("{0!r} is not callable but ' + classname +
                  '.' + name + ' is a function pointer!".format(value))')], 
                 join=False), join=False)
-    lines += setlines[1:]
+    #lines += setlines[1:]
     pyname, cname = _mangle_function_pointer_name(name, classname)
+    pynames = [pyname + "{0:0{1}}".format(i, migzeropad) for i in \
+                                                    range(max_instances_guess)]
     if max_instances_guess == 1:
         suffix = '0'
         extraset = ('global {pyname}\n'
@@ -626,14 +628,27 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
                     ).format(name=name, pyname=pyname + suffix, cname=cname + suffix,
                              cached_name=cached_name, inst_name=inst_name)
     elif max_instances_guess > 1:
-        suffix = '0'
-        extraset = ('{cached_name} = value\n'
-                    ).format(name=name, pyname=pyname + suffix, cname=cname + suffix,
-                             cached_name=cached_name, inst_name=inst_name)
+        extraset = ['{cached_name} = value'.format(cached_name=cached_name)]
+        extraset.append("global " + ', '.join(pynames))
     else:
         msg = "The max instance guess for {0} must be >=1, got {1}."
         raise RuntimeError(msg.format(classname, max_instances_guess))
     lines += indent(indent(extraset, join=False), join=False)
+    lines.append('')
+    lines += ["def _deref_{0}_callback(self):".format(name), 
+              '    "Warning: this can have dangerous side effects!"', 
+              '    cdef int vtab_i', 
+              '    {cached_name} = None'.format(cached_name=cached_name),
+              "    if self._{0}_vtab_i is not None:".format(name),
+              '        vtab_i = self._{0}_vtab_i'.format(name),
+              "        self._{0}_vtab_i = None".format(name), ]
+    dereflines = []
+    for i, pyname_i in enumerate(pynames):
+        dereflines.append("elif vtab_i == {0}:".format(i))
+        dereflines.append("    global {0}".format(pyname_i))
+        dereflines.append("    {0} = None".format(pyname_i))
+    dereflines[0] = dereflines[0][2:]
+    lines += indent(indent(dereflines, join=False), join=False)
     lines += ['', ""]
     return lines
 
@@ -900,7 +915,7 @@ def classpyx(desc, classes=None):
         if isfunctionpointer(atype):
             alines += _gen_function_pointer_property(aname, atype, adoc, 
                         cached_names=cached_names, inst_name=inst_name, 
-                        classname=desc['name'])
+                        classname=desc['name'], max_instances_guess=mig)
             fplines += _gen_function_pointer_wrapper(aname, atype, 
                         max_instances_guess=mig, classname=desc['name'])
             pdlines.append("self._{0}_vtab_i = None".format(aname))
