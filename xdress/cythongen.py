@@ -440,6 +440,10 @@ def classpxd(desc):
                 apyname_i, acname_i = apyname + suffix, acname + suffix
                 fplines.append("cdef public object " + apyname_i)
                 fplines.append(acdecl.format(type_name=acname_i))
+            body.append("cdef unsigned int _{0}_vtab_i".format(aname))
+
+    if len(fplines) > 0:
+        body.append("cdef unsigned int _MAX_INSTANCES_GUESS")
 
     d['body'] = indent(body or ['pass'])
     d['function_pointer_block'] = '\n'.join(fplines)
@@ -613,13 +617,22 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
                 join=False), join=False)
     lines += setlines[1:]
     pyname, cname = _mangle_function_pointer_name(name, classname)
-    extraset = ('if callable(value):\n'
-                '    global {pyname}\n'
-                '    {pyname} = value\n'
-                '    {cached_name} = value\n'
-                '    {inst_name}.{name} = {cname}\n'
-                ).format(name=name, pyname=pyname, cached_name=cached_name, 
-                         inst_name=inst_name, cname=cname)
+    if max_instances_guess == 1:
+        suffix = '0'
+        extraset = ('global {pyname}\n'
+                    '{cached_name} = value\n'
+                    '{pyname} = value\n'
+                    '{inst_name}.{name} = {cname}\n'
+                    ).format(name=name, pyname=pyname + suffix, cname=cname + suffix,
+                             cached_name=cached_name, inst_name=inst_name)
+    elif max_instances_guess > 1:
+        suffix = '0'
+        extraset = ('{cached_name} = value\n'
+                    ).format(name=name, pyname=pyname + suffix, cname=cname + suffix,
+                             cached_name=cached_name, inst_name=inst_name)
+    else:
+        msg = "The max instance guess for {0} must be >=1, got {1}."
+        raise RuntimeError(msg.format(classname, max_instances_guess))
     lines += indent(indent(extraset, join=False), join=False)
     lines += ['', ""]
     return lines
@@ -811,6 +824,8 @@ _pyx_class_template = \
 cdef class {name}{parents}:
 {class_docstring}
 
+{cdefattrs}
+
     # constuctors
     def __cinit__(self, *args, **kwargs):
         self._inst = NULL
@@ -869,7 +884,11 @@ def classpyx(desc, classes=None):
         cython_import_tuples(parent, import_tups)
         cython_cimport_tuples(parent, cimport_tups)
 
+    cdefattrs = []
+    mig = desc.get('extra', {}).get('max_instances_guess', 8)
+
     alines = []
+    pdlines = []
     fplines = []
     cached_names = []
     attritems = sorted(desc['attrs'].items())
@@ -879,12 +898,12 @@ def classpyx(desc, classes=None):
         adoc = desc.get('docstrings', {}).get('attrs', {})\
                                          .get(aname, nodocmsg.format(aname))
         if isfunctionpointer(atype):
-            mig = desc.get('extra', {}).get('max_instances_guess', 8)
             alines += _gen_function_pointer_property(aname, atype, adoc, 
                         cached_names=cached_names, inst_name=inst_name, 
                         classname=desc['name'])
             fplines += _gen_function_pointer_wrapper(aname, atype, 
                         max_instances_guess=mig, classname=desc['name'])
+            pdlines.append("self._{0}_vtab_i = None".format(aname))
         else:
             alines += _gen_property(aname, atype, adoc, cached_names=cached_names, 
                                     inst_name=inst_name)
@@ -892,8 +911,10 @@ def classpyx(desc, classes=None):
         cython_cimport_tuples(atype, cimport_tups)
     d['attrs_block'] = indent(alines)
     d['function_pointer_block'] = "\n".join(fplines)
-    pd = ["{0} = None".format(n) for n in cached_names]
-    d['property_defaults'] = indent(indent(pd, join=False))
+    if len(fplines) > 0:
+        pdlines.append("self._MAX_INSTANCES_GUESS = " + str(mig))
+    pdlines += ["{0} = None".format(n) for n in cached_names]
+    d['property_defaults'] = indent(indent(pdlines, join=False))
 
     mlines = []
     clines = []
@@ -968,6 +989,7 @@ def classpyx(desc, classes=None):
     d['constructor_block'] = indent(clines)
 
     d['extra'] = desc.get('extra', {}).get('pyx', '')
+    d['cdefattrs'] = indent(cdefattrs)
     pyx = _pyx_class_template.format(**d)
     if 'pyx_filename' not in desc:
         desc['pyx_filename'] = '{0}.pyx'.format(d['name'].lower())

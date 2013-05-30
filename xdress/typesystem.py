@@ -860,6 +860,7 @@ _cython_pyimports = _LazyImportDict({
     })
 
 def _cython_pyimports_functionish(t, seen):
+    seen.add(('sys',))
     for n, argt in t[1][2]:
         cython_import_tuples(argt, seen=seen)
     cython_import_tuples(t[2][2], seen=seen)
@@ -893,7 +894,7 @@ def cython_import_tuples(t, seen=None):
     tlen = len(t)
     if 2 == tlen:
         if isrefinement(t[1]) and t[1][0] in _cython_pyimports:
-            f = _cython_cimports[t[1][0]]
+            f = _cython_pyimports[t[1][0]]
             if callable(f):
                 f(t[1], seen)
         seen.update(_cython_pyimports.get(t[0], (None,)))
