@@ -404,6 +404,8 @@ def classpxd(desc):
     copy_from_desc = ['name',]
     for key in copy_from_desc:
         d[key] = desc[key]
+    max_instances_guess = desc.get('extra', {}).get('max_instances_guess', 8)
+    migzeropad = int(math.log10(max_instances_guess)) + 1 
 
     cimport_tups = set()
     for parent in desc['parents'] or ():
@@ -432,9 +434,12 @@ def classpxd(desc):
             body.append(decl)
         if isfunctionpointer(atype):
             apyname, acname = _mangle_function_pointer_name(aname, desc['name'])
-            fplines += ["cdef public object " + apyname, ""]
             acdecl = "cdef public " + cython_ctype(('function',)+ atype[1:])
-            fplines.append(acdecl.format(type_name=acname))
+            for i in range(max_instances_guess):
+                suffix = "{0:0{1}}".format(i, migzeropad)
+                apyname_i, acname_i = apyname + suffix, acname + suffix
+                fplines.append("cdef public object " + apyname_i)
+                fplines.append(acdecl.format(type_name=acname_i))
 
     d['body'] = indent(body or ['pass'])
     d['function_pointer_block'] = '\n'.join(fplines)
@@ -583,18 +588,30 @@ def _gen_property(name, t, doc=None, cached_names=None, inst_name="self._inst"):
     return lines
 
 def _gen_function_pointer_property(name, t, doc=None, cached_names=None, 
-        inst_name="self._inst", classname=''):
+        inst_name="self._inst", classname='', max_instances_guess=8):
     """This generates a Cython property for a function pointer variable."""
     lines  = ['property {0}:'.format(name)] 
+
+    # get section
     lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
     oldcnlen = 0 if cached_names is None else len(cached_names)
     lines += indent(_gen_property_get(name, t, cached_names=cached_names, 
                                       inst_name=inst_name), join=False)
-    lines += ['']
+
+    # set section
+    migzeropad = int(math.log10(max_instances_guess)) + 1 
+    lines += [""]
     newcnlen = 0 if cached_names is None else len(cached_names)
     cached_name = cached_names[-1] if newcnlen == 1 + oldcnlen else None
-    lines += indent(_gen_property_set(name, ('void', '*'), inst_name=inst_name, 
-                                      cached_name=cached_name), join=False)
+    setlines = indent(_gen_property_set(name, ('void', '*'), inst_name=inst_name, 
+                                        cached_name=cached_name), join=False)
+
+    lines += setlines[:1]
+    lines += indent(indent(['if not callable(value):', 
+                ('    raise ValueError("{0!r} is not callable but ' + classname +
+                 '.' + name + ' is a function pointer!".format(value))')], 
+                join=False), join=False)
+    lines += setlines[1:]
     pyname, cname = _mangle_function_pointer_name(name, classname)
     extraset = ('if callable(value):\n'
                 '    global {pyname}\n'
@@ -607,12 +624,18 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
     lines += ['', ""]
     return lines
 
-def _gen_function_pointer_wrapper(name, t, classname=''):
+def _gen_function_pointer_wrapper(name, t, classname='', max_instances_guess=8):
     """This generates a Cython wrapper for a function pointer variable."""
     pyname, cname = _mangle_function_pointer_name(name, classname)
-    decl, body, rtn = cython_py2c(pyname, t, proxy_name=cname)
-    lines = [pyname + " = None", '']
-    lines += rtn.splitlines()
+    migzeropad = int(math.log10(max_instances_guess)) + 1 
+    lines = ["#\n# Function pointer helpers for {1}.{0}\n#".format(name, classname)]
+    for i in range(max_instances_guess):
+        suffix = "{0:0{1}}".format(i, migzeropad)
+        pyname_i, cname_i = pyname + suffix, cname + suffix
+        decl, body, rtn = cython_py2c(pyname_i, t, proxy_name=cname_i)
+        lines += [pyname_i + " = None", '']
+        lines += rtn.splitlines() 
+        lines.append('')
     lines += ['', ""]
     return lines
 
@@ -856,11 +879,12 @@ def classpyx(desc, classes=None):
         adoc = desc.get('docstrings', {}).get('attrs', {})\
                                          .get(aname, nodocmsg.format(aname))
         if isfunctionpointer(atype):
+            mig = desc.get('extra', {}).get('max_instances_guess', 8)
             alines += _gen_function_pointer_property(aname, atype, adoc, 
                         cached_names=cached_names, inst_name=inst_name, 
                         classname=desc['name'])
             fplines += _gen_function_pointer_wrapper(aname, atype, 
-                                                     classname=desc['name'])
+                        max_instances_guess=mig, classname=desc['name'])
         else:
             alines += _gen_property(aname, atype, adoc, cached_names=cached_names, 
                                     inst_name=inst_name)
