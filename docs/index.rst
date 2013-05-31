@@ -12,8 +12,9 @@ XDress currently has the following external dependencies:
 
     #. `Cython <http://cython.org/>`_
     #. `NumPy <http://numpy.scipy.org/>`_
-    #. `GCC-XML <http://www.gccxml.org/HTML/Index.html>`_
-    #. `lxml <http://lxml.de/>`_, optional (I think...)
+    #. `pycparser <https://bitbucket.org/eliben/pycparser>`_, optional for C
+    #. `GCC-XML <http://www.gccxml.org/HTML/Index.html>`_, optional for C++
+    #. `lxml <http://lxml.de/>`_, optional (but nice!)
 
 The source code for xdress may be found at the 
 `GitHub project site <http://github.com/scopatz/xdress>`_.
@@ -60,6 +61,14 @@ Contact Us
 If you have questions or comments, please send them to the mailing list
 xdress@googlegroups.com or contact the author directly or open an issue on
 GitHub.
+
+============
+Contributing
+============
+We highly encourage contributions to xdress!  If you would like to contribute, 
+it is as easy as forking the repository on GitHub, making your changes, and 
+issuing a pull request.  If you have any questions about this process don't 
+hesitate to ask the mailing list (xdress@googlegroups.com).
 
 =============
 Helpful Links
