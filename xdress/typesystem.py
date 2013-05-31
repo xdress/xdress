@@ -860,7 +860,7 @@ _cython_pyimports = _LazyImportDict({
     })
 
 def _cython_pyimports_functionish(t, seen):
-    seen.add(('sys',))
+    seen.add(('warnings',))
     for n, argt in t[1][2]:
         cython_import_tuples(argt, seen=seen)
     cython_import_tuples(t[2][2], seen=seen)

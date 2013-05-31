@@ -404,8 +404,8 @@ def classpxd(desc):
     copy_from_desc = ['name',]
     for key in copy_from_desc:
         d[key] = desc[key]
-    max_instances_guess = desc.get('extra', {}).get('max_instances_guess', 8)
-    migzeropad = int(math.log10(max_instances_guess)) + 1 
+    max_callbacks = desc.get('extra', {}).get('max_callbacks', 8)
+    mczeropad = int(math.log10(max_callbacks)) + 1 
 
     cimport_tups = set()
     for parent in desc['parents'] or ():
@@ -435,15 +435,16 @@ def classpxd(desc):
         if isfunctionpointer(atype):
             apyname, acname = _mangle_function_pointer_name(aname, desc['name'])
             acdecl = "cdef public " + cython_ctype(('function',)+ atype[1:])
-            for i in range(max_instances_guess):
-                suffix = "{0:0{1}}".format(i, migzeropad)
+            for i in range(max_callbacks):
+                suffix = "{0:0{1}}".format(i, mczeropad)
                 apyname_i, acname_i = apyname + suffix, acname + suffix
                 fplines.append("cdef public object " + apyname_i)
                 fplines.append(acdecl.format(type_name=acname_i))
             body.append("cdef unsigned int _{0}_vtab_i".format(aname))
+            fplines.append("cdef unsigned int _current_{0}_vtab_i".format(apyname))
 
     if len(fplines) > 0:
-        body.append("cdef unsigned int _MAX_INSTANCES_GUESS")
+        fplines.append("cdef unsigned int _MAX_CALLBACKS_" + desc['name'])
 
     d['body'] = indent(body or ['pass'])
     d['function_pointer_block'] = '\n'.join(fplines)
@@ -592,7 +593,7 @@ def _gen_property(name, t, doc=None, cached_names=None, inst_name="self._inst"):
     return lines
 
 def _gen_function_pointer_property(name, t, doc=None, cached_names=None, 
-        inst_name="self._inst", classname='', max_instances_guess=8):
+        inst_name="self._inst", classname='', max_callbacks=8):
     """This generates a Cython property for a function pointer variable."""
     lines  = ['property {0}:'.format(name)] 
 
@@ -603,7 +604,7 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
                                       inst_name=inst_name), join=False)
 
     # set section
-    migzeropad = int(math.log10(max_instances_guess)) + 1 
+    mczeropad = int(math.log10(max_callbacks)) + 1 
     lines += [""]
     newcnlen = 0 if cached_names is None else len(cached_names)
     cached_name = cached_names[-1] if newcnlen == 1 + oldcnlen else None
@@ -617,9 +618,11 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
                 join=False), join=False)
     #lines += setlines[1:]
     pyname, cname = _mangle_function_pointer_name(name, classname)
-    pynames = [pyname + "{0:0{1}}".format(i, migzeropad) for i in \
-                                                    range(max_instances_guess)]
-    if max_instances_guess == 1:
+    pynames = [pyname + "{0:0{1}}".format(i, mczeropad) for i in \
+                                                    range(max_callbacks)]
+    cnames = [cname + "{0:0{1}}".format(i, mczeropad) for i in \
+                                                    range(max_callbacks)]
+    if max_callbacks == 1:
         suffix = '0'
         extraset = ('global {pyname}\n'
                     '{cached_name} = value\n'
@@ -627,21 +630,45 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
                     '{inst_name}.{name} = {cname}\n'
                     ).format(name=name, pyname=pyname + suffix, cname=cname + suffix,
                              cached_name=cached_name, inst_name=inst_name)
-    elif max_instances_guess > 1:
-        extraset = ['{cached_name} = value'.format(cached_name=cached_name)]
-        extraset.append("global " + ', '.join(pynames))
+    elif max_callbacks > 1:
+        extraset = ['cdef unsigned int vtab_i',
+                    '{cached_name} = value'.format(cached_name=cached_name),
+                    "global " + ', '.join(pynames) + \
+                                ', _current_{0}_vtab_i'.format(pyname),]
+        selectlines = []
+        for i, pyname_i in enumerate(pynames):
+            selectlines.append("elif {0} is None:".format(pyname_i))
+            selectlines.append("    vtab_i = {0}".format(i))
+        selectlines[0] = selectlines[0][2:]
+        extraset += selectlines
+        extraset += ['else:',
+                     ('    warnings.warn("Ran out of available callbacks for '
+                      '{0}.{1}, overriding existing callback.", RuntimeWarning)'
+                      ).format(classname, name),
+                     '    vtab_i = _current_{0}_vtab_i'.format(pyname),
+                     '    _current_{0}_vtab_i = (_current_{0}_vtab_i+1)%{1}'.format(
+                                                            pyname, max_callbacks),
+                     'self._{0}_vtab_i = vtab_i'.format(name),]
+        setvallines = []
+        for i, (pyname_i, cname_i) in enumerate(zip(pynames, cnames)):
+            setvallines.append("elif vtab_i == {0}:".format(i))
+            setvallines.append("    {pyname} = value".format(pyname=pyname_i))
+            setvallines.append("    {inst_name}.{name} = {cname}".format(
+                                inst_name=inst_name, name=name, cname=cname_i))
+        setvallines[0] = setvallines[0][2:]
+        extraset += setvallines
     else:
-        msg = "The max instance guess for {0} must be >=1, got {1}."
-        raise RuntimeError(msg.format(classname, max_instances_guess))
+        msg = "The max number of callbacks for {0} must be >=1, got {1}."
+        raise RuntimeError(msg.format(classname, max_callbacks))
     lines += indent(indent(extraset, join=False), join=False)
     lines.append('')
     lines += ["def _deref_{0}_callback(self):".format(name), 
               '    "Warning: this can have dangerous side effects!"', 
-              '    cdef int vtab_i', 
+              '    cdef unsigned int vtab_i', 
               '    {cached_name} = None'.format(cached_name=cached_name),
-              "    if self._{0}_vtab_i is not None:".format(name),
+              "    if self._{0}_vtab_i < {1}:".format(name, max_callbacks+1),
               '        vtab_i = self._{0}_vtab_i'.format(name),
-              "        self._{0}_vtab_i = None".format(name), ]
+              "        self._{0}_vtab_i = {1}".format(name, max_callbacks+1), ]
     dereflines = []
     for i, pyname_i in enumerate(pynames):
         dereflines.append("elif vtab_i == {0}:".format(i))
@@ -652,13 +679,14 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
     lines += ['', ""]
     return lines
 
-def _gen_function_pointer_wrapper(name, t, classname='', max_instances_guess=8):
+def _gen_function_pointer_wrapper(name, t, classname='', max_callbacks=8):
     """This generates a Cython wrapper for a function pointer variable."""
     pyname, cname = _mangle_function_pointer_name(name, classname)
-    migzeropad = int(math.log10(max_instances_guess)) + 1 
-    lines = ["#\n# Function pointer helpers for {1}.{0}\n#".format(name, classname)]
-    for i in range(max_instances_guess):
-        suffix = "{0:0{1}}".format(i, migzeropad)
+    mczeropad = int(math.log10(max_callbacks)) + 1 
+    lines = ["#\n# Function pointer helpers for {1}.{0}\n#".format(name, classname),
+             "_current_{0}_vtab_i = 0".format(pyname), ""]
+    for i in range(max_callbacks):
+        suffix = "{0:0{1}}".format(i, mczeropad)
         pyname_i, cname_i = pyname + suffix, cname + suffix
         decl, body, rtn = cython_py2c(pyname_i, t, proxy_name=cname_i)
         lines += [pyname_i + " = None", '']
@@ -900,7 +928,7 @@ def classpyx(desc, classes=None):
         cython_cimport_tuples(parent, cimport_tups)
 
     cdefattrs = []
-    mig = desc.get('extra', {}).get('max_instances_guess', 8)
+    mc = desc.get('extra', {}).get('max_callbacks', 8)
 
     alines = []
     pdlines = []
@@ -915,19 +943,19 @@ def classpyx(desc, classes=None):
         if isfunctionpointer(atype):
             alines += _gen_function_pointer_property(aname, atype, adoc, 
                         cached_names=cached_names, inst_name=inst_name, 
-                        classname=desc['name'], max_instances_guess=mig)
+                        classname=desc['name'], max_callbacks=mc)
             fplines += _gen_function_pointer_wrapper(aname, atype, 
-                        max_instances_guess=mig, classname=desc['name'])
-            pdlines.append("self._{0}_vtab_i = None".format(aname))
+                        max_callbacks=mc, classname=desc['name'])
+            pdlines.append("self._{0}_vtab_i = {1}".format(aname, mc+1))
         else:
             alines += _gen_property(aname, atype, adoc, cached_names=cached_names, 
                                     inst_name=inst_name)
         cython_import_tuples(atype, import_tups)
         cython_cimport_tuples(atype, cimport_tups)
+    if len(fplines) > 0:
+        fplines.append("_MAX_CALLBACKS_{0} = {1}".format(desc['name'], mc))
     d['attrs_block'] = indent(alines)
     d['function_pointer_block'] = "\n".join(fplines)
-    if len(fplines) > 0:
-        pdlines.append("self._MAX_INSTANCES_GUESS = " + str(mig))
     pdlines += ["{0} = None".format(n) for n in cached_names]
     d['property_defaults'] = indent(indent(pdlines, join=False))
 
