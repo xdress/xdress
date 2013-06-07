@@ -12,6 +12,9 @@ PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
+DOCREPONAME = xdress.github.io
+DOCREPOURL  = git@github.com:xdress/xdress.github.io.git
+
 .PHONY: help clean html dirhtml pickle json htmlhelp qthelp latex changes linkcheck doctest
 
 help:
@@ -87,3 +90,15 @@ doctest:
 	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(BUILDDIR)/doctest
 	@echo "Testing of doctests in the sources finished, look at the " \
 	      "results in $(BUILDDIR)/doctest/output.txt."
+
+push-latest:
+	cd $(BUILDDIR) && \
+	test -d $(DOCREPONAME) || git clone $(DOCREPOURL) $(DOCREPONAME) && \
+	cd $(DOCREPONAME) && \
+	git pull origin master && \
+	test -d latest || mkdir latest && touch latest/_ && \
+	rm -r latest/* && \
+	cp -r ../html/* latest/ && \
+	git add latest/ && \
+	git commit -am "Pushed latest docs at $(date)" && \
+	git push
