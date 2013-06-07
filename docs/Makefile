@@ -6,6 +6,7 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
+RELEASE = v0.1
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
@@ -102,3 +103,16 @@ push-latest:
 	git add latest/ && \
 	git commit -am "Pushed latest docs at $(date)" && \
 	git push
+
+push-release:
+	cd $(BUILDDIR) && \
+	test -d $(DOCREPONAME) || git clone $(DOCREPOURL) $(DOCREPONAME) && \
+	cd $(DOCREPONAME) && \
+	git pull origin master && \
+	test -d $(RELEASE) || mkdir $(RELEASE) && touch $(RELEASE)/_ && \
+	rm -r $(RELEASE)/* && \
+	cp -r ../html/* $(RELEASE)/ && \
+	git add $(RELEASE)/ && \
+	git commit -am "Pushed latest docs at $(date)" && \
+	git push
+
