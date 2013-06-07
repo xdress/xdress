@@ -1134,7 +1134,7 @@ def funcpyx(desc):
         cython_import_tuples(frtn, import_tups)
         cython_cimport_tuples(frtn, cimport_tups)
         fdoc = desc.get('docstring', nodocmsg.format(fname))
-        fdoc = _doc_add_sig(fdoc, fname, fargs)
+        fdoc = _doc_add_sig(fdoc, fname, fargs, ismethod=False)
         flines += _gen_function(fname, fname_mangled, fargs, frtn, fdoc,
                               inst_name=inst_name, is_method=False)
         if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
