@@ -113,6 +113,17 @@ push-release:
 	rm -r $(RELEASE)/* && \
 	cp -r ../html/* $(RELEASE)/ && \
 	git add $(RELEASE)/ && \
-	git commit -am "Pushed latest docs at $(date)" && \
+	git commit -am "Pushed $(RELEASE) docs at $(date)" && \
+	git push
+
+push-root:
+	cd $(BUILDDIR) && \
+	test -d $(DOCREPONAME) || git clone $(DOCREPOURL) $(DOCREPONAME) && \
+	cd $(DOCREPONAME) && \
+	git pull origin master && \
+	rm -rf libref previous _sources _static *.html *.js *.inv  && \
+	cp -r ../html/* . && \
+	git add . && \
+	git commit -am "Pushed root-level docs at $(date)" && \
 	git push
 
