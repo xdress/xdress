@@ -33,3 +33,8 @@ extern ErrorStatus Device_measure2(Uint8 deviceNumber, Uint32* aiValue)
 {
 	return deviceParam.deviceDescriptor->deviceMeasurement(aiValue);
 }
+
+//int64_t afunc(int64_t a, float b)
+//{
+//  return a;
+//};

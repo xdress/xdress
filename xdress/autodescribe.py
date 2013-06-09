@@ -1443,11 +1443,12 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         A dictionary describing the class which may be used to generate
         API bindings.
     """
-    kwargs = {'cpp_args': 
-               # Workaround usage of __attribute__() in GNU libc:
-               [r'-D__attribute__(x)=', r'-D__asm__(x)=', r'-D__const=', 
+    kwargs = {'cpp_args': [r'-D__attribute__(x)=',  # Workaround for GNU libc
+                r'-D__asm__(x)=', r'-D__const=', 
                 r'-D__builtin_va_list=int', # just fake this
-                r'-D__restrict=', r'-D__extension__=', r'-D__inline__=',]}
+                r'-D__restrict=', r'-D__extension__=', 
+                r'-D__inline__=', r'-D__inline=',
+                ]}
     if 0 < len(includes):
         kwargs['cpp_args'] += ['-I' + i for i in includes]
     root = pycparser.parse_file(filename, use_cpp=True, **kwargs)

@@ -1,6 +1,8 @@
 #ifndef DEVICE_H_
 #define DEVICE_H_
 
+#include <stdio.h>
+#include <stdint.h>
 #include "reftypes.h"
 
 #define DEVICE_MAX_NUM 20
@@ -35,5 +37,8 @@ typedef struct TwoNums
   //double (*op)(TwoNumsTag *);
   double (*op)(double, double);
 } TwoNums;
+
+//int64_t afunc(int64_t, float);
+
 
 #endif /* DEVICE_H_ */

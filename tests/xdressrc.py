@@ -57,6 +57,7 @@ variables = [
 
 functions = [
     ('func', 'reprocess'),
+    #('afunc', 'device', 'pydevice'),
     ('fillUraniumEnrichmentDefaults', 'enrichment_parameters'),
     ]
 
