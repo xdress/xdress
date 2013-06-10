@@ -491,27 +491,38 @@ class GccxmlBaseDescriber(object):
         t = self._fundemntal_to_base.get(tname, None)
         return t
 
+    _predicates = frozenset(['*', '&', 'const', 'volatile', 'restrict'])
+
+    def _add_predicate(self, baset, pred):
+        if isinstance(baset, basestring):
+            return (baset, pred)
+        last = baset[-1]
+        if last in self._predicates or isinstance(last, int):
+            return (baset, pred)
+        else:
+            return tuple(baset) + (pred,)
+
     def visit_arraytype(self, node):
         """visits an array type and maps it to a '*' refinement type."""
         self._pprint(node)
         baset = self.type(node.attrib['type'])
         # FIXME something involving the min, max, and/or size 
         # attribs needs to also go here.
-        t = (baset, '*')
+        t = self._add_predicate(baset, '*')
         return t
 
     def visit_referencetype(self, node):
         """visits a refernece and maps it to a '&' refinement type."""
         self._pprint(node)
         baset = self.type(node.attrib['type'])
-        t = (baset, '&')
+        t = self._add_predicate(baset, '&')
         return t
 
     def visit_pointertype(self, node):
         """visits a pointer and maps it to a '*' refinement type."""
         self._pprint(node)
         baset = self.type(node.attrib['type'])
-        t = (baset, '*')
+        t = self._add_predicate(baset, '*')
         return t
 
     def visit_cvqualifiedtype(self, node):
@@ -520,11 +531,11 @@ class GccxmlBaseDescriber(object):
         self._pprint(node)
         t = self.type(node.attrib['type'])
         if int(node.attrib.get('const', 0)):
-            t = (t, 'const')
+            t = self._add_predicate(t, 'const')
         if int(node.attrib.get('volatile', 0)):
-            t = (t, 'volatile')
+            t = self._add_predicate(t, 'volatile')
         if int(node.attrib.get('restrict', 0)):
-            t = (t, 'restrict')
+            t = self._add_predicate(t, 'restrict')
         return t
 
     def type(self, id):
