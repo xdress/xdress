@@ -514,6 +514,19 @@ class GccxmlBaseDescriber(object):
         t = (baset, '*')
         return t
 
+    def visit_cvqualifiedtype(self, node):
+        """visits constant, volatile, and restricted types and maps them to 
+        'const', 'volatile', and 'restrict' refinement types."""
+        self._pprint(node)
+        t = self.type(node.attrib['type'])
+        if int(node.attrib.get('const', 0)):
+            t = (t, 'const')
+        if int(node.attrib.get('volatile', 0)):
+            t = (t, 'volatile')
+        if int(node.attrib.get('restrict', 0)):
+            t = (t, 'restrict')
+        return t
+
     def type(self, id):
         """Resolves the type from its id and information in the root element tree."""
         node = self._root.find(".//*[@id='{0}']".format(id))
