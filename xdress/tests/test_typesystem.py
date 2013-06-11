@@ -1,5 +1,6 @@
 from __future__ import print_function
 from xdress import typesystem as ts
+from xdress.typesystem import MatchAny
 
 from nose.tools import assert_equal, with_setup
 
@@ -391,3 +392,31 @@ def test_cython_py2c():
     for (name, t, inst_name), exp in cases:
         yield check_cython_py2c, name, t, inst_name, exp  # Check that the case works,
 
+p1 = ('float64', MatchAny)
+
+type_matcher_cases = [
+    [p1, ('float64', 0), True],
+    [p1, ('float64', '*'), True],
+    [p1, ('float64', '&'), True],
+    [p1, ('float64', 'const'), True],
+    [p1, 'float64', False],
+    [p1, ('f8', 0), False],
+    [p1, (('float64', 'const'), '&'), False],
+    ]
+
+def check_typematcher(pattern, t, exp):
+    tm = ts.TypeMatcher(pattern)
+    obs = tm.matches(t)
+    assert_equal(exp, obs)
+
+def test_typematcher():
+    for pattern, t, exp in type_matcher_cases:
+        yield check_typematcher, pattern, t, exp
+
+def check_matches(pattern, t, exp):
+    obs = ts.matches(pattern, t)
+    assert_equal(exp, obs)
+
+def test_matches():
+    for pattern, t, exp in type_matcher_cases:
+        yield check_matches, pattern, t, exp
