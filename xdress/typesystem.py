@@ -1198,16 +1198,16 @@ _numpy_types = _LazyConfigDict({
     })
 
 @_memoize
-def cython_nptype(t, inner=False):
-    """Given a type t, returns the cooresponding numpy type.  If inner is 
-    true then this returns of a list of numpy types for all internal template
-    types, ie the float in ('vector', 'float', 0)."""
+def cython_nptype(t, depth=0):
+    """Given a type t, returns the cooresponding numpy type.  If depth is 
+    greater than 0 then this returns of a list of numpy types for all internal 
+    template types, ie the float in ('vector', 'float', 0)."""
     t = canon(t)
     if isinstance(t, basestring):
         return _numpy_types[t] if t in _numpy_types else 'np.NPY_OBJECT'
     # must be tuple below this line
     tlen = len(t)
-    if t in _numpy_types and not inner:
+    if t in _numpy_types and depth < 1:
         return _numpy_types[t]
     elif 2 == tlen:
         if 0 == t[1]:
@@ -1219,8 +1219,9 @@ def cython_nptype(t, inner=False):
             #last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
             #return cython_pytype(t[0]) + ' {0}'.format(last)
             return cython_nptype(t[0])
-    elif inner and istemplate(t):
-        return [cython_nptype(u, inner=inner) for u in t[1:-1]]
+    elif 0 < depth and istemplate(t):
+        depth -= 1
+        return [cython_nptype(u, depth=depth) for u in t[1:-1]]
     elif 3 == tlen and istemplate(t):
         return cython_nptype(t[1])
     else:  #elif 3 <= tlen:
@@ -1272,30 +1273,30 @@ _cython_c2py_conv = _LazyConverterDict({
             '    {cache_name} = {proxy_name}\n'
             )),
     'vector': (('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.PyArray_SimpleNewFromData(1, {var}_shape, {nptype}, &{var}[0])\n'
+                '{proxy_name} = np.PyArray_SimpleNewFromData(1, {var}_shape, {nptypes[0]}, &{var}[0])\n'
                 '{proxy_name} = np.PyArray_Copy({proxy_name})\n'),
                ('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptype}, &{var}[0])\n'),
+                '{proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptypes[0]}, &{var}[0])\n'),
                ('if {cache_name} is None:\n'
                 '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '    {proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptype}, &{var}[0])\n'
+                '    {proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptypes[0]}, &{var}[0])\n'
                 '    {cache_name} = {proxy_name}\n'
                 )),
     ('vector', 'bool', 0): (  # C++ standard is silly here
                ('cdef int i\n'
                 '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptype})\n'
+                '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptypes[0]})\n'
                 'for i in range({proxy_name}_shape[0]):\n' 
                 '    {proxy_name}[i] = {var}[i]\n'),
                ('cdef int i\n'
                 '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptype})\n'
+                '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptypes[0]})\n'
                 'for i in range({proxy_name}_shape[0]):\n' 
                 '    {proxy_name}[i] = {var}[i]\n'),
                ('cdef int i\n'
                 'if {cache_name} is None:\n'
                 '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '    {proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptype})\n'
+                '    {proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptype[0]})\n'
                 '    for i in range({proxy_name}_shape[0]):\n' 
                 '        {proxy_name}[i] = {var}[i]\n'
                 '    {cache_name} = {proxy_name}\n'
@@ -1416,6 +1417,7 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     #else:
     #    npt = cython_nptype(t)
     npt = cython_nptype(t)
+    npts = cython_nptype(t, depth=1)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
     var = existing_name or var
     cache_name = "_{0}".format(name) if cache_name is None else cache_name
@@ -1424,16 +1426,18 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     iscached = False
     if 1 == len(c2pyt) or ind == 0:
         decl = body = None
-        rtn = c2pyt[0].format(var=var, ctype=ct, cytype=cyt, pytype=pyt, nptype=npt)
+        rtn = c2pyt[0].format(var=var, ctype=ct, cytype=cyt, pytype=pyt, nptype=npt, 
+                              nptypes=npts)
     elif ind == 1:
         decl = "cdef {0} {1}".format(cyt, proxy_name)
         body = c2pyt[1].format(var=var, ctype=ct, cytype=cyt, pytype=pyt, nptype=npt, 
-                               proxy_name=proxy_name)
+                               proxy_name=proxy_name, nptypes=npts)
         rtn = proxy_name
     elif ind == 2:
         decl = "cdef {0} {1}".format(cyt, proxy_name)
         body = c2pyt[2].format(var=var, cache_name=cache_name, ctype=ct, cytype=cyt, 
-                               pytype=pyt, proxy_name=proxy_name, nptype=npt)
+                               pytype=pyt, proxy_name=proxy_name, nptype=npt, 
+                               nptypes=npts)
         rtn = cache_name
         iscached = True
     if body is not None and 'np.npy_intp' in body:
@@ -1477,25 +1481,25 @@ _cython_py2c_conv = _LazyConverterDict({
             '{proxy_name}.set_ptr[0]'),
     'vector': (('cdef int i\n'
                 'cdef int {var}_size\n'
-                'cdef {npctype} * {var}_data\n'
+                'cdef {npctypes[0]} * {var}_data\n'
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
-                '    {var}_data = <{npctype} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+                '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = {var}_data[i]\n'
                 'else:\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
                 '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = <{npctype}> {var}[i]\n'),
+                '        {proxy_name}[i] = <{npctypes[0]}> {var}[i]\n'),
                '{proxy_name}'),     # FIXME There might be imporvements here...
     ('vector', 'char', 0): ((
                 'cdef int i\n'
                 'cdef int {var}_size\n'
-                'cdef {npctype} * {var}_data\n'
+                'cdef {npctypes[0]} * {var}_data\n'
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == <int> {nptype}:\n'
-                '    {var}_data = <{npctype} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+                '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = {var}[i]\n'
@@ -1594,14 +1598,15 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
     #else:
     #    npt = cython_nptype(t)
     npt = cython_nptype(t)
-    npts = cython_nptype(t, inner=True)
     npct = cython_ctype(npt)
+    npts = cython_nptype(t, depth=1)
     npcts = [npct] if isinstance(npts, basestring) else _maprecurse(cython_ctype, npts)
-    print(t, npt, npts, npct, npcts)
+    #print(t, npt, npts, npct, npcts)
+    #print(t, npt, npct)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
     proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
     template_kw = dict(var=var, proxy_name=proxy_name, pytype=pyt, cytype=cyt, 
-                       ctype=ct, last=last, nptype=npt, npctype=npct, 
+                       ctype=ct, last=last, nptype=npt, npctype=npct, #)
                        nptypes=npts, npctypes=npcts,)
     nested = False
     if isdependent(tkey):
@@ -1858,5 +1863,10 @@ _indent4 = lambda x: '' if x is None else "\n".join(["    " + l for l in "\n".jo
 
 def _maprecurse(f, x):
     if not isinstance(x, list):
-        return f(x)
-    return [_maprecurse(f, y) for y in x]
+        return [f(x)]
+    #return [_maprecurse(f, y) for y in x]
+    l = []
+    for y in x:
+        l += _maprecurse(f, y)
+    return l
+     

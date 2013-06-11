@@ -1042,6 +1042,11 @@ from {package} import {stlcontainers}
 
 
 '''
+
+_testfooter = '''if __name__ == '__main__':
+    nose.run()
+'''
+
 def gentest(template, header=None, package='..'):
     """Returns a string of a test file representing the given template."""
     testfuncs = dict([(k[8:], v) for k, v in globals().items() \
@@ -1050,6 +1055,7 @@ def gentest(template, header=None, package='..'):
     test = test.format(stlcontainers=ts.STLCONTAINERS, package=package)
     for t in template:
         test += testfuncs[t[0]](*t[1:]) + "\n\n" 
+    test += _testfooter
     return test
 
 
