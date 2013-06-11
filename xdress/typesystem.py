@@ -1412,10 +1412,6 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     ct = cython_ctype(t)
     cyt = cython_cytype(t)
     pyt = cython_pytype(t)
-    #if istemplate(t) and (2 == len(t) or 3 == len(t) and t[-1] == 0):
-    #    npt = cython_nptype(t[1])
-    #else:
-    #    npt = cython_nptype(t)
     npt = cython_nptype(t)
     npts = cython_nptype(t, depth=1)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
@@ -1592,21 +1588,14 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
     ct = cython_ctype(t)
     cyt = cython_cytype(t)
     pyt = cython_pytype(t)
-    #if istemplate(t) and 1 == len(template_types.get(tkey, ())):
-    #    print(t, tkey)
-    #    npt = cython_nptype(t[1])
-    #else:
-    #    npt = cython_nptype(t)
     npt = cython_nptype(t)
     npct = cython_ctype(npt)
     npts = cython_nptype(t, depth=1)
     npcts = [npct] if isinstance(npts, basestring) else _maprecurse(cython_ctype, npts)
-    #print(t, npt, npts, npct, npcts)
-    #print(t, npt, npct)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
     proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
     template_kw = dict(var=var, proxy_name=proxy_name, pytype=pyt, cytype=cyt, 
-                       ctype=ct, last=last, nptype=npt, npctype=npct, #)
+                       ctype=ct, last=last, nptype=npt, npctype=npct, 
                        nptypes=npts, npctypes=npcts,)
     nested = False
     if isdependent(tkey):
