@@ -127,12 +127,14 @@ def test_pycparser_describe_device_descriptor_tag():
     obs = ad.pycparser_describe('device.c', 'DeviceDescriptorTag', 'class')
     exp = {'name': 'DeviceDescriptorTag', 
            'namespace': None,
+           'construct': 'struct',
+           'parents': None,
            'attrs': {
             'deviceNumber': 'uchar',
-            'deviceMeasurement': (('function', (('_0', ('uint32', '*')),), 
+            'deviceMeasurement': ('function_pointer', (('_0', ('uint32', '*')),), 
                                     ('enum', 'ErrorStatusTag', (
                                         ('ERROR_OK', 0),
-                                        ('ERROR_FAILED_INIT', 1)))), '*'),
+                                        ('ERROR_FAILED_INIT', 1)))),
             },
            'methods': {},
            }

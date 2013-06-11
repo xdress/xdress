@@ -14,7 +14,7 @@ add_new_refined = lambda: ts.refined_types.update(new_refined)
 del_new_refined = lambda: [ts.refined_types.pop(key) for key in new_refined]
 
 new_py2c = {
-    'comp_map': ('conv.dict_to_map_int_dbl({var})', False),
+    'comp_map': ('stlcontainers.dict_to_map_int_dbl({var})', False),
     'intrange': ('intrange({var}, {low}, {high})', False),
     'nucrange': ('nucrange({var}, {low}, {high})', False),
     'range': ('<{vtype}> range({var}, {low}, {high})', False),
@@ -26,7 +26,7 @@ del_new_py2c = lambda: [ts._cython_py2c_conv.pop(key) for key in new_py2c]
 
 def check_canon(t, exp):
     obs = ts.canon(t)
-    assert_equal(obs, exp)
+    assert_equal(exp, obs)
 
 @with_setup(add_new_refined, del_new_refined)
 def test_canon():
@@ -70,7 +70,7 @@ def test_canon():
 
 def check_cython_ctype(t, exp):
     obs = ts.cython_ctype(t)
-    assert_equal(obs, exp)
+    assert_equal(exp, obs)
 
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_ctype():
@@ -80,7 +80,7 @@ def test_cython_ctype():
         ('f4', 'float'),
         ('nucid', 'int'),
         (('nucid',), 'int'), 
-        (('set', 'complex'), 'cpp_set[extra_types.complex_t]'),
+        (('set', 'complex'), 'cpp_set[xdress_extra_types.complex_t]'),
         (('map', 'nucid', 'float'), 'cpp_map[int, double]'),
         ('comp_map', 'cpp_map[int, double]'),
         (('char', '*'), 'char *'),
@@ -108,7 +108,7 @@ def test_cython_cimport_tuples_no_cy():
         ('nucid', set([('pyne', 'cpp_nucname')])),
         (('nucid'), set([('pyne', 'cpp_nucname')])), 
         (('set', 'complex'), set([('libcpp.set', 'set', 'cpp_set'), 
-                                  ('pyne', 'extra_types')])),
+                                  ('xdress_extra_types',)])),
         (('map', 'nucid', 'float'), set([('pyne', 'cpp_nucname'), 
                                          ('libcpp.map', 'map', 'cpp_map')])),
         ('comp_map', set([('pyne', 'cpp_nucname'), ('libcpp.map', 'map', 'cpp_map')])),
@@ -129,7 +129,7 @@ def test_cython_cimport_tuples_no_cy():
 
 def check_cython_cimport_tuples_with_cy(t, exp):
     obs = ts.cython_cimport_tuples(t)
-    assert_equal(obs, exp)
+    assert_equal(exp, obs)
 
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_cimport_tuples_with_cy():
@@ -140,21 +140,21 @@ def test_cython_cimport_tuples_with_cy():
         ('nucid', set([('pyne', 'nucname'), ('pyne', 'cpp_nucname')])),
         (('nucid',), set([('pyne', 'nucname'), ('pyne', 'cpp_nucname')])), 
         (('set', 'complex'), set([('libcpp.set', 'set', 'cpp_set'), 
-                                  ('pyne', 'stlconverters', 'conv'),
-                                  ('pyne', 'extra_types')])),
+                                  ('stlcontainers',),
+                                  ('xdress_extra_types',)])),
         (('map', 'nucid', 'float'), set([('libcpp.map', 'map', 'cpp_map'), 
                                          ('pyne', 'nucname'), 
                                          ('pyne', 'cpp_nucname'),
-                                         ('pyne', 'stlconverters', 'conv')])),
+                                         ('stlcontainers',)])),
         ('comp_map', set([('libcpp.map', 'map', 'cpp_map'), 
                           ('pyne', 'nucname'), 
                           ('pyne', 'cpp_nucname'),
-                          ('pyne', 'stlconverters', 'conv')])),
+                          ('stlcontainers',)])),
         (('char', '*'), set()),
         (('char', 42), set()),
         (('map', 'nucid', ('set', 'nucname')), set([('libcpp.set', 'set', 'cpp_set'),
                                                     ('libcpp.map', 'map', 'cpp_map'),
-                                                    ('pyne', 'stlconverters', 'conv'),
+                                                    ('stlcontainers',),
                                                     ('pyne', 'nucname'), 
                                                     ('pyne', 'cpp_nucname'),
                                         ('libcpp.string', 'string', 'std_string')])),
@@ -171,7 +171,7 @@ def test_cython_cimport_tuples_with_cy():
 
 def check_cython_cimports(t, exp):
     obs = ts.cython_cimports(t)
-    assert_equal(obs, exp)
+    assert_equal(exp, obs)
 
 def test_cython_cimports():
     cases = (
@@ -191,7 +191,7 @@ def test_cython_cimports():
 
 def check_cython_import_tuples(t, exp):
     obs = ts.cython_import_tuples(t)
-    assert_equal(obs, exp)
+    assert_equal(exp, obs)
 
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_import_tuples():
@@ -201,14 +201,14 @@ def test_cython_import_tuples():
         ('f4', set()),
         ('nucid', set([('pyne', 'nucname')])),
         (('nucid',), set([('pyne', 'nucname')])), 
-        (('set', 'complex'), set([('pyne', 'stlconverters', 'conv')])),
-        (('map', 'nucid', 'float'), set([('pyne', 'stlconverters', 'conv'), 
+        (('set', 'complex'), set([('stlcontainers',)])),
+        (('map', 'nucid', 'float'), set([('stlcontainers',), 
                                          ('pyne', 'nucname')])),
-        ('comp_map', set([('pyne', 'stlconverters', 'conv'), ('pyne', 'nucname')])),
+        ('comp_map', set([('stlcontainers',), ('pyne', 'nucname')])),
         (('char', '*'), set()),
         (('char', 42), set()),
         (('map', 'nucid', ('set', 'nucname')), 
-            set([('pyne', 'stlconverters', 'conv'), ('pyne', 'nucname')])),
+            set([('stlcontainers',), ('pyne', 'nucname')])),
         (('intrange', 1, 2), set()), 
         (('nucrange', 92000, 93000), set([('pyne', 'nucname')])),
         (('range', 'int32', 1, 2), set()), 
@@ -220,7 +220,7 @@ def test_cython_import_tuples():
 
 def check_cython_imports(t, exp):
     obs = ts.cython_imports(t)
-    assert_equal(obs, exp)
+    assert_equal(exp, obs)
 
 def test_cython_imports():
     cases = (
@@ -240,7 +240,7 @@ def test_cython_imports():
 
 def check_cython_cytype(t, exp):
     obs = ts.cython_cytype(t)
-    assert_equal(obs, exp)
+    assert_equal(exp, obs)
 
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_cytype():
@@ -250,12 +250,12 @@ def test_cython_cytype():
         ('f4', 'float'),
         ('nucid', 'int'),
         (('nucid',), 'int'), 
-        (('set', 'complex'), 'conv._SetComplex'),
-        (('map', 'nucid', 'float'), 'conv._MapIntDouble'),
-        ('comp_map', 'conv._MapIntDouble'),
+        (('set', 'complex'), 'stlcontainers._SetComplex'),
+        (('map', 'nucid', 'float'), 'stlcontainers._MapIntDouble'),
+        ('comp_map', 'stlcontainers._MapIntDouble'),
         (('char', '*'), 'char *'),
         (('char', 42), 'char [42]'),
-        (('map', 'nucid', ('set', 'nucname')), 'conv._MapIntSetStr'),
+        (('map', 'nucid', ('set', 'nucname')), 'stlcontainers._MapIntSetStr'),
         (('intrange', 1, 2), 'int'), 
         (('nucrange', 92000, 93000), 'int'),
         (('range', 'int32', 1, 2), 'int'), 
@@ -277,12 +277,12 @@ def test_cython_pytype():
         ('f4', 'float'),
         ('nucid', 'int'),
         (('nucid',), 'int'), 
-        (('set', 'complex'), 'conv.SetComplex'),
-        (('map', 'nucid', 'float'), 'conv.MapIntDouble'),
-        ('comp_map', 'conv.MapIntDouble'),
+        (('set', 'complex'), 'stlcontainers.SetComplex'),
+        (('map', 'nucid', 'float'), 'stlcontainers.MapIntDouble'),
+        ('comp_map', 'stlcontainers.MapIntDouble'),
         (('char', '*'), 'str'),
         (('char', 42), 'str'),
-        (('map', 'nucid', ('set', 'nucname')), 'conv.MapIntSetStr'),
+        (('map', 'nucid', ('set', 'nucname')), 'stlcontainers.MapIntSetStr'),
         (('intrange', 1, 2), 'int'), 
         (('nucrange', 92000, 93000), 'int'),
         (('range', 'int32', 1, 2), 'int'), 
@@ -295,43 +295,43 @@ def test_cython_pytype():
 def check_cython_c2py(name, t, inst_name, exp):
     #import pprint; pprint.pprint(ts.refined_types)
     obs = ts.cython_c2py(name, t, inst_name=inst_name)
-    assert_equal(obs, exp)
+    assert_equal(exp, obs)
 
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_c2py():
     cases = (
-        (('llama', 'str', None), (None, None, 'str(<char *> llama.c_str())', False)),
+        (('llama', 'str', None), (None, None, 'bytes(<char *> llama.c_str()).decode()', False)),
         (('llama', ('str',), None), 
-            (None, None, 'str(<char *> llama.c_str())', False)),
+            (None, None, 'bytes(<char *> llama.c_str()).decode()', False)),
         (('llama', 'f4', None), (None, None, 'float(llama)', False)),
-        (('llama', 'nucid', None), (None, None, 'int(llama)', False)),
-        (('llama', ('nucid',), None), (None, None, 'int(llama)', False)), 
+        (('llama', 'nucid', None), (None, None, 'nucname.zzaaam(llama)', False)),
+        (('llama', ('nucid',), None), (None, None, 'nucname.zzaaam(llama)', False)), 
         (('llama', ('set', 'complex'), 'self._inst'), 
-            ('cdef conv._SetComplex llama_proxy', 
+            ('cdef stlcontainers._SetComplex llama_proxy\n', 
             ('if self._llama is None:\n'
-             '    llama_proxy = conv.SetComplex(False, False)\n'
+             '    llama_proxy = stlcontainers.SetComplex(False, False)\n'
              '    llama_proxy.set_ptr = &self._inst.llama\n'
-             '    self._llama = llama_proxy\n'), 'self._llama', True)),
+             '    self._llama = llama_proxy'), 'self._llama', True)),
         (('llama', ('map', 'nucid', 'float'), 'self._inst'), 
-            ('cdef conv._MapIntDouble llama_proxy', 
+            ('cdef stlcontainers._MapIntDouble llama_proxy\n', 
             ('if self._llama is None:\n'
-             '    llama_proxy = conv.MapIntDouble(False, False)\n'
+             '    llama_proxy = stlcontainers.MapIntDouble(False, False)\n'
              '    llama_proxy.map_ptr = &self._inst.llama\n'
-             '    self._llama = llama_proxy\n'), 'self._llama', True)),
+             '    self._llama = llama_proxy'), 'self._llama', True)),
         (('llama', 'comp_map', 'self._inst'), 
-            ('cdef conv._MapIntDouble llama_proxy', 
+            ('cdef stlcontainers._MapIntDouble llama_proxy\n', 
             ('if self._llama is None:\n'
-             '    llama_proxy = conv.MapIntDouble(False, False)\n'
+             '    llama_proxy = stlcontainers.MapIntDouble(False, False)\n'
              '    llama_proxy.map_ptr = &self._inst.llama\n'
-             '    self._llama = llama_proxy\n'), 'self._llama', True)),
-        (('llama', ('char', '*'), None), (None, None, 'str(<char *> llama)', False)),
-        (('llama', ('char', 42), None), (None, None, 'str(<char *> llama)', False)),
+             '    self._llama = llama_proxy'), 'self._llama', True)),
+        (('llama', ('char', '*'), None), (None, None, 'chr(<int> llama)', False)),
+        (('llama', ('char', 42), None), (None, None, 'chr(<int> llama)', False)),
         (('llama', ('map', 'nucid', ('set', 'nucname')), 'self._inst'), 
-            ('cdef conv._MapIntSetStr llama_proxy', 
+            ('cdef stlcontainers._MapIntSetStr llama_proxy\n', 
             ('if self._llama is None:\n'
-             '    llama_proxy = conv.MapIntSetStr(False, False)\n'
+             '    llama_proxy = stlcontainers.MapIntSetStr(False, False)\n'
              '    llama_proxy.map_ptr = &self._inst.llama\n'
-             '    self._llama = llama_proxy\n'), 'self._llama', True)),
+             '    self._llama = llama_proxy'), 'self._llama', True)),
         (('llama', ('intrange', 1, 2), None), (None, None, 'int(llama)', False)), 
         (('llama', ('nucrange', 92000, 93000), None), 
             (None, None, 'int(llama)', False)),
@@ -346,35 +346,39 @@ def test_cython_c2py():
 
 def check_cython_py2c(name, t, inst_name, exp):
     obs = ts.cython_py2c(name, t, inst_name=inst_name)
-    assert_equal(obs, exp)
+    assert_equal(exp, obs)
 
 @with_setup(add_new_refined, del_new_refined)
 @with_setup(add_new_py2c, del_new_py2c)
 def test_cython_py2c():
     cases = (
-        (('frog', 'str', None), (None, None, 'std_string(<char *> frog)')),
-        (('frog', ('str',), None), (None, None, 'std_string(<char *> frog)')),
+        (('frog', 'str', None), ('cdef char * frog_proxy\n', 
+            'frog_bytes = frog.encode()', 'std_string(<char *> frog_bytes)')),
+        (('frog', ('str',), None), ('cdef char * frog_proxy\n', 
+            'frog_bytes = frog.encode()', 'std_string(<char *> frog_bytes)')),
         (('frog', 'f4', None), (None, None, '<float> frog')),
         (('frog', 'nucid', None), (None, None, 'nucname.zzaaam(frog)')),
         (('frog', ('nucid',), None), (None, None, 'nucname.zzaaam(frog)')), 
         (('frog', ('set', 'complex'), 'self._inst'), 
-            ('cdef conv._SetComplex frog_proxy\n', 
-            ('frog_proxy = conv.SetComplex(self._inst.frog, '
-             'not isinstance(self._inst.frog, conv._SetComplex))'), 
+            ('cdef stlcontainers._SetComplex frog_proxy\n', 
+            ('frog_proxy = stlcontainers.SetComplex(self._inst.frog, '
+             'not isinstance(self._inst.frog, stlcontainers._SetComplex))'), 
              'frog_proxy.set_ptr[0]')),
         (('frog', ('map', 'nucid', 'float'), 'self._inst'), 
-            ('cdef conv._MapIntDouble frog_proxy\n', 
-            ('frog_proxy = conv.MapIntDouble(self._inst.frog, '
-             'not isinstance(self._inst.frog, conv._MapIntDouble))'), 
+            ('cdef stlcontainers._MapIntDouble frog_proxy\n', 
+            ('frog_proxy = stlcontainers.MapIntDouble(self._inst.frog, '
+             'not isinstance(self._inst.frog, stlcontainers._MapIntDouble))'), 
              'frog_proxy.map_ptr[0]')),
         (('frog', 'comp_map', 'self._inst'), (None, None, 
-            'conv.dict_to_map_int_dbl(self._inst.frog)')),
-        (('frog', ('char', '*'), None), (None, None, '<char *> frog')),
-        (('frog', ('char', 42), None), (None, None, '<char [42]> frog')),
+            'stlcontainers.dict_to_map_int_dbl(self._inst.frog)')),
+        (('frog', ('char', '*'), None), ('cdef char * frog_proxy\n',
+            'frog_bytes = frog.encode()', '(<char *> frog_bytes)[0]')),
+        (('frog', ('char', 42), None), ('cdef char [42] frog_proxy\n',
+            'frog_bytes = frog.encode()', '(<char *> frog_bytes)[0]')),
         (('frog', ('map', 'nucid', ('set', 'nucname')), 'self._inst'), 
-            ('cdef conv._MapIntSetStr frog_proxy\n', 
-            ('frog_proxy = conv.MapIntSetStr(self._inst.frog, '
-             'not isinstance(self._inst.frog, conv._MapIntSetStr))'), 
+            ('cdef stlcontainers._MapIntSetStr frog_proxy\n', 
+            ('frog_proxy = stlcontainers.MapIntSetStr(self._inst.frog, '
+             'not isinstance(self._inst.frog, stlcontainers._MapIntSetStr))'), 
              'frog_proxy.map_ptr[0]')),
         (('frog', ('intrange', 1, 2), None), (None, None, 'intrange(frog, 1, 2)')), 
         (('frog', ('nucrange', 92000, 93000), None), 

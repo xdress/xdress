@@ -1014,7 +1014,7 @@ def cython_imports(x):
 
 
 _cython_cytypes = _LazyConfigDict({
-    'char': 'char *',
+    'char': 'char',
     'uchar': 'unsigned char',
     'str': 'char *',
     'int16': 'short',
