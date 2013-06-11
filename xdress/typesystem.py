@@ -1198,16 +1198,18 @@ _numpy_types = _LazyConfigDict({
     })
 
 @_memoize
-def cython_nptype(t):
-    """Given a type t, returns the cooresponding NumPy type(s)."""
+def cython_nptype(t, inner=False):
+    """Given a type t, returns the cooresponding numpy type.  If inner is 
+    true then this returns of a list of numpy types for all internal template
+    types, ie the float in ('vector', 'float', 0)."""
     t = canon(t)
     if isinstance(t, basestring):
         return _numpy_types[t] if t in _numpy_types else 'np.NPY_OBJECT'
     # must be tuple below this line
     tlen = len(t)
-    if t in _numpy_types:
+    if t in _numpy_types and not inner:
         return _numpy_types[t]
-    if 2 == tlen:
+    elif 2 == tlen:
         if 0 == t[1]:
             return cython_nptype(t[0])
         elif isrefinement(t[1]):
@@ -1217,11 +1219,12 @@ def cython_nptype(t):
             #last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
             #return cython_pytype(t[0]) + ' {0}'.format(last)
             return cython_nptype(t[0])
+    elif inner and istemplate(t):
+        return [cython_nptype(u, inner=inner) for u in t[1:-1]]
     elif 3 == tlen and istemplate(t):
         return cython_nptype(t[1])
     else:  #elif 3 <= tlen:
         return 'np.NPY_OBJECT'
-        #return _numpy_types.get(t, 'np.NPY_OBJECT')
 
 _cython_c2py_conv = _LazyConverterDict({
     # Has tuple form of (copy, [view, [cached_view]])
@@ -1591,12 +1594,15 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
     #else:
     #    npt = cython_nptype(t)
     npt = cython_nptype(t)
+    npts = cython_nptype(t, inner=True)
     npct = cython_ctype(npt)
-    print(t, npt, npct)
+    npcts = [npct] if isinstance(npts, basestring) else _maprecurse(cython_ctype, npts)
+    print(t, npt, npts, npct, npcts)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
     proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
     template_kw = dict(var=var, proxy_name=proxy_name, pytype=pyt, cytype=cyt, 
-                       ctype=ct, last=last, nptype=npt, npctype=npct)
+                       ctype=ct, last=last, nptype=npt, npctype=npct, 
+                       nptypes=npts, npctypes=npcts,)
     nested = False
     if isdependent(tkey):
         tsig = [ts for ts in refined_types if ts[0] == tkey][0]
@@ -1849,3 +1855,8 @@ def swap_stlcontainers(s):
 
 _indent4 = lambda x: '' if x is None else "\n".join(["    " + l for l in "\n".join(
                      [xx for xx in x if xx is not None]).splitlines()])
+
+def _maprecurse(f, x):
+    if not isinstance(x, list):
+        return f(x)
+    return [_maprecurse(f, y) for y in x]
