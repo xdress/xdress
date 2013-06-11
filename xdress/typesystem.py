@@ -1199,12 +1199,14 @@ _numpy_types = _LazyConfigDict({
 
 @_memoize
 def cython_nptype(t):
-    """Given a type t, returns the cooresponding NumPy type."""
+    """Given a type t, returns the cooresponding NumPy type(s)."""
     t = canon(t)
     if isinstance(t, basestring):
         return _numpy_types[t] if t in _numpy_types else 'np.NPY_OBJECT'
     # must be tuple below this line
     tlen = len(t)
+    if t in _numpy_types:
+        return _numpy_types[t]
     if 2 == tlen:
         if 0 == t[1]:
             return cython_nptype(t[0])
@@ -1215,8 +1217,10 @@ def cython_nptype(t):
             #last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
             #return cython_pytype(t[0]) + ' {0}'.format(last)
             return cython_nptype(t[0])
-    elif 3 <= tlen:
-        return _numpy_types[t] if t in _numpy_types else 'np.NPY_OBJECT'
+    elif 3 == tlen and istemplate(t):
+        return cython_nptype(t[1])
+    else:  #elif 3 <= tlen:
+        return 'np.NPY_OBJECT'
         #return _numpy_types.get(t, 'np.NPY_OBJECT')
 
 _cython_c2py_conv = _LazyConverterDict({
@@ -1588,6 +1592,7 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
     #    npt = cython_nptype(t)
     npt = cython_nptype(t)
     npct = cython_ctype(npt)
+    print(t, npt, npct)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
     proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
     template_kw = dict(var=var, proxy_name=proxy_name, pytype=pyt, cytype=cyt, 
