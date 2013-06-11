@@ -448,6 +448,84 @@ def canon(t):
     else:
         _raise_type_error(t)
 
+
+class MatchAny(object):
+    """A helper class for matching any portion of a type."""
+    def __repr__(self):
+        return "MatchAny"
+
+    def __hash__(self):
+        # give consistent hash value across executions
+        return hash(repr(self))
+
+MatchAny = MatchAny()
+
+class TypeMatcher(object):
+    """A class that is used for checking whether a type matches a given pattern."""
+
+    def __init__(self, pattern):
+        """Parameters
+        ----------
+        pattern : nested tuples, str, int
+            This is a type-like entity that may have certain elements replaced
+            by MatchAny, indicating that any value in a concrete type may match 
+            this pattern.  For example ('float64', MatchAny) will match the 
+            following::
+
+                ('float64', 0)
+                ('float64', '*')
+                ('float64', '&')
+                ('float64', 'const')
+
+            but will not match::
+
+                'float64'
+                (('float64', 'const'), '&')
+
+        """
+        self._pattern = pattern
+
+    @property
+    def pattern(self):
+        # Make this field read-only to prevent hashing errors
+        return self._pattern
+
+    def __hash__(self):
+        # needed so that class can be dict key
+        return hash(self.pattern)
+
+    def matches(self, t):
+        """Tests that a type matches the pattern, returns True or False."""
+        pattern = self.pattern
+        if pattern is MatchAny:
+            return True
+        if t is pattern:
+            return True
+        if pattern is None:
+            return False
+        if t == pattern:
+            return True
+        if isinstance(pattern, basestring):
+            #return t == pattern if isinstance(t, basestring) else False
+            return False
+        # now we know both pattern and t should be different non-string sequences, 
+        # nominally tuples or lists
+        if len(t) != len(pattern):
+            return False
+        submatcher = TypeMatcher(None)
+        for subt, subpattern in zip(t, pattern):
+            submatcher._pattern = subpattern
+            if not submatcher.matches(subt):
+                return False
+        return True
+
+def matches(pattern, t):
+    """Indicates whether a type t matches a pattern. See TypeMatcher for more details.
+    """
+    tm = TypeMatcher(pattern)
+    return tm.matches(t)
+
+
 #################### Type System Above This Line ##########################
 
 EXTRA_TYPES = 'xdress_extra_types'
@@ -661,6 +739,15 @@ def _cython_ctypes_function_pointer(t):
 _cython_ctypes['function_pointer'] = _cython_ctypes_function_pointer
 
 
+def _cython_ctype_add_predicate(t, last):
+    """Adds a predicate to a ctype"""
+    if last == 'const':
+        x, y = last, t
+    else:
+        x, y = t, last
+    return '{0} {1}'.format(x, y)
+
+
 @_memoize
 def cython_ctype(t):
     """Given a type t, returns the cooresponding Cython C type declaration."""
@@ -683,7 +770,7 @@ def cython_ctype(t):
                 return cython_ctype(t[0])
         else:
             last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-            return cython_ctype(t[0]) + ' {0}'.format(last)
+            return _cython_ctype_add_predicate(cython_ctype(t[0]), last)
     elif 3 <= tlen:
         assert t[0] in template_types
         assert len(t) == len(template_types[t[0]]) + 2
@@ -693,7 +780,7 @@ def cython_ctype(t):
         cyct = '{0}[{1}]'.format(template_name, template_filling)
         if 0 != t[-1]:
             last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-            cyct += ' {0}'.format(last)
+            cyct = _cython_ctype_add_predicate(cyct, last)
         return cyct
 
 
