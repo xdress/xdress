@@ -188,8 +188,10 @@ except ImportError:
 # pycparser conditional imports
 try:
     import pycparser
+    PycparserNodeVisitor = pycparser.c_ast.NodeVisitor
 except ImportError:
     pycparser = None
+    PycparserNodeVisitor = object  # fake this for class definitions
 
 from .utils import guess_language
 
@@ -1109,7 +1111,7 @@ def clang_canonize(t):
 #
 
 
-class PycparserBaseDescriber(pycparser.c_ast.NodeVisitor):
+class PycparserBaseDescriber(PycparserNodeVisitor):
 
     _funckey = None
 
