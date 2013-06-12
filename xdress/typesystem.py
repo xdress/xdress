@@ -450,7 +450,7 @@ def canon(t):
 
 
 class MatchAny(object):
-    """A helper class for matching any portion of a type."""
+    """A singleton helper class for matching any portion of a type."""
     def __repr__(self):
         return "MatchAny"
 
@@ -518,6 +518,18 @@ class TypeMatcher(object):
             if not submatcher.matches(subt):
                 return False
         return True
+
+    def __eq__(self, other):
+        if isinstance(other, TypeMatcher):
+            return self._pattern == other._pattern
+        else:
+            return self._pattern == other
+
+    def __str__(self):
+        return "{0}({1!s})".format(self.__class__.__name__, self._pattern)
+
+    def __repr__(self):
+        return "{0}({1!r})".format(self.__class__.__name__, self._pattern)
 
 def matches(pattern, t):
     """Indicates whether a type t matches a pattern. See TypeMatcher for more details.
@@ -604,19 +616,39 @@ class _LazyImportDict(MutableMapping):
 class _LazyConverterDict(MutableMapping):
     def __init__(self, items):
         self._d = dict(items)
+        self._tms = set([k for k in self._d if isinstance(k, TypeMatcher)])
 
     def __len__(self):
         return len(self._d)
 
     def __contains__(self, key):
-        return key in self._d
+        if key in self._d:
+            return True  # Check if key is present
+        else:
+            # check if any TypeMatcher keys actually match
+            for tm in self._tms:
+                if tm.matches(key):
+                    self[key] = self._d[tm]
+                    return True
+            else:
+                return False
 
     def __iter__(self):
         for k in self._d:
             yield k
 
     def __getitem__(self, key):
-        value = self._d[key]
+        if key in self._d:
+            value = self._d[key]  # Check if key is present
+        else:
+            # check if any TypeMatcher keys actually match
+            for tm in self._tms:
+                if tm.matches(key):
+                    value = self._d[tm]
+                    self[key] = value
+                    break
+            else:
+                raise KeyError("{0} not found".format(key))
         if value is None or value is NotImplemented or callable(value):
             return value
         kw = {'extra_types': _ensuremoddot(EXTRA_TYPES),
@@ -632,9 +664,13 @@ class _LazyConverterDict(MutableMapping):
 
     def __setitem__(self, key, value):
         self._d[key] = value
+        if isinstance(key, TypeMatcher):
+            self._tms.add(key)
 
     def __delitem__(self, key):
         del self._d[key]
+        if isinstance(key, TypeMatcher):
+            self._tms.remove(key)
 
 type_aliases = _LazyConfigDict({
     'i': 'int32',
@@ -1592,10 +1628,31 @@ _cython_py2c_conv = _LazyConverterDict({
                 '        _ = {var}[i].encode()\n'
                 '        {proxy_name}[i] = deref(<char *> _)\n'),
                '{proxy_name}'),
+    TypeMatcher(('vector', MatchAny, '&')): ((
+                'cdef int i\n'
+                'cdef int {var}_size\n'
+                'cdef {npctypes[0]} * {var}_data\n'
+                'WAKAKAKSKSKS\n'
+                '{var}_size = len({var})\n'
+                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
+                '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+                '    for i in range({var}_size):\n'
+                '        {proxy_name}[i] = {var}_data[i]\n'
+                'else:\n'
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+                '    for i in range({var}_size):\n'
+                '        {proxy_name}[i] = <{npctypes[0]}> {var}[i]\n'),
+               '{proxy_name}'),     # FIXME There might be imporvements here...
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
     'nucname': ('nucname.name({var})', False),
     })
+
+_cython_py2c_conv[TypeMatcher((('vector', MatchAny, '&'), 'const'))] = \
+    _cython_py2c_conv[TypeMatcher((('vector', MatchAny, 'const'), '&'))] = \
+    _cython_py2c_conv[TypeMatcher(('vector', MatchAny, '&'))]
+
 
 def _cython_py2c_conv_function_pointer(t):
     t = t[1]
