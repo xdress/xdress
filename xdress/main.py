@@ -325,6 +325,7 @@ def _adddesc2env(desc, env, name, srcname, tarname):
            'pyx_filename': desc['pyx_filename']}
     if tarname not in env:
         env[tarname] = mod
+        env[tarname]["name"] = tarname
         env[tarname]['extra'] = pysrcenv[srcname].get('extra', '')
     else:
         env[tarname].update(mod)

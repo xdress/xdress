@@ -23,6 +23,7 @@ from .typesystem import cython_ctype, cython_cimport_tuples, \
     cython_py2c, cython_import_tuples, cython_imports, isrefinement, \
     isfunctionpointer
 
+
 AUTOGEN_WARNING = \
 """################################################
 #                 WARNING!                     #
@@ -353,6 +354,10 @@ def modpxd(mod):
     """
     m = {'extra': mod.get('extra', ''),
          "pxd_filename": mod.get("pxd_filename", "")}
+    clsmods = {}
+    for name, desc in mod.items():
+        if isclassdesc(desc):
+            clsmods[name] = _undot_class_name(name, ts._cython_cytypes)
     attrs = []
     cimport_tups = set()
     for name, desc in mod.items():
@@ -363,10 +368,14 @@ def modpxd(mod):
             continue
         cimport_tups |= ci_tup
         attrs.append(attr_str)
+    cimport_tups.discard((mod["name"],))
     m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
     m['attrs_block'] = "\n".join(attrs)
     t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
     pxd = t.format(**m)
+    for name, desc in mod.items():
+        if isclassdesc(desc):
+            _redot_class_name(name, ts._cython_cytypes, clsmods[name])
     return pxd
 
 
@@ -522,6 +531,12 @@ def modpyx(mod, classes=None):
     m = {'extra': mod.get('extra', ''),
          'docstring': mod.get('docstring', "no docstring, please file a bug report!"),
          "pyx_filename": mod.get("pyx_filename", "")}
+    clsmods = {}
+    for name, desc in mod.items():
+        if isclassdesc(desc):
+            clsmods[name, 'cy'] = _undot_class_name(name, ts._cython_cytypes)
+            clsmods[name, 'py'] = _undot_class_name(name, ts._cython_pytypes)
+        print(ts._cython_cytypes[name])
     attrs = []
     import_tups = set()
     cimport_tups = set()
@@ -537,6 +552,8 @@ def modpyx(mod, classes=None):
         import_tups |= i_tup
         cimport_tups |= ci_tup
         attrs.append(attr_str)
+    import_tups.discard((mod["name"],))
+    cimport_tups.discard((mod["name"],))
     m['imports'] = "\n".join(sorted(cython_imports(import_tups)))
     m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
     if 'numpy' in m['cimports']:
@@ -544,6 +561,10 @@ def modpyx(mod, classes=None):
     m['attrs_block'] = "\n".join(attrs)
     t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
     pyx = _pyx_mod_template.format(**m)
+    for name, desc in mod.items():
+        if isclassdesc(desc):
+            _redot_class_name(name, ts._cython_cytypes, clsmods[name, 'cy'])
+            _redot_class_name(name, ts._cython_pytypes, clsmods[name, 'py'])
     return pyx
 
 
@@ -715,7 +736,7 @@ def _gen_function(name, name_mangled, args, rtn, doc=None, inst_name="self._inst
         if abody is not None:
             argbodies += indent(abody, join=False)
         argrtns[a[0]] = artn
-    rtype = cython_ctype(rtn)
+    rtype = cython_ctype(rtn).replace('const ', "").replace(' &', '')
     hasrtn = rtype not in set(['None', None, 'NULL', 'void'])
     argvals = ', '.join([argrtns[a[0]] for a in args])
     fcall = '{0}.{1}({2})'.format(inst_name, name, argvals)
@@ -1166,3 +1187,17 @@ def _mangle_function_pointer_name(name, classname):
     pyref = "_xdress_{0}_{1}_proxy".format(classname, name)
     cref = pyref + "_func"
     return pyref, cref
+
+
+def _undot_class_name(name, d):
+    value = d[name]
+    if '.' not in value:
+        return ''
+    v1, v2 = value.rsplit('.', 1)
+    d[name] = v2 
+    return v1
+
+def _redot_class_name(name, d, value):
+    if 0 == len(value):
+        return 
+    d[name] = value + '.' + d[name]

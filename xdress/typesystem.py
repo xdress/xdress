@@ -1206,6 +1206,15 @@ def cython_classname(t, cycyt=None):
         d[key] = val
     return t, cycyt.format(**d)
 
+def _cython_cytype_add_predicate(t, last):
+    """Adds a predicate to a cytype"""
+    if last == '*':
+        return '{0} {1}'.format(t, last)
+    elif isinstance(last, int) and 0 < last:
+        return '{0} [{1}]'.format(t, last)        
+    else:
+        return t
+
 @_memoize
 def cython_cytype(t):
     """Given a type t, returns the cooresponding Cython type."""
@@ -1227,8 +1236,7 @@ def cython_cytype(t):
             else:
                 return cython_cytype(t[0])
         else:
-            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-            return cython_cytype(t[0]) + ' {0}'.format(last)
+            return _cython_cytype_add_predicate(cython_cytype(t[0]), t[-1])
     elif 3 <= tlen:
         if t in _cython_cytypes:
             return _cython_cytypes[t]
@@ -1238,9 +1246,7 @@ def cython_cytype(t):
         assert template_name is not NotImplemented        
         cycyt = _cython_cytypes[t[0]]
         cycyt, t = _fill_cycyt(cycyt, t)
-        if 0 != t[-1]:
-            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-            cycyt += ' {0}'.format(last)
+        cycyt = _cython_cytype_add_predicate(cycyt, t[-1])
         return cycyt
 
 
@@ -1264,7 +1270,7 @@ _cython_pytypes = _LazyConfigDict({
     'dict': 'dict',
     'pair': '{stlcontainers}Pair{value_type}',
     'set': '{stlcontainers}Set{value_type}',
-    'vector': '{stlcontainers}Vector{value_type}',
+    'vector': 'np.ndarray',
     })
 
 @_memoize
@@ -1554,26 +1560,30 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     pyt = cython_pytype(t)
     npt = cython_nptype(t)
     npts = cython_nptype(t, depth=1)
+    npts = [npts] if isinstance(npts, basestring) else npts
+    t_nopred = strip_predicates(t)
+    ct_nopred = cython_ctype(t_nopred)
+    cyt_nopred = cython_cytype(t_nopred)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
     var = existing_name or var
     cache_name = "_{0}".format(name) if cache_name is None else cache_name
     cache_name = cache_name if cache_prefix is None else "{0}.{1}".format(cache_prefix, cache_name)
     proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
     iscached = False
+    template_kw = dict(var=var, cache_name=cache_name, ctype=ct, cytype=cyt, 
+                       pytype=pyt, proxy_name=proxy_name, nptype=npt, 
+                       nptypes=npts, ctype_nopred=ct_nopred, 
+                       cytype_nopred=cyt_nopred,)
     if 1 == len(c2pyt) or ind == 0:
         decl = body = None
-        rtn = c2pyt[0].format(var=var, ctype=ct, cytype=cyt, pytype=pyt, nptype=npt, 
-                              nptypes=npts)
+        rtn = c2pyt[0].format(**template_kw)
     elif ind == 1:
         decl = "cdef {0} {1}".format(cyt, proxy_name)
-        body = c2pyt[1].format(var=var, ctype=ct, cytype=cyt, pytype=pyt, nptype=npt, 
-                               proxy_name=proxy_name, nptypes=npts)
+        body = c2pyt[1].format(**template_kw)
         rtn = proxy_name
     elif ind == 2:
         decl = "cdef {0} {1}".format(cyt, proxy_name)
-        body = c2pyt[2].format(var=var, cache_name=cache_name, ctype=ct, cytype=cyt, 
-                               pytype=pyt, proxy_name=proxy_name, nptype=npt, 
-                               nptypes=npts)
+        body = c2pyt[2].format(**template_kw)
         rtn = cache_name
         iscached = True
     if body is not None and 'np.npy_intp' in body:
