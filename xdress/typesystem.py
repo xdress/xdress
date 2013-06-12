@@ -2028,6 +2028,33 @@ def swap_stlcontainers(s):
     clearmemo()
     STLCONTAINERS = old
 
+def _undot_class_name(name, d):
+    value = d[name]
+    if '.' not in value:
+        return ''
+    v1, v2 = value.rsplit('.', 1)
+    d[name] = v2
+    return v1
+
+def _redot_class_name(name, d, value):
+    if 0 == len(value):
+        return
+    d[name] = value + '.' + d[name]
+
+@contextmanager
+def local_classes(classnames):
+    """A context manager for making sure the given classes are local."""
+    saved = {}
+    for name in classnames:
+        saved[name, 'cy'] = _undot_class_name(name, _cython_cytypes)
+        saved[name, 'py'] = _undot_class_name(name, _cython_pytypes)
+    clearmemo()
+    yield
+    for name in classnames:
+        _redot_class_name(name, _cython_cytypes, saved[name, 'cy'])
+        _redot_class_name(name, _cython_pytypes, saved[name, 'py'])
+    clearmemo()
+
 _indent4 = lambda x: '' if x is None else "\n".join(["    " + l for l in "\n".join(
                      [xx for xx in x if xx is not None]).splitlines()])
 
