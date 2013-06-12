@@ -1652,15 +1652,14 @@ _cython_py2c_conv = _LazyConverterDict({
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
                 '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
-#                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
-                '    {proxy_name} = cpp_vector[{npctypes[0]}](<size_t> {var}_size)\n' 
+                '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n' 
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = {var}_data[i]\n'
                 'else:\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+                '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n' 
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = <{npctypes[0]}> {var}[i]\n'),
-               '{proxy_name}'),     # FIXME There might be imporvements here...
+                '{proxy_name}'),     # FIXME There might be imporvements here...
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
     'nucname': ('nucname.name({var})', False),
@@ -1753,11 +1752,15 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
     npct = cython_ctype(npt)
     npts = cython_nptype(t, depth=1)
     npcts = [npct] if isinstance(npts, basestring) else _maprecurse(cython_ctype, npts)
+    t_nopred = strip_predicates(t)
+    ct_nopred = cython_ctype(t_nopred)
+    cyt_nopred = cython_cytype(t_nopred)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
     proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
     template_kw = dict(var=var, proxy_name=proxy_name, pytype=pyt, cytype=cyt, 
                        ctype=ct, last=last, nptype=npt, npctype=npct, 
-                       nptypes=npts, npctypes=npcts,)
+                       nptypes=npts, npctypes=npcts, ctype_nopred=ct_nopred,
+                       cytype_nopred=cyt_nopred)
     nested = False
     if isdependent(tkey):
         tsig = [ts for ts in refined_types if ts[0] == tkey][0]
@@ -1775,7 +1778,14 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
             template_kw['var'] = vrtn
     body_filled = body_template.format(**template_kw)
     if rtn_template:
-        deft = ct if '{ctype}'in body_template else cyt
+        if '{ctype}'in body_template:
+            deft = ct 
+        elif '{ctype_nopred}'in body_template:
+            deft = ct_nopred
+        elif '{cytype_nopred}'in body_template:
+            deft = cyt_nopred
+        else:
+            deft = cyt
         decl = "cdef {0} {1}".format(deft, proxy_name)
         body = body_filled
         rtn = rtn_template.format(**template_kw)

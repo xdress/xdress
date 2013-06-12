@@ -377,7 +377,7 @@ def genbindings(rc):
                        '    {proxy_name}._inst = &{var}\n'
                        '    {cache_name} = {proxy_name}\n')
                      )
-        class_py2c = ('{proxy_name} = <{cytype}> {var}', '(<{ctype} *> {proxy_name}._inst)[0]')
+        class_py2c = ('{proxy_name} = <{cytype_nopred}> {var}', '(<{ctype_nopred} *> {proxy_name}._inst)[0]')
         class_cimport = (rc.package, cpppxd_base) 
         ts.register_class(classname,                              # FCComp
             cython_c_type=cpppxd_base + '.' + classname,          # cpp_fccomp.FCComp
