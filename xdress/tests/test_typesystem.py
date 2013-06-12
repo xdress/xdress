@@ -420,3 +420,22 @@ def check_matches(pattern, t, exp):
 def test_matches():
     for pattern, t, exp in type_matcher_cases:
         yield check_matches, pattern, t, exp
+
+def check_strip_predicates(t, exp):
+    obs = ts.strip_predicates(t)
+    assert_equal(exp, obs)
+
+def test_strip_predicates():
+    cases = [
+        [('vector', 'f8'), ('vector', 'float64', 0)],
+        [('vector', 'f8', 'const'), ('vector', 'float64', 0)],
+        [('vector', 'f8', '&'), ('vector', 'float64', 0)],
+        [(('vector', 'f8', '&'), 'const'), 
+         ('vector', 'float64', 0)],
+        [(('vector', 'f8', '&'), 0), 
+         (('vector', 'float64', 0), 0)],
+        [('vector', ('vector', 'f8', '&'), 'const'), 
+         ('vector', ('vector', 'float64', '&'), 0)],
+        ]
+    for t, exp in cases:
+        yield check_strip_predicates, t, exp

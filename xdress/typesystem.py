@@ -448,6 +448,23 @@ def canon(t):
     else:
         _raise_type_error(t)
 
+@_memoize
+def strip_predicates(t):
+    """Removes all outter predicates from a type."""
+    t = canon(t)
+    if isinstance(t, basestring):
+        return t
+    elif isinstance(t, Sequence):
+        tlen = len(t)
+        if tlen == 2:
+            sp0 = strip_predicates(t[0])
+            return (sp0, 0) if t[1] == 0 else sp0
+        else:
+            return t[:-1] + (0,)
+    else:
+        _raise_type_error(t)
+    
+
 
 class MatchAny(object):
     """A singleton helper class for matching any portion of a type."""
@@ -1632,11 +1649,11 @@ _cython_py2c_conv = _LazyConverterDict({
                 'cdef int i\n'
                 'cdef int {var}_size\n'
                 'cdef {npctypes[0]} * {var}_data\n'
-                'WAKAKAKSKSKS\n'
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
                 '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+#                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+                '    {proxy_name} = cpp_vector[{npctypes[0]}](<size_t> {var}_size)\n' 
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = {var}_data[i]\n'
                 'else:\n'
