@@ -5,6 +5,9 @@ That is the job of the autodescriber.
 
 :author: Anthony Scopatz <scopatz@gmail.com>
 
+
+Automatic Finder API
+====================
 """
 from __future__ import print_function
 import os
