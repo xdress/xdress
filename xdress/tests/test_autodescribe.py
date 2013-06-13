@@ -12,6 +12,9 @@ from numpy.testing import dec
 
 import pprint
 
+if not os.path.isdir('build'):
+    os.mkdir('build')
+
 exp_toaster_desc = {
     'name': 'Toaster',
     'namespace': 'bright',
