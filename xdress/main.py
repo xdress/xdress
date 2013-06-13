@@ -368,7 +368,7 @@ def expand_apis(rc):
         found = autoall.findall(filename, includes=rc.includes, defines=rc.defines,
                     undefines=rc.undefines, parsers=rc.parsers, verbose=rc.verbose, 
                     debug=rc.debug, builddir=rc.builddir)
-        cache[srcname] = found
+        allnames[srcname] = found
     # third pass -- replace *s
     if varhasstar:
         newvars = []

@@ -8,9 +8,17 @@ That is the job of the autodescriber.
 """
 from __future__ import print_function
 import os
+import sys
 
 from . import utils
 from . import autodescribe
+
+if os.name == 'nt':
+    import ntpath
+    import posixpath
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 class GccxmlFinder(object):
     """Class used for discovering APIs using an etree representation of 
@@ -51,7 +59,7 @@ class GccxmlFinder(object):
 
     def _pprint(self, node):
         if self.verbose:
-            print("{0} {1}: {2}".format(node.tag,
+            print("Auto-Found: {0} {1} {2}".format(node.tag,
                                         node.attrib.get('id', ''),
                                         node.attrib.get('name', None)))
 
@@ -88,15 +96,17 @@ class GccxmlFinder(object):
             Names of the API elements in this file that match the kinds provided.
 
         """
-        if isinstance(kinds, basestring):
-            kinds = [kinds]
-        elements = " | ".join(['//' + k for k in kinds])
+        if not isinstance(kinds, basestring):
+            names = []
+            for k in kinds:
+                names += self.visit_kinds(node, k)
+            return names
         names = set()
-        for child in node.iterfind("." + elements):
-            self._pprint(child)
+        for child in node.iterfind(".//" + kinds):
             if child.attrib.get('file', None) not in self.onlyin:
                 continue
             names.add(child.attrib.get('name', None))
+            self._pprint(child)
         names.discard(None)
         return sorted(names)
             
