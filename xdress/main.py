@@ -156,6 +156,7 @@ from . import typesystem as ts
 from . import stlwrap
 from .cythongen import gencpppxd, genpxd, genpyx
 from . import autodescribe 
+from . import autoall
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -331,24 +332,80 @@ def _adddesc2env(desc, env, name, srcname, tarname):
         env[tarname].update(mod)
         env[tarname]['extra'] += pysrcenv[srcname].get('extra', '')
 
+def expand_apis(rc):
+    """Expands variables, functions, and classes in the rc based on 
+    copying src filenames to tar filename and the special '*' all syntax."""
+    # first pass -- gather and expand tar
+    allsrc = set()
+    varhasstar = False
+    for i, var in enumerate(rc.variables):
+        if var[0] == '*':
+            allsrc.add(var[1])
+            varhasstar = True
+        if len(var) == 2:
+            rc.variables[i] = (var[0], var[1], var[1])
+    fnchasstar = False
+    for i, fnc in enumerate(rc.functions):
+        if fnc[0] == '*':
+            allsrc.add(fnc[1])
+            fnchasstar = True
+        if len(fnc) == 2:
+            rc.functions[i] = (fnc[0], fnc[1], fnc[1])
+    clshasstar = False
+    for i, cls in enumerate(rc.classes):
+        if cls[0] == '*':
+            allsrc.add(cls[1])
+            clshasstar = True
+        if len(cls) == 2:
+            rc.classes[i] = (cls[0], cls[1], cls[1])
+    if not varhasstar and not fnchasstar and not clshasstar:
+        return 
+    # second pass -- find all
+    allnames = {}
+    for srcname in allsrc:
+        srcfname, hdrfname, lang, ext = find_source(srcname, sourcedir=rc.sourcedir)
+        filename = os.path.join(rc.sourcedir, srcfname)
+        found = autoall.findall(filename, includes=rc.includes, defines=rc.defines,
+                    undefines=rc.undefines, parsers=rc.parsers, verbose=rc.verbose, 
+                    debug=rc.debug, builddir=rc.builddir)
+        cache[srcname] = found
+    # third pass -- replace *s
+    if varhasstar:
+        newvars = []
+        for var in rc.variables:
+            if var[0] == '*':
+                newvars += [(x, var[1], var[2]) for x in allnames[var[1]][0]]
+            else:
+                newvars.append(var)
+        rc.variables = newvars
+    if fnchasstar:
+        newfncs = []
+        for fnc in rc.functions:
+            if fnc[0] == '*':
+                newfncs += [(x, fnc[1], fnc[2]) for x in allnames[fnc[1]][1]]
+            else:
+                newfncs.append(fnc)
+        rc.functions = newfncs
+    if clshasstar:
+        newclss = []
+        for cls in rc.classes:
+            if cls[0] == '*':
+                newclss += [(x, cls[1], cls[2]) for x in allnames[cls[1]][2]]
+            else:
+                newclss.append(cls)
+        rc.classes = newclss
+
+
 def genbindings(rc):
     """Generates bidnings using the command line setting specified in rc.
     """
     print("cythongen: scraping C/C++ APIs from source")
     cache = rc._cache
     rc.make_cyclus = False  # FIXME cyclus bindings don't exist yet!
-    for i, var in enumerate(rc.variables):
-        if len(var) == 2:
-            rc.variables[i] = (var[0], var[1], var[1])
-        load_pysrcmod(var[1], rc)
-    for i, fnc in enumerate(rc.functions):
-        if len(fnc) == 2:
-            rc.functions[i] = (fnc[0], fnc[1], fnc[1])
-        load_pysrcmod(fnc[1], rc)
-    for i, cls in enumerate(rc.classes):
-        if len(cls) == 2:
-            rc.classes[i] = (cls[0], cls[1], cls[1])
-        load_pysrcmod(cls[1], rc)        
+    expand_apis(rc)
+    srcnames = set([x[1] for x in rc.variables + rc.functions + rc.classes])
+    for x in srcnames:
+        load_pysrcmod(x, rc)
     # register dtypes
     for t in rc.stlcontainers:
         if t[0] == 'vector':

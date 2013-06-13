@@ -251,7 +251,7 @@ def not_implemented(obj):
     @functools.wraps(obj)
     def func(*args, **kwargs):
         msg = "The functionality in {0} has not been implemented fully or at all"
-        msg.format(obj)
+        msg = msg.format(obj)
         raise NotImplementedError(msg)
     return func
 
@@ -366,12 +366,12 @@ class GccxmlBaseDescriber(object):
         name : str
             The name, this may not have a None value.
         root : element tree node, optional
-            The root element node of the class or struct to describe.  
+            The root element node.  
         onlyin :  str, optional
             Filename the class or struct described must live in.  Prevents 
-            finding classes of the same name coming from other libraries.
+            finding elements of the same name coming from other libraries.
         verbose : bool, optional
-            Flag to display extra information while visiting the class.
+            Flag to display extra information while visiting.
 
         """
         self.desc = {'name': name}

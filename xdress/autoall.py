@@ -7,12 +7,100 @@ That is the job of the autodescriber.
 
 """
 from __future__ import print_function
+import os
 
 from . import utils
 from . import autodescribe
 
+class GccxmlFinder(object):
+    """Class used for discovering APIs using an etree representation of 
+    the GCC-XML AST."""
 
-@autodescribe.not_implemented
+    def __init__(self, root=None, onlyin=None, verbose=False):
+        """Parameters
+        -------------
+        root : element tree node, optional
+            The root element node of the AST.  
+        onlyin :  str, optional
+            Filename the class or struct described must live in.  Prevents 
+            finding APIs coming from other libraries.
+        verbose : bool, optional
+            Flag to display extra information while visiting the file.
+
+        """
+        self.verbose = verbose
+        self._root = root
+        origonlyin = onlyin
+        onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
+        onlyin = set() if onlyin is None else set(onlyin)
+        onlyin = [root.find("File[@name='{0}']".format(oi)) for oi in onlyin]
+        self.onlyin = set([oi.attrib['id'] for oi in onlyin if oi is not None])
+        if 0 == len(self.onlyin):
+            msg = ("None of these files are present: {0!r}; "
+                   "autodescribing will probably fail.")
+            msg = msg.format(origonlyin)
+            warn(msg, RuntimeWarning)
+        self.variables = []
+        self.functions = []
+        self.classes = []
+
+    def __str__(self):
+        return ("vars = " + pformat(self.variables) + "\n" + 
+                "funcs = " + pformat(self.functions) + "\n" +
+                "classes = " + pformat(self.classes) + "\n")
+
+    def _pprint(self, node):
+        if self.verbose:
+            print("{0} {1}: {2}".format(node.tag,
+                                        node.attrib.get('id', ''),
+                                        node.attrib.get('name', None)))
+
+    def visit(self, node=None):
+        """Visits the node and all sub-nodes, filling the API names
+        as it goes.
+
+        Parameters
+        ----------
+        node : element tree node, optional
+            The element tree node to start from.  If this is None, then the 
+            top-level node is found and visited.
+
+        """
+        node = node or self._root
+        self.variables += self.visit_kinds(node, "Enumeration")
+        self.functions += self.visit_kinds(node, "Function")
+        self.classes += self.visit_kinds(node, ["Class", "Struct"])
+
+    def visit_kinds(self, node, kinds):
+        """Visits the node and all sub-nodes, finding instances of the kinds 
+        and recording the names as it goes.
+
+        Parameters
+        ----------
+        node : element tree node
+            The element tree node to start from.  
+        kinds : str or sequence of str
+            The API elements to find.
+
+        Returns
+        -------
+        names : list of str
+            Names of the API elements in this file that match the kinds provided.
+
+        """
+        if isinstance(kinds, basestring):
+            kinds = [kinds]
+        elements = " | ".join(['//' + k for k in kinds])
+        names = set()
+        for child in node.iterfind("." + elements):
+            self._pprint(child)
+            if child.attrib.get('file', None) not in self.onlyin:
+                continue
+            names.add(child.attrib.get('name', None))
+        names.discard(None)
+        return sorted(names)
+            
+
 def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
             parsers='gccxml', verbose=False, debug=False,  builddir='build'):
     """Automatically finds all API elements in a file via GCC-XML.
@@ -20,12 +108,12 @@ def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
     Parameters
     ----------
     filename : str
-        The path to the file.
-    includes: list of str, optional
+        The path to the file
+    includes : list of str, optional
         The list of extra include directories to search for header files.
-    defines: list of str, optional
+    defines : list of str, optional
         The list of extra macro definitions to apply.
-    undefines: list of str, optional
+    undefines : list of str, optional
         The list of extra macro undefinitions to apply.
     parsers : str, list, or dict, optional
         The parser / AST to use to use for the file.  Currently 'clang', 'gccxml', 
@@ -59,7 +147,7 @@ def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
     basename = filename.rsplit('.', 1)[0]
     onlyin = set([filename] + 
                  [basename + '.' + h for h in utils._hdr_exts if h.startswith('h')])
-    finder = GccxmlFinder(name, root, onlyin=onlyin, verbose=verbose)
+    finder = GccxmlFinder(root, onlyin=onlyin, verbose=verbose)
     finder.visit()
     return finder.variables, finder.functions, finder.classes
 

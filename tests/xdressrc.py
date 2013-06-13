@@ -67,5 +67,6 @@ classes = [
     ('FCComp', 'fccomp'), 
     ('EnrichmentParameters', 'enrichment_parameters'), 
     ('Enrichment', 'bright_enrichment', 'enrichment'), 
-    ('Reprocess', 'reprocess'), 
+    #('Reprocess', 'reprocess'), 
+    ('*', 'reprocess'), 
     ]
