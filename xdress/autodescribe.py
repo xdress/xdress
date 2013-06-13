@@ -154,6 +154,7 @@ import linecache
 import subprocess
 import itertools
 import tempfile
+import functools
 import pickle
 import collections
 from pprint import pprint, pformat
@@ -209,11 +210,97 @@ if sys.version_info[0] >= 3:
 RE_INT = re.compile('^\d+$')
 RE_FLOAT = re.compile('^[+-]?\.?\d+\.?\d*?(e[+-]?\d+)?$')
 
+def _makekey(obj):
+    if isinstance(obj, basestring):
+        return obj
+    elif isinstance(obj, collections.Sequence):
+        return tuple([_makekey(o) for o in obj])
+    elif isinstance(obj, collections.Set):
+        return frozenset([_makekey(o) for o in obj])
+    elif isinstance(obj, collections.Mapping):
+        return tuple([(_makekey(k), _makekey(v)) for k, v in sorted(obj.items())])
+    else:
+        return obj
+
+def _memoize_parser(f):
+    # based off code from http://wiki.python.org/moin/PythonDecoratorLibrary
+    cache = f.cache = {}
+    @functools.wraps(f)
+    def memoizer(*args, **kwargs):
+        key = _makekey(args) + _makekey(kwargs)
+        if key in cache:
+            value = cache[key]
+        else:
+            value = f(*args, **kwargs) 
+            try:
+                cache[key] = value
+            except TypeError:
+                pass
+        return value
+    return memoizer
+
+def clearmemo():
+    """Clears all function memoizations for autodescribers."""
+    for x in globals().values():
+        if callable(x) and hasattr(x, 'cache'):
+            x.cache.clear()
+
+def not_implemented(obj):
+    @functools.wraps(obj)
+    def func(*args, **kwargs):
+        msg = "The functionality in {0} has not been implemented fully or at all"
+        msg.format(obj)
+        raise NotImplementedError(msg)
+    return func
 
 #
 # GCC-XML Describers
 #
 
+@_memoize_parser
+def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(), 
+                  verbose=False, debug=False, builddir='build'):
+    """Use GCC-XML to parse a file. This function is automatically memoized.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the file.
+    includes: list of str, optional
+        The list of extra include directories to search for header files.
+    defines: list of str, optional
+        The list of extra macro definitions to apply.
+    undefines: list of str, optional
+        The list of extra macro undefinitions to apply.
+    verbose : bool, optional
+        Flag to diplay extra information while describing the class.
+    debug : bool, optional
+        Flag to enable/disable debug mode.
+    builddir : str, optional
+        Location of -- often temporary -- build files.
+
+    Returns
+    -------
+    root : XML etree
+        An in memory tree representing the parsed file.
+    """
+    xmlname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.xml'
+    xmlname = os.path.join(builddir, xmlname)
+    cmd = ['gccxml', filename, '-fxml=' + xmlname]
+    cmd += ['-I' + i for i in includes]
+    cmd += ['-D' + d for d in defines]
+    cmd += ['-U' + u for u in undefines]
+    if verbose:
+        print(" ".join(cmd))
+    if os.path.isfile(xmlname):
+        f = io.open(xmlname, 'r+b')
+    else:
+        f = io.open(xmlname, 'w+b')
+        subprocess.call(cmd)
+    f.seek(0)
+    root = etree.parse(f)
+    f.close()
+    return root
 
 def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',), 
                     undefines=(), verbose=False, debug=False, builddir='build'):
@@ -247,29 +334,17 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         A dictionary describing the class which may be used to generate
         API bindings.
     """
-    if debug:
-        xmlname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.xml'
-        f = io.open(os.path.join(builddir, xmlname), 'w+b')
-    else:
-        f = tempfile.NamedTemporaryFile()
     if os.name == 'nt':
         # GCC-XML and/or Cygwin wants posix paths on Windows.
         filename = posixpath.join(*ntpath.split(filename)) 
-    cmd = ['gccxml', filename, '-fxml=' + f.name]
-    cmd += map(lambda i: '-I' + i,  includes)
-    cmd += map(lambda d: '-D' + d,  defines)
-    cmd += map(lambda u: '-U' + u,  undefines)
-    if verbose:
-        print(" ".join(cmd))
-    subprocess.call(cmd)
-    f.seek(0)
-    root = etree.parse(f)
+    root = gccxml_parse(filename, includes=includes, defines=defines, 
+                         undefines=undefines, verbose=verbose, debug=debug, 
+                         builddir=builddir)
     onlyin = set([filename, filename.replace('.cpp', '.h')])
     describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber, 
                   'var': GccxmlVarDescriber}
     describer = describers[kind](name, root, onlyin=onlyin, verbose=verbose)
     describer.visit()
-    f.close()
     return describer.desc
 
 
@@ -724,9 +799,10 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 # Clang Describers
 #
 
+@not_implemented
 def clang_describe(filename, name, includes=(), defines=('XDRESS',),
                    undefines=(), verbose=False, debug=False, builddir='build'):
-    """Use clang to describe the class."""
+    "Use clang to describe the class."
     index = cindex.Index.create()
     tu = index.parse(filename, args=['-cc1', '-I' + pyne.includes, '-D', 'XDRESS'])
     #onlyin = set([filename, filename.replace('.cpp', '.h')])
@@ -737,6 +813,7 @@ def clang_describe(filename, name, includes=(), defines=('XDRESS',),
     return describer.desc
 
 
+@not_implemented
 def clang_is_loc_in_range(location, source_range):
     """Returns whether a given Clang location is part of a source file range."""
     if source_range is None or location is None:
@@ -752,6 +829,7 @@ def clang_is_loc_in_range(location, source_range):
     return start.column <= location.column <= stop.column
 
 
+@not_implemented
 def clang_range_str(source_range):
     """Get the text present on a source range."""
     start = source_range.start
@@ -769,6 +847,7 @@ def clang_range_str(source_range):
     
 
 
+@not_implemented
 class ClangClassDescriber(object):
 
     _funckinds = set(['function_decl', 'cxx_method', 'constructor', 'destructor'])
@@ -893,6 +972,7 @@ class ClangClassDescriber(object):
         self._pprint(cur, "class template partial specialization")
 
 
+@not_implemented
 def clang_find_class(node, name, namespace=None):
     """Find the node for a given class underneath the current node.
     """
@@ -913,15 +993,18 @@ def clang_find_class(node, name, namespace=None):
     return classnode
 
 
+@not_implemented
 def clang_find_declarations(node):
     """Finds declarations one level below the Clang node."""
     return [n for n in node.get_children() if n.kind.is_declaration()]
 
+@not_implemented
 def clang_find_attributes(node):
     """Finds attributes one level below the Clang node."""
     return [n for n in node.get_children() if n.kind.is_attribute()]
 
 
+@not_implemented
 class ClangTypeVisitor(object):
     """For a Clang type located at a root node, compute the cooresponding 
     typesystem type.
@@ -1088,8 +1171,7 @@ class ClangTypeVisitor(object):
 #    def visit_var_decl(self, cur):
 #        self._pprint(cur, "variable")
 
-
-
+@not_implemented
 def clang_canonize(t):
     kind = t.kind
     if kind in clang_base_typekinds:
@@ -1431,6 +1513,55 @@ class PycparserClassDescriber(PycparserBaseDescriber):
         else:
             super(PycparserClassDescriber, self).visit(node)
 
+@_memoize_parser
+def pycparser_parse(filename, includes=(), defines=('XDRESS',), undefines=(), 
+                    verbose=False, debug=False, builddir='build'):
+    """Use pycparser to parse a file.  This functions is automatically memoized.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the file.
+    includes: list of str, optional
+        The list of extra include directories to search for header files.
+    defines: list of str, optional
+        The list of extra macro definitions to apply.
+    undefines: list of str, optional
+        The list of extra macro undefinitions to apply.
+    verbose : bool, optional
+        Flag to diplay extra information while describing the class.
+    debug : bool, optional
+        Flag to enable/disable debug mode.
+    builddir : str, optional
+        Location of -- often temporary -- build files.
+
+    Returns
+    -------
+    root : AST
+        A pycparser abstract syntax tree.
+
+    """
+    pklname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.pkl'
+    pklname = os.path.join(builddir, pklname)
+    if os.path.isfile(pklname):
+        with io.open(pklname, 'r+b') as f:
+            root = pickle.load(f)
+        return root
+    kwargs = {'cpp_args': [r'-D__attribute__(x)=',  # Workaround for GNU libc
+                r'-D__asm__(x)=', r'-D__const=', 
+                r'-D__builtin_va_list=int', # just fake this
+                r'-D__restrict=', r'-D__extension__=', 
+                r'-D__inline__=', r'-D__inline=',
+                ]}
+    if 0 < len(includes):
+        kwargs['cpp_args'] += ['-I' + i for i in includes]
+    root = pycparser.parse_file(filename, use_cpp=True, **kwargs)
+    pklname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.pkl'
+    pklname = os.path.join(builddir, pklname)
+    with io.open(pklname, 'w+b') as f:
+        pickle.dump(root, f)
+    return root
+
 _pycparser_describers = {
     'var': PycparserVarDescriber,
     'func': PycparserFuncDescriber,
@@ -1469,25 +1600,13 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         A dictionary describing the class which may be used to generate
         API bindings.
     """
-    kwargs = {'cpp_args': [r'-D__attribute__(x)=',  # Workaround for GNU libc
-                r'-D__asm__(x)=', r'-D__const=', 
-                r'-D__builtin_va_list=int', # just fake this
-                r'-D__restrict=', r'-D__extension__=', 
-                r'-D__inline__=', r'-D__inline=',
-                ]}
-    if 0 < len(includes):
-        kwargs['cpp_args'] += ['-I' + i for i in includes]
-    root = pycparser.parse_file(filename, use_cpp=True, **kwargs)
-    if debug:
-        pklname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.pkl'
-        with io.open(os.path.join(builddir, pklname), 'w+b') as f:
-            pickle.dump(root, f)
+    root = pycparser_parse(filename, includes=includes, defines=defines, 
+                           undefines=undefines, verbose=verbose, debug=debug, 
+                           builddir=builddir)
     onlyin = set([filename, filename.replace('.c', '.h')])
     describer = _pycparser_describers[kind](name, root, onlyin=onlyin, verbose=verbose)
     describer.visit()
     return describer.desc
-
-
 
 
 #
