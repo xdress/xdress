@@ -12,6 +12,7 @@ dynamic type system.
     typesystem
     stlwrap
     autodescribe
+    autoall
     cythongen
     main
     utils

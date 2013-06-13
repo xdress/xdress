@@ -147,7 +147,6 @@ Automatic Descriptions API
 from __future__ import print_function
 import os
 import io
-import re
 import sys
 from copy import deepcopy
 import linecache
@@ -194,6 +193,7 @@ except ImportError:
     pycparser = None
     PycparserNodeVisitor = object  # fake this for class definitions
 
+from . import utils
 from .utils import guess_language
 
 PARSERS_AVAILABLE = {
@@ -206,9 +206,6 @@ del f
 
 if sys.version_info[0] >= 3: 
     basestring = str
-
-RE_INT = re.compile('^\d+$')
-RE_FLOAT = re.compile('^[+-]?\.?\d+\.?\d*?(e[+-]?\d+)?$')
 
 def _makekey(obj):
     if isinstance(obj, basestring):
@@ -246,6 +243,11 @@ def clearmemo():
             x.cache.clear()
 
 def not_implemented(obj):
+    if not isinstance(obj, type):
+        if obj.__doc__ is None:
+            obj.__doc__ = ''
+        obj.__doc__ += ("\n\n.. warning:: This has not yet been implemented "
+                        "fully or at all.\n\n")
     @functools.wraps(obj)
     def func(*args, **kwargs):
         msg = "The functionality in {0} has not been implemented fully or at all"
@@ -340,7 +342,9 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     root = gccxml_parse(filename, includes=includes, defines=defines, 
                          undefines=undefines, verbose=verbose, debug=debug, 
                          builddir=builddir)
-    onlyin = set([filename, filename.replace('.cpp', '.h')])
+    basename = filename.rsplit('.', 1)[0]
+    onlyin = set([filename] +
+                 [basename + '.' + h for h in utils._hdr_exts if h.startswith('h')])
     describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber, 
                   'var': GccxmlVarDescriber}
     describer = describers[kind](name, root, onlyin=onlyin, verbose=verbose)
@@ -1553,8 +1557,9 @@ def pycparser_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
                 r'-D__restrict=', r'-D__extension__=', 
                 r'-D__inline__=', r'-D__inline=',
                 ]}
-    if 0 < len(includes):
-        kwargs['cpp_args'] += ['-I' + i for i in includes]
+    kwargs['cpp_args'] += ['-I' + i for i in includes]
+    kwargs['cpp_args'] += ['-D' + d for d in defines]
+    kwargs['cpp_args'] += ['-U' + d for u in undefines]
     root = pycparser.parse_file(filename, use_cpp=True, **kwargs)
     pklname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.pkl'
     pklname = os.path.join(builddir, pklname)
@@ -1613,6 +1618,48 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
 #  General utilities
 #
 
+def pick_parser(filename, parsers):
+    """Determines the parse to use for a file.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the file.
+    parsers : str, list, or dict, optional
+        The parser / AST to use to use for the file.  Currently 'clang', 'gccxml', 
+        and 'pycparser' are supported, though others may be implemented in the 
+        future.  If this is a string, then this parser is used.  If this is a list, 
+        this specifies the parser order to use based on availability.  If this is
+        a dictionary, it specifies the order to use parser based on language, i.e.
+        ``{'c' ['pycparser', 'gccxml'], 'c++': ['gccxml', 'pycparser']}``.
+
+    Returns
+    -------
+    parser : str
+        The name of the parser to use.
+
+    """
+    if isinstance(parsers, basestring):
+        parser = parsers
+    elif isinstance(parsers, collections.Sequence):
+        ps = [p for p in parsers if PARSERS_AVAILABLE[p.lower()]]
+        if len(ps) == 0:
+            msg = "Parsers not available: {0}".format(", ".join(parsers))
+            raise RuntimeError(msg)
+        parser = ps[0].lower()
+    elif isinstance(parsers, collections.Mapping):
+        lang = guess_language(filename)
+        ps = parsers[lang]
+        ps = [p for p in ps if PARSERS_AVAILABLE[p.lower()]]
+        if len(ps) == 0:
+            msg = "{0} parsers not available: {1}"
+            msg = msg.format(lang.capitalize(), ", ".join(parsers))
+            raise RuntimeError(msg)
+        parser = ps[0].lower()
+    else:
+        raise ValueError("type of parsers not intelligible")
+    return parser
+
 _describers = {
     'clang': clang_describe, 
     'gccxml': gccxml_describe,
@@ -1622,7 +1669,7 @@ _describers = {
 def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',),
              undefines=(), parsers='gccxml', verbose=False, debug=False, 
              builddir='build'):
-    """Automatically describes a class in a file.  This is the main entry point.
+    """Automatically describes an API element in a file.  This is the main entry point.
 
     Parameters
     ----------
@@ -1661,23 +1708,7 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     """
     if name is None:
         name = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
-    if isinstance(parsers, basestring):
-        parser = parsers
-    elif isinstance(parsers, collections.Sequence):
-        ps = [p for p in parsers if PARSERS_AVAILABLE[p.lower()]]
-        if len(ps) == 0:
-            msg = "Parsers not available: {0}".format(", ".join(parsers))
-            raise RuntimeError(msg)
-        parser = ps[0].lower()
-    elif isinstance(parsers, collections.Mapping):
-        lang = guess_language(filename)
-        ps = parsers[lang]
-        ps = [p for p in ps if PARSERS_AVAILABLE[p.lower()]]
-        if len(ps) == 0:
-            msg = "{0} parsers not available: {1}"
-            msg = msg.format(lang.capitalize(), ", ".join(parsers))
-            raise RuntimeError(msg)
-        parser = ps[0].lower()
+    parser = pick_parser(filename, parsers)
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, defines=defines,
                      undefines=undefines, verbose=verbose, debug=debug, 
