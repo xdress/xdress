@@ -683,7 +683,7 @@ pyxd_{fncname}_is_ready = PyType_Ready(<object> PyXD_{clsname})
 (<PyTypeObject *> PyXD_{clsname}).tp_basicsize = sizeof(PyXD{clsname}_Type)
 (<PyTypeObject *> PyXD_{clsname}).tp_itemsize = 0
 (<PyTypeObject *> PyXD_{clsname}).tp_doc = "Python scalar type for {ctype}"
-(<PyTypeObject *> PyXD_{clsname}).tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES
+(<PyTypeObject *> PyXD_{clsname}).tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES | Py_TPFLAGS_HEAPTYPE
 (<PyTypeObject *> PyXD_{clsname}).tp_alloc = pyxd_{fncname}_type_alloc
 (<PyTypeObject *> PyXD_{clsname}).tp_dealloc = pyxd_{fncname}_type_dealloc
 (<PyTypeObject *> PyXD_{clsname}).tp_new = pyxd_{fncname}_type_new
@@ -904,6 +904,7 @@ cdef extern from "Python.h":
     cdef long Py_TPFLAGS_DEFAULT 
     cdef long Py_TPFLAGS_BASETYPE 
     cdef long Py_TPFLAGS_CHECKTYPES
+    cdef long Py_TPFLAGS_HEAPTYPE
 
     ctypedef struct PyMemberDef:
         char * name
