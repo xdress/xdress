@@ -59,10 +59,12 @@ functions = [
     ('func', 'reprocess'),
     #('afunc', 'device', 'pydevice'),
     ('fillUraniumEnrichmentDefaults', 'enrichment_parameters'),
+    ('*', 'device', 'pydevice'),
     ]
 
 classes = [
     ('TwoNums', 'device', 'pydevice'),
+    ('DeviceParamTag', 'device', 'pydevice'),
     ('DeviceDescriptorTag', 'device', 'pydevice'),
     ('FCComp', 'fccomp'), 
     ('EnrichmentParameters', 'enrichment_parameters'), 

@@ -12,6 +12,7 @@ Automatic Finder API
 from __future__ import print_function
 import os
 import sys
+from pprint import pprint, pformat
 
 from . import utils
 from . import autodescribe
@@ -33,8 +34,7 @@ class GccxmlFinder(object):
         root : element tree node, optional
             The root element node of the AST.  
         onlyin :  str, optional
-            Filename the class or struct described must live in.  Prevents 
-            finding APIs coming from other libraries.
+            Filename to search, prevents finding APIs coming from other libraries.
         verbose : bool, optional
             Flag to display extra information while visiting the file.
 
@@ -115,7 +115,7 @@ class GccxmlFinder(object):
             
 
 def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
-            parsers='gccxml', verbose=False, debug=False,  builddir='build'):
+                   verbose=False, debug=False,  builddir='build'):
     """Automatically finds all API elements in a file via GCC-XML.
 
     Parameters
@@ -168,9 +168,108 @@ def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
 def clang_findall(*args, **kwargs):
     pass
 
-@autodescribe.not_implemented
-def pycparser_findall(*args, **kwargs):
-    pass
+class PycparserFinder(autodescribe.PycparserNodeVisitor):
+    """Class used for discovering APIs using the pycparser AST."""
+
+    def __init__(self, root=None, onlyin=None, verbose=False):
+        """Parameters
+        -------------
+        root : element tree node, optional
+            The root element node of the AST.  
+        onlyin :  str, optional
+            Filename to search, prevents finding APIs coming from other libraries.
+        verbose : bool, optional
+            Flag to display extra information while visiting the file.
+
+        """
+        super(PycparserFinder, self).__init__()
+        self.verbose = verbose
+        self._root = root
+        self.onlyin = onlyin
+        self.variables = []
+        self.functions = []
+        self.classes = []
+
+    def __str__(self):
+        return ("vars = " + pformat(self.variables) + "\n" + 
+                "funcs = " + pformat(self.functions) + "\n" +
+                "classes = " + pformat(self.classes) + "\n")
+
+    def _pprint(self, node):
+        if self.verbose:
+            node.show()
+
+    def visit(self, node=None):
+        """Visits the node and all sub-nodes, filling the API names
+        as it goes.
+
+        Parameters
+        ----------
+        node : element tree node, optional
+            The element tree node to start from.  If this is None, then the 
+            top-level node is found and visited.
+
+        """
+        node = node or self._root
+        super(PycparserFinder, self).visit(node)
+
+    def visit_Enumerator(self, node):
+        if node.coord.file not in self.onlyin:
+            return
+        self._pprint(node)
+        self.variables.append(node.name)
+
+    def visit_FuncDecl(self, node):
+        if node.coord.file not in self.onlyin:
+            return
+        self._pprint(node)
+        self.functions.append(node.type.declname)
+
+    def visit_Struct(self, node):
+        if node.coord.file not in self.onlyin:
+            return
+        self._pprint(node)
+        self.classes.append(node.name)
+
+
+def pycparser_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
+                      verbose=False, debug=False,  builddir='build'):
+    """Automatically finds all API elements in a file via GCC-XML.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the file
+    includes : list of str, optional
+        The list of extra include directories to search for header files.
+    defines : list of str, optional
+        The list of extra macro definitions to apply.
+    undefines : list of str, optional
+        The list of extra macro undefinitions to apply.
+    verbose : bool, optional
+        Flag to diplay extra information while describing the class.
+    debug : bool, optional
+        Flag to enable/disable debug mode.
+    builddir : str, optional
+        Location of -- often temporary -- build files.
+
+    Returns
+    -------
+    variables : list of strings
+        A list of variable names to wrap from the file.
+    functions : list of strings
+        A list of function names to wrap from the file.
+    classes : list of strings
+        A list of class names to wrap from the file.
+
+    """
+    root = autodescribe.pycparser_parse(filename, includes=includes, defines=defines,
+                undefines=undefines, verbose=verbose, debug=debug, builddir=builddir)
+    basename = filename.rsplit('.', 1)[0]
+    onlyin = set([filename, basename + '.h'])
+    finder = PycparserFinder(root, onlyin=onlyin, verbose=verbose)
+    finder.visit()
+    return finder.variables, finder.functions, finder.classes
 
 
 #
@@ -182,7 +281,6 @@ _finders = {
     'gccxml': gccxml_findall,
     'pycparser': pycparser_findall,
     }
-
 
 def findall(filename, includes=(), defines=('XDRESS',), undefines=(), 
             parsers='gccxml', verbose=False, debug=False,  builddir='build'):
