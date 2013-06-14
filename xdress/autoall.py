@@ -108,9 +108,11 @@ class GccxmlFinder(object):
         for child in node.iterfind(".//" + kinds):
             if child.attrib.get('file', None) not in self.onlyin:
                 continue
-            names.add(child.attrib.get('name', None))
+            name = child.attrib.get('name', '_')
+            if name.startswith('_'):
+                continue
+            names.add(name)
             self._pprint(child)
-        names.discard(None)
         return sorted(names)
             
 
@@ -216,20 +218,29 @@ class PycparserFinder(autodescribe.PycparserNodeVisitor):
     def visit_Enumerator(self, node):
         if node.coord.file not in self.onlyin:
             return
+        name = node.name
+        if name.startswith('_'):
+            return
         self._pprint(node)
-        self.variables.append(node.name)
+        self.variables.append(name)
 
     def visit_FuncDecl(self, node):
         if node.coord.file not in self.onlyin:
             return
+        name = node.type.declname
+        if name.startswith('_'):
+            return
         self._pprint(node)
-        self.functions.append(node.type.declname)
+        self.functions.append(name)
 
     def visit_Struct(self, node):
         if node.coord.file not in self.onlyin:
             return
+        name = node.name
+        if name.startswith('_'):
+            return
         self._pprint(node)
-        self.classes.append(node.name)
+        self.classes.append(name)
 
 
 def pycparser_findall(filename, includes=(), defines=('XDRESS',), undefines=(),

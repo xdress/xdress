@@ -148,6 +148,8 @@ def varcpppxd(desc, exception_type='+'):
         ct = cython_ctype(t)
         vlines.append("{0} {1}".format(ct, d['name']))
     d['variables_block'] = indent(vlines, 4)
+    if 0 == len(d['variables_block'].strip()):
+        return set(), ''
 
     d['extra'] = desc.get('extra', {}).get('cpppxd', '')
     cpppxd = _cpppxd_var_template.format(**d)
@@ -209,6 +211,8 @@ def funccpppxd(desc, exception_type='+'):
         if line not in flines:
             flines.append(line)
     d['functions_block'] = indent(flines, 4)
+    if 0 == len(d['functions_block'].strip()):
+        return set(), ''
 
     d['extra'] = desc.get('extra', {}).get('cpppxd', '')
     cpppxd = _cpppxd_func_template.format(**d)
@@ -314,7 +318,7 @@ def classcpppxd(desc, exception_type='+'):
     return cimport_tups, cpppxd
 
 
-def genpxd(env):
+def genpxd(env, classes=()):
     """Generates all pxd Cython header files for an environment of modules.
 
     Parameters
@@ -322,6 +326,9 @@ def genpxd(env):
     env : dict
         Environment dictonary mapping target module names to module description
         dictionaries.
+    classes : sequence, optional
+        Listing of all class names that are handled by cythongen.  This may be 
+        the same dictionary as in genpyx()
 
     Returns
     -------
@@ -333,11 +340,11 @@ def genpxd(env):
     for name, mod in env.items():
         if mod['pxd_filename'] is None:
             continue
-        pxds[name] = modpxd(mod)
+        pxds[name] = modpxd(mod, classes)
     return pxds
 
 
-def modpxd(mod):
+def modpxd(mod, classes=()):
     """Generates a pxd Cython header file for exposing C/C++ data to
     other Cython wrappers based off of a dictionary description.
 
@@ -345,6 +352,9 @@ def modpxd(mod):
     ----------
     mod : dict
         Module description dictonary.
+    classes : sequence, optional
+        Listing of all class names that are handled by cythongen.  This may be 
+        the same dictionary as in modpyx().
 
     Returns
     -------
@@ -360,7 +370,7 @@ def modpxd(mod):
     with ts.local_classes(classnames):
         for name, desc in mod.items():
             if isclassdesc(desc):
-                ci_tup, attr_str = classpxd(desc)
+                ci_tup, attr_str = classpxd(desc, classes)
             # no need to wrap functions again
             else:
                 continue
@@ -384,19 +394,22 @@ cdef class {name}{parents}:
 """
 
 
-def classpxd(desc):
+def classpxd(desc, classes=()):
     """Generates a ``*pxd`` Cython header snippet for exposing a C/C++ class to
     other Cython wrappers based off of a dictionary description.
 
     Parameters
     ----------
-    cimport_tups : set of tuples
-        Set of Cython cimport tuples for .pxd header file.
     desc : dict
         Class description dictonary.
+    classes : sequence, optional
+        Listing of all class names that are handled by cythongen.  This may be 
+        the same dictionary as in modpyx().
 
     Returns
     -------
+    cimport_tups : set of tuples
+        Set of Cython cimport tuples for .pxd header file.
     pxd : str
         Cython ``*.pxd`` header snippet for class.
 
@@ -433,7 +446,11 @@ def classpxd(desc):
         _, _, cachename, iscached = cython_c2py(aname, atype, cache_prefix=None)
         if iscached:
             cython_cimport_tuples(atype, cimport_tups)
-            cyt = cython_cytype(atype)
+            if _isclassptr(atype, classes):
+                atype_nopred = ts.strip_predicates(atype)
+                cyt = cython_cytype(atype_nopred)
+            else:
+                cyt = cython_cytype(atype)
             decl = "cdef public {0} {1}".format(cyt, cachename)
             body.append(decl)
         if isfunctionpointer(atype):
@@ -555,12 +572,15 @@ def modpyx(mod, classes=None):
     return pyx
 
 
-def _gen_property_get(name, t, cached_names=None, inst_name="self._inst"):
+def _gen_property_get(name, t, cached_names=None, inst_name="self._inst",
+                      classes=()):
     """This generates a Cython property getter for a variable of a given
     name and type."""
     lines = ['def __get__(self):']
     decl, body, rtn, iscached = cython_c2py(name, t, inst_name=inst_name)
     if decl is not None:
+        if _isclassptr(t, classes):
+            decl, _, _, _ = cython_c2py(name, t[0], inst_name=inst_name)
         lines += indent(decl, join=False)
     if body is not None:
         lines += indent(body, join=False)
@@ -570,7 +590,8 @@ def _gen_property_get(name, t, cached_names=None, inst_name="self._inst"):
     return lines
 
 
-def _gen_property_set(name, t, inst_name="self._inst", cached_name=None):
+def _gen_property_set(name, t, inst_name="self._inst", cached_name=None, 
+                      classes=()):
     """This generates a Cython property setter for a variable of a given
     name and type."""
     lines = ['def __set__(self, value):']
@@ -585,18 +606,19 @@ def _gen_property_set(name, t, inst_name="self._inst", cached_name=None):
     return lines
 
 
-def _gen_property(name, t, doc=None, cached_names=None, inst_name="self._inst"):
+def _gen_property(name, t, doc=None, cached_names=None, inst_name="self._inst", 
+                  classes=()):
     """This generates a Cython property for a variable of a given name and type."""
     lines  = ['property {0}:'.format(name)]
     lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
     oldcnlen = 0 if cached_names is None else len(cached_names)
     lines += indent(_gen_property_get(name, t, cached_names=cached_names,
-                                      inst_name=inst_name), join=False)
+                    inst_name=inst_name, classes=classes), join=False)
     lines += ['']
     newcnlen = 0 if cached_names is None else len(cached_names)
     cached_name = cached_names[-1] if newcnlen == 1 + oldcnlen else None
     lines += indent(_gen_property_set(name, t, inst_name=inst_name,
-                                      cached_name=cached_name), join=False)
+                    cached_name=cached_name, classes=classes), join=False)
     lines += ['', ""]
     return lines
 
@@ -962,7 +984,7 @@ def classpyx(desc, classes=None):
             pdlines.append("self._{0}_vtab_i = {1}".format(aname, mc+1))
         else:
             alines += _gen_property(aname, atype, adoc, cached_names=cached_names,
-                                    inst_name=inst_name)
+                                    inst_name=inst_name, classes=classes)
         cython_import_tuples(atype, import_tups)
         cython_cimport_tuples(atype, cimport_tups)
     if len(fplines) > 0:
@@ -1175,3 +1197,7 @@ def _mangle_function_pointer_name(name, classname):
     cref = pyref + "_func"
     return pyref, cref
 
+def _isclassptr(t, classes):
+    return (not isinstance(t, basestring) and t[1] == '*' and 
+            isinstance(t[0], basestring) and t[0] in classes)
+    

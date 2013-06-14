@@ -435,9 +435,11 @@ def genbindings(rc):
                        '    {proxy_name}._inst = &{var}\n'
                        '    {cache_name} = {proxy_name}\n')
                      )
-        class_py2c = ('{proxy_name} = <{cytype_nopred}> {var}', '(<{ctype_nopred} *> {proxy_name}._inst)[0]')
+        class_py2c = ('{proxy_name} = <{cytype_nopred}> {var}', 
+                      '(<{ctype_nopred} *> {proxy_name}._inst)[0]')
         class_cimport = (rc.package, cpppxd_base) 
-        ts.register_class(classname,                              # FCComp
+        kwclass = dict(
+            name=classname,                                       # FCComp
             cython_c_type=cpppxd_base + '.' + classname,          # cpp_fccomp.FCComp
             cython_cimport=class_cimport,  
             cython_cy_type=pxd_base + '.' + classname,            # fccomp.FCComp   
@@ -448,6 +450,27 @@ def genbindings(rc):
             cython_c2py=class_c2py,
             cython_py2c=class_py2c,
             )
+        ts.register_class(**kwclass)
+        class_ptr_c2py = ('{pytype}({var})', 
+                          ('{proxy_name} = {pytype}()\n'
+                           '(<{ctype} *> {proxy_name}._inst) = {var}'),
+                          ('if {cache_name} is None:\n'
+                           '    {proxy_name} = {pytype}()\n'
+                           '    {proxy_name}._free_inst = False\n'
+                           '    {proxy_name}._inst = {var}\n'
+                           '    {cache_name} = {proxy_name}\n')
+                         )
+        class_ptr_py2c = ('{proxy_name} = <{cytype_nopred}> {var}', 
+                          '(<{ctype_nopred} *> {proxy_name}._inst)')
+        kwclassptr = dict(
+            name=(classname, '*'), 
+            cython_c2py=class_ptr_c2py,
+            cython_py2c=class_ptr_py2c,
+            cython_cimport=kwclass['cython_cimport'],
+            cython_cyimport=kwclass['cython_cyimport'],
+            cython_pyimport=kwclass['cython_pyimport'],
+            )
+        ts.register_class(**kwclassptr)
         cache.dump()
         _adddesc2env(desc, env, classname, srcname, tarname)
 
@@ -474,7 +497,7 @@ def genbindings(rc):
     if rc.make_cythongen:
         print("cythongen: creating C/C++ API wrappers")
         cpppxds = gencpppxd(env)
-        pxds = genpxd(env)
+        pxds = genpxd(env, classes)
         pyxs = genpyx(env, classes)
         for key, cpppxd in cpppxds.items():
             newoverwrite(cpppxd, os.path.join(rc.package, env[key]['srcpxd_filename']), rc.verbose)

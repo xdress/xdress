@@ -372,7 +372,8 @@ def _raise_type_error(t):
 def _resolve_dependent_type(tname, tinst=None):
     depkey = [k for k in refined_types if k[0] == tname][0]
     depval = refined_types[depkey]
-    istemplated = any([isinstance(x, basestring) for x in depkey[1:]])
+    #istemplated = any([isinstance(x, basestring) for x in depkey[1:]])
+    istemplated = istemplate(depkey)
     if tinst is None:
         return depkey
     elif istemplated:
@@ -805,6 +806,8 @@ def _cython_ctype_add_predicate(t, last):
 def cython_ctype(t):
     """Given a type t, returns the cooresponding Cython C type declaration."""
     t = canon(t)
+#    if t in _cython_ctypes:
+#        return _cython_ctypes[t]
     if isinstance(t, basestring):
         if  t in base_types:
             return _cython_ctypes[t]
@@ -1219,6 +1222,8 @@ def _cython_cytype_add_predicate(t, last):
 def cython_cytype(t):
     """Given a type t, returns the cooresponding Cython type."""
     t = canon(t)
+#    if t in _cython_cytypes:
+#        return _cython_cytypes[t]
     if isinstance(t, basestring):
         if t in base_types or t in _cython_cytypes:
             return _cython_cytypes[t]
@@ -1292,6 +1297,8 @@ def _fill_cypyt(cypyt, t):
 def cython_pytype(t):
     """Given a type t, returns the cooresponding Python type."""
     t = canon(t)
+#    if t in _cython_pytypes:
+#        return _cython_pytypes[t]
     if isinstance(t, basestring):
         if  t in base_types:
             return _cython_pytypes[t]
@@ -1829,7 +1836,7 @@ def _ensure_importable(x):
         r = x
     return r
 
-def register_class(name, template_args=None, cython_c_type=None, 
+def register_class(name=None, template_args=None, cython_c_type=None, 
                    cython_cimport=None, cython_cy_type=None, cython_py_type=None,
                    cython_template_class_name=None, cython_cyimport=None, 
                    cython_pyimport=None, cython_c2py=None, cython_py2c=None):
@@ -1852,27 +1859,33 @@ def register_class(name, template_args=None, cython_c_type=None,
             isbase = False
 
     # Register with Cython C/C++ types
-    if (cython_c_type is not None) or (cython_cy_type is not None):
-        cython_cimport = _ensure_importable(cython_cimport)
-        cython_cyimport = _ensure_importable(cython_cyimport)
-        cython_pyimport = _ensure_importable(cython_pyimport)
+    if (cython_c_type is not None):
+        _cython_ctypes[name] = cython_c_type
+    if (cython_cy_type is not None):
+        _cython_cytypes[name] = cython_cy_type
+    if (cython_py_type is not None):
+        _cython_pytypes[name] = cython_py_type
 
+    if (cython_cimport is not None):
+        cython_cimport = _ensure_importable(cython_cimport)
+        _cython_cimports[name] = cython_cimport
+    if (cython_cyimport is not None):
+        cython_cyimport = _ensure_importable(cython_cyimport)
+        _cython_cyimports[name] = cython_cyimport
+    if (cython_pyimport is not None):
+        cython_pyimport = _ensure_importable(cython_pyimport)
+        _cython_pyimports[name] = cython_pyimport
+
+    if (cython_c2py is not None):
         if isinstance(cython_c2py, basestring):
             cython_c2py = (cython_c2py,)
         cython_c2py = None if cython_c2py is None else tuple(cython_c2py)
-
+        _cython_c2py_conv[name] = cython_c2py
+    if (cython_py2c is not None):
         if isinstance(cython_py2c, basestring):
             cython_py2c = (cython_py2c, False)
-
-        _cython_ctypes[name] = cython_c_type
-        _cython_cytypes[name] = cython_cy_type
-        _cython_pytypes[name] = cython_py_type
-        _cython_cimports[name] = cython_cimport
-        _cython_cyimports[name] = cython_cyimport
-        _cython_pyimports[name] = cython_pyimport
-
-        _cython_c2py_conv[name] = cython_c2py
         _cython_py2c_conv[name] = cython_py2c
+    if (cython_template_class_name is not None):
         _cython_classnames[name] = cython_template_class_name
 
 
