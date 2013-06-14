@@ -12,17 +12,20 @@ Cython Generation API
 =====================
 """
 from __future__ import print_function
+import sys
 import math
 from copy import deepcopy
 
 from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
-    isvardesc
+    isvardesc, guess_language
 from . import typesystem as ts
 from .typesystem import cython_ctype, cython_cimport_tuples, \
     cython_cimports, register_class, cython_cytype, cython_pytype, cython_c2py, \
     cython_py2c, cython_import_tuples, cython_imports, isrefinement, \
     isfunctionpointer
 
+if sys.version_info[0] >= 3:
+    basestring = str
 
 AUTOGEN_WARNING = \
 """################################################
@@ -35,7 +38,7 @@ AUTOGEN_WARNING = \
 ################################################
 """
 
-def gencpppxd(env, exception_type='+'):
+def gencpppxd(env, exceptions=True):
     """Generates all cpp_*.pxd Cython header files for an environment of modules.
 
     Parameters
@@ -43,9 +46,10 @@ def gencpppxd(env, exception_type='+'):
     env : dict
         Environment dictonary mapping target module names to module description
         dictionaries.
-    exception_type : str, optional
-        Cython exception annotation.  Set to None when exceptions should not
-        be included.
+    exceptions : bool or str, optional
+        Cython exception annotation.  Set to True to automatically detect exception
+        types, False for when exceptions should not be included, and a str (such as
+        '+' or '-1') to apply to everywhere.
 
     Returns
     -------
@@ -57,11 +61,11 @@ def gencpppxd(env, exception_type='+'):
     for name, mod in env.items():
         if mod['srcpxd_filename'] is None:
             continue
-        cpppxds[name] = modcpppxd(mod, exception_type)
+        cpppxds[name] = modcpppxd(mod, exceptions)
     return cpppxds
 
 
-def modcpppxd(mod, exception_type='+'):
+def modcpppxd(mod, exceptions=True):
     """Generates a cpp_*.pxd Cython header file for exposing a C/C++ module to
     other Cython wrappers based off of a dictionary description of the module.
 
@@ -69,9 +73,10 @@ def modcpppxd(mod, exception_type='+'):
     ----------
     mod : dict
         Module description dictonary.
-    exception_type : str, optional
-        Cython exception annotation.  Set to None when exceptions should not
-        be included.
+    exceptions : bool or str, optional
+        Cython exception annotation.  Set to True to automatically detect exception
+        types, False for when exceptions should not be included, and a str (such as
+        '+' or '-1') to apply to everywhere.
 
     Returns
     -------
@@ -85,11 +90,11 @@ def modcpppxd(mod, exception_type='+'):
     cimport_tups = set()
     for name, desc in mod.items():
         if isvardesc(desc):
-            ci_tup, attr_str = varcpppxd(desc, exception_type)
+            ci_tup, attr_str = varcpppxd(desc, exceptions)
         elif isfuncdesc(desc):
-            ci_tup, attr_str = funccpppxd(desc, exception_type)
+            ci_tup, attr_str = funccpppxd(desc, exceptions)
         elif isclassdesc(desc):
-            ci_tup, attr_str = classcpppxd(desc, exception_type)
+            ci_tup, attr_str = classcpppxd(desc, exceptions)
         else:
             continue
         cimport_tups |= ci_tup
@@ -109,7 +114,7 @@ cdef extern from "{header_filename}" {namespace}:
 {extra}
 """
 
-def varcpppxd(desc, exception_type='+'):
+def varcpppxd(desc, exceptions=True):
     """Generates a cpp_*.pxd Cython header snippet for exposing a C/C++ variable
     to other Cython wrappers based off of a dictionary description.
 
@@ -117,8 +122,10 @@ def varcpppxd(desc, exception_type='+'):
     ----------
     desc : dict
         Function description dictonary.
-    exception_type : str, optional
-        Cython exception annotation.  Ignored here.
+    exceptions : bool or str, optional
+        Cython exception annotation.  Set to True to automatically detect exception
+        types, False for when exceptions should not be included, and a str (such as
+        '+' or '-1') to apply to everywhere.
 
     Returns
     -------
@@ -166,7 +173,7 @@ cdef extern from "{header_filename}" {namespace}:
 {extra}
 """
 
-def funccpppxd(desc, exception_type='+'):
+def funccpppxd(desc, exceptions=True):
     """Generates a cpp_*.pxd Cython header snippet for exposing a C/C++ function
     to other Cython wrappers based off of a dictionary description.
 
@@ -174,9 +181,10 @@ def funccpppxd(desc, exception_type='+'):
     ----------
     desc : dict
         Function description dictonary.
-    exception_type : str, optional
-        Cython exception annotation.  Set to None when exceptions should not
-        be included.
+    exceptions : bool or str, optional
+        Cython exception annotation.  Set to True to automatically detect exception
+        types, False for when exceptions should not be included, and a str (such as
+        '+' or '-1') to apply to everywhere.
 
     Returns
     -------
@@ -195,7 +203,6 @@ def funccpppxd(desc, exception_type='+'):
     cimport_tups = set()
 
     flines = []
-    estr = str() if exception_type is None else  ' except {0}'.format(exception_type)
     funcitems = sorted(expand_default_args(desc['signatures'].items()))
     for fkey, frtn in funcitems:
         fname, fargs = fkey[0], fkey[1:]
@@ -204,7 +211,8 @@ def funccpppxd(desc, exception_type='+'):
         argfill = ", ".join([cython_ctype(a[1]) for a in fargs])
         for a in fargs:
             cython_cimport_tuples(a[1], cimport_tups, inc)
-        line = "{0}({1}){2}".format(fname, argfill, estr)
+        estr = _exception_str(exceptions, desc['source_filename'], frtn)
+        line = "{0}({1}) {2}".format(fname, argfill, estr)
         rtype = cython_ctype(frtn)
         cython_cimport_tuples(frtn, cimport_tups, inc)
         line = rtype + " " + line
@@ -236,7 +244,7 @@ _cpppxd_class_template = \
 {extra}
 """
 
-def classcpppxd(desc, exception_type='+'):
+def classcpppxd(desc, exceptions=True):
     """Generates a cpp_*.pxd Cython header snippet for exposing a C/C++ class or
     struct to other Cython wrappers based off of a dictionary description of the
     class or struct.
@@ -245,9 +253,10 @@ def classcpppxd(desc, exception_type='+'):
     ----------
     desc : dict
         Class description dictonary.
-    exception_type : str, optional
-        Cython exception annotation.  Set to None when exceptions should not
-        be included.
+    exceptions : bool or str, optional
+        Cython exception annotation.  Set to True to automatically detect exception
+        types, False for when exceptions should not be included, and a str (such as
+        '+' or '-1') to apply to everywhere.
 
     Returns
     -------
@@ -287,7 +296,6 @@ def classcpppxd(desc, exception_type='+'):
 
     mlines = []
     clines = []
-    estr = str() if exception_type is None else  ' except {0}'.format(exception_type)
     methitems = sorted(expand_default_args(desc['methods'].items()))
     for mkey, mrtn in methitems:
         mname, margs = mkey[0], mkey[1:]
@@ -296,7 +304,8 @@ def classcpppxd(desc, exception_type='+'):
         argfill = ", ".join([cython_ctype(a[1]) for a in margs])
         for a in margs:
             cython_cimport_tuples(a[1], cimport_tups, inc)
-        line = "{0}({1}){2}".format(mname, argfill, estr)
+        estr = _exception_str(exceptions, desc['source_filename'], mrtn)
+        line = "{0}({1}) {2}".format(mname, argfill, estr)
         if mrtn is None:
             # this must be a constructor
             if line not in clines:
@@ -1200,4 +1209,29 @@ def _mangle_function_pointer_name(name, classname):
 def _isclassptr(t, classes):
     return (not isinstance(t, basestring) and t[1] == '*' and 
             isinstance(t[0], basestring) and t[0] in classes)
+
+_exc_c_base = frozenset(['int16', 'int32', 'int64', 'int128', 
+                         'float32', 'float64', 'float128'])
+
+_exc_ptr_matcher = ts.TypeMatcher((ts.MatchAny, '*'))
     
+def _exception_str(exceptions, srcfile, rtntype):
+    if not exceptions:
+        return ""
+    if isinstance(exceptions, basestring):
+        return "except " + exceptions
+    lang = guess_language(srcfile)    
+    if lang == 'c':
+        rtntype = ts.canon(rtntype)
+        if rtntype in _exc_c_base:
+            return "except -1"
+        elif ts.isenum(rtntype):
+            return "except -1"
+        elif _exc_ptr_matcher.matches(rtntype):
+            return "except -1"
+        else:
+            return ""
+    elif lang == 'c++':
+        return "except +"
+    else:
+        return ""
