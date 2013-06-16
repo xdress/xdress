@@ -5,7 +5,9 @@ from __future__ import print_function
 import sys
 import pprint
 
-from .utils import newoverwrite, newcopyover, ensuredirs, indent, indentstr
+from .utils import newoverwrite, newcopyover, ensuredirs, indent, indentstr, \
+    RunControl, NotSpecified
+from .plugins import Plugin
 from . import typesystem as ts
 
 if sys.version_info[0] >= 3: 
@@ -1084,6 +1086,50 @@ def genfiles(template, fname='temp', pxdname=None, testname=None,
     newoverwrite(pyx, fname, verbose)
     newoverwrite(pxd, pxdname, verbose)
     newoverwrite(test, testname, verbose)
+
+
+#
+# XDress Plugin
+#
+
+class XDressPlugin(Plugin):
+    """This class provides extra type functionality for xdress."""
+
+    requires = ('xdress.base', 'xdress.extratypes')
+
+    defaultrc = RunControl(
+        stlcontainers=[],
+        stlcontainers_module='stlcontainers',
+        make_stlcontainers=True,
+        )
+
+    def update_argparser(self, parser):
+        arser.add_argument('--stlcontainers-module', action='store', 
+                        dest='stlcontainers_module', help="stlcontainers module name")
+        parser.add_argument('--make-stlcontainers', action='store_true',
+                    dest='make_stlcontainers', help="make C++ STL container wrappers")
+        parser.add_argument('--no-make-stlcontainers', action='store_false',
+              dest='make_stlcontainers', help="don't make C++ STL container wrappers")
+
+    def setup(self, rc):
+        ts.STLCONTAINERS = rc.stlcontainers_module
+
+    def execute(self, rc):
+        if not rc.make_stlcontainers:
+            return
+        print("stlwrap: generating C++ standard library wrappers & converters")
+        fname = os.path.join(rc.packagedir, rc.stlcontainers_module)
+        ensuredirs(fname)
+        testname = 'test_' + rc.stlcontainers_module
+        testname = os.path.join(rc.packagedir, 'tests', testname)
+        ensuredirs(testname)
+        genfiles(rc.stlcontainers, fname=fname, testname=testname, package=rc.package, 
+                 verbose=rc.verbose)
+
+
+#
+# Test main
+#
 
 if __name__ == "__main__":
     #t = [('set', 'int')]

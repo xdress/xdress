@@ -233,20 +233,6 @@ def compute_desc(name, srcname, tarname, kind, rc):
         desc['srcpxd_filename'] = '{0}_{1}.pxd'.format(ext, tarname)
     return desc
 
-def genextratypes(rc):
-    d = os.path.split(__file__)[0]
-    srcs = [os.path.join(d, 'xdress_extra_types.h'), 
-            os.path.join(d, 'xdress_extra_types.pxd'), 
-            os.path.join(d, 'xdress_extra_types.pyx')]
-    tars = [os.path.join(rc.sourcedir, rc.extra_types + '.h'), 
-            os.path.join(rc.packagedir, rc.extra_types + '.pxd'), 
-            os.path.join(rc.packagedir, rc.extra_types + '.pyx')]
-    for src, tar in zip(srcs, tars):
-        with io.open(src, 'r') as f:
-            s = f.read()
-            s = s.format(extra_types=rc.extra_types)
-            newoverwrite(s, tar, rc.verbose)
-
 def genstlcontainers(rc):
     print("stlwrap: generating C++ standard library wrappers & converters")
     fname = os.path.join(rc.packagedir, rc.stlcontainers_module)
@@ -475,8 +461,8 @@ def setuprc(rc):
 #    sourcedir='src',
 #    builddir='build',
 #    extra_types='xdress_extra_types',
-    stlcontainers=[],
-    stlcontainers_module='stlcontainers',
+#    stlcontainers=[],
+#    stlcontainers_module='stlcontainers',
     variables=(),
     functions=(),
     classes=(),
@@ -486,21 +472,6 @@ def setuprc(rc):
 
 def _old_main_setup():
     """Setup xdress API generation."""
-    parser.add_argument('--make-extratypes', action='store_true', 
-                        dest='make_extratypes', default=NotSpecified, 
-                        help="make extra types wrapper")
-    parser.add_argument('--no-make-extratypes', action='store_false', 
-                        dest='make_extratypes', default=NotSpecified, 
-                        help="don't make extra types wrapper")
-    parser.add_argument('--make-stlcontainers', action='store_true', 
-                        dest='make_stlcontainers', default=NotSpecified,
-                        help="make STL container wrappers")
-    parser.add_argument('--no-make-stlcontainers', action='store_false', 
-                        dest='make_stlcontainers', default=NotSpecified,
-                        help="don't make STL container wrappers")
-    parser.add_argument('--no-make-cyclus', action='store_false', 
-                        dest='make_cyclus', default=NotSpecified, 
-                        help="don't make cyclus bindings")
     parser.add_argument('-I', '--includes', action='store', dest='includes', nargs="+",
                         default=NotSpecified, help="additional include dirs")
     parser.add_argument('-D', '--defines', action='append', dest='defines', nargs="+",
@@ -529,14 +500,6 @@ def _old_main_setup():
 def main_body(rc):
     """Body for xdress API generation."""
     # set typesystem defaults
-    ts.EXTRA_TYPES = rc.extra_types
-    ts.STLCONTAINERS = rc.stlcontainers_module
-
-    if rc.make_extratypes:
-        genextratypes(rc)
-
-    if rc.make_stlcontainers:
-        genstlcontainers(rc)
 
     if rc.make_cythongen:
         genbindings(rc)
