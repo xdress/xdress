@@ -75,7 +75,24 @@ class Plugin(object):
 
         """
         pass
-    
+
+    def report_debug(self, rc):
+        """A message to report in the event that execute() fails and additional
+        debugging information is requested.
+        
+        Parameters
+        ----------
+        rc : xdress.utils.RunControl
+
+        Returns
+        -------
+        message : str or None
+            A debugging message to report.  If None is returned, this plugin is 
+            skipped in the debug output.
+
+        """
+        pass
+
 
 class Plugins(object):
     """This is a class for managing the instantiation and execution of plugins.
@@ -142,8 +159,25 @@ class Plugins(object):
     def execute(self):
         """Preforms all plugin executions."""
         rc = self.rc
-        for plugin in plugins:
-            plugin.execute(rc)
+        try:
+            for plugin in plugins:
+                plugin.execute(rc)
+        except Exception as e:
+            if rc.debug:
+                import traceback
+                sep = r'~\_/' * 17 + '~=[,,_,,]:3\n\n'
+                msg = '{0}xdress failed with the following error:\n\n'.format(sep)
+                msg += traceback.format_exc()
+                msg += '\n{0}Run control run-time contents:\n\n{1}\n\n'.format(sep, 
+                                                                        rc._pformat())
+                for plugin in plugins:
+                    msg += sep
+                    msg += plugin.report_debug(rc) or ''
+                with io.open(os.path.join(rc.builddir, 'debug.txt'), 'a+b') as f:
+                    f.write(msg)
+                raise
+            else:
+                sys.exit(str(e))
 
     def teardown(self):
         """Preforms all plugin teardown tasks."""
