@@ -144,11 +144,6 @@ import io
 import sys
 import argparse
 from pprint import pprint, pformat
-from hashlib import md5
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 
 from .utils import newoverwrite, newcopyover, ensuredirs, writenewonly, exec_file, \
     NotSpecified, RunControl, guess_language, find_source
@@ -162,62 +157,6 @@ from .plugins import Plugins
 
 if sys.version_info[0] >= 3:
     basestring = str
-
-class DescriptionCache(object):
-    """A quick persistent cache for descriptions from files.  
-    The keys are (classname, filename) tuples.  The values are 
-    (hashes-of-the-file, description-dictionary) tuples."""
-
-    def __init__(self, cachefile=os.path.join('build', 'desc.cache')):
-        """Parameters
-        -------------
-        cachefile : str, optional
-            Path to description cachefile.
-
-        """
-        self.cachefile = cachefile
-        if os.path.isfile(cachefile):
-            with io.open(cachefile, 'rb') as f:
-                self.cache = pickle.load(f)
-        else:
-            self.cache = {}
-
-    def isvalid(self, name, filename, kind):
-        """Boolean on whether the cach value for a (name, filename, kind)
-        tuple matches the state of the file on the system."""
-        key = (name, filename, kind)
-        if key not in self.cache:
-            return False
-        cachehash = self.cache[key][0]
-        with io.open(filename, 'r') as f:
-            filestr = f.read().encode()
-        currhash = md5(filestr).hexdigest()
-        return cachehash == currhash
-
-    def __getitem__(self, key):
-        return self.cache[key][1]  # return the description only
-
-    def __setitem__(self, key, value):
-        name, filename, kind = key
-        with io.open(filename, 'r') as f:
-            filestr = f.read().encode()
-        currhash = md5(filestr).hexdigest()
-        self.cache[key] = (currhash, value)
-
-    def __delitem__(self, key):
-        del self.cache[key]
-
-    def dump(self):
-        """Writes the cache out to the filesystem."""
-        if not os.path.exists(self.cachefile):
-            pardir = os.path.split(self.cachefile)[0]
-            if not os.path.exists(pardir):
-                os.makedirs(pardir)
-        with io.open(self.cachefile, 'wb') as f:
-            pickle.dump(self.cache, f, pickle.HIGHEST_PROTOCOL)
-
-    def __str__(self):
-        return pformat(self.cache)
 
 
 pysrcenv = {}
@@ -512,10 +451,6 @@ def genbindings(rc):
     if rc.make_cyclus:
         print("making cyclus bindings")
 
-def dumpdesc(rc):
-    """Prints the current contents of the description cache using rc.
-    """
-    print(str(rc._cache))
 
 def setuprc(rc):
     """Makes and validates a run control object and the environment it specifies."""
