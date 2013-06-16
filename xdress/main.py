@@ -158,6 +158,8 @@ from .cythongen import gencpppxd, genpxd, genpyx
 from . import autodescribe 
 from . import autoall
 
+from .plugins import Plugins
+
 if sys.version_info[0] >= 3:
     basestring = str
 
@@ -559,7 +561,7 @@ defaultrc = RunControl(
              'c++':['gccxml', 'clang', 'pycparser'] },
     )
 
-def main_setup():
+def _old_main_setup():
     """Setup xdress API generation."""
     parser = argparse.ArgumentParser("Generates XDress API")
     parser.add_argument('--rc', default=NotSpecified, 
@@ -624,6 +626,10 @@ def main_setup():
     setuprc(rc)
     return rc
 
+def main_setup():
+    """Setup xdress API generation."""
+
+
 def main_body(rc):
     """Body for xdress API generation."""
     # set typesystem defaults
@@ -639,7 +645,7 @@ def main_body(rc):
     if rc.make_cythongen:
         genbindings(rc)
 
-def main():
+def _old_main():
     """Entry point for xdress API generation."""
     rc = main_setup()
     try:
@@ -660,6 +666,16 @@ def main():
             raise 
         else:
             sys.exit(str(e))
+
+def main():
+    """Entry point for xdress API generation."""
+    preparser = argparse.ArgumentParser("XDress Pre-processor", add_help=False)
+
+    plugins = Plugins([])
+    parser = plugins.build_cli()
+    ns = parser.parse_args()
+    rc = plugins.merge_defaultrcs()
+    rc._update([(k, v) for k, v in ns.__dict__.items()])
 
 if __name__ == '__main__':
     main()
