@@ -17,8 +17,13 @@ class Plugin(object):
     """A base plugin for other xdress pluigins to inherit.
     """
 
+    requires = ()
+    """This is a sequence of strings, or a function which returns such, that 
+    lists the module names of other plugins that this plugin requires.
+    """
+
     defaultrc = {}
-    """This may be a dict, RunControl instance, or othet mapping or a function
+    """This may be a dict, RunControl instance, or other mapping or a function
     which returns any of these.  The keys are string names of the run control 
     parameters and the values are the associated default values.
     """
@@ -115,14 +120,22 @@ class Plugins(object):
             'XDressPlugin' in the these modules.
 
         """
-        plugins = []
-        for modname in modnames:
-            mod = importlib.import_module(modname)
-            plugin = mod.XDressPlugin()
-            plugins.append(plugin)
-        self.plugins = plugins
+        self.plugins = []
+        self.modnames = []
+        self._load(modnames)
         self.parser = None
         self.rc = None
+
+    def _load(self, modnames):
+        for modname in modnames:
+            if modname in self.modnames:
+                continue
+            mod = importlib.import_module(modname)
+            plugin = mod.XDressPlugin()
+            req = plugin.requires() if callable(plugin.requires) else plugin.requires
+            self._load(req)
+            self.modnames.append(modname)
+            self.plugins.append(plugin)
 
     def build_cli(self):
         """Builds and returns a command line interface based on the plugins.

@@ -309,7 +309,6 @@ def find_source(basename, sourcedir='.'):
 
 nyansep = r'~\_/' * 17 + '~=[,,_,,]:3'
 
-
 class DescriptionCache(object):
     """A quick persistent cache for descriptions from files.  
     The keys are (classname, filename) tuples.  The values are 
