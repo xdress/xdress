@@ -8,7 +8,7 @@ import sys
 import importlib
 import argparser
 
-from .utils import RunControl, NotSpecified
+from .utils import RunControl, NotSpecified, nyansep
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -165,7 +165,7 @@ class Plugins(object):
         except Exception as e:
             if rc.debug:
                 import traceback
-                sep = r'~\_/' * 17 + '~=[,,_,,]:3\n\n'
+                sep = nyansep + '\n\n'
                 msg = '{0}xdress failed with the following error:\n\n'.format(sep)
                 msg += traceback.format_exc()
                 msg += '\n{0}Run control run-time contents:\n\n{1}\n\n'.format(sep, 

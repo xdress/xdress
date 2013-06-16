@@ -300,3 +300,5 @@ def find_source(basename, sourcedir='.'):
         lang = langs[hdr]
         srcext = _lang_exts[lang]
     return src, hdr, lang, srcext
+
+nyansep = r'~\_/' * 17 + '~=[,,_,,]:3'
