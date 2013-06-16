@@ -24,6 +24,7 @@ class Plugin(object):
     """
 
     def __init__(self):
+        """The initilization may take no arguments or keyword arguments."""
         pass
 
     def update_argparser(self, parser):

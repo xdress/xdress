@@ -669,13 +669,34 @@ def _old_main():
 
 def main():
     """Entry point for xdress API generation."""
+    # Preprocess plugin names, which entails preprocessing the rc filename
     preparser = argparse.ArgumentParser("XDress Pre-processor", add_help=False)
+    preparser.add_argument('--rc', default=NotSpecified, 
+                           help="path to run control file")
+    preparser.add_argument('--plugins', default=NotSpecified, nargs="+",
+                           help="plugins to include")
+    prens = preparser.parse_known_args()
+    predefaultrc = RunControl(rc="xdressrc.py", plugins=["xdress.base"])
+    prerc = RunControl()
+    prerc._update(predefaultrc)
+    prerc.rc = prens.rc
+    if os.path.isfile(prerc.rc):
+        rcdict = {}
+        exec_file(prerc.rc, rcdict, rcdict)
+        prerc.rc = rcdict['rc'] if 'rc' in rcdict else NotSpecified
+        prerc.plugins = rcdict['plugins'] if 'plugins' in rcdict else NotSpecified
+    prerc._update([(k, v) for k, v in prens.__dict__.items()])    
 
-    plugins = Plugins([])
+    # run plugins
+    plugins = Plugins(prerc.plugins)
     parser = plugins.build_cli()
     ns = parser.parse_args()
     rc = plugins.merge_defaultrcs()
+    rc._update(rcdict)
     rc._update([(k, v) for k, v in ns.__dict__.items()])
+    plugins.setup()
+    plugins.execute()
+    plugins.teardown()
 
 if __name__ == '__main__':
     main()
