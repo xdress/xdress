@@ -474,7 +474,7 @@ def setuprc(rc):
 #    packagedir=NotSpecified,
 #    sourcedir='src',
 #    builddir='build',
-    extra_types='xdress_extra_types',
+#    extra_types='xdress_extra_types',
     stlcontainers=[],
     stlcontainers_module='stlcontainers',
     variables=(),
@@ -522,10 +522,6 @@ def _old_main_setup():
     rc._update([(k, v) for k, v in ns.__dict__.items() if not k.startswith('_')])
     rc._cache = DescriptionCache(cachefile=os.path.join(rc.builddir, 'desc.cache'))
 
-    if rc.dumpdesc:
-        dumpdesc(rc)
-        sys.exit()
-
     setuprc(rc)
     return rc
 
@@ -555,14 +551,8 @@ def _old_main():
             import traceback
             sep = r'~\_/' * 17 + '~=[,,_,,]:3\n\n'
             with io.open(os.path.join(rc.builddir, 'debug.txt'), 'a+b') as f:
-                f.write('{0}xdress failed with the following error:\n\n'.format(sep))
-                traceback.print_exc(None, f)
-                msg = '\n{0}Run control run-time contents:\n\n{1}\n\n'
-                f.write(msg.format(sep, rc._pformat()))
                 msg = '\n{0}Autodescriber parsers available:\n\n{1}\n\n'
                 f.write(msg.format(sep, pformat(autodescribe.PARSERS_AVAILABLE)))
-                msg = '\n{0}Current descripton cache contents:\n\n{1}\n\n'
-                f.write(msg.format(sep, str(rc._cache)))
             raise 
         else:
             sys.exit(str(e))
