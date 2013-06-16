@@ -519,38 +519,26 @@ def dumpdesc(rc):
 
 def setuprc(rc):
     """Makes and validates a run control object and the environment it specifies."""
-    if rc.package is NotSpecified:
-        sys.exit("no package name given; please add 'package' to {0}".format(rc.rc))
     if isinstance(rc.parsers, basestring):
         if '[' in rc.parsers or '{' in  rc.parsers:
             rc.parsers = eval(rc.parsers)
-    if rc.packagedir is NotSpecified:
-        rc.packagedir = rc.package.replace('.', os.path.sep)
-    if not os.path.isdir(rc.packagedir):
-        os.makedirs(rc.packagedir)
-    if not os.path.isdir(rc.sourcedir):
-        os.makedirs(rc.sourcedir)
-    if not os.path.isdir(rc.builddir):
-        os.makedirs(rc.builddir)
-    writenewonly("", os.path.join(rc.packagedir, '__init__.py'), rc.verbose)
-    writenewonly("", os.path.join(rc.packagedir, '__init__.pxd'), rc.verbose)
 
-defaultrc = RunControl(
-    rc="xdressrc.py", 
-    debug=False,
-    make_extratypes=True,
-    make_stlcontainers=True,
-    make_cythongen=True,
-    make_cyclus=False,
-    dumpdesc=False,
+#defaultrc = RunControl(
+#    rc="xdressrc.py", 
+#    debug=False,
+#    make_extratypes=True,
+##    make_stlcontainers=True,
+##    make_cythongen=True,
+##    make_cyclus=False,
+#    dumpdesc=False,
     includes=[],
     defines=["XDRESS"],
     undefines=[],
-    verbose=False,
-    package=NotSpecified,
-    packagedir=NotSpecified,
-    sourcedir='src',
-    builddir='build',
+#    verbose=False,
+#    package=NotSpecified,
+#    packagedir=NotSpecified,
+#    sourcedir='src',
+#    builddir='build',
     extra_types='xdress_extra_types',
     stlcontainers=[],
     stlcontainers_module='stlcontainers',
@@ -563,13 +551,6 @@ defaultrc = RunControl(
 
 def _old_main_setup():
     """Setup xdress API generation."""
-    parser = argparse.ArgumentParser("Generates XDress API")
-    parser.add_argument('--rc', default=NotSpecified, 
-                        help="path to run control file")
-    parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', 
-                        default=NotSpecified, help="print more output")
-    parser.add_argument('--debug', action='store_true', default=NotSpecified, 
-                        help='build in debugging mode')    
     parser.add_argument('--make-extratypes', action='store_true', 
                         dest='make_extratypes', default=NotSpecified, 
                         help="make extra types wrapper")
@@ -582,20 +563,9 @@ def _old_main_setup():
     parser.add_argument('--no-make-stlcontainers', action='store_false', 
                         dest='make_stlcontainers', default=NotSpecified,
                         help="don't make STL container wrappers")
-    parser.add_argument('--make-cythongen', action='store_true', 
-                        dest='make_cythongen', default=NotSpecified,
-                        help="make cython bindings")
-    parser.add_argument('--no-make-cythongen', action='store_false', 
-                        dest='make_cythongen', default=NotSpecified,
-                        help="don't make cython bindings")
-    parser.add_argument('--make-cyclus', action='store_true', 
-                        dest='make_cyclus', default=NotSpecified, 
-                        help="make cyclus bindings")
     parser.add_argument('--no-make-cyclus', action='store_false', 
                         dest='make_cyclus', default=NotSpecified, 
                         help="don't make cyclus bindings")
-    parser.add_argument('--dumpdesc', action='store_true', dest='dumpdesc', 
-                        default=NotSpecified, help="print description cache")
     parser.add_argument('-I', '--includes', action='store', dest='includes', nargs="+",
                         default=NotSpecified, help="additional include dirs")
     parser.add_argument('-D', '--defines', action='append', dest='defines', nargs="+",
@@ -603,8 +573,6 @@ def _old_main_setup():
     parser.add_argument('-U', '--undefines', action='append', dest='undefines', 
                         nargs="+", default=NotSpecified, type=str,
                         help="unset additional macro definitions")
-    parser.add_argument('--builddir', action='store', dest='builddir', 
-                        default=NotSpecified, help="path to build directory")
     parser.add_argument('-p', action='store', dest='parsers', 
                         default=NotSpecified, help="parser(s) name, list, or dict")
     ns = parser.parse_args()
@@ -625,9 +593,6 @@ def _old_main_setup():
 
     setuprc(rc)
     return rc
-
-def main_setup():
-    """Setup xdress API generation."""
 
 
 def main_body(rc):
