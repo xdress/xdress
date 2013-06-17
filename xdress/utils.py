@@ -364,3 +364,33 @@ class DescriptionCache(object):
 
     def __str__(self):
         return pformat(self.cache)
+
+def merge_descriptions(descriptions):
+    """Given a sequence of descriptions, in order of increasing precedence, 
+    merge them into a single description dictionary."""
+    attrsmeths = frozenset(['attrs', 'methods', 'signatures'])
+    desc = {}
+    for description in descriptions:
+        for key, value in description.items():
+            if key not in desc:
+                desc[key] = deepcopy(value)
+                continue
+
+            if key in attrsmeths:
+                desc[key].update(value)
+            elif key == 'docstrings':
+                for dockey, docvalue in value.items():
+                    if dockey in attrsmeths:
+                        desc[key][dockey].update(docvalue)
+                    else:
+                        desc[key][dockey] = deepcopy(docvalue)
+            else:
+                desc[key] = deepcopy(value)
+    # now sanitize methods
+    name = desc['name']
+    methods = desc.get('methods', {})
+    for methkey, methval in methods.items():
+        if methval is None and not methkey[0].endswith(name):
+            del methods[methkey]  # constructor for parent
+    return desc
+

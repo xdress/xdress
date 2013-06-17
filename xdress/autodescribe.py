@@ -1,5 +1,5 @@
-"""This module creates descriptions of C++ classes from source code, by using 
-external parsers (GCC-XML, Clang AST) and the type system.
+"""This module creates descriptions of C/C++ classes, functions, and variables 
+from source code, by using external parsers (GCC-XML, Clang AST) and the type system.
 
 :author: Anthony Scopatz <scopatz@gmail.com>
 
@@ -195,46 +195,10 @@ except ImportError:
 
 from . import utils
 from .utils import guess_language
-
-PARSERS_AVAILABLE = {
-    'clang': False, 
-    'pycparser': pycparser is not None,
-    }
-with tempfile.NamedTemporaryFile() as f:
-    PARSERS_AVAILABLE['gccxml'] = 0 == subprocess.call(['gccxml'], stdout=f, stderr=f)
-del f
+from . import astparsers
 
 if sys.version_info[0] >= 3: 
     basestring = str
-
-def _makekey(obj):
-    if isinstance(obj, basestring):
-        return obj
-    elif isinstance(obj, collections.Sequence):
-        return tuple([_makekey(o) for o in obj])
-    elif isinstance(obj, collections.Set):
-        return frozenset([_makekey(o) for o in obj])
-    elif isinstance(obj, collections.Mapping):
-        return tuple([(_makekey(k), _makekey(v)) for k, v in sorted(obj.items())])
-    else:
-        return obj
-
-def _memoize_parser(f):
-    # based off code from http://wiki.python.org/moin/PythonDecoratorLibrary
-    cache = f.cache = {}
-    @functools.wraps(f)
-    def memoizer(*args, **kwargs):
-        key = _makekey(args) + _makekey(kwargs)
-        if key in cache:
-            value = cache[key]
-        else:
-            value = f(*args, **kwargs) 
-            try:
-                cache[key] = value
-            except TypeError:
-                pass
-        return value
-    return memoizer
 
 def clearmemo():
     """Clears all function memoizations for autodescribers."""
@@ -242,67 +206,9 @@ def clearmemo():
         if callable(x) and hasattr(x, 'cache'):
             x.cache.clear()
 
-def not_implemented(obj):
-    if not isinstance(obj, type):
-        if obj.__doc__ is None:
-            obj.__doc__ = ''
-        obj.__doc__ += ("\n\n.. warning:: This has not yet been implemented "
-                        "fully or at all.\n\n")
-    @functools.wraps(obj)
-    def func(*args, **kwargs):
-        msg = "The functionality in {0} has not been implemented fully or at all"
-        msg = msg.format(obj)
-        raise NotImplementedError(msg)
-    return func
-
 #
 # GCC-XML Describers
 #
-
-@_memoize_parser
-def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(), 
-                  verbose=False, debug=False, builddir='build'):
-    """Use GCC-XML to parse a file. This function is automatically memoized.
-
-    Parameters
-    ----------
-    filename : str
-        The path to the file.
-    includes: list of str, optional
-        The list of extra include directories to search for header files.
-    defines: list of str, optional
-        The list of extra macro definitions to apply.
-    undefines: list of str, optional
-        The list of extra macro undefinitions to apply.
-    verbose : bool, optional
-        Flag to diplay extra information while describing the class.
-    debug : bool, optional
-        Flag to enable/disable debug mode.
-    builddir : str, optional
-        Location of -- often temporary -- build files.
-
-    Returns
-    -------
-    root : XML etree
-        An in memory tree representing the parsed file.
-    """
-    xmlname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.xml'
-    xmlname = os.path.join(builddir, xmlname)
-    cmd = ['gccxml', filename, '-fxml=' + xmlname]
-    cmd += ['-I' + i for i in includes]
-    cmd += ['-D' + d for d in defines]
-    cmd += ['-U' + u for u in undefines]
-    if verbose:
-        print(" ".join(cmd))
-    if os.path.isfile(xmlname):
-        f = io.open(xmlname, 'r+b')
-    else:
-        f = io.open(xmlname, 'w+b')
-        subprocess.call(cmd)
-    f.seek(0)
-    root = etree.parse(f)
-    f.close()
-    return root
 
 def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',), 
                     undefines=(), verbose=False, debug=False, builddir='build'):
@@ -339,9 +245,9 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     if os.name == 'nt':
         # GCC-XML and/or Cygwin wants posix paths on Windows.
         filename = posixpath.join(*ntpath.split(filename)) 
-    root = gccxml_parse(filename, includes=includes, defines=defines, 
-                         undefines=undefines, verbose=verbose, debug=debug, 
-                         builddir=builddir)
+    root = astparsers.gccxml_parse(filename, includes=includes, defines=defines, 
+                                   undefines=undefines, verbose=verbose, debug=debug, 
+                                   builddir=builddir)
     basename = filename.rsplit('.', 1)[0]
     onlyin = set([filename] +
                  [basename + '.' + h for h in utils._hdr_exts if h.startswith('h')])
@@ -803,7 +709,7 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 # Clang Describers
 #
 
-@not_implemented
+@astparsers.not_implemented
 def clang_describe(filename, name, includes=(), defines=('XDRESS',),
                    undefines=(), verbose=False, debug=False, builddir='build'):
     "Use clang to describe the class."
@@ -817,7 +723,7 @@ def clang_describe(filename, name, includes=(), defines=('XDRESS',),
     return describer.desc
 
 
-@not_implemented
+@astparsers.not_implemented
 def clang_is_loc_in_range(location, source_range):
     """Returns whether a given Clang location is part of a source file range."""
     if source_range is None or location is None:
@@ -833,7 +739,7 @@ def clang_is_loc_in_range(location, source_range):
     return start.column <= location.column <= stop.column
 
 
-@not_implemented
+@astparsers.not_implemented
 def clang_range_str(source_range):
     """Get the text present on a source range."""
     start = source_range.start
@@ -851,7 +757,7 @@ def clang_range_str(source_range):
     
 
 
-@not_implemented
+@astparsers.not_implemented
 class ClangClassDescriber(object):
 
     _funckinds = set(['function_decl', 'cxx_method', 'constructor', 'destructor'])
@@ -976,7 +882,7 @@ class ClangClassDescriber(object):
         self._pprint(cur, "class template partial specialization")
 
 
-@not_implemented
+@astparsers.not_implemented
 def clang_find_class(node, name, namespace=None):
     """Find the node for a given class underneath the current node.
     """
@@ -997,18 +903,18 @@ def clang_find_class(node, name, namespace=None):
     return classnode
 
 
-@not_implemented
+@astparsers.not_implemented
 def clang_find_declarations(node):
     """Finds declarations one level below the Clang node."""
     return [n for n in node.get_children() if n.kind.is_declaration()]
 
-@not_implemented
+@astparsers.not_implemented
 def clang_find_attributes(node):
     """Finds attributes one level below the Clang node."""
     return [n for n in node.get_children() if n.kind.is_attribute()]
 
 
-@not_implemented
+@astparsers.not_implemented
 class ClangTypeVisitor(object):
     """For a Clang type located at a root node, compute the cooresponding 
     typesystem type.
@@ -1175,7 +1081,7 @@ class ClangTypeVisitor(object):
 #    def visit_var_decl(self, cur):
 #        self._pprint(cur, "variable")
 
-@not_implemented
+@astparsers.not_implemented
 def clang_canonize(t):
     kind = t.kind
     if kind in clang_base_typekinds:
@@ -1517,56 +1423,6 @@ class PycparserClassDescriber(PycparserBaseDescriber):
         else:
             super(PycparserClassDescriber, self).visit(node)
 
-@_memoize_parser
-def pycparser_parse(filename, includes=(), defines=('XDRESS',), undefines=(), 
-                    verbose=False, debug=False, builddir='build'):
-    """Use pycparser to parse a file.  This functions is automatically memoized.
-
-    Parameters
-    ----------
-    filename : str
-        The path to the file.
-    includes: list of str, optional
-        The list of extra include directories to search for header files.
-    defines: list of str, optional
-        The list of extra macro definitions to apply.
-    undefines: list of str, optional
-        The list of extra macro undefinitions to apply.
-    verbose : bool, optional
-        Flag to diplay extra information while describing the class.
-    debug : bool, optional
-        Flag to enable/disable debug mode.
-    builddir : str, optional
-        Location of -- often temporary -- build files.
-
-    Returns
-    -------
-    root : AST
-        A pycparser abstract syntax tree.
-
-    """
-    pklname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.pkl'
-    pklname = os.path.join(builddir, pklname)
-    if os.path.isfile(pklname):
-        with io.open(pklname, 'r+b') as f:
-            root = pickle.load(f)
-        return root
-    kwargs = {'cpp_args': [r'-D__attribute__(x)=',  # Workaround for GNU libc
-                r'-D__asm__(x)=', r'-D__const=', 
-                r'-D__builtin_va_list=int', # just fake this
-                r'-D__restrict=', r'-D__extension__=', 
-                r'-D__inline__=', r'-D__inline=',
-                ]}
-    kwargs['cpp_args'] += ['-I' + i for i in includes]
-    kwargs['cpp_args'] += ['-D' + d for d in defines]
-    kwargs['cpp_args'] += ['-U' + d for u in undefines]
-    root = pycparser.parse_file(filename, use_cpp=True, **kwargs)
-    pklname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.pkl'
-    pklname = os.path.join(builddir, pklname)
-    with io.open(pklname, 'w+b') as f:
-        pickle.dump(root, f)
-    return root
-
 _pycparser_describers = {
     'var': PycparserVarDescriber,
     'func': PycparserFuncDescriber,
@@ -1605,9 +1461,9 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         A dictionary describing the class which may be used to generate
         API bindings.
     """
-    root = pycparser_parse(filename, includes=includes, defines=defines, 
-                           undefines=undefines, verbose=verbose, debug=debug, 
-                           builddir=builddir)
+    root = astparsers.pycparser_parse(filename, includes=includes, defines=defines, 
+                                      undefines=undefines, verbose=verbose, 
+                                      debug=debug, builddir=builddir)
     onlyin = set([filename, filename.replace('.c', '.h')])
     describer = _pycparser_describers[kind](name, root, onlyin=onlyin, verbose=verbose)
     describer.visit()
@@ -1617,48 +1473,6 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
 #
 #  General utilities
 #
-
-def pick_parser(filename, parsers):
-    """Determines the parse to use for a file.
-
-    Parameters
-    ----------
-    filename : str
-        The path to the file.
-    parsers : str, list, or dict, optional
-        The parser / AST to use to use for the file.  Currently 'clang', 'gccxml', 
-        and 'pycparser' are supported, though others may be implemented in the 
-        future.  If this is a string, then this parser is used.  If this is a list, 
-        this specifies the parser order to use based on availability.  If this is
-        a dictionary, it specifies the order to use parser based on language, i.e.
-        ``{'c' ['pycparser', 'gccxml'], 'c++': ['gccxml', 'pycparser']}``.
-
-    Returns
-    -------
-    parser : str
-        The name of the parser to use.
-
-    """
-    if isinstance(parsers, basestring):
-        parser = parsers
-    elif isinstance(parsers, collections.Sequence):
-        ps = [p for p in parsers if PARSERS_AVAILABLE[p.lower()]]
-        if len(ps) == 0:
-            msg = "Parsers not available: {0}".format(", ".join(parsers))
-            raise RuntimeError(msg)
-        parser = ps[0].lower()
-    elif isinstance(parsers, collections.Mapping):
-        lang = guess_language(filename)
-        ps = parsers[lang]
-        ps = [p for p in ps if PARSERS_AVAILABLE[p.lower()]]
-        if len(ps) == 0:
-            msg = "{0} parsers not available: {1}"
-            msg = msg.format(lang.capitalize(), ", ".join(parsers))
-            raise RuntimeError(msg)
-        parser = ps[0].lower()
-    else:
-        raise ValueError("type of parsers not intelligible")
-    return parser
 
 _describers = {
     'clang': clang_describe, 
@@ -1708,38 +1522,9 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     """
     if name is None:
         name = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
-    parser = pick_parser(filename, parsers)
+    parser = astparsers.pick_parser(filename, parsers)
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, defines=defines,
                      undefines=undefines, verbose=verbose, debug=debug, 
                      builddir=builddir)
-    return desc
-
-def merge_descriptions(descriptions):
-    """Given a sequence of descriptions, in order of increasing precedence, 
-    merge them into a single description dictionary."""
-    attrsmeths = frozenset(['attrs', 'methods', 'signatures'])
-    desc = {}
-    for description in descriptions:
-        for key, value in description.items():
-            if key not in desc:
-                desc[key] = deepcopy(value)
-                continue
-
-            if key in attrsmeths:
-                desc[key].update(value)
-            elif key == 'docstrings':
-                for dockey, docvalue in value.items():
-                    if dockey in attrsmeths:
-                        desc[key][dockey].update(docvalue)
-                    else:
-                        desc[key][dockey] = deepcopy(docvalue)
-            else:
-                desc[key] = deepcopy(value)
-    # now sanitize methods
-    name = desc['name']
-    methods = desc.get('methods', {})
-    for methkey, methval in methods.items():
-        if methval is None and not methkey[0].endswith(name):
-            del methods[methkey]  # constructor for parent
     return desc
