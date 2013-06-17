@@ -320,7 +320,9 @@ def genbindings(rc):
     cache = rc._cache
     rc.make_cyclus = False  # FIXME cyclus bindings don't exist yet!
     expand_apis(rc)
-    srcnames = set([x[1] for x in rc.variables + rc.functions + rc.classes])
+    srcnames = set([x[1] for x in rc.variables])
+    srcnames |= set([x[1] for x in rc.functions])
+    srcnames |= set([x[1] for x in rc.classes])
     for x in srcnames:
         load_pysrcmod(x, rc)
     # register dtypes
