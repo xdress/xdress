@@ -233,16 +233,6 @@ def compute_desc(name, srcname, tarname, kind, rc):
         desc['srcpxd_filename'] = '{0}_{1}.pxd'.format(ext, tarname)
     return desc
 
-def genstlcontainers(rc):
-    print("stlwrap: generating C++ standard library wrappers & converters")
-    fname = os.path.join(rc.packagedir, rc.stlcontainers_module)
-    ensuredirs(fname)
-    testname = os.path.join(rc.packagedir, 'tests', 'test_' + rc.stlcontainers_module)
-    ensuredirs(testname)
-    stlwrap.genfiles(rc.stlcontainers, fname=fname, testname=testname, 
-                     package=rc.package, verbose=rc.verbose)
-
-
 def _adddesc2env(desc, env, name, srcname, tarname):
     """Adds a description to environment"""
     # Add to target environment
