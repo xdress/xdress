@@ -171,7 +171,8 @@ except ImportError:
     PycparserNodeVisitor = object  # fake this for class definitions
 
 from . import utils
-from .utils import exec_file, RunControl, NotSpecified, merge_descriptions
+from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
+    find_source
 from . import astparsers
 
 from . import typesystem as ts
@@ -1554,7 +1555,7 @@ class XDressPlugin(astparsers.ParserPlugin):
 
     # Helper methods below
 
-    def load_pysrcmod(srcname, rc):
+    def load_pysrcmod(self, srcname, rc):
         """Loads a module dictionary from a src file into the pysrcenv cache."""
         if srcname in self.pysrcenv:
             return
@@ -1714,6 +1715,7 @@ class XDressPlugin(astparsers.ParserPlugin):
 
     def compute_functions(self, rc):
         """Computes function descriptions and loads them into the environment."""
+        env = rc.env
         cache = rc._cache
         for funcname, srcname, tarname in rc.functions:
             print("parsing " + funcname)
@@ -1725,6 +1727,7 @@ class XDressPlugin(astparsers.ParserPlugin):
 
     def compute_variables(self, rc):
         """Computes variables descriptions and loads them into the environment."""
+        env = rc.env
         cache = rc._cache
         for varname, srcname, tarname in rc.variables:
             print("parsing " + varname)

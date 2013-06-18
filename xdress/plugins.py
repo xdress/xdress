@@ -4,9 +4,10 @@
 
 """
 import os
+import io
 import sys
 import importlib
-import argparser
+import argparse
 
 from .utils import RunControl, NotSpecified, nyansep
 
@@ -155,7 +156,7 @@ class Plugins(object):
         """Finds all of the default run controlers and returns a new and 
         full default RunControl() instance."""
         rc = RunControl()
-        for plugin in plugins:
+        for plugin in self.plugins:
             drc = plugin.defaultrc
             if callable(drc):
                 drc = drc()
@@ -166,14 +167,14 @@ class Plugins(object):
     def setup(self):
         """Preforms all plugin setup tasks."""
         rc = self.rc
-        for plugin in plugins:
+        for plugin in self.plugins:
             plugin.setup(rc)
 
     def execute(self):
         """Preforms all plugin executions."""
         rc = self.rc
         try:
-            for plugin in plugins:
+            for plugin in self.plugins:
                 plugin.execute(rc)
         except Exception as e:
             if rc.debug:
@@ -183,7 +184,7 @@ class Plugins(object):
                 msg += traceback.format_exc()
                 msg += '\n{0}Run control run-time contents:\n\n{1}\n\n'.format(sep, 
                                                                         rc._pformat())
-                for plugin in plugins:
+                for plugin in self.plugins:
                     msg += sep
                     msg += plugin.report_debug(rc) or ''
                 with io.open(os.path.join(rc.builddir, 'debug.txt'), 'a+b') as f:
@@ -195,5 +196,5 @@ class Plugins(object):
     def teardown(self):
         """Preforms all plugin teardown tasks."""
         rc = self.rc
-        for plugin in plugins:
+        for plugin in self.plugins:
             plugin.teardown(rc)

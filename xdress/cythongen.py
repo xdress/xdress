@@ -12,6 +12,7 @@ Cython Generation API
 =====================
 """
 from __future__ import print_function
+import os
 import sys
 import math
 from copy import deepcopy
@@ -1202,7 +1203,7 @@ class XDressPlugin(Plugin):
         print("cythongen: creating C/C++ API wrappers")
         env = rc.env
         classes = {}
-        for mod in env:
+        for modname, mod in env.items():
             for name, desc in mod.items():
                 if isclassdesc(desc):
                     classes[name] = desc

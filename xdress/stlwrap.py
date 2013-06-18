@@ -2,6 +2,7 @@
 containters to the associated python types.
 """
 from __future__ import print_function
+import os
 import sys
 import pprint
 
@@ -1104,7 +1105,7 @@ class XDressPlugin(Plugin):
         )
 
     def update_argparser(self, parser):
-        arser.add_argument('--stlcontainers-module', action='store', 
+        parser.add_argument('--stlcontainers-module', action='store', 
                         dest='stlcontainers_module', help="stlcontainers module name")
         parser.add_argument('--make-stlcontainers', action='store_true',
                     dest='make_stlcontainers', help="make C++ STL container wrappers")

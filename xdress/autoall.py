@@ -384,6 +384,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         self.clshasstar = clshasstar
 
     def execute(self, rc):
+        print("autoall: discovering API names")
         if not self.varhasstar and not self.fnchasstar and not self.clshasstar:
             return
         allsrc = self.allsrc

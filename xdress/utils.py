@@ -3,6 +3,7 @@ from __future__ import print_function
 import os
 import io
 import sys
+from copy import deepcopy
 from pprint import pformat
 from collections import Mapping
 from hashlib import md5
