@@ -50,13 +50,6 @@ This has the following usage::
       --builddir BUILDDIR   path to build directory
 
 
-.. warning:: 
-
-    Known Limitation: Currently only files header files ending in .h and 
-    implementation files ending in .cpp are seen by xdress.  These could easily
-    be abstracted to more extensions.  Pull requests always welcome :).
-
-
 Sidecar Description Files
 =========================
 One main advantage of xdress is that every source file may have its own sidecar 
@@ -155,7 +148,7 @@ if sys.version_info[0] >= 3:
 
 def main():
     """Entry point for xdress API generation."""
-    # Preprocess plugin names, which entails preprocessing the rc filename
+    # Preprocess plugin names, which entails preprocessing the rc file
     preparser = argparse.ArgumentParser("XDress Pre-processor", add_help=False)
     preparser.add_argument('--rc', default=NotSpecified, 
                            help="path to run control file")

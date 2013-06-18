@@ -49,7 +49,7 @@ class Plugin(object):
         """
         pass
 
-    def setup(self, rc)
+    def setup(self, rc):
         """Performs all setup tasks needed for this plugin.  This may include 
         validation and munging of the run control object as well as creating 
         the portions of the OS environment.
@@ -61,7 +61,7 @@ class Plugin(object):
         """
         pass
 
-    def execute(self, rc)
+    def execute(self, rc):
         """Performs the actual work of the plugin, which may require a run controler.
 
         Parameters
@@ -71,7 +71,7 @@ class Plugin(object):
         """
         pass
 
-    def teardown(self, rc)
+    def teardown(self, rc):
         """Performs any cleanup tasks needed by the plugin.
 
         Parameters

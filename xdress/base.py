@@ -53,7 +53,7 @@ class XDressPlugin(Plugin):
         if rc.package is NotSpecified:
             msg = "no package name given; please add 'package' to {0}"
             sys.exit(msg.format(rc.rc))
-        if rc.packagedir is NotSpecified
+        if rc.packagedir is NotSpecified:
             rc.packagedir = rc.package.replace('.', os.path.sep)
         if not os.path.isdir(rc.packagedir):
             os.makedirs(rc.packagedir)

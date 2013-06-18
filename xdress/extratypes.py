@@ -12,7 +12,7 @@ import sys
 
 from .utils import RunControl, NotSpecified, newoverwrite
 from .plugins import Plugin
-import .typesystem as ts
+from . import typesystem as ts
 
 if sys.version_info[0] >= 3:
     basestring = str
