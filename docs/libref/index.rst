@@ -6,6 +6,8 @@ Library Reference
 At its core, xdress is a suite of code generation routines  built on top of a 
 dynamic type system.  
 
+**Core:**
+
 .. toctree::
     :maxdepth: 1
 
@@ -16,6 +18,12 @@ dynamic type system.
     autoall
     cythongen
     main
+
+**Helpers:**
+
+.. toctree::
+    :maxdepth: 1
+
     utils
     plugins
     base

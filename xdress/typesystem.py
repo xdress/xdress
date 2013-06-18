@@ -213,6 +213,32 @@ above.  It is therefore recommended that users and developers write code that us
 the shorter versions, Note that ``canon()`` is guaranteed to return strings, tuples, 
 and integers only -- making the output of this function hashable.
 
+Built-in Template Types
+-----------------------
+Template type definitions that come stock with xdress::
+
+    template_types = {
+        'map': ('key_type', 'value_type'),
+        'dict': ('key_type', 'value_type'),
+        'pair': ('key_type', 'value_type'),
+        'set': ('value_type',),
+        'list': ('value_type',),
+        'tuple': ('value_type',),
+        'vector': ('value_type',),
+        }
+
+Built-in Refined Types
+-----------------------
+Refined type definitions that come stock with xdress::
+
+    refined_types = {
+        'nucid': 'int32',
+        'nucname': 'str',
+        ('enum', ('name', 'str'), ('aliases', ('dict', 'str', 'int32', 0))): 'int32',
+        ('function', ('arguments', ('list', ('pair', 'str', 'type'))), ('returns', 'type')): 'void', 
+        ('function_pointer', ('arguments', ('list', ('pair', 'str', 'type'))), ('returns', 'type')): ('void', '*'), 
+        }
+
 Type System API
 ===============
 
@@ -451,7 +477,7 @@ def canon(t):
 
 @_memoize
 def strip_predicates(t):
-    """Removes all outter predicates from a type."""
+    """Removes all outer predicates from a type."""
     t = canon(t)
     if isinstance(t, basestring):
         return t
@@ -477,6 +503,7 @@ class MatchAny(object):
         return hash(repr(self))
 
 MatchAny = MatchAny()
+"""A singleton helper class for matching any portion of a type."""
 
 class TypeMatcher(object):
     """A class that is used for checking whether a type matches a given pattern."""
@@ -505,6 +532,7 @@ class TypeMatcher(object):
 
     @property
     def pattern(self):
+        """The pattern to match."""
         # Make this field read-only to prevent hashing errors
         return self._pattern
 
@@ -713,7 +741,7 @@ type_aliases = _LazyConfigDict({
     'v': 'void',
     's': 'str',
     'string': 'str',
-    # 'c' has char / complex ambiquity, not included
+    # 'c' has char / complex ambiguity, not included
     'NPY_BYTE': 'char',
     'NPY_UBYTE': 'uchar',
     'NPY_STRING': 'str',
@@ -745,7 +773,7 @@ type_aliases = _LazyConfigDict({
     'np.NPY_VOID': 'void',
     'np.NPY_OBJECT': 'void',
     })
-"""Aliases that may be used to subsitute one type name for another."""
+"""Aliases that may be used to substitute one type name for another."""
 
 
 #########################   Cython Functions   ################################
@@ -804,7 +832,7 @@ def _cython_ctype_add_predicate(t, last):
 
 @_memoize
 def cython_ctype(t):
-    """Given a type t, returns the cooresponding Cython C type declaration."""
+    """Given a type t, returns the corresponding Cython C type declaration."""
     t = canon(t)
 #    if t in _cython_ctypes:
 #        return _cython_ctypes[t]
@@ -907,7 +935,7 @@ _cython_cyimports['function_pointer'] = _cython_cyimports_functionish
 
 @_memoize
 def cython_cimport_tuples(t, seen=None, inc=frozenset(['c', 'cy'])):
-    """Given a type t, and possibily previously seen cimport tuples (set), 
+    """Given a type t, and possibly previously seen cimport tuples (set), 
     return the set of all seen cimport tuples.  These tuple have four possible 
     interpretations based on the length and values:
 
@@ -969,7 +997,7 @@ _cython_cimport_cases = {
 
 @_memoize
 def cython_cimports(x, inc=frozenset(['c', 'cy'])):
-    """Retuns the cimport lines associtated with a type or a set of seen tuples.
+    """Returns the cimport lines associated with a type or a set of seen tuples.
     """
     if not isinstance(x, Set):
         x = cython_cimport_tuples(x, inc=inc)
@@ -1013,7 +1041,7 @@ _cython_pyimports['function_pointer'] = _cython_pyimports_functionish
 
 @_memoize
 def cython_import_tuples(t, seen=None):
-    """Given a type t, and possibily previously seen import tuples (set), 
+    """Given a type t, and possibly previously seen import tuples (set), 
     return the set of all seen import tuples.  These tuple have four possible 
     interpretations based on the length and values:
 
@@ -1061,7 +1089,7 @@ _cython_import_cases = {
 
 @_memoize
 def cython_imports(x):
-    """Retuns the import lines associtated with a type or a set of seen tuples.
+    """Returns the import lines associated with a type or a set of seen tuples.
     """
     if not isinstance(x, Set):
         x = cython_import_tuples(x)
@@ -1220,7 +1248,7 @@ def _cython_cytype_add_predicate(t, last):
 
 @_memoize
 def cython_cytype(t):
-    """Given a type t, returns the cooresponding Cython type."""
+    """Given a type t, returns the corresponding Cython type."""
     t = canon(t)
 #    if t in _cython_cytypes:
 #        return _cython_cytypes[t]
@@ -1295,7 +1323,7 @@ def _fill_cypyt(cypyt, t):
 
 @_memoize
 def cython_pytype(t):
-    """Given a type t, returns the cooresponding Python type."""
+    """Given a type t, returns the corresponding Python type."""
     t = canon(t)
 #    if t in _cython_pytypes:
 #        return _cython_pytypes[t]
@@ -1352,7 +1380,7 @@ _numpy_types = _LazyConfigDict({
 
 @_memoize
 def cython_nptype(t, depth=0):
-    """Given a type t, returns the cooresponding numpy type.  If depth is 
+    """Given a type t, returns the corresponding numpy type.  If depth is 
     greater than 0 then this returns of a list of numpy types for all internal 
     template types, ie the float in ('vector', 'float', 0)."""
     t = canon(t)
@@ -1645,7 +1673,7 @@ _cython_py2c_conv = _LazyConverterDict({
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = <{npctypes[0]}> {var}[i]\n'),
-               '{proxy_name}'),     # FIXME There might be imporvements here...
+               '{proxy_name}'),     # FIXME There might be improvements here...
     ('vector', 'char', 0): ((
                 'cdef int i\n'
                 'cdef int {var}_size\n'
@@ -1676,7 +1704,7 @@ _cython_py2c_conv = _LazyConverterDict({
                 '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n' 
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = <{npctypes[0]}> {var}[i]\n'),
-                '{proxy_name}'),     # FIXME There might be imporvements here...
+                '{proxy_name}'),     # FIXME There might be improvements here...
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
     'nucname': ('nucname.name({var})', False),
@@ -2024,7 +2052,7 @@ def register_numpy_dtype(t, cython_cimport=None, cython_cyimport=None, cython_py
 #################### Type system helpers #######################################
 
 def clearmemo():
-    """Clears all function memoizations."""
+    """Clears all function memoizations in this module."""
     for x in globals().values():
         if callable(x) and hasattr(x, 'cache'):
             x.cache.clear()
