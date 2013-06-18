@@ -430,65 +430,6 @@ def genbindings(rc):
         print("making cyclus bindings")
 
 
-def setuprc(rc):
-    """Makes and validates a run control object and the environment it specifies."""
-    if isinstance(rc.parsers, basestring):
-        if '[' in rc.parsers or '{' in  rc.parsers:
-            rc.parsers = eval(rc.parsers)
-
-#defaultrc = RunControl(
-#    rc="xdressrc.py", 
-#    debug=False,
-#    make_extratypes=True,
-##    make_stlcontainers=True,
-##    make_cythongen=True,
-##    make_cyclus=False,
-#    dumpdesc=False,
-    includes=[],
-    defines=["XDRESS"],
-    undefines=[],
-#    verbose=False,
-#    package=NotSpecified,
-#    packagedir=NotSpecified,
-#    sourcedir='src',
-#    builddir='build',
-#    extra_types='xdress_extra_types',
-#    stlcontainers=[],
-#    stlcontainers_module='stlcontainers',
-    variables=(),
-    functions=(),
-    classes=(),
-    parsers={'c': ['pycparser', 'gccxml', 'clang'], 
-             'c++':['gccxml', 'clang', 'pycparser'] },
-    )
-
-def _old_main_setup():
-    """Setup xdress API generation."""
-    parser.add_argument('-I', '--includes', action='store', dest='includes', nargs="+",
-                        default=NotSpecified, help="additional include dirs")
-    parser.add_argument('-D', '--defines', action='append', dest='defines', nargs="+",
-                        default=NotSpecified, help="set additional macro definitions")
-    parser.add_argument('-U', '--undefines', action='append', dest='undefines', 
-                        nargs="+", default=NotSpecified, type=str,
-                        help="unset additional macro definitions")
-    parser.add_argument('-p', action='store', dest='parsers', 
-                        default=NotSpecified, help="parser(s) name, list, or dict")
-    ns = parser.parse_args()
-
-    rc = RunControl()
-    rc._update(defaultrc)
-    rc.rc = ns.rc
-    if os.path.isfile(rc.rc):
-        d = {}
-        exec_file(rc.rc, d, d)
-        rc._update(d)
-    rc._update([(k, v) for k, v in ns.__dict__.items() if not k.startswith('_')])
-    rc._cache = DescriptionCache(cachefile=os.path.join(rc.builddir, 'desc.cache'))
-
-    setuprc(rc)
-    return rc
-
-
 def main_body(rc):
     """Body for xdress API generation."""
     # set typesystem defaults
@@ -496,21 +437,6 @@ def main_body(rc):
     if rc.make_cythongen:
         genbindings(rc)
 
-def _old_main():
-    """Entry point for xdress API generation."""
-    rc = main_setup()
-    try:
-        main_body(rc)
-    except Exception as e:
-        if rc.debug:
-            import traceback
-            sep = r'~\_/' * 17 + '~=[,,_,,]:3\n\n'
-            with io.open(os.path.join(rc.builddir, 'debug.txt'), 'a+b') as f:
-                msg = '\n{0}Autodescriber parsers available:\n\n{1}\n\n'
-                f.write(msg.format(sep, pformat(autodescribe.PARSERS_AVAILABLE)))
-            raise 
-        else:
-            sys.exit(str(e))
 
 def main():
     """Entry point for xdress API generation."""

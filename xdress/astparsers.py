@@ -57,6 +57,7 @@ except ImportError:
 
 from . import utils
 from .utils import guess_language
+from .plugins import Plugin
 
 PARSERS_AVAILABLE = {
     'clang': False, 
@@ -266,3 +267,49 @@ def pick_parser(filename, parsers):
         raise ValueError("type of parsers not intelligible")
     return parser
 
+
+#
+# Plugin
+#
+
+class ParserPlugin(Plugin):
+    """This is a base plugin for tools that wish to wrap parsing.
+    It should not be used directly."""
+
+    
+    defaultrc = utils.RunControl(
+        includes=[],
+        defines=["XDRESS"],
+        undefines=[],
+        variables=(),
+        functions=(),
+        classes=(),
+        parsers={'c': ['pycparser', 'gccxml', 'clang'],
+                 'c++':['gccxml', 'clang', 'pycparser']}
+        )
+
+    def update_argparser(self, parser):
+        parser.add_argument('-I', '--includes', action='store', dest='includes', 
+                            nargs="+", help="additional include dirs")
+        parser.add_argument('-D', '--defines', action='append', dest='defines', 
+                            nargs="+", help="set additional macro definitions")
+        parser.add_argument('-U', '--undefines', action='append', dest='undefines',
+                            nargs="+", type=str, 
+                            help="unset additional macro definitions")
+        parser.add_argument('-p', action='store', dest='parsers',
+                            help="parser(s) name, list, or dict")
+
+    def setup(self, rc):
+        """Remember to call super() on subclasses!"""
+        if isinstance(rc.parsers, basestring):
+            if '[' in rc.parsers or '{' in  rc.parsers:
+                rc.parsers = eval(rc.parsers)
+
+    def execute(self, rc):
+        raise TypeError("ParserPlugin is not a complete plugin.  Do not use directly")
+
+    def report_debug(self, rc):
+        """Remember to call super() on subclasses!"""
+        msg = 'Autodescriber parsers available:\n\n{0}\n\n'
+        msg = msg.format(pformat(PARSERS_AVAILABLE))
+        return msg

@@ -15,7 +15,9 @@ import sys
 from pprint import pprint, pformat
 
 from . import utils
-from . import autodescribe
+from . import astparsers
+
+from .utils import find_source
 
 if os.name == 'nt':
     import ntpath
@@ -157,7 +159,7 @@ def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
     if os.name == 'nt':
         # GCC-XML and/or Cygwin wants posix paths on Windows.
         filename = posixpath.join(*ntpath.split(filename))
-    root = autodescribe.gccxml_parse(filename, includes=includes, defines=defines,
+    root = astparsers.gccxml_parse(filename, includes=includes, defines=defines,
             undefines=undefines, verbose=verbose, debug=debug, builddir=builddir)
     basename = filename.rsplit('.', 1)[0]
     onlyin = set([filename] + 
@@ -166,11 +168,11 @@ def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
     finder.visit()
     return finder.variables, finder.functions, finder.classes
 
-@autodescribe.not_implemented
+@astparsers.not_implemented
 def clang_findall(*args, **kwargs):
     pass
 
-class PycparserFinder(autodescribe.PycparserNodeVisitor):
+class PycparserFinder(astparsers.PycparserNodeVisitor):
     """Class used for discovering APIs using the pycparser AST."""
 
     def __init__(self, root=None, onlyin=None, verbose=False):
@@ -274,7 +276,7 @@ def pycparser_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         A list of class names to wrap from the file.
 
     """
-    root = autodescribe.pycparser_parse(filename, includes=includes, defines=defines,
+    root = astparsers.pycparser_parse(filename, includes=includes, defines=defines,
                 undefines=undefines, verbose=verbose, debug=debug, builddir=builddir)
     basename = filename.rsplit('.', 1)[0]
     onlyin = set([filename, basename + '.h'])
@@ -331,8 +333,96 @@ def findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         A list of class names to wrap from the file.
 
     """
-    parser = autodescribe.pick_parser(filename, parsers)
+    parser = astparsers.pick_parser(filename, parsers)
     finder = _finders[parser]
     rtn = finder(filename, includes=includes, defines=defines, undefines=undefines, 
                  verbose=verbose, debug=debug, builddir=builddir)
     return rtn
+
+
+#
+# Plugin
+#
+
+class XDressPlugin(astparsers.ParserPlugin):
+    """This plugin resolves the '*' syntax in wrapper types by parsing the 
+    source files prio to describing them. 
+    """
+
+    requires = ('xdress.base',)
+
+    def setup(self, rc):
+        """Expands variables, functions, and classes in the rc based on 
+        copying src filenames to tar filename and the special '*' all syntax."""
+        super(XDressPlugin, self).setup(rc)
+
+        # first pass -- gather and expand tar
+        allsrc = set()
+        varhasstar = False
+        for i, var in enumerate(rc.variables):
+            if var[0] == '*':
+                allsrc.add(var[1])
+                varhasstar = True
+            if len(var) == 2:
+                rc.variables[i] = (var[0], var[1], var[1])
+        fnchasstar = False
+        for i, fnc in enumerate(rc.functions):
+            if fnc[0] == '*':
+                allsrc.add(fnc[1])
+                fnchasstar = True
+            if len(fnc) == 2:
+                rc.functions[i] = (fnc[0], fnc[1], fnc[1])
+        clshasstar = False
+        for i, cls in enumerate(rc.classes):
+            if cls[0] == '*':
+                allsrc.add(cls[1])
+                clshasstar = True
+            if len(cls) == 2:
+                rc.classes[i] = (cls[0], cls[1], cls[1])
+
+        if not varhasstar and not fnchasstar and not clshasstar:
+            return
+
+        # second pass -- find all
+        allnames = {}
+        for srcname in allsrc:
+            srcfname, hdrfname, lang, ext = find_source(srcname, 
+                                                        sourcedir=rc.sourcedir)
+            filename = os.path.join(rc.sourcedir, srcfname)
+            found = findall(filename, includes=rc.includes, defines=rc.defines, 
+                            undefines=rc.undefines, parsers=rc.parsers, 
+                            verbose=rc.verbose, debug=rc.debug, builddir=rc.builddir)
+            allnames[srcname] = found
+
+        # third pass -- replace *s
+        if varhasstar:
+            newvars = []
+            for var in rc.variables:
+                if var[0] == '*':
+                    newvars += [(x, var[1], var[2]) for x in allnames[var[1]][0]]
+                else:
+                    newvars.append(var)
+            rc.variables = newvars
+        if fnchasstar:
+            newfncs = []
+            for fnc in rc.functions:
+                if fnc[0] == '*':
+                    newfncs += [(x, fnc[1], fnc[2]) for x in allnames[fnc[1]][1]]
+                else:
+                    newfncs.append(fnc)
+            rc.functions = newfncs
+        if clshasstar:
+            newclss = []
+            for cls in rc.classes:
+                if cls[0] == '*':
+                    newclss += [(x, cls[1], cls[2]) for x in allnames[cls[1]][2]]
+                else:
+                    newclss.append(cls)
+            rc.classes = newclss
+
+    def execute(self, rc):
+        """Does nothing but overide the method on the base class"""
+        pass
+
+    def report_debug(self, rc):
+        super(XDressPlugin, self).report_debug(rc)
