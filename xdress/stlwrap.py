@@ -1113,6 +1113,11 @@ class XDressPlugin(Plugin):
 
     def setup(self, rc):
         ts.STLCONTAINERS = rc.stlcontainers_module
+        # register dtypes
+        for t in rc.stlcontainers:
+            if t[0] == 'vector':
+                ts.register_numpy_dtype(t[1])
+
 
     def execute(self, rc):
         if not rc.make_stlcontainers:

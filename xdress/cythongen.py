@@ -18,6 +18,7 @@ from copy import deepcopy
 
 from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
     isvardesc, guess_language
+from .plugins import Plugin
 from . import typesystem as ts
 from .typesystem import cython_ctype, cython_cimport_tuples, \
     cython_cimports, register_class, cython_cytype, cython_pytype, cython_c2py, \
@@ -1187,6 +1188,17 @@ def funcpyx(desc):
         desc['pyx_filename'] = '{0}.pyx'.format(desc['name'].lower())
     return import_tups, cimport_tups, pyx
 
+#
+# Plugin
+#
+
+class XDressPlugin(Plugin):
+    """The main cython generator plugin.
+    """
+
+    requires = ('xdress.autodescribe',)
+
+    def execute(self, rc):
 
 #
 # Misc Helpers Below
@@ -1235,3 +1247,4 @@ def _exception_str(exceptions, srcfile, rtntype):
         return "except +"
     else:
         return ""
+

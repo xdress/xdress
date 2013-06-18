@@ -152,7 +152,6 @@ from copy import deepcopy
 import linecache
 import subprocess
 import itertools
-import tempfile
 import functools
 import pickle
 import collections
@@ -163,28 +162,6 @@ if os.name == 'nt':
     import ntpath
     import posixpath
 
-# GCC-XML conditional imports
-try:
-    from lxml import etree
-except ImportError:
-    try:
-        # Python 2.5
-        import xml.etree.cElementTree as etree
-    except ImportError:
-        try:
-          # Python 2.5
-          import xml.etree.ElementTree as etree
-        except ImportError:
-            try:
-                # normal cElementTree install
-                import cElementTree as etree
-            except ImportError:
-                try:
-                  # normal ElementTree install
-                  import elementtree.ElementTree as etree
-                except ImportError:
-                    pass
-
 # pycparser conditional imports
 try:
     import pycparser
@@ -194,7 +171,10 @@ except ImportError:
     PycparserNodeVisitor = object  # fake this for class definitions
 
 from . import utils
+from .utils import exec_file, RunControl, NotSpecified, merge_descriptions
 from . import astparsers
+
+from . import typesystem as ts
 
 if sys.version_info[0] >= 3: 
     basestring = str
@@ -1537,6 +1517,17 @@ class XDressPlugin(astparsers.ParserPlugin):
     """This plugin creates automatic description dictionaries of all souce and 
     target files."""
 
+    def __init__(self):
+        super(XDressPlugin, self).__init__()
+        self.pysrcenv = {}
+
+    def defaultrc(self):
+        rc = RunControl()
+        rc._update(super(XDressPlugin, self).defaultrc)
+        # target enviroment made up of module dicts made up of descriptions
+        rc.env = {} 
+        return rc
+
     def setup(self, rc):
         """Expands variables, functions, and classes in the rc based on 
         copying src filenames to tar filename."""
@@ -1552,6 +1543,195 @@ class XDressPlugin(astparsers.ParserPlugin):
                 rc.classes[i] = (cls[0], cls[1], cls[1])
 
     def execute(self, rc):
+        print("autodescribe: scraping C/C++ APIs from source")
+        self.load_sidecars(rc)
+        self.compute_classes(rc)
+        self.compute_functions(rc)
+        self.compute_variables(rc)
 
     def report_debug(self, rc):
         super(XDressPlugin, self).report_debug(rc)
+
+    # Helper methods below
+
+    def load_pysrcmod(srcname, rc):
+        """Loads a module dictionary from a src file into the pysrcenv cache."""
+        if srcname in self.pysrcenv:
+            return
+        pyfilename = os.path.join(rc.sourcedir, srcname + '.py')
+        if os.path.isfile(pyfilename):
+            glbs = globals()
+            locs = {}
+            exec_file(pyfilename, glbs, locs)
+            if 'mod' not in locs:
+                pymod = {}
+            elif callable(locs['mod']):
+                pymod = eval('mod()', glbs, locs)
+            else:
+                pymod = locs['mod']
+        else:
+            pymod = {}
+        self.pysrcenv[srcname] = pymod
+
+    def load_sidecars(self, rc):
+        """Loads all sidecar files."""
+        srcnames = set([x[1] for x in rc.variables])
+        srcnames |= set([x[1] for x in rc.functions])
+        srcnames |= set([x[1] for x in rc.classes])
+        for x in srcnames:
+            self.load_pysrcmod(x, rc)
+
+    def compute_desc(self, name, srcname, tarname, kind, rc):
+        """Returns a description dictionary for a class or function
+        implemented in a source file and bound into a target file.
+
+        Parameters
+        ----------
+        name : str
+            Class or function name to describe.
+        srcname : str
+            File basename of implementation.  
+        tarname : str
+            File basename where the bindings will be generated.  
+        kind : str
+            The kind of type to describe, valid flags are 'class', 'func', and 'var'.
+        rc : xdress.utils.RunControl
+            Run contoler for this xdress execution.
+
+        Returns
+        -------
+        desc : dict
+            Description dictionary.
+
+        """
+        # description
+        srcfname, hdrfname, lang, ext = find_source(srcname, sourcedir=rc.sourcedir)
+        filename = os.path.join(rc.sourcedir, srcfname)
+        cache = rc._cache
+        if cache.isvalid(name, filename, kind):
+            srcdesc = cache[name, filename, kind]
+        else:
+            srcdesc = describe(filename, name=name, kind=kind, includes=rc.includes, 
+                               defines=rc.defines, undefines=rc.undefines, 
+                               parsers=rc.parsers, verbose=rc.verbose, 
+                               debug=rc.debug, builddir=rc.builddir)
+            cache[name, filename, kind] = srcdesc
+
+        # python description
+        pydesc = self.pysrcenv[srcname].get(name, {})
+
+        desc = merge_descriptions([srcdesc, pydesc])
+        desc['source_filename'] = srcfname
+        desc['header_filename'] = hdrfname
+        desc['metadata_filename'] = '{0}.py'.format(srcname)
+        if tarname is None:
+            desc['pxd_filename'] = desc['pyx_filename'] = \
+                                   desc['srcpxd_filename'] = None
+        else:
+            desc['pxd_filename'] = '{0}.pxd'.format(tarname)
+            desc['pyx_filename'] = '{0}.pyx'.format(tarname)
+            desc['srcpxd_filename'] = '{0}_{1}.pxd'.format(ext, tarname)
+        return desc
+
+    def adddesc2env(self, desc, env, name, srcname, tarname):
+        """Adds a description to environment"""
+        # Add to target environment
+        # docstrings overwrite, extras accrete 
+        mod = {name: desc, 'docstring': self.pysrcenv[srcname].get('docstring', ''),
+               'srcpxd_filename': desc['srcpxd_filename'],
+               'pxd_filename': desc['pxd_filename'],
+               'pyx_filename': desc['pyx_filename']}
+        if tarname not in env:
+            env[tarname] = mod
+            env[tarname]["name"] = tarname
+            env[tarname]['extra'] = self.pysrcenv[srcname].get('extra', '')
+        else:
+            env[tarname].update(mod)
+            env[tarname]['extra'] += self.pysrcenv[srcname].get('extra', '')
+
+    def compute_classes(self, rc):
+        """Computes class descriptions and loads them into the environment and 
+        type system."""
+        # compute all class descriptions first 
+        cache = rc._cache
+        env = rc.env  # target environment, not source one
+        for classname, srcname, tarname in rc.classes:
+            print("parsing " + classname)
+            desc = self.compute_desc(classname, srcname, tarname, 'class', rc)
+            if rc.verbose:
+                pprint(desc)
+
+            print("registering " + classname)
+            pxd_base = desc['pxd_filename'].rsplit('.', 1)[0]         # eg, fccomp
+            cpppxd_base = desc['srcpxd_filename'].rsplit('.', 1)[0]   # eg, cpp_fccomp
+            class_c2py = ('{pytype}({var})',
+                          ('{proxy_name} = {pytype}()\n'
+                           '(<{ctype} *> {proxy_name}._inst)[0] = {var}'),
+                          ('if {cache_name} is None:\n'
+                           '    {proxy_name} = {pytype}()\n'
+                           '    {proxy_name}._free_inst = False\n'
+                           '    {proxy_name}._inst = &{var}\n'
+                           '    {cache_name} = {proxy_name}\n')
+                         )
+            class_py2c = ('{proxy_name} = <{cytype_nopred}> {var}',
+                          '(<{ctype_nopred} *> {proxy_name}._inst)[0]')
+            class_cimport = (rc.package, cpppxd_base)
+            kwclass = dict(
+                name=classname,                                 # FCComp
+                cython_c_type=cpppxd_base + '.' + classname,    # cpp_fccomp.FCComp
+                cython_cimport=class_cimport,
+                cython_cy_type=pxd_base + '.' + classname,      # fccomp.FCComp   
+                cython_py_type=pxd_base + '.' + classname,      # fccomp.FCComp   
+                cython_template_class_name=classname.replace('_', '').capitalize(),
+                cython_cyimport=pxd_base,                       # fccomp
+                cython_pyimport=pxd_base,                       # fccomp
+                cython_c2py=class_c2py,
+                cython_py2c=class_py2c,
+                )
+            ts.register_class(**kwclass)
+            class_ptr_c2py = ('{pytype}({var})',
+                              ('{proxy_name} = {pytype}()\n'
+                               '(<{ctype} *> {proxy_name}._inst) = {var}'),
+                              ('if {cache_name} is None:\n'
+                               '    {proxy_name} = {pytype}()\n'
+                               '    {proxy_name}._free_inst = False\n'
+                               '    {proxy_name}._inst = {var}\n'
+                               '    {cache_name} = {proxy_name}\n')
+                             )
+            class_ptr_py2c = ('{proxy_name} = <{cytype_nopred}> {var}',
+                              '(<{ctype_nopred} *> {proxy_name}._inst)')
+            kwclassptr = dict(
+                name=(classname, '*'),
+                cython_c2py=class_ptr_c2py,
+                cython_py2c=class_ptr_py2c,
+                cython_cimport=kwclass['cython_cimport'],
+                cython_cyimport=kwclass['cython_cyimport'],
+                cython_pyimport=kwclass['cython_pyimport'],
+                )
+            ts.register_class(**kwclassptr)
+            cache.dump()
+            self.adddesc2env(desc, env, classname, srcname, tarname)
+
+    def compute_functions(self, rc):
+        """Computes function descriptions and loads them into the environment."""
+        cache = rc._cache
+        for funcname, srcname, tarname in rc.functions:
+            print("parsing " + funcname)
+            desc = self.compute_desc(funcname, srcname, tarname, 'func', rc)
+            if rc.verbose:
+                pprint(desc)
+            cache.dump()
+            self.adddesc2env(desc, env, funcname, srcname, tarname)
+
+    def compute_variables(self, rc):
+        """Computes variables descriptions and loads them into the environment."""
+        cache = rc._cache
+        for varname, srcname, tarname in rc.variables:
+            print("parsing " + varname)
+            desc = self.compute_desc(varname, srcname, tarname, 'var', rc)
+            if rc.verbose:
+                pprint(desc)
+            cache.dump()
+            self.adddesc2env(desc, env, varname, srcname, tarname)
+
+
