@@ -74,7 +74,7 @@ hesitate to ask the mailing list (xdress@googlegroups.com).
 Helpful Links
 =============
 
-* `Documentation <http://bit.ly/xdress-code>`_
+* `Documentation <http://xdress.org>`_
 * `Mailing list <mailto:xdress@googlegroups.com>`_
 * :ref:`genindex`
 * :ref:`modindex`
