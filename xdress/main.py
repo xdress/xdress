@@ -145,7 +145,7 @@ import sys
 import argparse
 from pprint import pprint, pformat
 
-from .utils import NotSpecified, RunControl
+from .utils import NotSpecified, RunControl, DEFAULT_RC_FILE, DEFAULT_PLUGINS
 
 from .plugins import Plugins
 
@@ -162,7 +162,7 @@ def main():
     preparser.add_argument('--plugins', default=NotSpecified, nargs="+",
                            help="plugins to include")
     prens = preparser.parse_known_args()
-    predefaultrc = RunControl(rc="xdressrc.py", plugins=["xdress.base"])
+    predefaultrc = RunControl(rc=DEFAULT_RC_FILE, plugins=DEFAULT_PLUGINS)
     prerc = RunControl()
     prerc._update(predefaultrc)
     prerc.rc = prens.rc

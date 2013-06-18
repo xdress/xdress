@@ -9,7 +9,8 @@ from __future__ import print_function
 import os
 import sys
 
-from .utils import RunControl, NotSpecified, writenewonly, DescriptionCache
+from .utils import RunControl, NotSpecified, writenewonly, DescriptionCache, \
+    DEFAULT_RC_FILE, DEFAULT_PLUGINS
 from .plugins import Plugin
 
 if sys.version_info[0] >= 3:
@@ -19,8 +20,8 @@ class XDressPlugin(Plugin):
     """This class provides base functionality for xdress itself."""
 
     defaultrc = RunControl(
-        rc="xdressrc.py",
-        plugins=['xdress.base'],
+        rc=DEFAULT_RC_FILE,
+        plugins=DEFAULT_PLUGINS,
         debug=False,
         verbose=False,
         dumpdesc=False,

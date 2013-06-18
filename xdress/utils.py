@@ -11,9 +11,11 @@ try:
 except ImportError:
     import pickle
 
-
 if sys.version_info[0] >= 3: 
     basestring = str
+
+DEFAULT_RC_FILE = "xdressrc.py"
+DEFAULT_PLUGINS = ('xdress.stlwrap', 'xdress.autoall', 'xdress.cythongen')
 
 def indent(s, n=4, join=True):
     """Indents all lines in the string or list s by n spaces."""
