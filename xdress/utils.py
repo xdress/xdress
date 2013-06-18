@@ -1,4 +1,10 @@
-"""Helper functions for bright API generation."""
+"""Helper functions for bright API generation.
+
+:author: Anthony Scopatz <scopatz@gmail.com>
+
+Utilities API
+=============
+"""
 from __future__ import print_function
 import os
 import io
@@ -146,11 +152,14 @@ def exec_file(filename, glb=None, loc=None):
     exec(compile(src, filename, "exec"), glb, loc)
 
 class NotSpecified(object):
-    """A helper class for run control meaning a 'real' has not been given."""
+    """A helper class singleton for run control meaning that a 'real' value 
+    has not been given."""
     def __repr__(self):
         return "NotSpecified"
 
 NotSpecified = NotSpecified()
+"""A helper class singleton for run control meaning that a 'real' value 
+has not been given."""
 
 class RunControl(object):
     """A composable configuration class for xdress. Unlike argparse.Namespace, 
@@ -311,6 +320,7 @@ def find_source(basename, sourcedir='.'):
     return src, hdr, lang, srcext
 
 nyansep = r'~\_/' * 17 + '~=[,,_,,]:3'
+"""WAT?!"""
 
 class DescriptionCache(object):
     """A quick persistent cache for descriptions from files.  

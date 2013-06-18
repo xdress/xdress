@@ -2,6 +2,8 @@
 
 :author: Anthony Scopatz <scopatz@gmail.com>
 
+Plugins API
+===========
 """
 import os
 import io
@@ -30,7 +32,7 @@ class Plugin(object):
     """
 
     def __init__(self):
-        """The initilization may take no arguments or keyword arguments."""
+        """The __init__() method may take no arguments or keyword arguments."""
         pass
 
     def update_argparser(self, parser):
@@ -45,7 +47,8 @@ class Plugin(object):
             if given should only be ``xdress.utils.Not Specified``.  This is to 
             prevent collisions with the run controler.  Default values should 
             instead be given in this class's ``defaultrc`` attribute or method.
-            Argument names or ``dest``s should match the keys in ``defaultrc``.
+            Argument names or the ``dest`` keyword argument should match the keys 
+            in ``defaultrc``.
 
         """
         pass

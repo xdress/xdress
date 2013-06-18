@@ -1,5 +1,12 @@
 """Generates cython wrapper classes and converter functions for standard library
 containters to the associated python types.
+
+This module is available as an xdress plugin by the name ``xdress.stlwrap``.
+
+:author: Anthony Scopatz <scopatz@gmail.com>
+
+C++ STL Warpper API
+===================
 """
 from __future__ import print_function
 import os

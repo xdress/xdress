@@ -3,6 +3,9 @@ and return thier name and kind.  These include classes, structs, functions,
 and certain variable types.  It is not used to actually describe these elements.
 That is the job of the autodescriber.
 
+This module is available as an xdress plugin by the name ``xdress.autoall``.
+
+
 :author: Anthony Scopatz <scopatz@gmail.com>
 
 

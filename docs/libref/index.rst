@@ -11,8 +11,12 @@ dynamic type system.
 
     typesystem
     stlwrap
+    astparsers
     autodescribe
     autoall
     cythongen
     main
     utils
+    plugins
+    base
+    extratypes

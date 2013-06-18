@@ -1,5 +1,7 @@
 """The extra types plugin for XDress.
 
+This module is available as an xdress plugin by the name ``xdress.extratypes``.
+
 :author: Anthony Scopatz <scopatz@gmail.com>
 
 Extra Types Plugin API

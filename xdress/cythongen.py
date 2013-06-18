@@ -1,12 +1,14 @@
-"""Generates a Cython wrappers for C++ classes from description dictionaries.
+"""Generates a Cython wrappers from description dictionaries.
 This module relies heavily on the type system to convert between C/C++, Cython, and
 Python types in a seamless way.  While this module does not explicitly rely on the
 auto-describer, it sure helps!  The functions in this module are conceptually
 easy to understand -- given class descriptions they generate strings of Cython
 code -- their implementations do a lot of heavy lifting.
 
-:author: Anthony Scopatz <scopatz@gmail.com>
+This module is available as an xdress plugin by the name ``xdress.cythongen``.
 
+
+:author: Anthony Scopatz <scopatz@gmail.com>
 
 Cython Generation API
 =====================

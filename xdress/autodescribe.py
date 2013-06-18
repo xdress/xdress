@@ -1,6 +1,8 @@
 """This module creates descriptions of C/C++ classes, functions, and variables 
 from source code, by using external parsers (GCC-XML, Clang AST) and the type system.
 
+This module is available as an xdress plugin by the name ``xdress.autodescribe``.
+
 :author: Anthony Scopatz <scopatz@gmail.com>
 
 Descriptions

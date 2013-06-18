@@ -1,5 +1,7 @@
 """The base plugin for XDress.
 
+This module is available as an xdress plugin by the name ``xdress.base``.
+
 :author: Anthony Scopatz <scopatz@gmail.com>
 
 Base Plugin API

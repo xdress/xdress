@@ -1,9 +1,9 @@
-"""Top-level automatic API generators entry point.  
+"""Top-level xdress entry point.  
 
 :author: Anthony Scopatz <scopatz@gmail.com>
 
-API Generation
-==============
+XDress Comand Line Interface
+============================
 This module is where all of the API generation routines reside.
 Until now the type system, automatic description, and cython code generation have
 all be independent of what classes they are wrapping.  
@@ -16,38 +16,48 @@ The main module is normally run via the command line interface as follows:
 This has the following usage::
 
     path/to/proj/ $ xdress -h 
-    usage: Generates XDress API [-h] [--rc RC] [-v] [--debug] [--make-extratypes]
-                                [--no-make-extratypes] [--make-stlcontainers]
-                                [--no-make-stlcontainers] [--make-cythongen]
-                                [--no-make-cythongen] [--make-cyclus]
-                                [--no-make-cyclus] [--dumpdesc]
+    usage: Generates XDress API [-h] [--rc RC] [--plugins PLUGINS [PLUGINS ...]]
+                                [--debug] [-v] [--dumpdesc] [--package PACKAGE]
+                                [--packagedir PACKAGEDIR] [--sourcedir SOURCEDIR]
+                                [--builddir BUILDDIR] [--extra-types EXTRA_TYPES]
+                                [--make-extra-types] [--no-make-extra-types]
+                                [--stlcontainers-module STLCONTAINERS_MODULE]
+                                [--make-stlcontainers] [--no-make-stlcontainers]
                                 [-I INCLUDES [INCLUDES ...]]
                                 [-D DEFINES [DEFINES ...]]
-                                [-U UNDEFINES [UNDEFINES ...]]
-                                [--builddir BUILDDIR]
+                                [-U UNDEFINES [UNDEFINES ...]] [-p PARSERS]
 
     optional arguments:
       -h, --help            show this help message and exit
       --rc RC               path to run control file
-      -v, --verbose         print more output
+      --plugins PLUGINS [PLUGINS ...]
+                            plugins to include
       --debug               build in debugging mode
-      --make-extratypes     make extra types wrapper
-      --no-make-extratypes  don't make extra types wrapper
-      --make-stlcontainers  make STL container wrappers
-      --no-make-stlcontainers
-                            don't make STL container wrappers
-      --make-cythongen      make cython bindings
-      --no-make-cythongen   don't make cython bindings
-      --make-cyclus         make cyclus bindings
-      --no-make-cyclus      don't make cyclus bindings
+      -v, --verbose         print more output
       --dumpdesc            print description cache
+      --package PACKAGE     package name
+      --packagedir PACKAGEDIR
+                            path to package directory
+      --sourcedir SOURCEDIR
+                            path to source directory
+      --builddir BUILDDIR   path to build directory
+      --extra-types EXTRA_TYPES
+                            extra types name
+      --make-extra-types    make extra types wrapper
+      --no-make-extra-types
+                            don't make extra types wrapper
+      --stlcontainers-module STLCONTAINERS_MODULE
+                            stlcontainers module name
+      --make-stlcontainers  make C++ STL container wrappers
+      --no-make-stlcontainers
+                            don't make C++ STL container wrappers
       -I INCLUDES [INCLUDES ...], --includes INCLUDES [INCLUDES ...]
                             additional include dirs
       -D DEFINES [DEFINES ...], --defines DEFINES [DEFINES ...]
                             set additional macro definitions
       -U UNDEFINES [UNDEFINES ...], --undefines UNDEFINES [UNDEFINES ...]
                             unset additional macro definitions
-      --builddir BUILDDIR   path to build directory
+      -p PARSERS            parser(s) name, list, or dict
 
 
 Sidecar Description Files
