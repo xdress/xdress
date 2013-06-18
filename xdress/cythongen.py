@@ -17,7 +17,7 @@ import math
 from copy import deepcopy
 
 from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
-    isvardesc, guess_language
+    isvardesc, guess_language, newoverwrite
 from .plugins import Plugin
 from . import typesystem as ts
 from .typesystem import cython_ctype, cython_cimport_tuples, \
@@ -1199,6 +1199,30 @@ class XDressPlugin(Plugin):
     requires = ('xdress.autodescribe',)
 
     def execute(self, rc):
+        print("cythongen: creating C/C++ API wrappers")
+        env = rc.env
+        classes = {}
+        for mod in env:
+            for name, desc in mod.items():
+                if isclassdesc(desc):
+                    classes[name] = desc
+
+        # generate all files
+        cpppxds = gencpppxd(env)
+        pxds = genpxd(env, classes)
+        pyxs = genpyx(env, classes)
+
+        # write out all files
+        for key, cpppxd in cpppxds.items():
+            newoverwrite(cpppxd, os.path.join(rc.package, 
+                         env[key]['srcpxd_filename']), rc.verbose)
+        for key, pxd in pxds.items():
+            newoverwrite(pxd, os.path.join(rc.package, 
+                         env[key]['pxd_filename']), rc.verbose)
+        for key, pyx in pyxs.items():
+            newoverwrite(pyx, os.path.join(rc.package, 
+                         env[key]['pyx_filename']), rc.verbose)
+
 
 #
 # Misc Helpers Below

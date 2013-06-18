@@ -145,38 +145,13 @@ import sys
 import argparse
 from pprint import pprint, pformat
 
-from .utils import newoverwrite, newcopyover, ensuredirs, writenewonly, exec_file, \
-    NotSpecified, RunControl, guess_language, find_source
-from . import typesystem as ts
-from . import stlwrap
-from .cythongen import gencpppxd, genpxd, genpyx
-from . import autodescribe 
-from . import autoall
+from .utils import NotSpecified, RunControl
 
 from .plugins import Plugins
 
 if sys.version_info[0] >= 3:
     basestring = str
 
-
-
-def genbindings(rc):
-    """Generates bidnings using the command line setting specified in rc.
-    """
-
-    # next, make cython bindings
-    # generate first, then write out to ensure this is atomic per-class
-    if rc.make_cythongen:
-        print("cythongen: creating C/C++ API wrappers")
-        cpppxds = gencpppxd(env)
-        pxds = genpxd(env, classes)
-        pyxs = genpyx(env, classes)
-        for key, cpppxd in cpppxds.items():
-            newoverwrite(cpppxd, os.path.join(rc.package, env[key]['srcpxd_filename']), rc.verbose)
-        for key, pxd in pxds.items():
-            newoverwrite(pxd, os.path.join(rc.package, env[key]['pxd_filename']), rc.verbose)
-        for key, pyx in pyxs.items():
-            newoverwrite(pyx, os.path.join(rc.package, env[key]['pyx_filename']), rc.verbose)
 
 def main():
     """Entry point for xdress API generation."""
