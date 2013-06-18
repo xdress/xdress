@@ -22,7 +22,10 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 DEFAULT_RC_FILE = "xdressrc.py"
+"""Default run control file name."""
+
 DEFAULT_PLUGINS = ('xdress.stlwrap', 'xdress.autoall', 'xdress.cythongen')
+"""Default list of plugin module names."""
 
 def indent(s, n=4, join=True):
     """Indents all lines in the string or list s by n spaces."""
@@ -35,6 +38,10 @@ def indent(s, n=4, join=True):
 
 
 class indentstr(str):
+    """A special string subclass that can be used to indent the whol string 
+    inside of format strings by accessing an ``indentN`` attr.  For example,
+    ``s.indent8`` will return a copy of the string s where every line starts 
+    with 8 spaces."""
     def __getattr__(self, key):
         if key.startswith('indent'):
             return indent(self, n=int(key[6:]))

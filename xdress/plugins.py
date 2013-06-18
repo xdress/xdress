@@ -2,6 +2,116 @@
 
 :author: Anthony Scopatz <scopatz@gmail.com>
 
+The purpose of xdress is to be as modular and extensible as possible, allowing for 
+developers to build and execute their own tools as needed.  As such, xdress has 
+a very nimble plugin interface that easily handles run control, adding arguments to 
+the command line interface, setting up & validating the run control, command
+execution, and teardown.  In fact, the entire xdress execution is based on this 
+plugin architecture.  You can be certain that this is well supported feature and 
+not some hack'd add on.
+
+Writing Plugins
+===============
+Writing plugins is easy!  You simply need to have a variable named ``XDressPlugin``
+in a module.  Say your module is called ``mymod`` and lives in a package ``mypack``,
+then xdress would know this plugin by the name ``"mypack.mymod"``.  This is exactly
+the same string that you would use to do an absolute import of ``mymod``.
+
+To expose this plugin to an xdress execution, either add it to the ``plugins``
+variable in your ``xdressrc.py`` file::
+
+    from xdress.utils import DEFAULT_PLUGINS
+    plugins = list(DEFAULT_PLUGINS) + ['mypack.mymod']
+
+Or you can add it on the comand line::
+
+    ~ $ xdress --plugins xdress.stlwrap xdress.autoall xdress.cythongen mypack.mymod
+
+Note that in both of the above cases we retain normal functionality by including 
+the default plugins that come with xdress.
+
+The ``XDressPlugin`` variable must be callable with no arguments and return a 
+variable with certain attributes.  Normally this is done as a class but through
+the magic of duck typing it doesn't have to be.  The ``Plugin`` class is provided
+as a base class which implements a minimal, zero-work interface.  This is useful
+for inheriting your modules plugin from.  You need only override the attributes
+you want.  Again, inheriting from ``Plugin`` is suggested but not required.
+
+Interface
+---------
+:requires: This is a list of module names or a function that returns such a list.
+    The names in this list will be loaded and executed in order prior to this plugin.
+    If multiple plugins require the same upstream plugin, the upstream on will only
+    be run once.
+:defaultrc: This is a dictionary or run control instance that maps run control 
+    parameters to their default values if they are otherwise not specified.  To 
+    make a parameter have to be given by the user, set the value to the singleton
+    ``xdress.utils.NotSpecified``.  Parameters with the same name in different 
+    plugins will clobber each other, with the last plugin's value being ultimately
+    assigned.  The exception to this is if a later plugin's parameter value is 
+    ``NotSpecified`` then the previous plugin value will be retained.  See the
+    ``RunControl`` class for more details.  Generally it is not advised for two
+    plugins to share run control parameter names unless you *really* know what 
+    you are doing.
+:update_argparser(parser):  This is method that takes an argparse.ArgumentParser() 
+    instance and modifies it in-place.  This allows for run control parameters to be 
+    exposed as command line arguments and options.  Default arguments in 
+    ``parser.add_argument()`` values should not be given, or should only be set to 
+    ``Not Specified``.  This is to prevent collisions with the run controler.  
+    Default values should instead be given in the plugin's ``defaultrc``.  Thus 
+    argument names or the ``dest`` keyword argument should match the keys in 
+    ``defaultrc``.
+:setup(rc): Performs all setup tasks needed for this plugin.  This may include 
+    validation and munging of the run control object (rc) as well as creating 
+    directories and files in the OS environment.  If needed, the rc should be 
+    modified in-place so that changes propogate to other plugins and further calls
+    on this plugin. This should return None.
+:execute(rc): Performs the heavy lifting of the plugin, which may require a run 
+    controler.If needed, the rc should be modified in-place so that changes 
+    propogate to other plugins and further calls on this plugin. This should 
+    return None. 
+:teardown(rc): Performs any cleanup tasks needed by the plugin, including removing
+    temporary files.  If needed, the rc should be modified in-place so that changes 
+    propogate to other plugins and further calls on this plugin. This should 
+    return None. 
+:report_debug(rc):  Gnerates and returns a message to report in the ``debug.txt``
+    file in the event that execute() fails and additional debugging information is 
+    requested.  This message is a string.
+
+
+Example
+-------
+Here is simple, if morbid, example::
+
+    from xdress.plugins import Plugin
+
+    class XDressPlugin(Plugin):
+        '''Which famous person was executed?'''
+
+        # everything should require base, its useful!
+        requires = ('xdress.base',)
+
+        defaultrc = {
+            'choices': ['J. Edgar Hoover', 'Hua Mulan', 'Eddie Izzard'],
+            'answer': 'Joan of Arc',
+            }
+
+        def setup(self, rc):
+            '''Ensures that Joan of Arc is a choice.'''
+            if 'Joan of Arc' not in rc.choices:
+                rc.choices.append('Joan of Arc')
+
+        def execute(self, rc):
+            '''Kills Joan...'''
+            if rc.answer == 'Joan of Arc':
+                print('Joan has met an untimely demise!')
+            else:
+                raise ValueError('It was Joan of Arc who died, not ' + rc.answer)
+
+        def report_debug(self, rc):
+            return "the possible choices were " + str(rc.choices)
+    
+
 Plugins API
 ===========
 """
