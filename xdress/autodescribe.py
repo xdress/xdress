@@ -194,7 +194,6 @@ except ImportError:
     PycparserNodeVisitor = object  # fake this for class definitions
 
 from . import utils
-from .utils import guess_language
 from . import astparsers
 
 if sys.version_info[0] >= 3: 
@@ -1528,3 +1527,31 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
                      undefines=undefines, verbose=verbose, debug=debug, 
                      builddir=builddir)
     return desc
+
+
+#
+# Plugin
+#
+
+class XDressPlugin(astparsers.ParserPlugin):
+    """This plugin creates automatic description dictionaries of all souce and 
+    target files."""
+
+    def setup(self, rc):
+        """Expands variables, functions, and classes in the rc based on 
+        copying src filenames to tar filename."""
+        super(XDressPlugin, self).setup(rc)
+        for i, var in enumerate(rc.variables):
+            if len(var) == 2:
+                rc.variables[i] = (var[0], var[1], var[1])
+        for i, fnc in enumerate(rc.functions):
+            if len(fnc) == 2:
+                rc.functions[i] = (fnc[0], fnc[1], fnc[1])
+        for i, cls in enumerate(rc.classes):
+            if len(cls) == 2:
+                rc.classes[i] = (cls[0], cls[1], cls[1])
+
+    def execute(self, rc):
+
+    def report_debug(self, rc):
+        super(XDressPlugin, self).report_debug(rc)

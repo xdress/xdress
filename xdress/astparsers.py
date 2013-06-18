@@ -276,6 +276,7 @@ class ParserPlugin(Plugin):
     """This is a base plugin for tools that wish to wrap parsing.
     It should not be used directly."""
 
+    requires = ('xdress.base',)
     
     defaultrc = utils.RunControl(
         includes=[],

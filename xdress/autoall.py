@@ -349,14 +349,12 @@ class XDressPlugin(astparsers.ParserPlugin):
     source files prio to describing them. 
     """
 
-    requires = ('xdress.base',)
-
     def setup(self, rc):
         """Expands variables, functions, and classes in the rc based on 
         copying src filenames to tar filename and the special '*' all syntax."""
         super(XDressPlugin, self).setup(rc)
 
-        # first pass -- gather and expand tar
+        # first pass -- gather and expand target
         allsrc = set()
         varhasstar = False
         for i, var in enumerate(rc.variables):
@@ -380,8 +378,15 @@ class XDressPlugin(astparsers.ParserPlugin):
             if len(cls) == 2:
                 rc.classes[i] = (cls[0], cls[1], cls[1])
 
-        if not varhasstar and not fnchasstar and not clshasstar:
+        self.allsrc = allsrc
+        self.varhasstar = varhasstar
+        self.fnchasstar = fnchasstar
+        self.clshasstar = clshasstar
+
+    def execute(self, rc):
+        if not self.varhasstar and not self.fnchasstar and not self.clshasstar:
             return
+        allsrc = self.allsrc
 
         # second pass -- find all
         allnames = {}
@@ -395,7 +400,7 @@ class XDressPlugin(astparsers.ParserPlugin):
             allnames[srcname] = found
 
         # third pass -- replace *s
-        if varhasstar:
+        if self.varhasstar:
             newvars = []
             for var in rc.variables:
                 if var[0] == '*':
@@ -403,7 +408,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                 else:
                     newvars.append(var)
             rc.variables = newvars
-        if fnchasstar:
+        if self.fnchasstar:
             newfncs = []
             for fnc in rc.functions:
                 if fnc[0] == '*':
@@ -411,7 +416,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                 else:
                     newfncs.append(fnc)
             rc.functions = newfncs
-        if clshasstar:
+        if self.clshasstar:
             newclss = []
             for cls in rc.classes:
                 if cls[0] == '*':
@@ -419,10 +424,6 @@ class XDressPlugin(astparsers.ParserPlugin):
                 else:
                     newclss.append(cls)
             rc.classes = newclss
-
-    def execute(self, rc):
-        """Does nothing but overide the method on the base class"""
-        pass
 
     def report_debug(self, rc):
         super(XDressPlugin, self).report_debug(rc)
