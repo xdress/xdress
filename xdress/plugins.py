@@ -1,4 +1,4 @@
-"""This module provides the architechture for creating and handling xdress plugins.
+"""This module provides the architecture for creating and handling xdress plugins.
 
 :author: Anthony Scopatz <scopatz@gmail.com>
 
@@ -23,7 +23,7 @@ variable in your ``xdressrc.py`` file::
     from xdress.utils import DEFAULT_PLUGINS
     plugins = list(DEFAULT_PLUGINS) + ['mypack.mymod']
 
-Or you can add it on the comand line::
+Or you can add it on the command line::
 
     ~ $ xdress --plugins xdress.stlwrap xdress.autoall xdress.cythongen mypack.mymod
 
@@ -57,44 +57,51 @@ Interface
     instance and modifies it in-place.  This allows for run control parameters to be 
     exposed as command line arguments and options.  Default arguments in 
     ``parser.add_argument()`` values should not be given, or should only be set to 
-    ``Not Specified``.  This is to prevent collisions with the run controler.  
+    ``Not Specified``.  This is to prevent collisions with the run controller.  
     Default values should instead be given in the plugin's ``defaultrc``.  Thus 
     argument names or the ``dest`` keyword argument should match the keys in 
     ``defaultrc``.
 :setup(rc): Performs all setup tasks needed for this plugin.  This may include 
     validation and munging of the run control object (rc) as well as creating 
     directories and files in the OS environment.  If needed, the rc should be 
-    modified in-place so that changes propogate to other plugins and further calls
+    modified in-place so that changes propagate to other plugins and further calls
     on this plugin. This should return None.
 :execute(rc): Performs the heavy lifting of the plugin, which may require a run 
-    controler.If needed, the rc should be modified in-place so that changes 
-    propogate to other plugins and further calls on this plugin. This should 
+    controller.If needed, the rc should be modified in-place so that changes 
+    propagate to other plugins and further calls on this plugin. This should 
     return None. 
 :teardown(rc): Performs any cleanup tasks needed by the plugin, including removing
     temporary files.  If needed, the rc should be modified in-place so that changes 
-    propogate to other plugins and further calls on this plugin. This should 
+    propagate to other plugins and further calls on this plugin. This should 
     return None. 
-:report_debug(rc):  Gnerates and returns a message to report in the ``debug.txt``
+:report_debug(rc):  Generates and returns a message to report in the ``debug.txt``
     file in the event that execute() fails and additional debugging information is 
     requested.  This message is a string.
 
 
 Example
 -------
-Here is simple, if morbid, example::
+Here is simple, if morbid, plugin example::
 
     from xdress.plugins import Plugin
 
     class XDressPlugin(Plugin):
         '''Which famous person was executed?'''
 
-        # everything should require base, its useful!
+        # everything should require base, it is useful!
         requires = ('xdress.base',)
 
         defaultrc = {
-            'choices': ['J. Edgar Hoover', 'Hua Mulan', 'Eddie Izzard'],
+            'choices': ['J. Edgar Hoover', 'Hua Mulan', 'Leslie'],
             'answer': 'Joan of Arc',
             }
+
+        def update_argparser(self, parser):
+            # Note, no 'default=' keyword arguments are given
+            parser.add_argument('-c', '--choices', action='store', dest='choices',
+                                nargs="+", help="famous people chocies")
+            parser.add_argument('-a', '--answer', action='store', dest='answer',
+                                help="person who was executed")
 
         def setup(self, rc):
             '''Ensures that Joan of Arc is a choice.'''
@@ -106,7 +113,7 @@ Here is simple, if morbid, example::
             if rc.answer == 'Joan of Arc':
                 print('Joan has met an untimely demise!')
             else:
-                raise ValueError('It was Joan of Arc who died, not ' + rc.answer)
+                raise ValueError('Joan of Arc was executed, not ' + rc.answer)
 
         def report_debug(self, rc):
             return "the possible choices were " + str(rc.choices)
@@ -155,7 +162,7 @@ class Plugin(object):
         parser : argparse.ArgumentParser
             The parser to be updated.  Arguments defaults should not be given, or
             if given should only be ``xdress.utils.Not Specified``.  This is to 
-            prevent collisions with the run controler.  Default values should 
+            prevent collisions with the run controller.  Default values should 
             instead be given in this class's ``defaultrc`` attribute or method.
             Argument names or the ``dest`` keyword argument should match the keys 
             in ``defaultrc``.
@@ -176,7 +183,7 @@ class Plugin(object):
         pass
 
     def execute(self, rc):
-        """Performs the actual work of the plugin, which may require a run controler.
+        """Performs the actual work of the plugin, which may require a run controller.
 
         Parameters
         ----------
@@ -266,7 +273,7 @@ class Plugins(object):
         return parser
 
     def merge_defaultrcs(self):
-        """Finds all of the default run controlers and returns a new and 
+        """Finds all of the default run controllers and returns a new and 
         full default RunControl() instance."""
         rc = RunControl()
         for plugin in self.plugins:
