@@ -241,7 +241,7 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
             name = node.type.type.declname
         else:
             name = node.type.declname
-        if name.startswith('_'):
+        if name is None or name.startswith('_'):
             return
         self._pprint(node)
         self.functions.append(name)

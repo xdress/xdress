@@ -1138,6 +1138,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
             'unsigned int': 'uint32', 
             'unsigned long': 'uint32',
             'unsigned long int': 'uint32',
+            'long unsigned int': 'uint32',
             'unsigned long long' : 'uint64', 
             'unsigned long long int' : 'uint64', 
             'float': 'float32',
