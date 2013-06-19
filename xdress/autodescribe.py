@@ -1678,12 +1678,12 @@ class XDressPlugin(astparsers.ParserPlugin):
         cache = rc._cache
         env = rc.env  # target environment, not source one
         for i, (classname, srcname, tarname) in enumerate(rc.classes):
-            print("parsing " + classname)
+            print("autodescribe: describing " + classname)
             desc = self.compute_desc(classname, srcname, tarname, 'class', rc)
             if rc.verbose:
                 pprint(desc)
 
-            print("registering " + classname)
+            print("autodescribe: registering " + classname)
             pxd_base = desc['pxd_filename'].rsplit('.', 1)[0]         # eg, fccomp
             cpppxd_base = desc['srcpxd_filename'].rsplit('.', 1)[0]   # eg, cpp_fccomp
             class_c2py = ('{pytype}({var})',
@@ -1741,7 +1741,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         env = rc.env
         cache = rc._cache
         for i, (funcname, srcname, tarname) in enumerate(rc.functions):
-            print("parsing " + funcname)
+            print("autodescribe: describing " + funcname)
             desc = self.compute_desc(funcname, srcname, tarname, 'func', rc)
             if rc.verbose:
                 pprint(desc)
@@ -1755,7 +1755,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         env = rc.env
         cache = rc._cache
         for i, (varname, srcname, tarname) in enumerate(rc.variables):
-            print("parsing " + varname)
+            print("autodescribe: describing " + varname)
             desc = self.compute_desc(varname, srcname, tarname, 'var', rc)
             if rc.verbose:
                 pprint(desc)
