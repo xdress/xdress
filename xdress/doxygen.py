@@ -221,39 +221,40 @@ doxyfile.write(_doxyfile_content.format(project='test',
                                         output='build',
                                         src_dir='src/'))
 # FIXME: Get src_dir from rc.package
-# FIXME: Maybe get output from rc.build?
+# FIXME: Maybe get output from rc.builddir?
 doxyfile.close()
 
 # call(['doxygen', 'doxyfile'])
-"""
-root = etree.parse('index.xml')
-compounds = list(root.iterfind('.//compound'))
 
-vars = []
-funcs = []
-classes = {}
-class_names = []
 
-class_list = filter(lambda i:i.attrib['kind'] == 'class', root.findall('compound'))
+# root = etree.parse('index.xml')
+# compounds = list(root.iterfind('.//compound'))
 
-for kls in class_list:
-    kls_name = kls.find('name').text
-    class_names.append(kls_name)
-    file_name = kls.attrib['refid']
-    kls_dict = {'vars': [], 'methods': [], 'file_name': file_name}
+# vars = []
+# funcs = []
+# classes = {}
+# class_names = []
 
-    for mem in kls.iter('member'):
-        mem_name = mem.find('name').text
-        if mem.attrib['kind'] == 'variable':
-            kls_dict['vars'].append(mem_name)
-        elif mem.attrib['kind'] == 'function':
-            kls_dict['methods'].append(mem_name)
+# class_list = filter(lambda i:i.attrib['kind'] == 'class', root.findall('compound'))
 
-    classes[kls_name] = kls_dict
+# for kls in class_list:
+#     kls_name = kls.find('name').text
+#     class_names.append(kls_name)
+#     file_name = kls.attrib['refid']
+#     kls_dict = {'vars': [], 'methods': [], 'file_name': file_name}
 
-# Now on to a single class
-c1 = classes[classes.keys()[0]]
-"""
+#     for mem in kls.iter('member'):
+#         mem_name = mem.find('name').text
+#         if mem.attrib['kind'] == 'variable':
+#             kls_dict['vars'].append(mem_name)
+#         elif mem.attrib['kind'] == 'function':
+#             kls_dict['methods'].append(mem_name)
+
+#     classes[kls_name] = kls_dict
+
+# # Now on to a single class
+# c1 = classes[classes.keys()[0]]
+
 
 def parse_class(class_dict):
     """
