@@ -1189,6 +1189,13 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         self._pprint(node)
         self.visit(node.type)
 
+    def _enumint(self, value):
+        base = 10
+        if value.startswith('0x') or value.startswith('-0x') or \
+           value.startswith('+0x'):
+            base = 16
+        return int(value, base)
+
     def visit_Enumerator(self, node):
         self._pprint(node)
         if node.value is None:
@@ -1196,6 +1203,12 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
                 value = 0
             else:
                 value = self._currenum[-1][-1] + 1
+        elif isinstance(node.value, pycparser.c_ast.Constant):
+            value = self._enumint(node.value.value)
+        elif isinstance(node.value, pycparser.c_ast.UnaryOp):
+            if not isinstance(node.value.expr, pycparser.c_ast.Constant):
+                raise ValueError("non-contant enum values not yet supported")
+            value = self._enumint(node.value.op + node.value.expr.value)
         else:
             value = node.value
         self._currenum.append((node.name, value))
