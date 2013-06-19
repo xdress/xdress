@@ -4,10 +4,25 @@ and certain variable types.  It is not used to actually describe these elements.
 That is the job of the autodescriber.
 
 This module is available as an xdress plugin by the name ``xdress.autoall``.
+Including this plugin enables the ``classes``, ``functions``, and ``variables``  
+run control parameters to have an asterix ('*') in the name positon (index 0).
+For example, rather tha writing::
 
+    classes = [
+        ('People', 'people'),
+        ('JoanOfArc', 'people'),
+        ('JEdgaHoover', 'people'),
+        ('Leslie', 'people'),
+        ('HuaMulan', 'people'),
+        ]
+
+we can instead simply write::
+
+    classes = [('*', 'people')]
+
+Isn't this grand?!
 
 :author: Anthony Scopatz <scopatz@gmail.com>
-
 
 Automatic Finder API
 ====================
