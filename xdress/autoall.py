@@ -29,8 +29,14 @@ Automatic Finder API
 """
 from __future__ import print_function
 import os
+import io
 import sys
+from hashlib import md5
 from pprint import pprint, pformat
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 try:
     import pycparser
@@ -368,6 +374,66 @@ def findall(filename, includes=(), defines=('XDRESS',), undefines=(),
 
 
 #
+# Persisted Cache for great speed up
+#
+
+class AutoNameCache(object):
+    """A quick persistent cache for name lists automatically found in files.  
+    The keys are (classname, filename, kind) tuples.  The values are 
+    (hashes-of-the-file, finder-results) tuples."""
+
+    def __init__(self, cachefile=os.path.join('build', 'autoname.cache')):
+        """Parameters
+        -------------
+        cachefile : str, optional
+            Path to description cachefile.
+
+        """
+        self.cachefile = cachefile
+        if os.path.isfile(cachefile):
+            with io.open(cachefile, 'rb') as f:
+                self.cache = pickle.load(f)
+        else:
+            self.cache = {}
+
+    def isvalid(self, filename):
+        """Boolean on whether the cach value for a filename matches the state 
+        of the file on the system."""
+        key = filename
+        if key not in self.cache:
+            return False
+        cachehash = self.cache[key][0]
+        with io.open(filename, 'rb') as f:
+            filebytes = f.read()
+        currhash = md5(filebytes).hexdigest()
+        return cachehash == currhash
+
+    def __getitem__(self, key):
+        return self.cache[key][1]  # return the results of the finder only
+
+    def __setitem__(self, key, value):
+        filename = key
+        with io.open(filename, 'rb') as f:
+            filebytes = f.read()
+        currhash = md5(filebytes).hexdigest()
+        self.cache[key] = (currhash, value)
+
+    def __delitem__(self, key):
+        del self.cache[key]
+
+    def dump(self):
+        """Writes the cache out to the filesystem."""
+        if not os.path.exists(self.cachefile):
+            pardir = os.path.split(self.cachefile)[0]
+            if not os.path.exists(pardir):
+                os.makedirs(pardir)
+        with io.open(self.cachefile, 'wb') as f:
+            pickle.dump(self.cache, f, pickle.HIGHEST_PROTOCOL)
+
+    def __str__(self):
+        return pformat(self.cache)
+
+#
 # Plugin
 #
 
@@ -418,15 +484,23 @@ class XDressPlugin(astparsers.ParserPlugin):
 
         # second pass -- find all
         allnames = {}
+        cachefile = os.path.join(rc.builddir, 'autoname.cache')
+        autonamecache = AutoNameCache(cachefile=cachefile)
         for i, srcname in enumerate(allsrc):
             srcfname, hdrfname, lang, ext = find_source(srcname, 
                                                         sourcedir=rc.sourcedir)
             filename = os.path.join(rc.sourcedir, srcfname)
             if rc.verbose:
                 print("autoall: searching {0} (from {1!r})".format(srcfname, srcname))
-            found = findall(filename, includes=rc.includes, defines=rc.defines, 
-                            undefines=rc.undefines, parsers=rc.parsers, 
-                            verbose=rc.verbose, debug=rc.debug, builddir=rc.builddir)
+            if autonamecache.isvalid(filename):
+                found = autonamecache[filename]
+            else:
+                found = findall(filename, includes=rc.includes, defines=rc.defines, 
+                                undefines=rc.undefines, parsers=rc.parsers, 
+                                verbose=rc.verbose, debug=rc.debug, 
+                                builddir=rc.builddir)
+                autonamecache[filename] = found
+                autonamecache.dump()
             allnames[srcname] = found
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()

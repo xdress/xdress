@@ -22,6 +22,8 @@ Or you may simply clone the development branch using git::
 
     git clone git://github.com/scopatz/xdress.git
 
+`Go here for the latest version of the docs! <http://xdress.org/latest>`_
+
 --------
 Contents
 --------
