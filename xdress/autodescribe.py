@@ -1169,6 +1169,9 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         self._level += 1
         for _, child in ftype.args.children():
             arg = (child.name, self.type(child))
+            if arg == (None, 'void'):
+                # skip foo(void) cases, since no arg name is given
+                continue
             self._currfuncsig.append(arg)
         self._level -= 1
         rtntype = self.type(ftype.type)
