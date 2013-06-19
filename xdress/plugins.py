@@ -305,8 +305,10 @@ class Plugins(object):
                 msg += '\n{0}Run control run-time contents:\n\n{1}\n\n'.format(sep, 
                                                                         rc._pformat())
                 for plugin in self.plugins:
-                    msg += sep
-                    msg += plugin.report_debug(rc) or ''
+                    plugin_msg = plugin.report_debug(rc) or ''
+                    if 0 < len(plugin_msg):
+                        msg += sep
+                        msg += plugin_msg
                 with io.open(os.path.join(rc.builddir, 'debug.txt'), 'a+b') as f:
                     f.write(msg)
                 raise
