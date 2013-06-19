@@ -24,10 +24,12 @@ and
 rc.env['modulename']['myvar']['docstring']
 """
 from __future__ import print_function
+import re
 import os
 import sys
 from subprocess import call
 from textwrap import TextWrapper
+from textwrap import fill
 
 # XML conditional imports
 try:
@@ -58,15 +60,23 @@ main_wrap = TextWrapper(width=72, initial_indent=' ' * 4,
                            subsequent_indent=' ' * 4)
 
 # member_wrap is for anything under Paramters, Returns, Methods, ect.
-member_wrap = TextWrapper(width=72, initial_indent=' ' * 4,
-                          replace_whitespace = False,
+member_wrap = TextWrapper(width=72, initial_indent=' ' * 8,
                           subsequent_indent=' ' * 8)
 
 _param_sec = 'Parameters\n----------'
 _return_sec = 'Returns\n-------'
 
+# Helpful re to be used when parsing class definitions.
+_no_arg_links = re.compile('(<param>\n\s+<type>)<ref.+>(\w+)</ref>(.+</type>)')
 
-def _func_wrap(desc, params, rets):
+
+class _FuncWrap(object):
+    """
+
+    """
+
+
+def _func_docstr(func_dict):
     """
     Function that wraps a function given a description, lists of
     strings containing parameter and return value descriptions.
@@ -85,6 +95,31 @@ def _func_wrap(desc, params, rets):
         A list of strings where each string describes, in order, a new
         return value
     """
+    detailed_desc = func_dict['detaileddescription']
+    brief_desc = func_dict['briefdesctription']
+    desc = '\n\n'.join([brief_desc, detailed_desc])
+
+    args = func_dict['arg_types']
+    if args is None:
+        params = ['None']
+    else:
+        params = []
+        for arg in args:
+            params.append(arg[1] + ' : ' + arg[0])
+
+    returning = func_dict['ret_type']
+    if returning is None:
+        rets = ['None']
+    else:
+        rets = []
+        i = 1
+        for ret in returning:
+            rets.append('res%i : ' % i + ret)
+
+
+    desc = func_dict['d']
+    params =
+    rets =
     # put main section in
     msg = main_wrap.fill(desc)
 
@@ -100,9 +135,37 @@ def _func_wrap(desc, params, rets):
     #       element would give type information, the second would be
     #       the actual string explaining the param
 
+    # add parameters
     for p in params:
-        msg += member_wrap.fill(p)
+        lines = str.splitlines(p)
+        msg += main_wrap.fill(lines[0])
+        msg += '\n'
+        for i in xrange(1, len(lines)):
+            l = lines[i]
+            msg += member_wrap.fill(l)
         msg += '\n\n'
+
+    # skip a line and begin returns section
+    msg += main_wrap.fill('Returns')
+    msg += '\n'
+    msg += main_wrap.fill('-------')
+    msg += '\n'
+
+    # add return values
+    for r in rets:
+        lines = str.splitlines(r)
+        msg += main_wrap.fill(lines[0])
+        msg += '\n'
+        for i in xrange(1, len(lines)):
+            l = lines[i]
+            msg += member_wrap.fill(l)
+        msg += '\n\n'
+
+    # skip a line and begin notes section
+    msg += main_wrap.fill('Notes')
+    msg += '\n'
+    msg += main_wrap.fill('-----')
+    msg += '\n'
 
     return msg
 
@@ -346,8 +409,104 @@ doxyfile.close()
 # c1 = classes[classes.keys()[0]]
 
 
+def _fix_xml_links(file_name):
+    """
+    For some reason I can't get doxygen to remove hyperlinks to members
+    defined in the same file. This messes up the parsing. To overcome this
+    I will just use a little regex magic to do it myself.
+    """
+    # Get exiting file and read it in
+    ff = open(file_name, 'r')
+    text = ff.read()
+    ff.close()
+
+    # make the substitutions, re-write the file, and close
+    new_text = _no_arg_links.sub('\g<1>\g<2>\g<3>', text)
+    ff = open(file_name, 'w')
+    ff.write(new_text)
+    ff.close()
 
 
+def _parse_function(f_xml):
+    """
+    Parse a function given the xml representation of it
+    """
+    mem_dict = {}
+
+    # Find detailed description
+    mem_dd = f_xml.find('detaileddescription')
+    dd_paras = mem_dd.findall('para')
+    num_dd_paras = len(dd_paras)
+    if num_dd_paras == 1:
+        mem_ddstr = dd_paras[0].text
+
+        # We need arg_dict around to check for later
+        arg_dict = None
+    elif num_dd_paras == 2:
+        # first one will have normal text
+        mem_ddstr = dd_paras[0].text
+
+        # Second one will have details regarding function args
+        arg_para = dd_paras[1]
+        arg_dict = {}
+        for i in arg_para.find('parameterlist').findall('parameteritem'):
+            a_name = i.find('parameternamelist').find('parametername').text
+            a_desc = i.find('parameterdescription').find('para').text
+            arg_dict[a_name] = a_desc
+    else:
+        # Didn't find anything, so just make an empty string
+        mem_ddstr = ''
+
+        # We need arg_dict around to check for later
+        arg_dict = None
+
+    mem_dict['detaileddescription'] = mem_ddstr
+
+    # Get return type
+    mem_dict['ret_type'] = f_xml.find('type').text
+
+    # Get argument types and names
+    args = {}
+    for param in f_xml.iter('param'):
+        # add tuple of  arg type, arg name to arg_types list
+        arg_name = param.find('declname').text
+        arg_type = param.find('type').text
+        args[arg_name] = {'type': arg_type}
+        if arg_dict is not None:
+            # Add argument descriptions we just pulled out
+            args[arg_name]['desc'] = arg_dict[arg_name]
+
+    args = None if len(args) == 0 else args
+    mem_dict['args'] = args
+
+    # Get function signature
+    mem_argstr = f_xml.find('argsstring').text
+    mem_dict['arg_string'] = mem_argstr
+
+    return mem_dict
+
+
+def _parse_variable(v_xml):
+    """
+    Parse a variable given the xml representation of it
+    """
+    mem_dict = {}
+
+    # Find detailed description
+    mem_dd = v_xml.find('detaileddescription')
+    try:
+        mem_ddstr = mem_dd.find('para').text
+    except AttributeError:
+        mem_ddstr = ''
+
+    mem_dict['detaileddescription'] = mem_ddstr
+
+    mem_dict['type'] = v_xml.find('type').text
+
+    return mem_dict
+
+
+# TODO: Make sure to grab args for all functions.
 def parse_class(class_dict):
     """
     Parses a single class and returns a dictionary of dictionaries
@@ -416,8 +575,11 @@ def parse_class(class_dict):
 
     """
     c1 = class_dict
-    fn1 = c1['file_name']
-    croot = etree.parse(fn1 + '.xml')
+    fn = c1['file_name'] + '.xml'
+
+    _fix_xml_links(fn)
+
+    croot = etree.parse(fn)
     compd_def = croot.find('compounddef')
     data = {}
     for sec in compd_def.iter('sectiondef'):
@@ -427,38 +589,31 @@ def parse_class(class_dict):
 
         for mem in sec.iter('memberdef'):
             # Iterate over each member in the section
+            # get the kind. Will usually be variable or function.
+            m_kind = mem.attrib['kind']
+
+            if m_kind == 'function':
+                # do special stuff for functions
+                mem_dict = _parse_function(mem)
+
+            elif m_kind == 'variable':
+                mem_dict = _parse_variable(mem)
+
             mem_name = mem.find('name').text
-            mem_dict = {}
 
-            # Add type and definition signature.
-            # NOTE: for class methods type is the type of the return value.
-            mem_dict['type'] = mem.find('type').text
-            mem_dict['definition'] = mem.find('definition').text
-
-            # Find brief description:
+            # Find brief description
             mem_bd = mem.find('briefdescription')
             try:
                 mem_bdstr = mem_bd.find('para').text
             except AttributeError:
                 mem_bdstr = ''
-
             mem_dict['briefdesctription'] = mem_bdstr
 
-            # Find detailed description:
-            mem_dd = mem.find('detaileddescription')
-            try:
-                mem_ddstr = mem_dd.find('para').text
-            except AttributeError:
-                mem_ddstr = ''
+            # add member definition
+            mem_dict['definition'] = mem.find('definition').text
 
-            mem_dict['detaileddescription'] = mem_ddstr
-
-            # Try to find argstring (only applicable to methods)
-            mem_argstr = mem.find('argsstring').text
-            if mem_argstr is not None:
-                mem_dict['arg_string'] = mem_argstr
-
-
+            # Avoid overwriting methods with multiple implementations
+            # (especially constructors)
             i = 1
             while mem_name in sec_dict.keys():
                 if i > 1:
