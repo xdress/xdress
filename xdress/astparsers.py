@@ -286,7 +286,8 @@ class ParserPlugin(Plugin):
         functions=(),
         classes=(),
         parsers={'c': ['pycparser', 'gccxml', 'clang'],
-                 'c++':['gccxml', 'clang', 'pycparser']}
+                 'c++':['gccxml', 'clang', 'pycparser']},
+        clear_parser_cache_period=50,
         )
 
     def update_argparser(self, parser):
@@ -299,6 +300,10 @@ class ParserPlugin(Plugin):
                             help="unset additional macro definitions")
         parser.add_argument('-p', action='store', dest='parsers',
                             help="parser(s) name, list, or dict")
+        parser.add_argument('--clear-parser-cache-period', action='store', 
+                            dest='clear_parser_cache_period', type=int,
+                            help=("Number of parser calls to perform before clearing "
+                                  "the internal cache."))
 
     def setup(self, rc):
         """Remember to call super() on subclasses!"""

@@ -247,12 +247,13 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
         self.functions.append(name)
 
     def visit_Struct(self, node):
+        self._pprint(node)
         if node.coord.file not in self.onlyin:
             return
         name = node.name
-        if name.startswith('_'):
+        if name is None or name.startswith('_'):
             return
-        self._pprint(node)
+        #self._pprint(node)
         self.classes.append(name)
 
 
@@ -402,7 +403,7 @@ class XDressPlugin(astparsers.ParserPlugin):
 
         # second pass -- find all
         allnames = {}
-        for srcname in allsrc:
+        for i, srcname in enumerate(allsrc):
             srcfname, hdrfname, lang, ext = find_source(srcname, 
                                                         sourcedir=rc.sourcedir)
             filename = os.path.join(rc.sourcedir, srcfname)
@@ -412,6 +413,8 @@ class XDressPlugin(astparsers.ParserPlugin):
                             undefines=rc.undefines, parsers=rc.parsers, 
                             verbose=rc.verbose, debug=rc.debug, builddir=rc.builddir)
             allnames[srcname] = found
+            if 0 == i%rc.clear_parser_memo_period:
+                astparsers.clearmemo()
 
         # third pass -- replace *s
         if self.varhasstar:

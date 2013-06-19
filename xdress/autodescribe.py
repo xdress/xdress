@@ -1674,7 +1674,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         # compute all class descriptions first 
         cache = rc._cache
         env = rc.env  # target environment, not source one
-        for classname, srcname, tarname in rc.classes:
+        for i, (classname, srcname, tarname) in enumerate(rc.classes):
             print("parsing " + classname)
             desc = self.compute_desc(classname, srcname, tarname, 'class', rc)
             if rc.verbose:
@@ -1730,29 +1730,34 @@ class XDressPlugin(astparsers.ParserPlugin):
             ts.register_class(**kwclassptr)
             cache.dump()
             self.adddesc2env(desc, env, classname, srcname, tarname)
+            if 0 == i%rc.clear_parser_memo_period:
+                astparsers.clearmemo()
 
     def compute_functions(self, rc):
         """Computes function descriptions and loads them into the environment."""
         env = rc.env
         cache = rc._cache
-        for funcname, srcname, tarname in rc.functions:
+        for i, (funcname, srcname, tarname) in enumerate(rc.functions):
             print("parsing " + funcname)
             desc = self.compute_desc(funcname, srcname, tarname, 'func', rc)
             if rc.verbose:
                 pprint(desc)
             cache.dump()
             self.adddesc2env(desc, env, funcname, srcname, tarname)
+            if 0 == i%rc.clear_parser_memo_period:
+                astparsers.clearmemo()
 
     def compute_variables(self, rc):
         """Computes variables descriptions and loads them into the environment."""
         env = rc.env
         cache = rc._cache
-        for varname, srcname, tarname in rc.variables:
+        for i, (varname, srcname, tarname) in enumerate(rc.variables):
             print("parsing " + varname)
             desc = self.compute_desc(varname, srcname, tarname, 'var', rc)
             if rc.verbose:
                 pprint(desc)
             cache.dump()
             self.adddesc2env(desc, env, varname, srcname, tarname)
-
+            if 0 == i%rc.clear_parser_memo_period:
+                astparsers.clearmemo()
 
