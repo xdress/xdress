@@ -1169,6 +1169,8 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         self._currfuncsig = []
         self._level += 1
         for _, child in ftype.args.children():
+            if isinstance(child, pycparser.c_ast.EllipsisParam):
+                continue
             arg = (child.name, self.type(child))
             if arg == (None, 'void'):
                 # skip foo(void) cases, since no arg name is given
