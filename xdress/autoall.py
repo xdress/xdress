@@ -423,7 +423,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                                                         sourcedir=rc.sourcedir)
             filename = os.path.join(rc.sourcedir, srcfname)
             if rc.verbose:
-                print("autoall: searching {0}".format(srcfname))
+                print("autoall: searching {0} (from {1!r})".format(srcfname, srcname))
             found = findall(filename, includes=rc.includes, defines=rc.defines, 
                             undefines=rc.undefines, parsers=rc.parsers, 
                             verbose=rc.verbose, debug=rc.debug, builddir=rc.builddir)
@@ -458,4 +458,10 @@ class XDressPlugin(astparsers.ParserPlugin):
             rc.classes = newclss
 
     def report_debug(self, rc):
-        super(XDressPlugin, self).report_debug(rc)
+        msg = super(XDressPlugin, self).report_debug(rc)
+        msg += "Autoall:\n\n"
+        msg += "allsrc = {0}\n\n".format(pformat(self.allsrc))
+        msg += "varhasstar = {0}\n\n".format(pformat(self.varhasstar))
+        msg += "fnchasstar = {0}\n\n".format(pformat(self.fnchasstar))
+        msg += "clshasstar = {0}\n\n".format(pformat(self.clshasstar))
+        return msg
