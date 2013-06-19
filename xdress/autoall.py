@@ -428,7 +428,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                             undefines=rc.undefines, parsers=rc.parsers, 
                             verbose=rc.verbose, debug=rc.debug, builddir=rc.builddir)
             allnames[srcname] = found
-            if 0 == i%rc.clear_parser_memo_period:
+            if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 
         # third pass -- replace *s

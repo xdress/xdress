@@ -1731,7 +1731,7 @@ class XDressPlugin(astparsers.ParserPlugin):
             ts.register_class(**kwclassptr)
             cache.dump()
             self.adddesc2env(desc, env, classname, srcname, tarname)
-            if 0 == i%rc.clear_parser_memo_period:
+            if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 
     def compute_functions(self, rc):
@@ -1745,7 +1745,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                 pprint(desc)
             cache.dump()
             self.adddesc2env(desc, env, funcname, srcname, tarname)
-            if 0 == i%rc.clear_parser_memo_period:
+            if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 
     def compute_variables(self, rc):
@@ -1759,6 +1759,6 @@ class XDressPlugin(astparsers.ParserPlugin):
                 pprint(desc)
             cache.dump()
             self.adddesc2env(desc, env, varname, srcname, tarname)
-            if 0 == i%rc.clear_parser_memo_period:
+            if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 
