@@ -74,6 +74,6 @@ class XDressPlugin(Plugin):
 
     def report_debug(self, rc):
         msg = 'Current descripton cache contents:\n\n{0}\n\n'
-        msg += msg.format(str(rc._cache))
+        msg = msg.format(str(rc._cache))
         return msg
 
