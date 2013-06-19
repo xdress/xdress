@@ -17,6 +17,11 @@ import os
 import sys
 from pprint import pprint, pformat
 
+try:
+    import pycparser
+except ImportError:
+    pycparser = None
+
 from . import utils
 from . import astparsers
 
@@ -232,7 +237,10 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
     def visit_FuncDecl(self, node):
         if node.coord.file not in self.onlyin:
             return
-        name = node.type.declname
+        if isinstance(node.type, pycparser.c_ast.PtrDecl):
+            name = node.type.type.declname
+        else:
+            name = node.type.declname
         if name.startswith('_'):
             return
         self._pprint(node)
@@ -398,6 +406,8 @@ class XDressPlugin(astparsers.ParserPlugin):
             srcfname, hdrfname, lang, ext = find_source(srcname, 
                                                         sourcedir=rc.sourcedir)
             filename = os.path.join(rc.sourcedir, srcfname)
+            if rc.verbose:
+                print("autoall: searching {0}".format(srcfname))
             found = findall(filename, includes=rc.includes, defines=rc.defines, 
                             undefines=rc.undefines, parsers=rc.parsers, 
                             verbose=rc.verbose, debug=rc.debug, builddir=rc.builddir)
