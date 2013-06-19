@@ -11,11 +11,101 @@ This module is available as an xdress pluging by the name
 
 Usage Details
 =============
+
+So after autodescribe has run
+there is an env dictionary on rc (rc.env) that represents the whole environment
+The target / package environment that is
+This dict has keys which are module names and values which are module dictionaries
+The module dictionaries then have the variable names and keys and the desc dictionaries as values
+So to get to a docstring you would do:
+rc.env['modulename']['myclass']['docstrings']
+rc.env['modulename']['myfunc']['docstring']
+and
+rc.env['modulename']['myvar']['docstring']
 """
 from __future__ import print_function
 import os
 import sys
 from subprocess import call
+from textwrap import TextWrapper
+
+# XML conditional imports
+try:
+    from lxml import etree
+except ImportError:
+    try:
+        # Python 2.5
+        import xml.etree.cElementTree as etree
+    except ImportError:
+        try:
+          # Python 2.5
+          import xml.etree.ElementTree as etree
+        except ImportError:
+            try:
+                # normal cElementTree install
+                import cElementTree as etree
+            except ImportError:
+                try:
+                  # normal ElementTree install
+                  import elementtree.ElementTree as etree
+                except ImportError:
+                    pass
+
+### Set up various TextWrapper instances
+# main_wrap is for the core content of the docstring. It adds 4 spaces
+#   before the main description as well as the parameters and
+main_wrap = TextWrapper(width=72, initial_indent=' ' * 4,
+                           subsequent_indent=' ' * 4)
+
+# member_wrap is for anything under Paramters, Returns, Methods, ect.
+member_wrap = TextWrapper(width=72, initial_indent=' ' * 4,
+                          replace_whitespace = False,
+                          subsequent_indent=' ' * 8)
+
+_param_sec = 'Parameters\n----------'
+_return_sec = 'Returns\n-------'
+
+
+def _func_wrap(desc, params, rets):
+    """
+    Function that wraps a function given a description, lists of
+    strings containing parameter and return value descriptions.
+
+    Parameters
+    ----------
+    desc : str
+        A string with the main description of the function as well as
+        the function signature.
+
+    params : list of str
+        A list of strings where each string describes, in order,
+        a new parameter
+
+    rets : list of str
+        A list of strings where each string describes, in order, a new
+        return value
+    """
+    # put main section in
+    msg = main_wrap.fill(desc)
+
+    # skip a line and begin parameters section
+    msg += '\n\n'
+    msg += main_wrap.fill('Parameters')
+    msg += '\n'
+    msg += main_wrap.fill('----------')
+    msg += '\n'
+
+    # TODO: Either fix member_wrap so it observes '\n' or have each
+    #       element in params, rets be a tuple of strings. The first
+    #       element would give type information, the second would be
+    #       the actual string explaining the param
+
+    for p in params:
+        msg += member_wrap.fill(p)
+        msg += '\n\n'
+
+    return msg
+
 
 # this is the meat of the template doxyfile template returned by: doxygen -g
 # NOTE: I have changed a few things like no html/latex generation.
@@ -27,7 +117,7 @@ _doxyfile_content =\
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "{project}"
 PROJECT_NUMBER         = "0.1"
-OUTPUT_DIRECTORY       = {output}
+OUTPUT_DIRECTORY       = {output_dir}
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English
 BRIEF_MEMBER_DESC      = YES
@@ -218,10 +308,10 @@ DOT_CLEANUP            = YES
 
 doxyfile = open('doxyfile', 'w')
 doxyfile.write(_doxyfile_content.format(project='test',
-                                        output='build',
+                                        output_dir='build',
                                         src_dir='src/'))
 # FIXME: Get src_dir from rc.package
-# FIXME: Maybe get output from rc.builddir?
+# FIXME: Maybe get output_dir from rc.builddir?
 doxyfile.close()
 
 # call(['doxygen', 'doxyfile'])
@@ -254,6 +344,8 @@ doxyfile.close()
 
 # # Now on to a single class
 # c1 = classes[classes.keys()[0]]
+
+
 
 
 def parse_class(class_dict):
@@ -301,8 +393,9 @@ def parse_class(class_dict):
         follows:
 
         1. data
-            - keys: 'protected-func', 'public-func', and
-            'protected-attrib'
+            - keys: Some of the following (more?): 'protected-func',
+            'protected-attrib', 'public-func',  'public-static-attrib',
+            'publib-static-func', 'public-type'
             - values: dictionaries of attribute types
         2. dictionaries of attribute types
             - keys: attribute names
