@@ -277,7 +277,7 @@ def _memoize(obj):
 
 base_types = set(['char', 'uchar', 'str', 'int16', 'int32', 'int64', 'int128', 
                   'uint16', 'uint32', 'uint64', 'uint128', 'float32', 'float64', 
-                  'float128', 'complex128', 'void', 'bool', 'type', ])
+                  'float128', 'complex128', 'void', 'bool', 'type', 'file'])
 """Base types in the type system."""
 
 template_types = {
@@ -344,6 +344,7 @@ _humannames = {
     'float64': 'double',
     'float128': 'long double',
     'complex128': 'complex',
+    'file': 'file',
     'dict': 'dict of ({key_type}, {value_type}) items',
     'map': 'map of ({key_type}, {value_type}) items',
     'pair': '({key_type}, {value_type}) pair',
@@ -741,6 +742,8 @@ type_aliases = _LazyConfigDict({
     'v': 'void',
     's': 'str',
     'string': 'str',
+    'FILE': 'file',
+    '_IO_FILE': 'file',
     # 'c' has char / complex ambiguity, not included
     'NPY_BYTE': 'char',
     'NPY_UBYTE': 'uchar',
@@ -801,6 +804,7 @@ _cython_ctypes = _LazyConfigDict({
     'complex128': '{extra_types}complex_t',
     'bool': 'bint',
     'void': 'void', 
+    'file': 'c_file',
     'map': 'cpp_map',
     'dict': 'dict',
     'pair': 'cpp_pair',
@@ -884,6 +888,7 @@ _cython_cimports = _LazyImportDict({
     'complex128': (('{extra_types}',),),
     'bool': (None,), 
     'void': (None,), 
+    'file': (('libc.stdio', 'FILE', 'c_file'),),
     'map': (('libcpp.map', 'map', 'cpp_map'),),
     'dict': (None,),
     'pair': (('libcpp.utility', 'pair', 'cpp_pair'),),
@@ -917,6 +922,7 @@ _cython_cyimports = _LazyImportDict({
     'complex128': (('{extra_types}',),),  # for py2c_complex()
     'bool': (None,), 
     'void': (None,), 
+    'file': (('{extra_types}',),), 
     'map': (('{stlcontainers}',),),
     'dict': (None,),
     'pair': (('{stlcontainers}',),), 
@@ -1021,6 +1027,7 @@ _cython_pyimports = _LazyImportDict({
     'complex128': (None,),
     'bool': (None,), 
     'void': (None,), 
+    'file': (None,), 
     'map': (('{stlcontainers}',),),
     'dict': (None,),
     'pair': (('{stlcontainers}',),),
@@ -1114,6 +1121,7 @@ _cython_cytypes = _LazyConfigDict({
     'complex128': 'object',
     'bool': 'bint',
     'void': 'void',
+    'file': 'c_file',
     'map': '{stlcontainers}_Map{key_type}{value_type}',
     'dict': 'dict',
     'pair': '{stlcontainers}_Pair{value_type}',
@@ -1140,6 +1148,7 @@ _cython_functionnames = _LazyConfigDict({
     'complex128': 'complex',
     'bool': 'bool',
     'void': 'void',
+    'file': 'file',
     # template types
     'map': 'map_{key_type}_{value_type}',
     'dict': 'dict',
@@ -1192,6 +1201,7 @@ _cython_classnames = _LazyConfigDict({
     'complex128': 'Complex',
     'bool': 'Bool',
     'void': 'Void',
+    'file': 'File',
     # template types
     'map': 'Map{key_type}{value_type}',
     'dict': 'Dict',
@@ -1297,6 +1307,7 @@ _cython_pytypes = _LazyConfigDict({
     'float64': 'float',
     'float128': 'np.float128',
     'complex128': 'object',
+    'file': 'file',
     'bool': 'bool',
     'void': 'object',
     'map': '{stlcontainers}Map{key_type}{value_type}',
@@ -1427,6 +1438,8 @@ _cython_c2py_conv = _LazyConverterDict({
     'complex128': ('complex(float({var}.re), float({var}.im))',),
     'bool': ('bool({var})',),
     'void': ('None',),
+    'file': ('{extra_types}PyFile_FromFile(&{var}, "{var}", "r+", NULL)',),
+    ('file', '*'): ('{extra_types}PyFile_FromFile({var}, "{var}", "r+", NULL)',),
     # template types
     'map': ('{pytype}({var})', 
            ('{proxy_name} = {pytype}(False, False)\n'
@@ -1561,6 +1574,8 @@ from_pytypes = {
     'float32': ['float', 'int'],
     'float64': ['float', 'int'],
     'complex128': ['complex', 'float'],
+    'file': ['file'],
+    ('file', '*'): ['file'],
     'set': ['set', 'list', 'basestring', 'tuple'],
     'vector': ['list', 'tuple', 'np.ndarray'],
     }
@@ -1652,6 +1667,8 @@ _cython_py2c_conv = _LazyConverterDict({
     'bool': ('<bint> {var}', False),
     'void': ('NULL', False),
     ('void', '*'): ('NULL', False),
+    'file': ('{extra_types}PyFile_AsFile({var})[0]', False), 
+    ('file', '*'): ('{extra_types}PyFile_AsFile({var})', False), 
     # template types
     'map': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
             '{proxy_name}.map_ptr[0]'),

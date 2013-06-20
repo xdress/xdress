@@ -268,13 +268,31 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
         self.functions.append(name)
 
     def visit_Struct(self, node):
-        self._pprint(node)
         if node.coord.file not in self.onlyin:
             return
         name = node.name
+        if name is None:
+            self._status = "<name-not-found>"
+            return
+        if name.startswith('_'):
+            return 
+        self._pprint(node)
+        self.classes.append(name)
+
+    def visit_Typedef(self, node):
+        if node.coord.file not in self.onlyin:
+            return
+        self._pprint(node)
+        self._status = None
+        self.visit(node.type)
+        stat = self._status
+        self._status = None
+        if stat is None:
+            return
+        if stat == "<name-not-found>":
+            name = node.name
         if name is None or name.startswith('_'):
             return
-        #self._pprint(node)
         self.classes.append(name)
 
 
@@ -502,6 +520,12 @@ class XDressPlugin(astparsers.ParserPlugin):
                 autonamecache[filename] = found
                 autonamecache.dump()
             allnames[srcname] = found
+            if 0 < len(found[0]):
+                print("autoall: found variables: " + ", ".join(found[0]))
+            if 0 < len(found[1]):
+                print("autoall: found functions: " + ", ".join(found[1]))
+            if 0 < len(found[2]):
+                print("autoall: found classes: " + ", ".join(found[2]))
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 
