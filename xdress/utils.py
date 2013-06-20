@@ -27,6 +27,8 @@ DEFAULT_RC_FILE = "xdressrc.py"
 DEFAULT_PLUGINS = ('xdress.stlwrap', 'xdress.autoall', 'xdress.cythongen')
 """Default list of plugin module names."""
 
+FORBIDDEN_NAMES = frozenset(['del'])
+
 def indent(s, n=4, join=True):
     """Indents all lines in the string or list s by n spaces."""
     spaces = " " * n

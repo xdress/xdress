@@ -815,12 +815,16 @@ _cython_ctypes = _LazyConfigDict({
 def _cython_ctypes_function(t):
     rtnct = cython_ctype(t[2][2])
     argcts = [cython_ctype(argt) for n, argt in t[1][2]]
+    if argcts == ['void']:
+        argcts = []
     return rtnct + " {type_name}(" + ", ".join(argcts) + ")"
 _cython_ctypes['function'] = _cython_ctypes_function
 
 def _cython_ctypes_function_pointer(t):
     rtnct = cython_ctype(t[2][2])
     argcts = [cython_ctype(argt) for n, argt in t[1][2]]
+    if argcts == ['void']:
+        argcts = []
     return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
 _cython_ctypes['function_pointer'] = _cython_ctypes_function_pointer
 
@@ -2114,7 +2118,7 @@ def local_classes(classnames, typesets=frozenset(['cy', 'py'])):
     yield
     for name in classnames:
         if 'c' in typesets:
-            _redot_class_name(name, _cython_cytypes, saved[name, 'c'])
+            _redot_class_name(name, _cython_ctypes, saved[name, 'c'])
         if 'cy' in typesets:
             _redot_class_name(name, _cython_cytypes, saved[name, 'cy'])
         if 'py' in typesets:

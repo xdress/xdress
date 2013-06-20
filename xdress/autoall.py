@@ -46,7 +46,7 @@ except ImportError:
 from . import utils
 from . import astparsers
 
-from .utils import find_source
+from .utils import find_source, FORBIDDEN_NAMES
 
 if os.name == 'nt':
     import ntpath
@@ -134,6 +134,7 @@ class GccxmlFinder(object):
             names = []
             for k in kinds:
                 names += self.visit_kinds(node, k)
+            names = [n for n in names if n not in FORBIDDEN_NAMES]
             return names
         names = set()
         for child in node.iterfind(".//" + kinds):
@@ -141,6 +142,8 @@ class GccxmlFinder(object):
                 continue
             name = child.attrib.get('name', '_')
             if name.startswith('_'):
+                continue
+            if name in FORBIDDEN_NAMES:
                 continue
             names.add(name)
             self._pprint(child)
@@ -252,6 +255,8 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
         name = node.name
         if name.startswith('_'):
             return
+        if name in FORBIDDEN_NAMES:
+            return
         self._pprint(node)
         self.variables.append(name)
 
@@ -263,6 +268,8 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
         else:
             name = node.type.declname
         if name is None or name.startswith('_'):
+            return
+        if name in FORBIDDEN_NAMES:
             return
         self._pprint(node)
         self.functions.append(name)
@@ -276,6 +283,8 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
             return
         if name.startswith('_'):
             return 
+        if name in FORBIDDEN_NAMES:
+            return
         self._pprint(node)
         self.classes.append(name)
 
@@ -292,6 +301,8 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
         if stat == "<name-not-found>":
             name = node.name
         if name is None or name.startswith('_'):
+            return
+        if name in FORBIDDEN_NAMES:
             return
         self.classes.append(name)
 
