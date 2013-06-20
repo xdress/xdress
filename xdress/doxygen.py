@@ -72,8 +72,25 @@ _no_arg_links = re.compile('(<param>\n\s+<type>)<ref.+>(\w+)</ref>(.+</type>)')
 
 class _FuncWrap(object):
     """
-
+    TODO: determine if I need to do this or not. Maybe the function will work
     """
+    pass
+
+
+class _ClassWrap(object):
+    """
+    TODO: determine if I need to do this or not. Maybe the function will work
+    """
+    pass
+
+
+def _class_docstr(class_dict):
+    """
+    TODO: Have this mimic the _func_docstr function, but for a class.
+
+    NOTE: For methods this can call _func_docstr
+    """
+    pass
 
 
 def _func_docstr(func_dict):
@@ -506,7 +523,52 @@ def _parse_variable(v_xml):
     return mem_dict
 
 
-# TODO: Make sure to grab args for all functions.
+def _parse_common(xml, the_dict):
+    """
+    Parse things in common for both variables and functions. This should
+    be run after a more specific function like _parse_function or
+    _parse_variable because it needs a member dictionary as an input.
+
+    Parameters
+    ----------
+    xml : etree.Element
+        The xml representation for the member you would like to parse
+
+    the_dict : dict
+        The dictionary that has already been filled with more specific
+        data. This dictionary is modified in-place and an updated
+        version is returned.
+
+    Returns
+    -------
+    the_dict : dict
+        The member dictionary that has been updated with the
+        briefdescription and definition keys.
+    """
+    # Find brief description
+    mem_bd = xml.find('briefdescription')
+    try:
+        mem_bdstr = mem_bd.find('para').text
+    except AttributeError:
+        mem_bdstr = ''
+    the_dict['briefdesctription'] = mem_bdstr
+
+    # add member definition
+    the_dict['definition'] = xml.find('definition').text
+
+    return the_dict
+
+
+def parse_function(func_dict):
+    """
+    TODO: This needs to be done soon. I should just call _parse_function
+    and _parse_common.
+
+    I to need to figure out what comes in and out of this function.
+    """
+    pass
+
+
 def parse_class(class_dict):
     """
     Parses a single class and returns a dictionary of dictionaries
@@ -599,18 +661,10 @@ def parse_class(class_dict):
             elif m_kind == 'variable':
                 mem_dict = _parse_variable(mem)
 
+            mem_dict = _parse_common(mem, mem_dict)
+
+
             mem_name = mem.find('name').text
-
-            # Find brief description
-            mem_bd = mem.find('briefdescription')
-            try:
-                mem_bdstr = mem_bd.find('para').text
-            except AttributeError:
-                mem_bdstr = ''
-            mem_dict['briefdesctription'] = mem_bdstr
-
-            # add member definition
-            mem_dict['definition'] = mem.find('definition').text
 
             # Avoid overwriting methods with multiple implementations
             # (especially constructors)
@@ -620,8 +674,13 @@ def parse_class(class_dict):
                     mem_name = mem_name[:-1]
                 mem_name += str(i)
                 i += 1
+
             sec_dict[mem_name] = mem_dict
 
         data[sec_name] = sec_dict
 
     return data
+
+
+# NOTE: at some point I need this:
+#       cls['public-func'][meth_name]['args'][arg_name].has_key('desc')
