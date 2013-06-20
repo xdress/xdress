@@ -1252,7 +1252,23 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
 
     def visit_Struct(self, node):
         self._pprint(node)
-        self._currtype = node.name        
+        name = node.name
+        if name is None:
+            name = "<name-not-found>"
+        self._currtype = name
+
+    def visit_Typedef(self, node):
+        self._pprint(node)
+        self._currtype = None
+        self.visit(node.type)
+        name = self._currtype
+        self._currtype = None
+        if name is None:
+            return
+        if name == "<name-not-found>":
+            name = node.name
+        self._currtype = name
+
 
     def type(self, node, safe=False):
         self._pprint(node)
