@@ -1289,6 +1289,16 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
             if name.startswith('_'):
                 continue
             t = self.type(child)
+            if t == "<name-not-found>":
+                msg = ("autodescribe: warning: anonymous struct members not "
+                       "yet supported, found {0}.{1}")
+                print(msg.format(self.name, name))
+                continue
+            elif t == ("<name-not-found>", '*'):
+                msg = ("autodescribe: warning: anonymous struct pointer members "
+                       "not yet supported, found {0}.{1}")
+                print(msg.format(self.name, name))
+                continue
             self.desc['attrs'][name] = t
         
 class PycparserVarDescriber(PycparserBaseDescriber):
