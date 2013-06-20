@@ -508,8 +508,7 @@ class XDressPlugin(astparsers.ParserPlugin):
             srcfname, hdrfname, lang, ext = find_source(srcname, 
                                                         sourcedir=rc.sourcedir)
             filename = os.path.join(rc.sourcedir, srcfname)
-            if rc.verbose:
-                print("autoall: searching {0} (from {1!r})".format(srcfname, srcname))
+            print("autoall: searching {0} (from {1!r})".format(srcfname, srcname))
             if autonamecache.isvalid(filename):
                 found = autonamecache[filename]
             else:

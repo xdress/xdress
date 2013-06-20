@@ -30,8 +30,10 @@ if os.name == 'nt':
     import posixpath
 
 # GCC-XML conditional imports
+HAVE_LXML = False
 try:
     from lxml import etree
+    HAVE_LXML = True
 except ImportError:
     try:
         # Python 2.5
@@ -60,7 +62,7 @@ except ImportError:
     PycparserNodeVisitor = object  # fake this for class definitions
 
 from . import utils
-from .utils import guess_language
+from .utils import guess_language, RunControl, NotSpecified
 from .plugins import Plugin
 
 PARSERS_AVAILABLE = {
@@ -269,6 +271,47 @@ def pick_parser(filename, parsers):
         raise ValueError("type of parsers not intelligible")
     return parser
 
+def _pformat_etree_inplace(elem, level=0):
+    i = "\n" + level*"  "
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + "  "
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+        for elem in elem:
+            _pformat_etree_inplace(elem, level+1)
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
+
+def dumpast(filename, parsers, sourcedir, includes=(), defines=('XDRESS',), 
+            undefines=(), verbose=False, debug=False, builddir='build'):
+    """Prints an abstract syntax tree to stdout."""
+    if not os.path.isfile(filename):
+        filename = os.path.join(sourcedir, filename)
+        if not os.path.isfile(filename):
+            sys.exit(filename + " is not a regular file")
+    parser = pick_parser(filename, parsers)
+    if parser == 'pycparser':
+        root = pycparser_parse(filename, includes=includes, defines=defines, 
+                               undefines=undefines, verbose=verbose, debug=debug, 
+                               builddir=builddir)
+        root.show()
+    elif parser == 'gccxml':
+        root = gccxml_parse(filename, includes=includes, defines=defines, 
+                            undefines=undefines, verbose=verbose, debug=debug, 
+                            builddir=builddir)
+        if FOUND_LXML:
+            print(etree.tostring(root, pretty_print=True))
+        else:
+            _pformat_etree_inplace(root)
+            print(etree.tostring(root))
+    else:
+        sys.exit(parser + " is not a valid parser")
+    
+    
 
 #
 # Plugin
@@ -290,6 +333,7 @@ class ParserPlugin(Plugin):
         parsers={'c': ['pycparser', 'gccxml', 'clang'],
                  'c++':['gccxml', 'clang', 'pycparser']},
         clear_parser_cache_period=50,
+        dumpast=NotSpecified,
         )
 
     def update_argparser(self, parser):
@@ -306,12 +350,21 @@ class ParserPlugin(Plugin):
                             dest='clear_parser_cache_period', type=int,
                             help=("Number of parser calls to perform before clearing "
                                   "the internal cache."))
+        parser.add_argument('--dumpast', action='store', 
+                            dest='dumpast', metavar="FILE",
+                            help="prints the abstract syntax tree of a file.")
 
     def setup(self, rc):
         """Remember to call super() on subclasses!"""
         if isinstance(rc.parsers, basestring):
             if '[' in rc.parsers or '{' in  rc.parsers:
                 rc.parsers = eval(rc.parsers)
+        # This should go last
+        if rc.dumpast is not NotSpecified:
+            dumpast(rc.dumpast, rc.parsers, rc.sourcedir, includes=rc.includes, 
+                    defines=rc.defines, undefines=rc.undefines,
+                    verbose=rc.verbose, debug=rc.debug, builddir=rc.builddir)
+            sys.exit()
 
     def execute(self, rc):
         raise TypeError("ParserPlugin is not a complete plugin.  Do not use directly")
