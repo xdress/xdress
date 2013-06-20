@@ -2100,17 +2100,25 @@ def _redot_class_name(name, d, value):
     d[name] = value + '.' + d[name]
 
 @contextmanager
-def local_classes(classnames):
+def local_classes(classnames, typesets=frozenset(['cy', 'py'])):
     """A context manager for making sure the given classes are local."""
     saved = {}
     for name in classnames:
-        saved[name, 'cy'] = _undot_class_name(name, _cython_cytypes)
-        saved[name, 'py'] = _undot_class_name(name, _cython_pytypes)
+        if 'c' in typesets:
+            saved[name, 'c'] = _undot_class_name(name, _cython_ctypes)
+        if 'cy' in typesets:
+            saved[name, 'cy'] = _undot_class_name(name, _cython_cytypes)
+        if 'py' in typesets:
+            saved[name, 'py'] = _undot_class_name(name, _cython_pytypes)
     clearmemo()
     yield
     for name in classnames:
-        _redot_class_name(name, _cython_cytypes, saved[name, 'cy'])
-        _redot_class_name(name, _cython_pytypes, saved[name, 'py'])
+        if 'c' in typesets:
+            _redot_class_name(name, _cython_cytypes, saved[name, 'c'])
+        if 'cy' in typesets:
+            _redot_class_name(name, _cython_cytypes, saved[name, 'cy'])
+        if 'py' in typesets:
+            _redot_class_name(name, _cython_pytypes, saved[name, 'py'])
     clearmemo()
 
 _indent4 = lambda x: '' if x is None else "\n".join(["    " + l for l in "\n".join(

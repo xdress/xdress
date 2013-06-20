@@ -68,6 +68,47 @@ def gencpppxd(env, exceptions=True):
         cpppxds[name] = modcpppxd(mod, exceptions)
     return cpppxds
 
+def _addotherclsnames(t, classes, name, others):
+    spt = ts.strip_predicates(t)
+    if spt in classes:
+        others[name].add(spt)
+    elif ts.isfunctionpointer(spt):
+        for subt in spt[1:]:
+            spsubt = ts.strip_predicates(subt)
+            if spsubt in classes:
+                others[name].add(spsubt)
+
+def cpppxd_sorted_names(mod, names=None):
+    """Sorts the variable names in a cpp_*.pxd module so that C/C++ 
+    declarations happen in the proper order.
+    """
+    names = names or []
+    classes = set([name for name, desc in  mod.items() if isclassdesc(desc)])
+    clssort = sorted(classes)
+    othercls = {}
+    for name in clssort:
+        desc = mod[name]
+        othercls[name] = set()
+        for aname, atype in desc['attrs'].items():
+            _addotherclsnames(atype, classes, name, othercls)
+        for mkey, mtype in desc['methods'].items():
+            mname, margs = mkey[0], mkey[1:]
+            _addotherclsnames(mtype, classes, othercls)
+            for marg in margs:
+                _addotherclsnames(marg[0], classes, name, othercls)
+    names.append(clssort[0])
+    for name in clssort[1:]:
+        if name in names:
+            continue
+        for i, n in enumerate(names[:]):
+            if name in othercls[n]:
+                names.insert(i, name)
+        else:
+            names.append(name)
+    names += sorted([name for name, desc in  mod.items() if isvardesc(desc)])    
+    names += sorted([name for name, desc in  mod.items() if isfuncdesc(desc)])    
+    return names
+
 
 def modcpppxd(mod, exceptions=True):
     """Generates a cpp_*.pxd Cython header file for exposing a C/C++ module to
@@ -92,17 +133,20 @@ def modcpppxd(mod, exceptions=True):
          "srcpxd_filename": mod.get("srcpxd_filename", "")}
     attrs = []
     cimport_tups = set()
-    for name, desc in mod.items():
-        if isvardesc(desc):
-            ci_tup, attr_str = varcpppxd(desc, exceptions)
-        elif isfuncdesc(desc):
-            ci_tup, attr_str = funccpppxd(desc, exceptions)
-        elif isclassdesc(desc):
-            ci_tup, attr_str = classcpppxd(desc, exceptions)
-        else:
-            continue
-        cimport_tups |= ci_tup
-        attrs.append(attr_str)
+    classnames = [name for name, desc in  mod.items() if isclassdesc(desc)]
+    with ts.local_classes(classnames, frozenset(['c'])):
+        for name in cpppxd_sorted_names(mod):
+            desc = mod[name]
+            if isvardesc(desc):
+                ci_tup, attr_str = varcpppxd(desc, exceptions)
+            elif isfuncdesc(desc):
+                ci_tup, attr_str = funccpppxd(desc, exceptions)
+            elif isclassdesc(desc):
+                ci_tup, attr_str = classcpppxd(desc, exceptions)
+            else:
+                continue
+            cimport_tups |= ci_tup
+            attrs.append(attr_str)
     m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
     m['attrs_block'] = "\n".join(attrs)
     t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
@@ -244,6 +288,7 @@ _cpppxd_class_template = \
 
         # methods
 {methods_block}
+        pass
 
 {extra}
 """
@@ -402,6 +447,7 @@ _pxd_class_template = \
 
 cdef class {name}{parents}:
 {body}
+    pass    
 
 {extra}
 """
@@ -931,6 +977,8 @@ cdef class {name}{parents}:
 {attrs_block}
     # methods
 {methods_block}
+
+    pass
 
 {extra}
 '''
