@@ -78,11 +78,10 @@ def _addotherclsnames(t, classes, name, others):
             if spsubt in classes:
                 others[name].add(spsubt)
 
-def cpppxd_sorted_names(mod, names=None):
+def cpppxd_sorted_names(mod):
     """Sorts the variable names in a cpp_*.pxd module so that C/C++ 
     declarations happen in the proper order.
     """
-    names = names or []
     classes = set([name for name, desc in  mod.items() if isclassdesc(desc)])
     clssort = sorted(classes)
     othercls = {}
@@ -96,13 +95,18 @@ def cpppxd_sorted_names(mod, names=None):
             _addotherclsnames(mtype, classes, othercls)
             for marg in margs:
                 _addotherclsnames(marg[0], classes, name, othercls)
-    names.append(clssort[0])
+    clssort.sort(key=lambda x: len(othercls[x]))
+    names = clssort[:1]
     for name in clssort[1:]:
         if name in names:
             continue
         for i, n in enumerate(names[:]):
             if name in othercls[n]:
                 names.insert(i, name)
+                break
+            if othercls[name] <= set(names[:i+1] + [name]):
+                names.insert(i+1, name)
+                break
         else:
             names.append(name)
     names += sorted([name for name, desc in  mod.items() if isvardesc(desc)])    
