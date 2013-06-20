@@ -4,7 +4,7 @@ the xml export capabilities of doxygen. The docstrings are inserted into
 the desc dictionary for each function/class and will then be merged with
 standard auto-docstrings as well as any user input from sidecar files.
 
-This module is available as an xdress pluging by the name
+This module is available as an xdress plugin by the name
 ``xdress.doxygen``.
 
 :author: Spencer Lyon <spencerlyon2@gmail.com>
@@ -26,10 +26,10 @@ rc.env['modulename']['myvar']['docstring']
 from __future__ import print_function
 import re
 import os
-import sys
 from subprocess import call
 from textwrap import TextWrapper
-from textwrap import fill
+from .utils import indentstr
+from xdress.plugins import Plugin
 
 # XML conditional imports
 try:
@@ -52,15 +52,23 @@ except ImportError:
                   import elementtree.ElementTree as etree
                 except ImportError:
                     pass
-
+##############################################################################
+##
+## -- Tools used in parsing
+##
+##############################################################################
 ### Set up various TextWrapper instances
 # main_wrap is for the core content of the docstring. It adds 4 spaces
 #   before the main description as well as the parameters and
 main_wrap = TextWrapper(width=72, initial_indent=' ' * 4,
-                           subsequent_indent=' ' * 4)
+                        subsequent_indent=' ' * 4)
 
 # member_wrap is for anything under Paramters, Returns, Methods, ect.
 member_wrap = TextWrapper(width=72, initial_indent=' ' * 8,
+                          subsequent_indent=' ' * 8)
+
+# attrib_wrap is for listing class attributes/methods
+attrib_wrap = TextWrapper(width=72, initial_indent=' ' * 4,
                           subsequent_indent=' ' * 8)
 
 _param_sec = 'Parameters\n----------'
@@ -70,30 +78,94 @@ _return_sec = 'Returns\n-------'
 _no_arg_links = re.compile('(<param>\n\s+<type>)<ref.+>(\w+)</ref>(.+</type>)')
 
 
-class _FuncWrap(object):
-    """
-    TODO: determine if I need to do this or not. Maybe the function will work
-    """
-    pass
-
-
-class _ClassWrap(object):
-    """
-    TODO: determine if I need to do this or not. Maybe the function will work
-    """
-    pass
-
-
-def _class_docstr(class_dict):
+##############################################################################
+##
+## -- Functions to create docstrings
+##
+##############################################################################
+def _class_docstr(class_dict, desc_funcs=False):
     """
     TODO: Have this mimic the _func_docstr function, but for a class.
 
     NOTE: For methods this can call _func_docstr
     """
-    pass
+    class_name = class_dict['kls_name'].split('::')[-1]
+    cls_msg = class_dict['public-func'][class_name]['detaileddescription']
+
+    msg = main_wrap.fill(cls_msg)
+
+    # Get a list of the methods and variables to list here.
+    methods = list(set(class_dict['members']['methods']))
+    variables = class_dict['members']['variables']
+
+    ivar_keys = filter(lambda x: 'attrib' in x, class_dict.keys())
+    func_keys = filter(lambda x: 'func' in x, class_dict.keys())
+
+    # Flatten instance variables and functions from class dictionary.
+    ivar_items = []
+    for i in ivar_keys:
+        ivar_items += class_dict[i].items()
+    ivars = dict(ivar_items)
+
+    func_items = []
+    for i in func_keys:
+        func_items += class_dict[i].items()
+    funcs = dict(func_items)
+
+    # skip a line and begin Attributes section
+    msg += '\n\n'
+    msg += main_wrap.fill('Attributes')
+    msg += '\n'
+    msg += main_wrap.fill('----------')
+    msg += '\n'
+
+    for i in variables:
+        desc = ivars[i]['briefdescription']
+        desc += ' ' + ivars[i]['detaileddescription']
+        var_msg = '%s (%s) : %s' % (i, ivars[i]['type'], desc.strip())
+        msg += attrib_wrap.fill(var_msg)
+        msg += '\n'
+
+    # skip a line and begin Methods section
+    msg += '\n\n'
+    msg += main_wrap.fill('Methods')
+    msg += '\n'
+    msg += main_wrap.fill('-------')
+    msg += '\n'
+
+    # sort them
+    methods.sort()
+
+    # Move the destructor from the bottom to be second.
+    methods.insert(1, methods.pop())
+
+    for i in methods:
+        desc = funcs[i]['briefdescription']
+        if len(desc) == 0 or not desc_funcs:
+            fun_msg = i
+        else:
+            fun_msg = '%s : %s' % (i, desc.strip())
+        msg += attrib_wrap.fill(fun_msg)
+        msg += '\n'
+
+    # skip a line and begin notes section
+    msg += '\n'
+    msg += main_wrap.fill('Notes')
+    msg += '\n'
+    msg += main_wrap.fill('-----')
+    msg += '\n'
+
+    def_msg = "This class was defined in %s" % (class_dict['file_name'])
+    ns_msg = 'The class is found in the "%s" namespace'
+
+    msg += main_wrap.fill(def_msg)
+    msg += '\n\n'
+    msg += main_wrap.fill(ns_msg % (class_dict['namespace']))
+
+    return msg
 
 
-def _func_docstr(func_dict):
+def _func_docstr(func_dict, is_method=False):
     """
     Function that wraps a function given a description, lists of
     strings containing parameter and return value descriptions.
@@ -113,16 +185,19 @@ def _func_docstr(func_dict):
         return value
     """
     detailed_desc = func_dict['detaileddescription']
-    brief_desc = func_dict['briefdesctription']
-    desc = '\n\n'.join([brief_desc, detailed_desc])
+    brief_desc = func_dict['briefdescription']
+    desc = '\n\n'.join([brief_desc, detailed_desc]).strip()
 
-    args = func_dict['arg_types']
+    args = func_dict['args']
     if args is None:
         params = ['None']
     else:
         params = []
         for arg in args:
-            params.append(arg[1] + ' : ' + arg[0])
+            arg_str = "%s : %s" % (arg, args[arg]['type'])
+            if 'desc' in args[arg]:
+                arg_str += '\n%s' % (args[arg]['desc'])
+            params.append(arg_str)
 
     returning = func_dict['ret_type']
     if returning is None:
@@ -130,13 +205,13 @@ def _func_docstr(func_dict):
     else:
         rets = []
         i = 1
-        for ret in returning:
-            rets.append('res%i : ' % i + ret)
+        if isinstance(returning, str):
+            rets.append('res%i : ' % i + returning)
+        else:
+            for ret in returning:
+                rets.append('res%i : ' % i + ret)
+                i += 1
 
-
-    desc = func_dict['d']
-    params =
-    rets =
     # put main section in
     msg = main_wrap.fill(desc)
 
@@ -157,10 +232,16 @@ def _func_docstr(func_dict):
         lines = str.splitlines(p)
         msg += main_wrap.fill(lines[0])
         msg += '\n'
-        for i in xrange(1, len(lines)):
+        more = False
+        for i in range(1, len(lines)):
+            more = True
             l = lines[i]
             msg += member_wrap.fill(l)
-        msg += '\n\n'
+
+        if more:
+            msg += '\n\n'
+        else:
+            msg += '\n'
 
     # skip a line and begin returns section
     msg += main_wrap.fill('Returns')
@@ -173,7 +254,7 @@ def _func_docstr(func_dict):
         lines = str.splitlines(r)
         msg += main_wrap.fill(lines[0])
         msg += '\n'
-        for i in xrange(1, len(lines)):
+        for i in range(1, len(lines)):
             l = lines[i]
             msg += member_wrap.fill(l)
         msg += '\n\n'
@@ -184,9 +265,16 @@ def _func_docstr(func_dict):
     msg += main_wrap.fill('-----')
     msg += '\n'
 
+    if is_method:
+        return indentstr(msg).indent4
+
     return msg
 
-
+##############################################################################
+##
+## -- dOxygen setup and execution
+##
+##############################################################################
 # this is the meat of the template doxyfile template returned by: doxygen -g
 # NOTE: I have changed a few things like no html/latex generation.
 
@@ -397,33 +485,89 @@ doxyfile.close()
 # call(['doxygen', 'doxyfile'])
 
 
-# root = etree.parse('index.xml')
-# compounds = list(root.iterfind('.//compound'))
+##############################################################################
+##
+## -- Functions to parse the xml
+##
+##############################################################################
+def _parse_index_xml(index_path):
+    """
+    Parses index.xml to get list of dictionaries for class and function
+    names. Each dictionary will have as keys the object (function
+    or class) names and the values will be dictionaries with (at least)
+    key-value pairs representing the .xml file name where the
+    information for that object can be found.
 
-# vars = []
-# funcs = []
-# classes = {}
-# class_names = []
+    Parameters
+    ----------
+    index_path : str
+        The path to index.xml. This is most likely to be provided by the
+        run control instance.
 
-# class_list = filter(lambda i:i.attrib['kind'] == 'class', root.findall('compound'))
+    Returns
+    classes : dict
+        A dictionary of dictionaries, one for each class.
 
-# for kls in class_list:
-#     kls_name = kls.find('name').text
-#     class_names.append(kls_name)
-#     file_name = kls.attrib['refid']
-#     kls_dict = {'vars': [], 'methods': [], 'file_name': file_name}
+    funcs : dict
+        A dictionary of dictionaries, one for each function.
+    """
+    if not index_path.endswith('index.xml'):
+        if index_path[-1] != os.path.sep:
+            index_path += os.path.sep + 'index.xml'
+        else:
+            index_path += 'index.xml'
+    root = etree.parse(index_path)
 
-#     for mem in kls.iter('member'):
-#         mem_name = mem.find('name').text
-#         if mem.attrib['kind'] == 'variable':
-#             kls_dict['vars'].append(mem_name)
-#         elif mem.attrib['kind'] == 'function':
-#             kls_dict['methods'].append(mem_name)
+    funcs = {}
+    classes = {}
 
-#     classes[kls_name] = kls_dict
+    class_list = filter(lambda i: i.attrib['kind'] == 'class',
+                        root.iter('compound'))
 
-# # Now on to a single class
-# c1 = classes[classes.keys()[0]]
+    namespaces = filter(lambda i: i.attrib['kind'] == 'namespace',
+                        root.iter('compound'))
+
+    for i in namespaces:
+        ns_name = i.find('name').text
+        ns_file_name = 'namespace%s.xml' % (ns_name)
+        ns_funcs = filter(lambda x: x.attrib['kind'] == 'function',
+                          i.iter('member'))
+
+        # Create counter dict to keep track of duplicate names
+        f_name_cnts = {}
+        for k in ns_funcs:
+            f_name = k.find('name').text
+            refid = k.attrib['refid']
+
+            # Change the name if necessary
+            if f_name in f_name_cnts.keys():
+                orig = str(f_name)
+                f_name += str(f_name_cnts[f_name])
+                f_name_cnts[orig] += 1
+            else:
+                f_name_cnts[f_name] = 1
+
+            funcs[f_name] = {'file_name': ns_file_name, 'refid': refid,
+                             'namespace': ns_name}
+
+    for kls in class_list:
+        kls_defn = kls.find('name').text.split('::')
+        kls_ns = '::'.join(kls_defn[:-1])
+        kls_name = kls_defn[-1]
+        file_name = kls.attrib['refid']
+        kls_dict = {'file_name': file_name, 'namespace': kls_ns, 'vars': [],
+                    'methods': []}
+
+        for mem in kls.iter('member'):
+            mem_name = mem.find('name').text
+            if mem.attrib['kind'] == 'variable':
+                kls_dict['vars'].append(mem_name)
+            elif mem.attrib['kind'] == 'function':
+                kls_dict['methods'].append(mem_name)
+
+        classes[kls_name] = kls_dict
+
+    return classes, funcs
 
 
 def _fix_xml_links(file_name):
@@ -444,7 +588,7 @@ def _fix_xml_links(file_name):
     ff.close()
 
 
-def _parse_function(f_xml):
+def _parse_func(f_xml):
     """
     Parse a function given the xml representation of it
     """
@@ -526,7 +670,7 @@ def _parse_variable(v_xml):
 def _parse_common(xml, the_dict):
     """
     Parse things in common for both variables and functions. This should
-    be run after a more specific function like _parse_function or
+    be run after a more specific function like _parse_func or
     _parse_variable because it needs a member dictionary as an input.
 
     Parameters
@@ -549,9 +693,10 @@ def _parse_common(xml, the_dict):
     mem_bd = xml.find('briefdescription')
     try:
         mem_bdstr = mem_bd.find('para').text
+        mem_bdstr = mem_bdstr if mem_bdstr is not None else ''
     except AttributeError:
         mem_bdstr = ''
-    the_dict['briefdesctription'] = mem_bdstr
+    the_dict['briefdescription'] = mem_bdstr
 
     # add member definition
     the_dict['definition'] = xml.find('definition').text
@@ -561,12 +706,23 @@ def _parse_common(xml, the_dict):
 
 def parse_function(func_dict):
     """
-    TODO: This needs to be done soon. I should just call _parse_function
+    TODO: This needs to be done soon. I should just call _parse_func
     and _parse_common.
 
     I to need to figure out what comes in and out of this function.
     """
-    pass
+    root = etree.parse(func_dict['file_name'])
+    f_id = func_dict['refid']
+    compd_def = root.find('compounddef')
+    func_sec = filter(lambda x: x.attrib['kind'] == 'func',
+                      compd_def.iter('sectiondef'))[0]
+
+    this_func = filter(lambda x: x.attrib['id'] == f_id,
+                       func_sec.iter('memberdef'))[0]
+
+    ret_dict = _parse_func(this_func)
+
+    return _parse_common(this_func, ret_dict)
 
 
 def parse_class(class_dict):
@@ -656,13 +812,12 @@ def parse_class(class_dict):
 
             if m_kind == 'function':
                 # do special stuff for functions
-                mem_dict = _parse_function(mem)
+                mem_dict = _parse_func(mem)
 
             elif m_kind == 'variable':
                 mem_dict = _parse_variable(mem)
 
             mem_dict = _parse_common(mem, mem_dict)
-
 
             mem_name = mem.find('name').text
 
@@ -679,8 +834,57 @@ def parse_class(class_dict):
 
         data[sec_name] = sec_dict
 
+    data['kls_name'] = compd_def.find('compoundname').text
+
+    data['members'] = {}
+    data['members']['methods'] = class_dict['methods']
+    data['members']['variables'] = class_dict['vars']
+
+    c_fn = compd_def.find('location').attrib['file'].split(os.path.sep)[-1]
+    data['file_name'] = c_fn
+
+    ns = '::'.join(compd_def.find('compoundname').text.split('::')[:-1])
+    data['namespace'] = ns
+
     return data
 
+##############################################################################
+##
+## -- Put it all together in a plugin! :)
+##
+##############################################################################
 
-# NOTE: at some point I need this:
-#       cls['public-func'][meth_name]['args'][arg_name].has_key('desc')
+
+class XdressPlugin(Plugin):
+    """
+    Add python docstrings (in numpydoc format) from dOxygen markup in
+    the source to the generated cython wrapper.
+    """
+
+    # needs autodescribe to populate rc.classes, rc.functions, ect.
+    requires = ('xdress.base', 'xdress.autodescribe')
+
+    def execute(self, rc):
+        """
+        Runs doxygen to produce the xml, then parses it and adds
+        docstrings to the desc dictionary.
+        """
+        # Get directories from our rc
+        src_dir = rc.sourcedir
+        build_dir = rc.sourcedir
+        pack_name = rc.package  # not sure this is necessary
+
+        xml_dir = build_dir + os.path.sep + 'xml'
+
+        # Create the doxyfile
+        doxyfile = open('doxyfile', 'w')
+        doxyfile.write(_doxyfile_content.format(project=pack_name,
+                                                output_dir=build_dir,
+                                                src_dir=src_dir))
+        doxyfile.close()
+
+        # Run doxygen
+        call(['doxygen', 'doxyfile'])
+
+        # TODO: Pick up from here. Need to parse, create docstrings, and
+        #       Add them to desc. That is it.
