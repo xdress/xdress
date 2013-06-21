@@ -85,9 +85,25 @@ _no_arg_links = re.compile('(<param>\n\s+<type>)<ref.+>(\w+)</ref>(.+</type>)')
 ##############################################################################
 def _class_docstr(class_dict, desc_funcs=False):
     """
-    TODO: Have this mimic the _func_docstr function, but for a class.
+    Generate the main docstring for a class given a dictionary of the
+    parsed dOxygen xml.
 
-    NOTE: For methods this can call _func_docstr
+    Parameters
+    ----------
+    class_dict : dict
+        This is a dictionary that should be the return value of the
+        function parse_class defined in this module
+
+    desc_funcs : bool, optional(default=False)
+        Whether or not to include the brief description of class methods
+        in the main list of methods.
+
+    Returns
+    -------
+    msg : str
+        The docstring to be inserted into the desc dictionary for the
+        class.
+
     """
     class_name = class_dict['kls_name'].split('::')[-1]
     cls_msg = class_dict['public-func'][class_name]['detaileddescription']
@@ -167,23 +183,29 @@ def _class_docstr(class_dict, desc_funcs=False):
 
 def _func_docstr(func_dict, is_method=False):
     """
-    Function that wraps a function given a description, lists of
-    strings containing parameter and return value descriptions.
+    Generate the docstring for a function given a dictionary of the
+    parsed dOxygen xml.
 
     Parameters
     ----------
-    desc : str
-        A string with the main description of the function as well as
-        the function signature.
+    func_dict : dict
+        This is a dictionary that should be the return value of the
+        function parse_function defined in this module. If this is a
+        class method it can be a sub-dictionary of the return value of
+        the parse_class function.
 
-    params : list of str
-        A list of strings where each string describes, in order,
-        a new parameter
+    is_method : bool, optional(default=False)
+        Whether or not to the function is a class method. If it is,
+        an extra 4 spaces of indentation will be added to all lines.
 
-    rets : list of str
-        A list of strings where each string describes, in order, a new
-        return value
+    Returns
+    -------
+    msg : str
+        The docstring to be inserted into the desc dictionary for the
+        function.
+
     """
+
     detailed_desc = func_dict['detaileddescription']
     brief_desc = func_dict['briefdescription']
     desc = '\n\n'.join([brief_desc, detailed_desc]).strip()
@@ -628,7 +650,7 @@ def _parse_func(f_xml):
 
     # Get argument types and names
     args = {}
-    for param in f_xml.iter('param'):
+    for param in f_xml.findall('param'):
         # add tuple of  arg type, arg name to arg_types list
         arg_name = param.find('declname').text
         arg_type = param.find('type').text
@@ -706,10 +728,9 @@ def _parse_common(xml, the_dict):
 
 def parse_function(func_dict):
     """
-    TODO: This needs to be done soon. I should just call _parse_func
-    and _parse_common.
-
-    I to need to figure out what comes in and out of this function.
+    Takes a dictionary defining where the xml for the function is, does
+    some function specific parsing and returns a new dictionary with
+    the parsed xml.
     """
     root = etree.parse(func_dict['file_name'])
     f_id = func_dict['refid']
@@ -746,17 +767,19 @@ def parse_class(class_dict):
                 'protected-func'
                     'prot_func1'
                         arg_string
+                        args
                         briefdescription
                         detaileddescription
-                        type
+                        ret_type
                         definition
 
                 'public-func'
                     'pub_func_1'
                         arg_string
+                        args
                         briefdescription
                         detaileddescription
-                        type
+                        ret_type
                         definition
 
                 'protected-attrib'
@@ -778,18 +801,14 @@ def parse_class(class_dict):
             - keys: attribute names
             - values: attribute dictionaries
         3. attribute dictionaries
-            - keys: arg_string, briefdescription, detaileddescription,
-            type, definition
-            - values: strings containing the actual data we care about
+            - keys: arg_string, args, briefdescription, type, definition
+            detaileddescription,
+            - values: objects containing the actual data we care about
 
     Notes
     -----
-
     The inner 'arg_string' key is only applicable to methods as it
     contains the function signature for the arguments.
-
-    For methods, the type key has a value of the return type of the
-    function.
 
     """
     c1 = class_dict
@@ -886,5 +905,89 @@ class XdressPlugin(Plugin):
         # Run doxygen
         call(['doxygen', 'doxyfile'])
 
-        # TODO: Pick up from here. Need to parse, create docstrings, and
-        #       Add them to desc. That is it.
+        classes, funcs = _parse_index_xml(build_dir +
+                                          os.path.sep +
+                                          'index.xml')
+        # Go for the classes!
+        for c in rc.classes:
+            kls = c[0]
+
+            # Find module name
+            if len(c) < 3:
+                # module name not given will be same as source file name
+                kls_mod = c[1]
+                # HELP: Is the above true? Will target name be same as source?
+            else:
+                # module name given, find the dictionary there.
+                kls_mod = c[2]
+
+            # Parse the class
+            try:
+                this_kls = classes[kls]
+            except KeyError:
+                print("Couldn't find class %s in xml. Skipping it - " % (kls)
+                      + "it will not appear in docstrings.")
+                continue
+
+            parsed = parse_class(this_kls)
+            func_keys = filter(lambda x: 'func' in x, parsed.keys())
+            rc.env[kls_mod][kls]['docstring'] += '\n' + _class_docstr(parsed)
+
+            # HELP: Can I get a list of method names from rc.env[kls_mod][kls]?
+            #       If so, loop over that, not the methods I parsed.
+            for m in parsed['members']['methods']:
+                for key in func_keys:
+                    try:
+                        # Grab the method dictionary and break out of for loop
+                        m_dict = parsed[key][m]
+                        break
+                    except KeyError:
+                        # Just try a different key and move on
+                        m_dict = None
+                        continue
+
+                if m_dict is not None:
+                    m_ds = _func_docstr(m_dict, is_method=True)
+
+                # HELP: How to add the docstrings for methods? Where to
+                #       put them?
+                rc.env[kls_mod][kls][m]['docstring'] += '\n' + m_ds
+
+        # And on to the functions.
+        for f in rc.functions:
+            func = f[0]
+            # Find module name
+            if len(f) < 3:
+                # module name not given will be same as source file name
+                func_mod = f[1]
+            else:
+                # module name given, find the dictionary there.
+                func_mod = f[2]
+
+            # Pull out all parsed names that match the function name
+            # This is necessary because overloaded funcs will have
+            # multiple entries
+            matches = filter(lambda x: f in x, funcs.keys())
+
+            if matches is not None:
+                if len(matches) == 1:
+                    f_ds = _func_docstr(parse_function(funcs[f]))
+                else:
+                    # Overloaded function
+                    ds_list = [_func_docstr(parse_function(funcs[i]))
+                               for i in matches]
+                    f_ds = 'This function was overloaded on the C/C++ side.\n'
+                    f_ds += 'To overcome this we will put the relevant\n'
+                    f_ds += 'docstring for each version below. The Notes\n'
+                    f_ds += 'section is the last section for each version.\n'
+                    f_ds += 'Each version will begin with a line of #\n'
+                    f_ds += 'characters.'
+                    f_ds = main_wrap.fill(f_ds)
+                    ds = str('\n\n' + '#' * 72 + '\n\n').join(ds_list)
+                    f_ds += ds
+
+            rc.env[func_mod][func]['docstring'] += '\n' + f_ds
+
+        # TODO: Add the docstrings we found to the descriptions cache.
+        #       This is probably easier to do as I am filling them in the
+        #       rc.env places
