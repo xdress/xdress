@@ -1138,6 +1138,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
             'unsigned int': 'uint32', 
             'unsigned long': 'uint32',
             'unsigned long int': 'uint32',
+            'long unsigned int': 'uint32',
             'unsigned long long' : 'uint64', 
             'unsigned long long int' : 'uint64', 
             'float': 'float32',
@@ -1168,7 +1169,12 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         self._currfuncsig = []
         self._level += 1
         for _, child in ftype.args.children():
+            if isinstance(child, pycparser.c_ast.EllipsisParam):
+                continue
             arg = (child.name, self.type(child))
+            if arg == (None, 'void'):
+                # skip foo(void) cases, since no arg name is given
+                continue
             self._currfuncsig.append(arg)
         self._level -= 1
         rtntype = self.type(ftype.type)
@@ -1189,6 +1195,13 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         self._pprint(node)
         self.visit(node.type)
 
+    def _enumint(self, value):
+        base = 10
+        if value.startswith('0x') or value.startswith('-0x') or \
+           value.startswith('+0x'):
+            base = 16
+        return int(value, base)
+
     def visit_Enumerator(self, node):
         self._pprint(node)
         if node.value is None:
@@ -1196,6 +1209,12 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
                 value = 0
             else:
                 value = self._currenum[-1][-1] + 1
+        elif isinstance(node.value, pycparser.c_ast.Constant):
+            value = self._enumint(node.value.value)
+        elif isinstance(node.value, pycparser.c_ast.UnaryOp):
+            if not isinstance(node.value.expr, pycparser.c_ast.Constant):
+                raise ValueError("non-contant enum values not yet supported")
+            value = self._enumint(node.value.op + node.value.expr.value)
         else:
             value = node.value
         self._currenum.append((node.name, value))
@@ -1658,13 +1677,13 @@ class XDressPlugin(astparsers.ParserPlugin):
         # compute all class descriptions first 
         cache = rc._cache
         env = rc.env  # target environment, not source one
-        for classname, srcname, tarname in rc.classes:
-            print("parsing " + classname)
+        for i, (classname, srcname, tarname) in enumerate(rc.classes):
+            print("autodescribe: describing " + classname)
             desc = self.compute_desc(classname, srcname, tarname, 'class', rc)
             if rc.verbose:
                 pprint(desc)
 
-            print("registering " + classname)
+            print("autodescribe: registering " + classname)
             pxd_base = desc['pxd_filename'].rsplit('.', 1)[0]         # eg, fccomp
             cpppxd_base = desc['srcpxd_filename'].rsplit('.', 1)[0]   # eg, cpp_fccomp
             class_c2py = ('{pytype}({var})',
@@ -1714,29 +1733,34 @@ class XDressPlugin(astparsers.ParserPlugin):
             ts.register_class(**kwclassptr)
             cache.dump()
             self.adddesc2env(desc, env, classname, srcname, tarname)
+            if 0 == i%rc.clear_parser_cache_period:
+                astparsers.clearmemo()
 
     def compute_functions(self, rc):
         """Computes function descriptions and loads them into the environment."""
         env = rc.env
         cache = rc._cache
-        for funcname, srcname, tarname in rc.functions:
-            print("parsing " + funcname)
+        for i, (funcname, srcname, tarname) in enumerate(rc.functions):
+            print("autodescribe: describing " + funcname)
             desc = self.compute_desc(funcname, srcname, tarname, 'func', rc)
             if rc.verbose:
                 pprint(desc)
             cache.dump()
             self.adddesc2env(desc, env, funcname, srcname, tarname)
+            if 0 == i%rc.clear_parser_cache_period:
+                astparsers.clearmemo()
 
     def compute_variables(self, rc):
         """Computes variables descriptions and loads them into the environment."""
         env = rc.env
         cache = rc._cache
-        for varname, srcname, tarname in rc.variables:
-            print("parsing " + varname)
+        for i, (varname, srcname, tarname) in enumerate(rc.variables):
+            print("autodescribe: describing " + varname)
             desc = self.compute_desc(varname, srcname, tarname, 'var', rc)
             if rc.verbose:
                 pprint(desc)
             cache.dump()
             self.adddesc2env(desc, env, varname, srcname, tarname)
-
+            if 0 == i%rc.clear_parser_cache_period:
+                astparsers.clearmemo()
 

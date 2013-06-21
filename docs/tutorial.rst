@@ -320,7 +320,16 @@ one might run across in a production level environment.
     # In the first case, the base source filename will be used as 
     # the base package name as well. In the last case, a None value
     # will register this class for the purpose of generating other 
-    # APIs, but will not create the corresponding bindings.
+    # APIs, but will not create the corresponding bindings.  Additionally, 
+    # if the "xdress.autoall" plugin is enabled, you may also use an 
+    # asterix (or star) to tell xdress to search the source file for
+    # all classes, functions, and/or variables:
+    #
+    #   ('*', base source filename)
+    #   ('*', base source filename, base package filename)
+    #   ('*', base source filename, None)
+    #
+    # This is useful for wrapping larger existing libraries.
     classes = [
         ('FCComp', 'fccomp'), 
         ('EnrichmentParameters', 'enrichment_parameters'), 
@@ -331,7 +340,7 @@ one might run across in a production level environment.
 
     # List of functions to wrap
     functions = [
-        ('myfunc', 'reprocess'),
+        ('*', 'reprocess'),
         ('fillUraniumEnrichmentDefaults', 'enrichment_parameters'),
         ]
 

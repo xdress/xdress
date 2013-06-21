@@ -309,7 +309,7 @@ def find_source(basename, sourcedir='.'):
     """Finds a source filename, header filename, language name, and language
     source extension given a basename and source directory."""
     files = os.listdir(sourcedir)
-    files = [f for f in files if f.startswith(basename)]
+    files = [f for f in files if f.startswith(basename + '.')]
     langs = dict([(f, guess_language(f, None)) for f in files])
     lang = src = hdr = srcext = None
     for f, l in langs.items():
@@ -331,7 +331,7 @@ nyansep = r'~\_/' * 17 + '~=[,,_,,]:3'
 
 class DescriptionCache(object):
     """A quick persistent cache for descriptions from files.  
-    The keys are (classname, filename) tuples.  The values are 
+    The keys are (classname, filename, kind) tuples.  The values are 
     (hashes-of-the-file, description-dictionary) tuples."""
 
     def __init__(self, cachefile=os.path.join('build', 'desc.cache')):
@@ -355,9 +355,9 @@ class DescriptionCache(object):
         if key not in self.cache:
             return False
         cachehash = self.cache[key][0]
-        with io.open(filename, 'r') as f:
-            filestr = f.read().encode()
-        currhash = md5(filestr).hexdigest()
+        with io.open(filename, 'rb') as f:
+            filebytes = f.read()
+        currhash = md5(filebytes).hexdigest()
         return cachehash == currhash
 
     def __getitem__(self, key):
@@ -365,9 +365,9 @@ class DescriptionCache(object):
 
     def __setitem__(self, key, value):
         name, filename, kind = key
-        with io.open(filename, 'r') as f:
-            filestr = f.read().encode()
-        currhash = md5(filestr).hexdigest()
+        with io.open(filename, 'rb') as f:
+            filebytes = f.read()
+        currhash = md5(filebytes).hexdigest()
         self.cache[key] = (currhash, value)
 
     def __delitem__(self, key):

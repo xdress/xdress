@@ -16,10 +16,14 @@ import subprocess
 import itertools
 import tempfile
 import functools
-import pickle
 import collections
 from pprint import pprint, pformat
 from warnings import warn
+import gzip
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 if os.name == 'nt':
     import ntpath
@@ -199,11 +203,11 @@ def pycparser_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
         A pycparser abstract syntax tree.
 
     """
-    pklname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.pkl'
-    pklname = os.path.join(builddir, pklname)
-    if os.path.isfile(pklname):
-        with io.open(pklname, 'r+b') as f:
-            root = pickle.load(f)
+    pklgzname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.pkl.gz'
+    pklgzname = os.path.join(builddir, pklgzname)
+    if os.path.isfile(pklgzname):
+        with gzip.open(pklgzname, 'rb') as f:
+            root = pickle.loads(f.read())
         return root
     kwargs = {'cpp_args': [r'-D__attribute__(x)=',  # Workaround for GNU libc
                 r'-D__asm__(x)=', r'-D__const=', 
@@ -215,10 +219,8 @@ def pycparser_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     kwargs['cpp_args'] += ['-D' + d for d in defines]
     kwargs['cpp_args'] += ['-U' + d for u in undefines]
     root = pycparser.parse_file(filename, use_cpp=True, **kwargs)
-    pklname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.pkl'
-    pklname = os.path.join(builddir, pklname)
-    with io.open(pklname, 'w+b') as f:
-        pickle.dump(root, f)
+    with gzip.open(pklgzname, 'wb') as f:
+        f.write(pickle.dumps(root, pickle.HIGHEST_PROTOCOL))
     return root
 
 #
@@ -286,7 +288,8 @@ class ParserPlugin(Plugin):
         functions=(),
         classes=(),
         parsers={'c': ['pycparser', 'gccxml', 'clang'],
-                 'c++':['gccxml', 'clang', 'pycparser']}
+                 'c++':['gccxml', 'clang', 'pycparser']},
+        clear_parser_cache_period=50,
         )
 
     def update_argparser(self, parser):
@@ -299,6 +302,10 @@ class ParserPlugin(Plugin):
                             help="unset additional macro definitions")
         parser.add_argument('-p', action='store', dest='parsers',
                             help="parser(s) name, list, or dict")
+        parser.add_argument('--clear-parser-cache-period', action='store', 
+                            dest='clear_parser_cache_period', type=int,
+                            help=("Number of parser calls to perform before clearing "
+                                  "the internal cache."))
 
     def setup(self, rc):
         """Remember to call super() on subclasses!"""

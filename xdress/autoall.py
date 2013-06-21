@@ -4,18 +4,44 @@ and certain variable types.  It is not used to actually describe these elements.
 That is the job of the autodescriber.
 
 This module is available as an xdress plugin by the name ``xdress.autoall``.
+Including this plugin enables the ``classes``, ``functions``, and ``variables``  
+run control parameters to have an asterix ('*') in the name positon (index 0).
+For example, rather tha writing::
 
+    classes = [
+        ('People', 'people'),
+        ('JoanOfArc', 'people'),
+        ('JEdgaHoover', 'people'),
+        ('Leslie', 'people'),
+        ('HuaMulan', 'people'),
+        ]
+
+we can instead simply write::
+
+    classes = [('*', 'people')]
+
+Isn't this grand?!
 
 :author: Anthony Scopatz <scopatz@gmail.com>
-
 
 Automatic Finder API
 ====================
 """
 from __future__ import print_function
 import os
+import io
 import sys
+from hashlib import md5
 from pprint import pprint, pformat
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
+try:
+    import pycparser
+except ImportError:
+    pycparser = None
 
 from . import utils
 from . import astparsers
@@ -232,19 +258,23 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
     def visit_FuncDecl(self, node):
         if node.coord.file not in self.onlyin:
             return
-        name = node.type.declname
-        if name.startswith('_'):
+        if isinstance(node.type, pycparser.c_ast.PtrDecl):
+            name = node.type.type.declname
+        else:
+            name = node.type.declname
+        if name is None or name.startswith('_'):
             return
         self._pprint(node)
         self.functions.append(name)
 
     def visit_Struct(self, node):
+        self._pprint(node)
         if node.coord.file not in self.onlyin:
             return
         name = node.name
-        if name.startswith('_'):
+        if name is None or name.startswith('_'):
             return
-        self._pprint(node)
+        #self._pprint(node)
         self.classes.append(name)
 
 
@@ -344,6 +374,66 @@ def findall(filename, includes=(), defines=('XDRESS',), undefines=(),
 
 
 #
+# Persisted Cache for great speed up
+#
+
+class AutoNameCache(object):
+    """A quick persistent cache for name lists automatically found in files.  
+    The keys are (classname, filename, kind) tuples.  The values are 
+    (hashes-of-the-file, finder-results) tuples."""
+
+    def __init__(self, cachefile=os.path.join('build', 'autoname.cache')):
+        """Parameters
+        -------------
+        cachefile : str, optional
+            Path to description cachefile.
+
+        """
+        self.cachefile = cachefile
+        if os.path.isfile(cachefile):
+            with io.open(cachefile, 'rb') as f:
+                self.cache = pickle.load(f)
+        else:
+            self.cache = {}
+
+    def isvalid(self, filename):
+        """Boolean on whether the cach value for a filename matches the state 
+        of the file on the system."""
+        key = filename
+        if key not in self.cache:
+            return False
+        cachehash = self.cache[key][0]
+        with io.open(filename, 'rb') as f:
+            filebytes = f.read()
+        currhash = md5(filebytes).hexdigest()
+        return cachehash == currhash
+
+    def __getitem__(self, key):
+        return self.cache[key][1]  # return the results of the finder only
+
+    def __setitem__(self, key, value):
+        filename = key
+        with io.open(filename, 'rb') as f:
+            filebytes = f.read()
+        currhash = md5(filebytes).hexdigest()
+        self.cache[key] = (currhash, value)
+
+    def __delitem__(self, key):
+        del self.cache[key]
+
+    def dump(self):
+        """Writes the cache out to the filesystem."""
+        if not os.path.exists(self.cachefile):
+            pardir = os.path.split(self.cachefile)[0]
+            if not os.path.exists(pardir):
+                os.makedirs(pardir)
+        with io.open(self.cachefile, 'wb') as f:
+            pickle.dump(self.cache, f, pickle.HIGHEST_PROTOCOL)
+
+    def __str__(self):
+        return pformat(self.cache)
+
+#
 # Plugin
 #
 
@@ -394,14 +484,26 @@ class XDressPlugin(astparsers.ParserPlugin):
 
         # second pass -- find all
         allnames = {}
-        for srcname in allsrc:
+        cachefile = os.path.join(rc.builddir, 'autoname.cache')
+        autonamecache = AutoNameCache(cachefile=cachefile)
+        for i, srcname in enumerate(allsrc):
             srcfname, hdrfname, lang, ext = find_source(srcname, 
                                                         sourcedir=rc.sourcedir)
             filename = os.path.join(rc.sourcedir, srcfname)
-            found = findall(filename, includes=rc.includes, defines=rc.defines, 
-                            undefines=rc.undefines, parsers=rc.parsers, 
-                            verbose=rc.verbose, debug=rc.debug, builddir=rc.builddir)
+            if rc.verbose:
+                print("autoall: searching {0} (from {1!r})".format(srcfname, srcname))
+            if autonamecache.isvalid(filename):
+                found = autonamecache[filename]
+            else:
+                found = findall(filename, includes=rc.includes, defines=rc.defines, 
+                                undefines=rc.undefines, parsers=rc.parsers, 
+                                verbose=rc.verbose, debug=rc.debug, 
+                                builddir=rc.builddir)
+                autonamecache[filename] = found
+                autonamecache.dump()
             allnames[srcname] = found
+            if 0 == i%rc.clear_parser_cache_period:
+                astparsers.clearmemo()
 
         # third pass -- replace *s
         if self.varhasstar:
@@ -430,4 +532,10 @@ class XDressPlugin(astparsers.ParserPlugin):
             rc.classes = newclss
 
     def report_debug(self, rc):
-        super(XDressPlugin, self).report_debug(rc)
+        msg = super(XDressPlugin, self).report_debug(rc)
+        msg += "Autoall:\n\n"
+        msg += "allsrc = {0}\n\n".format(pformat(self.allsrc))
+        msg += "varhasstar = {0}\n\n".format(pformat(self.varhasstar))
+        msg += "fnchasstar = {0}\n\n".format(pformat(self.fnchasstar))
+        msg += "clshasstar = {0}\n\n".format(pformat(self.clshasstar))
+        return msg
