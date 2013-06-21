@@ -369,9 +369,9 @@ MAX_INITIALIZER_LINES  = 30
 SHOW_USED_FILES        = YES
 SHOW_FILES             = YES
 SHOW_NAMESPACES        = YES
-QUIET                  = NO
+QUIET                  = YES
 WARNINGS               = YES
-WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_UNDOCUMENTED   = NO
 WARN_IF_DOC_ERROR      = YES
 WARN_NO_PARAMDOC       = NO
 WARN_FORMAT            = "$file:$line: $text"
@@ -874,7 +874,7 @@ def parse_class(class_dict):
 ##############################################################################
 
 
-class XdressPlugin(Plugin):
+class XDressPlugin(Plugin):
     """
     Add python docstrings (in numpydoc format) from dOxygen markup in
     the source to the generated cython wrapper.
@@ -888,9 +888,10 @@ class XdressPlugin(Plugin):
         Runs doxygen to produce the xml, then parses it and adds
         docstrings to the desc dictionary.
         """
+        print("doxygen: Adding dOxygen to docstrings")
         # Get directories from our rc
         src_dir = rc.sourcedir
-        build_dir = rc.sourcedir
+        build_dir = rc.builddir
         pack_name = rc.package  # not sure this is necessary
 
         xml_dir = build_dir + os.path.sep + 'xml'
@@ -919,9 +920,22 @@ class XdressPlugin(Plugin):
                       + "it will not appear in wrapper docstrings.")
                 continue
 
+            prepend_fn = build_dir + os.path.sep + 'xml' + os.path.sep
+            this_kls['file_name'] = prepend_fn + this_kls['file_name']
             parsed = parse_class(this_kls)
             func_keys = filter(lambda x: 'func' in x, parsed.keys())
-            rc.env[kls_mod][kls]['docstring'] += '\n' + _class_docstr(parsed)
+            rc.env[kls_mod][kls]['docstring'] = _class_docstr(parsed)
+
+            print('#' * 75)
+            print('#' * 75)
+            print('#' * 75)
+            print("Here is rc.env[kls_mod][kls].keys()")
+            print(rc.env[kls_mod][kls].keys())
+            print('#' * 75)
+            print('#' * 75)
+            print('#' * 75)
+            print("Here is rc.env[kls_mod][kls]['docstring'].keys()")
+            print(rc.env[kls_mod][kls]['docstring'])
 
             for m in rc.env[kls_mod][kls]['docstrings']['methods'].keys():
                 for key in func_keys:
@@ -936,8 +950,8 @@ class XdressPlugin(Plugin):
 
                 if m_dict is not None:
                     m_ds = _func_docstr(m_dict, is_method=True)
-                    m_ds = '\n\n' + m_ds
-                    rc.env[kls_mod][kls]['docstrings']['methods'][m] += m_ds
+                    # m_ds = '\n\n' + m_ds
+                    rc.env[kls_mod][kls]['docstrings']['methods'][m] = m_ds
                 else:
                     print("Couldn't find method %s in xml. Skipping it" % (m)
                           + " - it will not appear in wrapper docstrings.")
@@ -970,7 +984,7 @@ class XdressPlugin(Plugin):
                     ds = str('\n\n' + '#' * 72 + '\n\n').join(ds_list)
                     f_ds += ds
 
-                rc.env[func_mod][func]['docstring'] += '\n' + f_ds
+                rc.env[func_mod][func]['docstring'] = f_ds
 
             else:
                 print("Couldn't find function %s in xml. Skipping it" % (func)
