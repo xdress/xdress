@@ -69,6 +69,8 @@ def gencpppxd(env, exceptions=True):
     return cpppxds
 
 def _addotherclsnames(t, classes, name, others):
+    if t is None or t == (None, '*'):
+        return
     spt = ts.strip_predicates(t)
     if spt in classes:
         others[name].add(spt)
@@ -92,9 +94,9 @@ def cpppxd_sorted_names(mod):
             _addotherclsnames(atype, classes, name, othercls)
         for mkey, mtype in desc['methods'].items():
             mname, margs = mkey[0], mkey[1:]
-            _addotherclsnames(mtype, classes, othercls)
+            _addotherclsnames(mtype, classes, name, othercls)
             for marg in margs:
-                _addotherclsnames(marg[0], classes, name, othercls)
+                _addotherclsnames(marg[1], classes, name, othercls)
     clssort.sort(key=lambda x: len(othercls[x]))
     names = clssort[:1]
     for name in clssort[1:]:

@@ -1554,8 +1554,8 @@ def _cython_c2py_conv_function_pointer(t_):
                                               existing_name=rtncall)
     if rtndecl is None and rtnbody is None:
         rtnprox = rtnname
-    #rtndecl = _indent4([rtndecl, "cdef {0} {1}".format(cython_ctype(t[2][2]), rtncall)])
-    rtndecl = _indent4(["cdef {0} {1}".format(cython_ctype(t[2][2]), rtncall)])
+    rtndecl = _indent4([rtndecl, "cdef {0} {1}".format(cython_ctype(t[2][2]), rtncall)])
+    #rtndecl = _indent4(["cdef {0} {1}".format(cython_ctype(t[2][2]), rtncall)])
     rtnbody = _indent4([rtnbody])
     s = """def {{proxy_name}}({arglist}):
 {argdecls}
@@ -1657,8 +1657,16 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
         decl = decl or ''
         decl += "\ncdef np.npy_intp {proxy_name}_shape[1]".format(proxy_name=proxy_name)
     if decl is not None and body is not None:
-        decl += '\n'+"\n".join([l for l in body.splitlines() if l.startswith('cdef')])
+        newdecl = '\n'+"\n".join([l for l in body.splitlines() if l.startswith('cdef')])
         body = "\n".join([l for l in body.splitlines() if not l.startswith('cdef')])
+        proxy_in_newdecl = proxy_name in [l.split()[-1] for l in newdecl.splitlines() if 0 < len(l)]
+        if proxy_in_newdecl:
+            for d in decl.splitlines():
+                if d.split()[-1] != proxy_name:
+                    newdecl += '\n' + d
+            decl = newdecl
+        else:
+            decl += newdecl
     return decl, body, rtn, iscached
 
 
@@ -1769,19 +1777,23 @@ def _cython_py2c_conv_function_pointer(t):
         argnames.append(n)
         decl, body, rtn, _ = cython_c2py(n, argt, proxy_name="c_" + n, cached=False)
         argdecls.append(decl)
+        #argdecls.append("cdef {0} {1}".format(cython_pytype(argt), "c_" + n))
         argbodys.append(body)
         argrtns.append(rtn)
         argct = cython_ctype(argt)
         argcts.append(argct)
     rtnname = 'rtn'
     rtnprox = 'c_' + rtnname
+    rtncall = 'call_' + rtnname
     while rtnname in argnames or rtnprox in argnames:
         rtnname += '_'
         rtnprox += '_'
     rtnct = cython_ctype(t[2][2])
     argdecls = _indent4(argdecls)
     argbodys = _indent4(argbodys)
-    rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtnprox)
+    #rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtnprox)
+    #rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtncall)
+    rtndecl, rtnbody, rtnrtn = cython_py2c(rtncall, t[2][2], proxy_name=rtnprox)
     if rtndecl is None and rtnbody is None:
         rtnprox = rtnname
     rtndecl = _indent4([rtndecl])
@@ -1791,7 +1803,7 @@ def _cython_py2c_conv_function_pointer(t):
 {rtndecl}
     global {{var}}
 {argbodys}
-    {rtnprox} = {{var}}({pyarglist})
+    {rtncall} = {{var}}({pyarglist})
 {rtnbody}
     return {rtnrtn}
 """
@@ -1799,7 +1811,7 @@ def _cython_py2c_conv_function_pointer(t):
     pyarglist=", ".join(argrtns)
     s = s.format(rtnct=rtnct, arglist=arglist, argdecls=argdecls, rtndecl=rtndecl,
                  argbodys=argbodys, rtnprox=rtnprox, pyarglist=pyarglist,
-                 rtnbody=rtnbody, rtnrtn=rtnrtn)
+                 rtnbody=rtnbody, rtnrtn=rtnrtn, rtncall=rtncall)
     return s, False
 
 _cython_py2c_conv['function_pointer'] = _cython_py2c_conv_function_pointer

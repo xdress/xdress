@@ -329,6 +329,7 @@ class GccxmlBaseDescriber(object):
             # fill in later with string parsing of node name if needed.
             pass
         self._level -= 1
+        #inst.append(0)
         return tuple(inst)
 
     def visit_class(self, node):
@@ -1116,6 +1117,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         self._level = -1
         self._currtype = None
         self._currenum = None
+        self._loading_bases = False
         self._basetypes = {
             'char': 'char', 
             'signed char': 'char', 
@@ -1154,12 +1156,14 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
             node.show()
 
     def load_basetypes(self):
+        self._loading_bases = True
         for child_name, child in self._root.children():
             if isinstance(child, pycparser.c_ast.Typedef):
                 self._basetypes[child.name] = self.type(child)
         if self.verbose:
             print("Base type mapping = ")
             pprint(self._basetypes)
+        self._loading_bases = False
 
     def visit_FuncDef(self, node):
         self._pprint(node)
@@ -1195,9 +1199,20 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         t = self._basetypes.get(t, t)
         self._currtype = t
 
+    def visit_Decl(self, node):
+        self._pprint(node)
+        if isinstance(node.type, pycparser.c_ast.FuncDecl):
+            self.visit(node.type)
+            key = (node.name,) + self._currtype[1]
+            self.desc[self._funckey][key] = self._currtype[2]
+            self._currtype = None
+        else:
+            self.visit(node.type)
+
     def visit_TypeDecl(self, node):
         self._pprint(node)
-        self.visit(node.type)
+        if hasattr(node.type, 'children'):
+            self.visit(node.type)
 
     def _enumint(self, value):
         base = 10
@@ -1248,6 +1263,8 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         self._pprint(node)
         args = []
         for i, arg in enumerate(node.args.params):
+            if isinstance(arg, pycparser.c_ast.EllipsisParam):
+                continue
             argname = arg.name or '_{0}'.format(i)
             argtype = self.type(arg, safe=True)
             args.append((argname, argtype))
@@ -1264,6 +1281,8 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
     def visit_Typedef(self, node):
         self._pprint(node)
         self._currtype = None
+        if not hasattr(node.type, 'children'):
+            return 
         self.visit(node.type)
         name = self._currtype
         self._currtype = None
@@ -1340,7 +1359,6 @@ class PycparserVarDescriber(PycparserBaseDescriber):
         if node is None:
             self.load_basetypes()
             for child_name, child in self._root.children():
-                #if child.decl.name == self.name:
                 if getattr(child, 'name', None) == self.name:
                     if isinstance(child, pycparser.c_ast.FuncDef):
                         raise TypeError(_type_error_msg.format(self.name, 'function', 
@@ -1348,6 +1366,7 @@ class PycparserVarDescriber(PycparserBaseDescriber):
                     if isinstance(child, pycparser.c_ast.Struct):
                         raise TypeError(_type_error_msg.format(self.name, 'struct', 
                                                             'PycparserClassDescriber'))
+                    child.show()
                     self.desc['type'] = self.type(child)
                     break
         else:
@@ -1389,11 +1408,12 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
         if node is None:
             self.load_basetypes()
             for child_name, child in self._root.children():
-                if not isinstance(child, pycparser.c_ast.FuncDef):
-                    continue
-                if child.decl.name != self.name:
-                    continue
-                self.visit(child)
+                if isinstance(child, pycparser.c_ast.FuncDef) and \
+                   child.decl.name == self.name:
+                    self.visit(child)
+                elif isinstance(child, pycparser.c_ast.Decl) and \
+                     child.name == self.name:
+                    self.visit(child)
         else:
             super(PycparserFuncDescriber, self).visit(node)
 
@@ -1742,8 +1762,12 @@ class XDressPlugin(astparsers.ParserPlugin):
                 )
             ts.register_class(**kwclass)
             class_ptr_c2py = ('{pytype}({var})',
-                              ('{proxy_name} = {pytype}()\n'
-                               '(<{ctype}> {proxy_name}._inst) = {var}'),
+                              #('cdef {pytype} {proxy_name}\n'
+                              # '{proxy_name} = {pytype}()\n'
+                              # '(<{ctype}> {proxy_name}._inst) = {var}'),
+                              ('cdef {pytype} {proxy_name} = {pytype}()\n'
+                               #'{proxy_name} = {pytype}()\n'
+                               '(<{ctype}> {proxy_name}._inst)[0] = {var}[0]'),
                               ('if {cache_name} is None:\n'
                                '    {proxy_name} = {pytype}()\n'
                                '    {proxy_name}._free_inst = False\n'
@@ -1754,8 +1778,8 @@ class XDressPlugin(astparsers.ParserPlugin):
                               '(<{ctype_nopred} *> {proxy_name}._inst)')
             kwclassptr = dict(
                 name=(classname, '*'),
-                #cython_py_type=pxd_base + '.' + classname,
-                #cython_cy_type=pxd_base + '.' + classname,
+                cython_py_type=pxd_base + '.' + classname,
+                cython_cy_type=pxd_base + '.' + classname,
                 cython_c2py=class_ptr_c2py,
                 cython_py2c=class_ptr_py2c,
                 cython_cimport=kwclass['cython_cimport'],
