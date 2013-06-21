@@ -1744,10 +1744,6 @@ class XDressPlugin(astparsers.ParserPlugin):
             class_ptr_c2py = ('{pytype}({var})',
                               ('{proxy_name} = {pytype}()\n'
                                '(<{ctype}> {proxy_name}._inst) = {var}'),
-                              #('cdef {cytype_nopred} {proxy_name}_real\n'
-                              # '{proxy_name}_real = {pytype}()\n'
-                              # '(<{ctype}> {proxy_name}_real._inst) = {var}'
-                              # ''), 
                               ('if {cache_name} is None:\n'
                                '    {proxy_name} = {pytype}()\n'
                                '    {proxy_name}._free_inst = False\n'
@@ -1758,6 +1754,8 @@ class XDressPlugin(astparsers.ParserPlugin):
                               '(<{ctype_nopred} *> {proxy_name}._inst)')
             kwclassptr = dict(
                 name=(classname, '*'),
+                #cython_py_type=pxd_base + '.' + classname,
+                #cython_cy_type=pxd_base + '.' + classname,
                 cython_c2py=class_ptr_c2py,
                 cython_py2c=class_ptr_py2c,
                 cython_cimport=kwclass['cython_cimport'],

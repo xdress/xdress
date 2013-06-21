@@ -882,6 +882,7 @@ _cython_cimports = _LazyImportDict({
     'str': (('libcpp.string', 'string', 'std_string'),),
     'int16': (None,),
     'int32': (None,),
+    ('int32', '*'): 'int *',
     'int64':  (('{extra_types}',),),
     'uint16':  (('{extra_types}',),),
     'uint32': (('{extra_types}',),),  
@@ -1115,6 +1116,7 @@ _cython_cytypes = _LazyConfigDict({
     'int16': 'short',
     #'int32': 'long',
     'int32': 'int',
+    ('int32', '*'): 'int *',
     'int64': 'long long',
     'uint16': 'unsigned short',  
     'uint32': 'unsigned long',  # 'unsigned int'
@@ -1431,6 +1433,7 @@ _cython_c2py_conv = _LazyConverterDict({
     'str': ('bytes(<char *> {var}.c_str()).decode()',),
     'int16': ('int({var})',),
     'int32': ('int({var})',),
+    ('int32', '*'): ('int({var}[0])',),
     'int64': ('int({var})',),
     'uint16': ('int({var})',),
     'uint32': ('int({var})',),
@@ -1519,6 +1522,8 @@ _cython_c2py_conv = _LazyConverterDict({
                 )),
     'nucid': ('nucname.zzaaam({var})',),
     'nucname': ('nucname.name({var})',),
+    TypeMatcher((('enum', MatchAny, MatchAny), '*')): ('int({var}[0])',),
+    TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): ('int({var}[0])',),
     })
 
 def _cython_c2py_conv_function_pointer(t_):
@@ -1535,16 +1540,22 @@ def _cython_c2py_conv_function_pointer(t_):
         argrtns.append(rtn)
     rtnname = 'rtn'
     rtnprox = 'c_' + rtnname
+    rtncall = 'c_call_' + rtnname
     while rtnname in argnames or rtnprox in argnames:
         rtnname += '_'
         rtnprox += '_'
     argdecls = _indent4(argdecls)
     argbodys = _indent4(argbodys)
-    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtnname, t[2][2], cached=False, 
-                                              proxy_name=rtnprox)
+#    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtnname, t[2][2], cached=False, 
+#                                              proxy_name=rtnprox, 
+#                                              existing_name=rtncall)
+    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtncall, t[2][2], cached=False, 
+                                              proxy_name=rtnprox,
+                                              existing_name=rtncall)
     if rtndecl is None and rtnbody is None:
         rtnprox = rtnname
-    rtndecl = _indent4([rtndecl])
+    #rtndecl = _indent4([rtndecl, "cdef {0} {1}".format(cython_ctype(t[2][2]), rtncall)])
+    rtndecl = _indent4(["cdef {0} {1}".format(cython_ctype(t[2][2]), rtncall)])
     rtnbody = _indent4([rtnbody])
     s = """def {{proxy_name}}({arglist}):
 {argdecls}
@@ -1552,16 +1563,17 @@ def _cython_c2py_conv_function_pointer(t_):
     if {{var}} == NULL:
         raise RuntimeError("{{var}} is NULL and may not be safely called!")
 {argbodys}
-    {rtnprox} = {{var}}({carglist})
+    {rtncall} = {{var}}({carglist})
 {rtnbody}
 """
-    s = s.format(arglist=", ".join(argnames), argdecls=argdecls, cvartypeptr=cython_ctype(t_).format(type_name='cvartype'), 
-                 argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
+    s = s.format(arglist=", ".join(argnames), argdecls=argdecls, 
+                 cvartypeptr=cython_ctype(t_).format(type_name='cvartype'), 
+                 argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, rtncall=rtncall,
                  carglist=", ".join(argrtns), rtnbody=rtnbody)
     caches = 'if {cache_name} is None:\n' + _indent4([s]) 
-    caches += '\n    {cache_name} = {proxy_name}\n'
     if t[2][2] != 'void':
-        caches += "    return {rtnrtn}".format(rtnrtn=rtnrtn)
+        caches += "\n        return {rtnrtn}".format(rtnrtn=rtnrtn)
+    caches += '\n    {cache_name} = {proxy_name}\n'
     return s, s, caches
 
 _cython_c2py_conv['function_pointer'] = _cython_c2py_conv_function_pointer
@@ -1660,6 +1672,8 @@ _cython_py2c_conv = _LazyConverterDict({
     'str': ('{var}_bytes = {var}.encode()', 'std_string(<char *> {var}_bytes)'),
     'int16': ('<short> {var}', False),
     'int32': ('<int> {var}', False),
+    #('int32', '*'): ('&(<int> {var})', False),
+    ('int32', '*'): ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
     'int64': ('<long long> {var}', False),
     'uint16': ('<unsigned short> {var}', False),
     'uint32': ('<{ctype}> long({var})', False),
@@ -1732,12 +1746,17 @@ _cython_py2c_conv = _LazyConverterDict({
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
     'nucname': ('nucname.name({var})', False),
+    TypeMatcher((('enum', MatchAny, MatchAny), '*')): \
+        ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
+    TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): \
+        ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
     })
 
 _cython_py2c_conv[TypeMatcher((('vector', MatchAny, '&'), 'const'))] = \
     _cython_py2c_conv[TypeMatcher((('vector', MatchAny, 'const'), '&'))] = \
     _cython_py2c_conv[TypeMatcher(('vector', MatchAny, '&'))]
-
+    
+    
 
 def _cython_py2c_conv_function_pointer(t):
     t = t[1]
