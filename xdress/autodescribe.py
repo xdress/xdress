@@ -329,7 +329,6 @@ class GccxmlBaseDescriber(object):
             # fill in later with string parsing of node name if needed.
             pass
         self._level -= 1
-        #inst.append(0)
         return tuple(inst)
 
     def visit_class(self, node):

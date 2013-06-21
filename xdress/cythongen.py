@@ -262,6 +262,8 @@ def funccpppxd(desc, exceptions=True):
         fname, fargs = fkey[0], fkey[1:]
         if fname.startswith('_'):
             continue  # private
+        if any([a[1] is None or a[1][0] is None for a in fargs + (frtn,)]):
+            continue
         argfill = ", ".join([cython_ctype(a[1]) for a in fargs])
         for a in fargs:
             cython_cimport_tuples(a[1], cimport_tups, inc)
@@ -1073,6 +1075,8 @@ def classpyx(desc, classes=None):
         mname, margs = mkey[0], mkey[1:]
         if mname.startswith('_'):
             continue  # skip private
+        if any([a[1] is None or a[1][0] is None for a in margs]):
+            continue
         if 1 < methcounts[mname]:
             mname_mangled = "_{0}_{1}_{2:0{3}}".format(desc['name'], mname,
                     currcounts[mname], int(math.log(methcounts[mname], 10)+1)).lower()
@@ -1220,6 +1224,8 @@ def funcpyx(desc):
         fname, fargs = fkey[0], fkey[1:]
         if fname.startswith('_'):
             continue  # skip private
+        if any([a[1] is None or a[1][0] is None for a in fargs + (frtn,)]):
+            continue
         if 1 < funccounts[fname]:
             fname_mangled = "_{0}_{1:0{2}}".format(fname, currcounts[fname],
                                         int(math.log(funccounts[fname], 10)+1)).lower()
