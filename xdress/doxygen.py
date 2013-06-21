@@ -905,37 +905,25 @@ class XdressPlugin(Plugin):
         # Run doxygen
         call(['doxygen', 'doxyfile'])
 
-        classes, funcs = _parse_index_xml(build_dir +
-                                          os.path.sep +
-                                          'index.xml')
+        classes, funcs = _parse_index_xml(xml_dir + os.path.sep + 'index.xml')
         # Go for the classes!
         for c in rc.classes:
             kls = c[0]
-
-            # Find module name
-            if len(c) < 3:
-                # module name not given will be same as source file name
-                kls_mod = c[1]
-                # HELP: Is the above true? Will target name be same as source?
-            else:
-                # module name given, find the dictionary there.
-                kls_mod = c[2]
+            kls_mod = c[2]
 
             # Parse the class
             try:
                 this_kls = classes[kls]
             except KeyError:
                 print("Couldn't find class %s in xml. Skipping it - " % (kls)
-                      + "it will not appear in docstrings.")
+                      + "it will not appear in wrapper docstrings.")
                 continue
 
             parsed = parse_class(this_kls)
             func_keys = filter(lambda x: 'func' in x, parsed.keys())
             rc.env[kls_mod][kls]['docstring'] += '\n' + _class_docstr(parsed)
 
-            # HELP: Can I get a list of method names from rc.env[kls_mod][kls]?
-            #       If so, loop over that, not the methods I parsed.
-            for m in parsed['members']['methods']:
+            for m in rc.env[kls_mod][kls]['docstrings']['methods'].keys():
                 for key in func_keys:
                     try:
                         # Grab the method dictionary and break out of for loop
@@ -948,21 +936,17 @@ class XdressPlugin(Plugin):
 
                 if m_dict is not None:
                     m_ds = _func_docstr(m_dict, is_method=True)
-
-                # HELP: How to add the docstrings for methods? Where to
-                #       put them?
-                rc.env[kls_mod][kls][m]['docstring'] += '\n' + m_ds
+                    m_ds = '\n\n' + m_ds
+                    rc.env[kls_mod][kls]['docstrings']['methods'][m] += m_ds
+                else:
+                    print("Couldn't find method %s in xml. Skipping it" % (m)
+                          + " - it will not appear in wrapper docstrings.")
+                    continue
 
         # And on to the functions.
         for f in rc.functions:
             func = f[0]
-            # Find module name
-            if len(f) < 3:
-                # module name not given will be same as source file name
-                func_mod = f[1]
-            else:
-                # module name given, find the dictionary there.
-                func_mod = f[2]
+            func_mod = f[2]
 
             # Pull out all parsed names that match the function name
             # This is necessary because overloaded funcs will have
@@ -986,8 +970,14 @@ class XdressPlugin(Plugin):
                     ds = str('\n\n' + '#' * 72 + '\n\n').join(ds_list)
                     f_ds += ds
 
-            rc.env[func_mod][func]['docstring'] += '\n' + f_ds
+                rc.env[func_mod][func]['docstring'] += '\n' + f_ds
+
+            else:
+                print("Couldn't find function %s in xml. Skipping it" % (func)
+                      + " - it will not appear in wrapper docstrings.")
+                continue
+
 
         # TODO: Add the docstrings we found to the descriptions cache.
-        #       This is probably easier to do as I am filling them in the
+        #       This is probably easier to do as I am putting them in the
         #       rc.env places
