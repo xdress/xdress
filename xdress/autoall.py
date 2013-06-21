@@ -30,6 +30,7 @@ Automatic Finder API
 from __future__ import print_function
 import os
 import io
+import re
 import sys
 from hashlib import md5
 from pprint import pprint, pformat
@@ -46,7 +47,7 @@ except ImportError:
 from . import utils
 from . import astparsers
 
-from .utils import find_source, FORBIDDEN_NAMES
+from .utils import find_source, FORBIDDEN_NAMES, NotSpecified, RunControl
 
 if os.name == 'nt':
     import ntpath
@@ -471,6 +472,15 @@ class XDressPlugin(astparsers.ParserPlugin):
     source files prio to describing them. 
     """
 
+    def defaultrc(self):
+        rc = RunControl()
+        rc._update(super(XDressPlugin, self).defaultrc)
+        rc.selectclasses = '.*'
+        rc.selectfunctions = '.*'
+        rc.selectvariables = '.*'
+        return rc
+
+
     def setup(self, rc):
         """Expands variables, functions, and classes in the rc based on 
         copying src filenames to tar filename and the special '*' all syntax."""
@@ -499,6 +509,10 @@ class XDressPlugin(astparsers.ParserPlugin):
                 clshasstar = True
             if len(cls) == 2:
                 rc.classes[i] = (cls[0], cls[1], cls[1])
+
+        rc.selectclasses = re.compile(rc.selectclasses)
+        rc.selectfunctions = re.compile(rc.selectfunctions)
+        rc.selectvariables = re.compile(rc.selectvariables)
 
         self.allsrc = allsrc
         self.varhasstar = varhasstar
@@ -544,7 +558,14 @@ class XDressPlugin(astparsers.ParserPlugin):
             newvars = []
             for var in rc.variables:
                 if var[0] == '*':
-                    newvars += [(x, var[1], var[2]) for x in allnames[var[1]][0]]
+                    for x in allnames[var[1]][0]:
+                        m = rc.selectvariables.match(x)
+                        if m is None:
+                            newvars.append((x, var[1], None))
+                            #newvars.append((x, var[1], '_ignore'))
+                            #pass
+                        else:
+                            newvars.append((x, var[1], var[2]))
                 else:
                     newvars.append(var)
             rc.variables = newvars
@@ -552,7 +573,14 @@ class XDressPlugin(astparsers.ParserPlugin):
             newfncs = []
             for fnc in rc.functions:
                 if fnc[0] == '*':
-                    newfncs += [(x, fnc[1], fnc[2]) for x in allnames[fnc[1]][1]]
+                    for x in allnames[fnc[1]][1]:
+                        m = rc.selectfunctions.match(x)
+                        if m is None:
+                            newfncs.append((x, fnc[1], None))
+                            #newfncs.append((x, fnc[1], '_ignore'))
+                            #pass
+                        else:
+                            newfncs.append((x, fnc[1], fnc[2]))
                 else:
                     newfncs.append(fnc)
             rc.functions = newfncs
@@ -560,7 +588,14 @@ class XDressPlugin(astparsers.ParserPlugin):
             newclss = []
             for cls in rc.classes:
                 if cls[0] == '*':
-                    newclss += [(x, cls[1], cls[2]) for x in allnames[cls[1]][2]]
+                    for x in allnames[cls[1]][2]:
+                        m = rc.selectclasses.match(x)
+                        if m is None:
+                            newclss.append((x, cls[1], None))
+                            #newclss.append((x, cls[1], '_ignore'))
+                            #pass
+                        else:
+                            newclss.append((x, cls[1], cls[2]))
                 else:
                     newclss.append(cls)
             rc.classes = newclss

@@ -512,6 +512,8 @@ def classpxd(desc, classes=()):
             if _isclassptr(atype, classes):
                 atype_nopred = ts.strip_predicates(atype)
                 cyt = cython_cytype(atype_nopred)
+            elif _isclassdblptr(atype, classes):
+                cyt = 'list'
             else:
                 cyt = cython_cytype(atype)
             decl = "cdef public {0} {1}".format(cyt, cachename)
@@ -1300,6 +1302,11 @@ def _mangle_function_pointer_name(name, classname):
 def _isclassptr(t, classes):
     return (not isinstance(t, basestring) and t[1] == '*' and 
             isinstance(t[0], basestring) and t[0] in classes)
+
+def _isclassdblptr(t, classes):
+    if 2 != len(t):
+        return False
+    return _isclassptr(t[0], classes) and t[1] == '*'
 
 _exc_c_base = frozenset(['int16', 'int32', 'int64', 'int128', 
                          'float32', 'float64', 'float128'])

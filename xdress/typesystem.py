@@ -1544,8 +1544,8 @@ def _cython_c2py_conv_function_pointer(t_):
                                               proxy_name=rtnprox)
     if rtndecl is None and rtnbody is None:
         rtnprox = rtnname
-    rtndecl = _indent4(rtndecl)
-    rtnbody = _indent4(rtnbody)
+    rtndecl = _indent4([rtndecl])
+    rtnbody = _indent4([rtnbody])
     s = """def {{proxy_name}}({arglist}):
 {argdecls}
 {rtndecl}
@@ -1554,13 +1554,14 @@ def _cython_c2py_conv_function_pointer(t_):
 {argbodys}
     {rtnprox} = {{var}}({carglist})
 {rtnbody}
-    return {rtnrtn}
 """
     s = s.format(arglist=", ".join(argnames), argdecls=argdecls, cvartypeptr=cython_ctype(t_).format(type_name='cvartype'), 
                  argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
-                 carglist=", ".join(argrtns), rtnbody=rtnbody, rtnrtn=rtnrtn)
+                 carglist=", ".join(argrtns), rtnbody=rtnbody)
     caches = 'if {cache_name} is None:\n' + _indent4([s]) 
     caches += '\n    {cache_name} = {proxy_name}\n'
+    if t[2][2] != 'void':
+        caches += "    return {rtnrtn}".format(rtnrtn=rtnrtn)
     return s, s, caches
 
 _cython_c2py_conv['function_pointer'] = _cython_c2py_conv_function_pointer
@@ -1653,7 +1654,9 @@ _cython_py2c_conv = _LazyConverterDict({
     # Has tuple form of (body or return,  return or False)
     # base types
     'char': ('{var}_bytes = {var}.encode()', '(<char *> {var}_bytes)[0]'),
+    ('char', '*'): ('{var}_bytes = {var}.encode()', '<char *> {var}_bytes'),
     'uchar': ('{var}_bytes = {var}.encode()', '(<unsigned char *> {var}_bytes)[0]'),
+    ('uchar', '*'): ('{var}_bytes = {var}.encode()', '<unsigned char *> {var}_bytes'),
     'str': ('{var}_bytes = {var}.encode()', 'std_string(<char *> {var}_bytes)'),
     'int16': ('<short> {var}', False),
     'int32': ('<int> {var}', False),
@@ -1762,8 +1765,8 @@ def _cython_py2c_conv_function_pointer(t):
     rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtnprox)
     if rtndecl is None and rtnbody is None:
         rtnprox = rtnname
-    rtndecl = _indent4(rtndecl)
-    rtnbody = _indent4(rtnbody)
+    rtndecl = _indent4([rtndecl])
+    rtnbody = _indent4([rtnbody])
     s = """cdef {rtnct} {{proxy_name}}({arglist}):
 {argdecls}
 {rtndecl}

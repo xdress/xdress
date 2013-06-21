@@ -1698,7 +1698,8 @@ class XDressPlugin(astparsers.ParserPlugin):
             env[tarname]["name"] = tarname
             env[tarname]['extra'] = self.pysrcenv[srcname].get('extra', '')
         else:
-            env[tarname].update(mod)
+            #env[tarname].update(mod)
+            env[tarname][name] = desc
             env[tarname]['extra'] += self.pysrcenv[srcname].get('extra', '')
 
     def compute_classes(self, rc):
@@ -1712,7 +1713,6 @@ class XDressPlugin(astparsers.ParserPlugin):
             desc = self.compute_desc(classname, srcname, tarname, 'class', rc)
             if rc.verbose:
                 pprint(desc)
-
             print("autodescribe: registering " + classname)
             pxd_base = desc['pxd_filename'].rsplit('.', 1)[0]         # eg, fccomp
             cpppxd_base = desc['srcpxd_filename'].rsplit('.', 1)[0]   # eg, cpp_fccomp
@@ -1743,7 +1743,11 @@ class XDressPlugin(astparsers.ParserPlugin):
             ts.register_class(**kwclass)
             class_ptr_c2py = ('{pytype}({var})',
                               ('{proxy_name} = {pytype}()\n'
-                               '(<{ctype} *> {proxy_name}._inst) = {var}'),
+                               '(<{ctype}> {proxy_name}._inst) = {var}'),
+                              #('cdef {cytype_nopred} {proxy_name}_real\n'
+                              # '{proxy_name}_real = {pytype}()\n'
+                              # '(<{ctype}> {proxy_name}_real._inst) = {var}'
+                              # ''), 
                               ('if {cache_name} is None:\n'
                                '    {proxy_name} = {pytype}()\n'
                                '    {proxy_name}._free_inst = False\n'
@@ -1761,6 +1765,27 @@ class XDressPlugin(astparsers.ParserPlugin):
                 cython_pyimport=kwclass['cython_pyimport'],
                 )
             ts.register_class(**kwclassptr)
+            class_dblptr_c2py = ('{pytype}({var})',
+                              ('{proxy_name} = {proxy_name}_obj._inst\n'
+                               '(<{ctype} *> {proxy_name}._inst) = {var}'),
+                              ('if {cache_name} is None:\n'
+                               '    {proxy_name} = {pytype}()\n'
+                               '    {proxy_name}._free_inst = False\n'
+                               '    {proxy_name}._inst = {var}\n'
+                               '    {proxy_name}_list = [{proxy_name}]\n'
+                               '    {cache_name} = {proxy_name}_list\n')
+                             )
+            class_dblptr_py2c = ('{proxy_name} = <{cytype_nopred}> {var}[0]',
+                                 '(<{ctype_nopred} **> {proxy_name}._inst)')
+            kwclassdblptr = dict(
+                name=((classname, '*'), '*'),
+                cython_c2py=class_dblptr_c2py,
+                cython_py2c=class_dblptr_py2c,
+                cython_cimport=kwclass['cython_cimport'],
+                cython_cyimport=kwclass['cython_cyimport'],
+                cython_pyimport=kwclass['cython_pyimport'],
+                )
+            ts.register_class(**kwclassdblptr)
             cache.dump()
             self.adddesc2env(desc, env, classname, srcname, tarname)
             if 0 == i%rc.clear_parser_cache_period:
