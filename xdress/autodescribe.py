@@ -1732,8 +1732,12 @@ class XDressPlugin(astparsers.ParserPlugin):
             if rc.verbose:
                 pprint(desc)
             print("autodescribe: registering " + classname)
-            pxd_base = desc['pxd_filename'].rsplit('.', 1)[0]         # eg, fccomp
-            cpppxd_base = desc['srcpxd_filename'].rsplit('.', 1)[0]   # eg, cpp_fccomp
+            if tarname is None:
+                _, _, _, ext = find_source(srcname, sourcedir=rc.sourcedir)
+                cpppxd_base = '{0}_{1}'.format(ext, srcname)
+            else:
+                pxd_base = desc['pxd_filename'].rsplit('.', 1)[0]  # eg, fccomp
+                cpppxd_base = desc['srcpxd_filename'].rsplit('.', 1)[0]  # eg, cpp_fccomp
             class_c2py = ('{pytype}({var})',
                           ('{proxy_name} = {pytype}()\n'
                            '(<{ctype} *> {proxy_name}._inst)[0] = {var}'),
