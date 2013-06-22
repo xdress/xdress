@@ -1,0 +1,131 @@
+========================
+XDress 0.2 Release Notes
+========================
+XDress is an automatic wrapper generator for C/C++ written in pure Python. Currently,
+xdress may generate Python bindings (via Cython) for C++ classes, functions, and 
+certain variable types. It also contains idiomatic wrappers for C++ standard library 
+containers (sets, vectors, maps). In the future, other tools and bindings will be 
+supported.
+
+The main enabling feature of xdress is a dynamic type system that was designed with
+the purpose of API generation in mind.
+
+Release highlights:
+
+  - First class support for C via pycparser.
+  - Python 3 support, by popular demand!
+  - A plethora of awesome type system updates, including: 
+        - type matching
+        - lambda-valued converters
+        - function pointer support
+  - Easy to use and implement plugin architecture.
+
+Please visit the website for more information: http://xdress.org/
+
+Ask questions on the mailing list: xdress@googlegroups.com
+
+Download the code from GitHub: http://github.com/scopatz/xdress
+
+XDress is free & open source (BSD 2-clause license) and requires Python 2.7, 
+NumPy 1.5+, Cython 0.19+, and optionally GCC-XML, pycparser, and lxml.
+
+New Features
+============
+
+First Class C Support
+---------------------
+Wrapping C code is now fully handled through with the optional pycparser.  
+This means that you don't have to worry about whether or not the GCC-XML 
+parser will work on your particular bit of code.  Furthermore, C structs
+and their members are now handled idiomatically.  (C++ structs are actually
+treated as C++ classes, which means that their are allowed to have 
+constructors and other C++ concepts not present in C.)  
+
+Python 3 Support
+----------------
+The entire code base is built and tested under Python 3.3.  This uses the single
+code base model, as most development takes pace in Python 2.7.  The Cython code 
+that is generated may be used by both Python 2 & 3.  
+
+Type System
+-----------
+The type system has been expanded and hardened to handle additional use cases, 
+largely motivated by the desire for realistic C support.
+
+A new function pointer (``fucntion_pointer``) refinement type has been added. 
+When converting from C to Python, a new function object is created that wraps
+the underlying call.  For converting from Python to C, a virtual table of 
+callback functions is constructed that have the same signature of the pointer
+but hold a reference to a Python function.  The size of the table and thus how
+many callbacks you can have before overwriting previous ones, is set by the
+``max_callbacks`` key in the extra dictionary in class descriptions.  This 
+defaults to 8.
+
+A new enum refinement type now also comes stock. These may be exposed to Python
+in the ``rc.variables`` list.
+
+The type system now also comes with basic type matching tools.  There is a new
+``TypeMatcher`` class, a ``matches()`` function, and a singleton ``MatchAny`` 
+that may be used for determining whether a type adheres to a pattern.  The 
+TypeMatcher class itself is immutable and hashable and therefore may be used
+anywhere other type elements (tuples, str, int) may be used including as dict 
+keys!  This is helpful for specifying conversions for large groups of types.
+
+Finally, the type system conversion dictionaries now accept callable objects
+as values.  This was put in to handle templated types where the number of 
+argument is not in general know beforehand, e.g. enums and function pointers.
+The values must be callable with only a single argument -- the type itself.
+For example, ``lambda t: rtnvalue`` is valid.
+
+Plugins!
+--------
+XDress is a suite of tools written on top of a type system.  Thus the entire
+core has been refactored to implement a very nimble and easy plugin system.
+The plugin mechanism enables external projects with their own code generators
+to easily hook into the xdress tools.  Additionally, this allows users to 
+decide at run time which plugins they want to use.  
+
+Mini-FAQ
+========
+* Why not use an existing solution (eg, SWIG)?
+
+    Their type systems don't support run-time, user provided refinement types, 
+    and thus are unsuited for verification & validation use cases that often 
+    arise in computational science.  
+
+    Furthermore, they tend to not handle C++ dependent types well (i.e. vector<T> 
+    does not come back as a np.view(..., dtype=T)).
+
+* Why GCC-XML and not Clang's AST?
+
+    I tried using Clang's AST (and the remnants of a broken visitor class remain
+    in the code base).  However, the official Clang AST Python bindings lack 
+    support for template argument types.  This is a really big deal. Other C++ ASTs
+    may be supported in the future -- including Clang's.
+
+* I run xdress and it creates these files, now what?!
+
+    It is your job to integrate the files created by xdress into your build system.
+
+Join in the Fun!
+================
+If you are interested in using xdress on your project (and need help), contributing 
+back to xdress, starting up a development team, or writing your own code generation
+plugin tool on top of the type system and autodescriber, please let us know.
+Participation is very welcome!
+
+Authors
+=======
+- `Anthony Scopatz <http://scopatz.com/>`_
+- Spencer Lyon *
+- Alexander Eisenhuth *
+
+An * indicates a first time contributor.
+
+Links
+=====
+
+1. Homepage - http://xdress.org/
+2. Mailing List - xdress@googlegroups.com
+3. GitHub Organization - https://github.com/xdress
+4. Pycparser - https://pypi.python.org/pypi/pycparser
