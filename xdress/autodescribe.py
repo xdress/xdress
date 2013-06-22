@@ -1365,7 +1365,6 @@ class PycparserVarDescriber(PycparserBaseDescriber):
                     if isinstance(child, pycparser.c_ast.Struct):
                         raise TypeError(_type_error_msg.format(self.name, 'struct', 
                                                             'PycparserClassDescriber'))
-                    child.show()
                     self.desc['type'] = self.type(child)
                     break
         else:
