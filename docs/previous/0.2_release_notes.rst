@@ -118,6 +118,7 @@ Authors
 =======
 - `Anthony Scopatz <http://scopatz.com/>`_
 - Spencer Lyon *
+- Gerald Dalley *
 - Alexander Eisenhuth *
 
 An * indicates a first time contributor.
