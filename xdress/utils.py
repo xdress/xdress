@@ -144,15 +144,15 @@ def ensuredirs(f):
 
 def isvardesc(desc):
     """Tests if a description is a variable-type description."""
-    return 'type' in desc 
+    return desc is not None and 'type' in desc 
 
 def isfuncdesc(desc):
     """Tests if a description is a function-type description."""
-    return 'signatures' in desc
+    return desc is not None and 'signatures' in desc
 
 def isclassdesc(desc):
     """Tests if a description is a class-type description."""
-    return 'parents' in desc
+    return desc is not None and 'parents' in desc
 
 def exec_file(filename, glb=None, loc=None):
     """A function equivalent to the Python 2.x execfile statement."""

@@ -522,6 +522,7 @@ class XDressPlugin(astparsers.ParserPlugin):
     def execute(self, rc):
         print("autoall: discovering API names")
         if not self.varhasstar and not self.fnchasstar and not self.clshasstar:
+            print("autoall: no API names to discover!")
             return
         allsrc = self.allsrc
 
