@@ -450,13 +450,13 @@ def canon(t):
             _raise_type_error(t)
         last_val = 0 if tlen == 1 else t[-1]
         if isinstance(t0, basestring):
-            if t0 in template_types:
+            if isdependent(t0):
+                return _resolve_dependent_type(t0, t)
+            elif t0 in template_types:
                 templen = len(template_types[t0])
                 last_val = 0 if tlen == 1 + templen else t[-1]
                 filledt = [t0] + [canon(tt) for tt in t[1:1+templen]] + [last_val]
                 return tuple(filledt)
-            elif isdependent(t0):
-                return _resolve_dependent_type(t0, t)
             else:
                 #if 2 < tlen:
                 #    _raise_type_error(t)

@@ -97,11 +97,18 @@ def test_pycparser_describe_device_measure():
     exp = {'name': 'Device_measure', 
            'namespace': None,
            'signatures': {
+            ('Device_measure', ('_0', ('uint32', '*'))): ('enum', 
+                                    'ErrorStatusTag', (('ERROR_OK', 0), 
+                                                       ('ERROR_FAILED_INIT', 1))),
             ('Device_measure', ('aiValue', ('uint32', '*'))): ('enum', 
                                     'ErrorStatusTag', (('ERROR_OK', 0), 
                                                        ('ERROR_FAILED_INIT', 1))),
             ('Device_measure', ('deviceNumber', 'uchar'), 
                                ('aiValue', ('uint32', '*'))): ('enum', 
+                                    'ErrorStatusTag', (('ERROR_OK', 0), 
+                                                       ('ERROR_FAILED_INIT', 1))),
+            ('Device_measure', ('_0', 'uchar'), 
+                               ('_1', ('uint32', '*'))): ('enum', 
                                     'ErrorStatusTag', (('ERROR_OK', 0), 
                                                        ('ERROR_FAILED_INIT', 1))),
             }
@@ -116,14 +123,17 @@ def test_pycparser_describe_device_init():
     exp = {'name': 'Device_Init', 
            'namespace': None,
            'signatures': {
+            ('Device_Init', ('_0', ('DeviceParamTag', '*'))): ('enum', 
+                                    'ErrorStatusTag', (('ERROR_OK', 0), 
+                                                       ('ERROR_FAILED_INIT', 1))),
             ('Device_Init', ('param', ('DeviceParamTag', '*'))): ('enum', 
                                     'ErrorStatusTag', (('ERROR_OK', 0), 
                                                        ('ERROR_FAILED_INIT', 1))),
             }
            }
-    pprint.pprint(obs)
     pprint.pprint(exp)
-    assert_equal(obs, exp)
+    pprint.pprint(obs)
+    assert_equal(exp, obs)
 
 @dec.skipif(ad.pycparser is None)
 def test_pycparser_describe_device_descriptor_tag():
