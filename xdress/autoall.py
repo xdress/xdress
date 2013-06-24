@@ -4,6 +4,7 @@ and certain variable types.  It is not used to actually describe these elements.
 That is the job of the autodescriber.
 
 This module is available as an xdress plugin by the name ``xdress.autoall``.
+
 Including this plugin enables the ``classes``, ``functions``, and ``variables``  
 run control parameters to have an asterix ('*') in the name positon (index 0).
 For example, rather tha writing::
@@ -563,8 +564,6 @@ class XDressPlugin(astparsers.ParserPlugin):
                         m = rc.selectvariables.match(x)
                         if m is None:
                             newvars.append((x, var[1], None))
-                            #newvars.append((x, var[1], '_ignore'))
-                            #pass
                         else:
                             newvars.append((x, var[1], var[2]))
                 else:
@@ -578,8 +577,6 @@ class XDressPlugin(astparsers.ParserPlugin):
                         m = rc.selectfunctions.match(x)
                         if m is None:
                             newfncs.append((x, fnc[1], None))
-                            #newfncs.append((x, fnc[1], '_ignore'))
-                            #pass
                         else:
                             newfncs.append((x, fnc[1], fnc[2]))
                 else:
@@ -593,8 +590,6 @@ class XDressPlugin(astparsers.ParserPlugin):
                         m = rc.selectclasses.match(x)
                         if m is None:
                             newclss.append((x, cls[1], None))
-                            #newclss.append((x, cls[1], '_ignore'))
-                            #pass
                         else:
                             newclss.append((x, cls[1], cls[2]))
                 else:

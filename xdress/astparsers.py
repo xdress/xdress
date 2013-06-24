@@ -322,6 +322,7 @@ class ParserPlugin(Plugin):
     It should not be used directly."""
 
     requires = ('xdress.base',)
+    """This plugin requires base"""
     
     defaultrc = utils.RunControl(
         includes=[],

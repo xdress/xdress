@@ -1262,6 +1262,7 @@ class XDressPlugin(Plugin):
     """
 
     requires = ('xdress.autodescribe',)
+    """This plugin requires autodescribe."""
 
     def execute(self, rc):
         print("cythongen: creating C/C++ API wrappers")

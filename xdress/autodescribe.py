@@ -1592,6 +1592,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         self.pysrcenv = {}
 
     def defaultrc(self):
+        """This plugin adds the env dictionary to the rc."""
         rc = RunControl()
         rc._update(super(XDressPlugin, self).defaultrc)
         # target enviroment made up of module dicts made up of descriptions
@@ -1625,7 +1626,7 @@ class XDressPlugin(astparsers.ParserPlugin):
     # Helper methods below
 
     def load_pysrcmod(self, srcname, rc):
-        """Loads a module dictionary from a src file into the pysrcenv cache."""
+        """Loads a module dictionary from a src file intox the pysrcenv cache."""
         if srcname in self.pysrcenv:
             return
         pyfilename = os.path.join(rc.sourcedir, srcname + '.py')
