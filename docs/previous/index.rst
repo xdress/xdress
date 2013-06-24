@@ -1,3 +1,5 @@
+.. _previous_versions:
+
 Previous Versions
 ==================
 The following are notes for and links to previously released versions of xdress:
