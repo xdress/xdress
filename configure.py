@@ -66,7 +66,8 @@ def final_message(success=True):
         return
     print(msg)
 
-with io.open('docs/index.rst', 'r') as f:
+fname = os.path.join(os.path.split(__file__)[0], 'docs', 'index.rst')
+with io.open(fname, 'r') as f:
     long_desc = f.read()
 
 long_desc = "\n".join([l for l in long_desc.splitlines() if ":ref:" not in l])
