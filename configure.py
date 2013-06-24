@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function 
 import os
+import io
 import sys
 import glob
 import json
@@ -65,39 +66,12 @@ def final_message(success=True):
         return
     print(msg)
 
-long_desc = """XDress
-======
-XDress is an automatic wrapper generator for C/C++ written in pure Python. Currently,
-xdress may generate Python bindings (via Cython) for C++ classes & functions
-and in-memory wrappers for C++ standard library containers (sets, vectors, maps).
-In the future, other tools and bindings will be supported.
+with io.open('docs/index.rst', 'r') as f:
+    long_desc = f.read()
 
-The main enabling feature of xdress is a dynamic type system that was designed with
-the purpose of API generation in mind.
-
-XDress currently has the following external dependencies,
-
-*Run Time:*
-
-    #. `pycparser <https://bitbucket.org/eliben/pycparser>`_, optional for C
-    #. `GCC-XML <http://www.gccxml.org/HTML/Index.html>`_, optional for C++
-    #. `lxml <http://lxml.de/>`_, optional (but nice!)
-
-*Compile Time:*
-
-    #. `Cython <http://cython.org/>`_
-    #. `NumPy <http://numpy.scipy.org/>`_
-
-The source code for xdress may be found at the
-`GitHub project site <http://github.com/scopatz/xdress>`_.
-Or you may simply clone the development branch using git::
-
-    git clone git://github.com/scopatz/xdress.git
-
-`Go here for the latest version of the docs! <http://xdress.org/latest>`_
-
-"""
-
+long_desc = "\n".join([l for l in long_desc.splitlines() if ":ref:" not in l])
+long_desc = "\n".join([l for l in long_desc.splitlines() if ".. toctree::" not in l])
+long_desc = "\n".join([l for l in long_desc.splitlines() if ":maxdepth:" not in l])
 
 def setup():
     from distutils import core
