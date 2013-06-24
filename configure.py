@@ -10,7 +10,7 @@ from copy import deepcopy
 
 
 INFO = {
-    'version': '0.2-dev',
+    'version': '0.2',
     }
 
 
@@ -65,6 +65,39 @@ def final_message(success=True):
         return
     print(msg)
 
+long_desc = """XDress
+======
+XDress is an automatic wrapper generator for C/C++ written in pure Python. Currently,
+xdress may generate Python bindings (via Cython) for C++ classes & functions
+and in-memory wrappers for C++ standard library containers (sets, vectors, maps).
+In the future, other tools and bindings will be supported.
+
+The main enabling feature of xdress is a dynamic type system that was designed with
+the purpose of API generation in mind.
+
+XDress currently has the following external dependencies,
+
+*Run Time:*
+
+    #. `pycparser <https://bitbucket.org/eliben/pycparser>`_, optional for C
+    #. `GCC-XML <http://www.gccxml.org/HTML/Index.html>`_, optional for C++
+    #. `lxml <http://lxml.de/>`_, optional (but nice!)
+
+*Compile Time:*
+
+    #. `Cython <http://cython.org/>`_
+    #. `NumPy <http://numpy.scipy.org/>`_
+
+The source code for xdress may be found at the
+`GitHub project site <http://github.com/scopatz/xdress>`_.
+Or you may simply clone the development branch using git::
+
+    git clone git://github.com/scopatz/xdress.git
+
+`Go here for the latest version of the docs! <http://xdress.org/latest>`_
+
+"""
+
 
 def setup():
     from distutils import core
@@ -81,12 +114,29 @@ def setup():
         "version": INFO['version'],
         "description": 'xdress',
         "author": 'Anthony Scopatz',
-        "author_email": 'scopatz@gmail.com',
-        "url": 'http://github.com/scopatz/xdress',
+        "author_email": 'xdress@googlegroups.com',
+        "url": 'http://xdress.org/',
         "packages": packages,
         "package_dir": pack_dir,
         "package_data": pack_data,
         "scripts": scripts,
+        "description": "Goes all J. Edgar Hoover on your code.",
+        "long_description": long_desc,
+        "download_url": "https://github.com/scopatz/xdress/zipball/0.2",
+        "classifiers": ["License :: OSI Approved :: BSD License",
+            "Intended Audience :: Developers",
+            "Intended Audience :: Science/Research",
+            "Programming Language :: C",
+            "Programming Language :: C++",
+            "Programming Language :: Cython",
+            "Programming Language :: Python :: 2",
+            "Programming Language :: Python :: 3",
+            "Programming Language :: Python :: Implementation :: CPython",
+            "Topic :: Scientific/Engineering",
+            "Topic :: Software Development :: Code Generators",
+            "Topic :: Software Development :: Compilers",
+            "Topic :: Utilities",
+            ],
         }
     rtn = core.setup(**setup_kwargs)
 
