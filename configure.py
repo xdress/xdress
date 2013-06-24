@@ -137,6 +137,7 @@ def setup():
             "Topic :: Software Development :: Compilers",
             "Topic :: Utilities",
             ],
+        "data_files": [("", ['license'])],
         }
     rtn = core.setup(**setup_kwargs)
 

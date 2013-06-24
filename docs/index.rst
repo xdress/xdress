@@ -8,25 +8,6 @@ In the future, other tools and bindings will be supported.
 The main enabling feature of xdress is a dynamic type system that was designed with 
 the purpose of API generation in mind.
 
-XDress currently has the following external dependencies,
-
-*Run Time:*
-
-    #. `pycparser <https://bitbucket.org/eliben/pycparser>`_, optional for C
-    #. `GCC-XML <http://www.gccxml.org/HTML/Index.html>`_, optional for C++
-    #. `lxml <http://lxml.de/>`_, optional (but nice!)
-
-*Compile Time:*
-
-    #. `Cython <http://cython.org/>`_
-    #. `NumPy <http://numpy.scipy.org/>`_
-
-The source code for xdress may be found at the 
-`GitHub project site <http://github.com/scopatz/xdress>`_.
-Or you may simply clone the development branch using git::
-
-    git clone git://github.com/scopatz/xdress.git
-
 `Go here for the latest version of the docs! <http://xdress.org/latest>`_
 
 :ref:`Go here for previous versions of the code & documentation. <previous_versions>`
@@ -44,6 +25,39 @@ Contents
     other/index
     faq
     authors
+
+============
+Installation
+============
+Since xdress is pure Python code, the ``pip`` or ``easy_install`` may be used
+to grab and install the code::
+
+    $ pip install xdress
+
+    $ easy_install xdress
+
+
+The source code repository for xdress may be found at the 
+`GitHub project site <http://github.com/scopatz/xdress>`_.
+You may simply clone the development branch using git::
+
+    git clone git://github.com/scopatz/xdress.git
+
+============
+Dependencies
+============
+XDress currently has the following external dependencies,
+
+*Run Time:*
+
+    #. `pycparser <https://bitbucket.org/eliben/pycparser>`_, optional for C
+    #. `GCC-XML <http://www.gccxml.org/HTML/Index.html>`_, optional for C++
+    #. `lxml <http://lxml.de/>`_, optional (but nice!)
+
+*Compile Time:*
+
+    #. `Cython <http://cython.org/>`_
+    #. `NumPy <http://numpy.scipy.org/>`_
 
 ===============
 Examples of Use
