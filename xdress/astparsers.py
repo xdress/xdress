@@ -70,7 +70,16 @@ PARSERS_AVAILABLE = {
     'pycparser': pycparser is not None,
     }
 with tempfile.NamedTemporaryFile() as f:
-    PARSERS_AVAILABLE['gccxml'] = 0 == subprocess.call(['gccxml'], stdout=f, stderr=f)
+    # If gccxml is not availble, an OSError is raised.  Otherwise, it will
+    # return 0 (typically indicates successful invocation).
+    try:
+        retcode = subprocess.call(['gccxml'], stdout=f, stderr=f)
+        if retcode == 0:
+            PARSERS_AVAILABLE['gccxml'] = True
+        else:
+            PARSERS_AVAILABLE['gccxml'] = False
+    except OSError:
+        PARSERS_AVAILABLE['gccxml'] = False
 del f
 
 if sys.version_info[0] >= 3: 
