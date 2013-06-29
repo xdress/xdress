@@ -75,7 +75,8 @@ long_desc = "\n".join([l for l in long_desc.splitlines() if ".. toctree::" not i
 long_desc = "\n".join([l for l in long_desc.splitlines() if ":maxdepth:" not in l])
 
 def setup():
-    from distutils import core
+    from setuptools import setup as setup_
+
     if os.name == 'nt':
         scripts = [os.path.join('scripts', f) for f in os.listdir('scripts')]
     else:
@@ -114,7 +115,7 @@ def setup():
             ],
         "data_files": [("", ['license'])],
         }
-    rtn = core.setup(**setup_kwargs)
+    rtn = setup_(**setup_kwargs)
 
 
 if __name__ == "__main__":
