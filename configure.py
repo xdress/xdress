@@ -1,18 +1,14 @@
 #!/usr/bin/env python
-from __future__ import print_function 
+from __future__ import print_function
 import os
 import io
 import sys
-import glob
 import json
-from distutils.file_util import copy_file, move_file
-from distutils.dir_util import mkpath, remove_tree
-from copy import deepcopy
 
 
 INFO = {
     'version': '0.2',
-    }
+}
 
 
 def main():
@@ -21,7 +17,8 @@ def main():
         raise SystemExit("no command(s) specified")
     cmds = sys.argv[1:]
     if '-h' in cmds or '--help' in cmds:
-        raise SystemExit("usage: " + sys.argv[0] + " <func-name> [<func-name>]")
+        msg = "usage: " + sys.argv[0] + " <func-name> [<func-name>]"
+        raise SystemExit(msg)
     glbs = globals()
     for cmd in cmds:
         if cmd not in glbs:
@@ -71,8 +68,11 @@ with io.open(fname, 'r') as f:
     long_desc = f.read()
 
 long_desc = "\n".join([l for l in long_desc.splitlines() if ":ref:" not in l])
-long_desc = "\n".join([l for l in long_desc.splitlines() if ".. toctree::" not in l])
-long_desc = "\n".join([l for l in long_desc.splitlines() if ":maxdepth:" not in l])
+long_desc = "\n".join([l for l in long_desc.splitlines()
+                       if ".. toctree::" not in l])
+long_desc = "\n".join([l for l in long_desc.splitlines()
+                       if ":maxdepth:" not in l])
+
 
 def setup():
     from setuptools import setup as setup_
@@ -81,9 +81,9 @@ def setup():
         scripts = [os.path.join('scripts', f) for f in os.listdir('scripts')]
     else:
         scripts = [os.path.join('scripts', f) for f in os.listdir('scripts')
-                                                    if not f.endswith('.bat')]
+                   if not f.endswith('.bat')]
     packages = ['xdress', ]
-    pack_dir = {'xdress': 'xdress',}
+    pack_dir = {'xdress': 'xdress', }
     pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp']}
     setup_kwargs = {
         "name": "xdress",
@@ -99,7 +99,8 @@ def setup():
         "description": "Goes all J. Edgar Hoover on your code.",
         "long_description": long_desc,
         "download_url": "https://github.com/scopatz/xdress/zipball/0.2",
-        "classifiers": ["License :: OSI Approved :: BSD License",
+        "classifiers": [
+            "License :: OSI Approved :: BSD License",
             "Intended Audience :: Developers",
             "Intended Audience :: Science/Research",
             "Programming Language :: C",
@@ -112,10 +113,10 @@ def setup():
             "Topic :: Software Development :: Code Generators",
             "Topic :: Software Development :: Compilers",
             "Topic :: Utilities",
-            ],
+        ],
         "data_files": [("", ['license'])],
-        }
-    rtn = setup_(**setup_kwargs)
+    }
+    setup_(**setup_kwargs)
 
 
 if __name__ == "__main__":
