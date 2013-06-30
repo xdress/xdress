@@ -226,6 +226,19 @@ will work:
 .. literalinclude:: mypack/setup.py
    :language: py
 
+Or, the following ``CMakeLists.txt`` files will work to build the modules with
+`CMake <http://cmake.org>`_.
+
+**CMakeLists.txt**:
+
+.. literalinclude:: mypack/CMakeLists.txt
+   :language: cmake
+
+**mypack/CMakeLists.txt**:
+
+.. literalinclude:: mypack/mypack/CMakeLists.txt
+   :language: cmake
+
 =============
 Code Listings
 =============
