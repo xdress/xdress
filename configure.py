@@ -5,7 +5,6 @@ import io
 import sys
 import json
 
-
 INFO = {
     'version': '0.2',
 }
@@ -75,7 +74,10 @@ long_desc = "\n".join([l for l in long_desc.splitlines()
 
 
 def setup():
-    from setuptools import setup as setup_
+    try:
+        from setuptools import setup as setup_
+    except ImportError:
+        from distutils.core import setup as setup_
 
     if os.name == 'nt':
         scripts = [os.path.join('scripts', f) for f in os.listdir('scripts')]

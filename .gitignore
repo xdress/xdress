@@ -1,7 +1,9 @@
 # Ignore possible build & documentation
 docs/_build/
 build/
+dist/
 *egg-info/
+MANIFEST
 
 # Ignore temp files
 *.pyc
