@@ -1,16 +1,15 @@
 #!/usr/bin/env python
-from __future__ import print_function 
-import os
-import sys
-import subprocess
+from __future__ import print_function
 
 import configure
 
 xdress_logo = """"""
 
+
 def main_body():
     print(xdress_logo)
     configure.setup()
+
 
 def main():
     success = False
