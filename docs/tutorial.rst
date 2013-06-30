@@ -98,12 +98,12 @@ project,
 
     src:
 
-We would then run xdress with the "no-cython" option to only execute stlwrap. 
-This then generates the following files:
+We would then run xdress to execute stlwrap.  This then generates the following
+files:
 
 .. code-block:: bash
 
-    scopatz@ares ~/mypack $ xdress --no-cython
+    scopatz@ares ~/mypack $ xdress
     generating C++ standard library wrappers & converters
     scopatz@ares ~/mypack $ ls *
     xdressrc.py
