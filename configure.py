@@ -62,7 +62,9 @@ def final_message(success=True):
         return
     print(msg)
 
-fname = os.path.join(os.path.split(__file__)[0], 'docs', 'index.rst')
+dir_name = os.path.dirname(__file__)
+os.chdir(dir_name)
+fname = os.path.join(dir_name, 'docs', 'index.rst')
 with io.open(fname, 'r') as f:
     long_desc = f.read()
 
@@ -79,10 +81,13 @@ def setup():
     except ImportError:
         from distutils.core import setup as setup_
 
+    scripts_dir = os.path.join(dir_name, 'scripts')
     if os.name == 'nt':
-        scripts = [os.path.join('scripts', f) for f in os.listdir('scripts')]
+        scripts = [os.path.join(scripts_dir, f)
+                   for f in os.listdir(scripts_dir)]
     else:
-        scripts = [os.path.join('scripts', f) for f in os.listdir('scripts')
+        scripts = [os.path.join(scripts_dir, f)
+                   for f in os.listdir(scripts_dir)
                    if not f.endswith('.bat')]
     packages = ['xdress', ]
     pack_dir = {'xdress': 'xdress', }
