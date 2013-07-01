@@ -63,7 +63,6 @@ def final_message(success=True):
     print(msg)
 
 dir_name = os.path.dirname(__file__)
-os.chdir(dir_name)
 fname = os.path.join(dir_name, 'docs', 'index.rst')
 with io.open(fname, 'r') as f:
     long_desc = f.read()
@@ -123,7 +122,11 @@ def setup():
         ],
         "data_files": [("", ['license'])],
     }
+    # changing dirs for virtualenv
+    cwd = os.getcwd()
+    os.chdir(dir_name)
     setup_(**setup_kwargs)
+    os.chdir(cwd)
 
 
 if __name__ == "__main__":
