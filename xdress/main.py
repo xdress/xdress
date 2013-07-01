@@ -170,8 +170,8 @@ def main():
     prerc = RunControl()
     prerc._update(predefaultrc)
     prerc.rc = prens.rc
+    rcdict = {}
     if os.path.isfile(prerc.rc):
-        rcdict = {}
         exec_file(prerc.rc, rcdict, rcdict)
         prerc.rc = rcdict['rc'] if 'rc' in rcdict else NotSpecified
         prerc.plugins = rcdict['plugins'] if 'plugins' in rcdict else NotSpecified

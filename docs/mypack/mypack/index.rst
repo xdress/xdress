@@ -4,6 +4,7 @@ mypack
 .. toctree::
     :maxdepth: 3
 
+    CMakeLists.txt
     cpp_hoover.pxd
     cpp_hoover_b.pxd
     hoover.pxd

@@ -8,21 +8,9 @@ In the future, other tools and bindings will be supported.
 The main enabling feature of xdress is a dynamic type system that was designed with 
 the purpose of API generation in mind.
 
-XDress currently has the following external dependencies:
-
-    #. `Cython <http://cython.org/>`_
-    #. `NumPy <http://numpy.scipy.org/>`_
-    #. `pycparser <https://bitbucket.org/eliben/pycparser>`_, optional for C
-    #. `GCC-XML <http://www.gccxml.org/HTML/Index.html>`_, optional for C++
-    #. `lxml <http://lxml.de/>`_, optional (but nice!)
-
-The source code for xdress may be found at the 
-`GitHub project site <http://github.com/scopatz/xdress>`_.
-Or you may simply clone the development branch using git::
-
-    git clone git://github.com/scopatz/xdress.git
-
 `Go here for the latest version of the docs! <http://xdress.org/latest>`_
+
+:ref:`Go here for previous versions of the code & documentation. <previous_versions>`
 
 --------
 Contents
@@ -35,6 +23,41 @@ Contents
     libref/index
     previous/index
     other/index
+    faq
+    authors
+
+============
+Installation
+============
+Since xdress is pure Python code, the ``pip`` or ``easy_install`` may be used
+to grab and install the code::
+
+    $ pip install xdress
+
+    $ easy_install xdress
+
+
+The source code repository for xdress may be found at the 
+`GitHub project site <http://github.com/scopatz/xdress>`_.
+You may simply clone the development branch using git::
+
+    git clone git://github.com/scopatz/xdress.git
+
+============
+Dependencies
+============
+XDress currently has the following external dependencies,
+
+*Run Time:*
+
+    #. `pycparser <https://bitbucket.org/eliben/pycparser>`_, optional for C
+    #. `GCC-XML <http://www.gccxml.org/HTML/Index.html>`_, optional for C++
+    #. `lxml <http://lxml.de/>`_, optional (but nice!)
+
+*Compile Time:*
+
+    #. `Cython <http://cython.org/>`_
+    #. `NumPy <http://numpy.scipy.org/>`_
 
 ===============
 Examples of Use
@@ -48,14 +71,6 @@ few places to look:
 * `Bright <http://bright-dev.github.com/>`_: This uses xdress to automatically
   wrap a suite of interacting C++ class.  This was the motivating use case for the
   xdress project.
-
-======
-Author
-======
-This tool was written by `Anthony Scopatz <http://scopatz.com/>`_, who had many
-type system discussions with John Bachan over coffee at the Div school, and was
-polished up and released under the encouragement of Christopher Jordan-Squire at
-`PyCon 2013 <https://us.pycon.org/2013/>`_.
 
 ==========
 Contact Us

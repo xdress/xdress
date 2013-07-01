@@ -27,6 +27,8 @@ DEFAULT_RC_FILE = "xdressrc.py"
 DEFAULT_PLUGINS = ('xdress.stlwrap', 'xdress.autoall', 'xdress.cythongen')
 """Default list of plugin module names."""
 
+FORBIDDEN_NAMES = frozenset(['del'])
+
 def indent(s, n=4, join=True):
     """Indents all lines in the string or list s by n spaces."""
     spaces = " " * n
@@ -142,15 +144,15 @@ def ensuredirs(f):
 
 def isvardesc(desc):
     """Tests if a description is a variable-type description."""
-    return 'type' in desc 
+    return desc is not None and 'type' in desc 
 
 def isfuncdesc(desc):
     """Tests if a description is a function-type description."""
-    return 'signatures' in desc
+    return desc is not None and 'signatures' in desc
 
 def isclassdesc(desc):
     """Tests if a description is a class-type description."""
-    return 'parents' in desc
+    return desc is not None and 'parents' in desc
 
 def exec_file(filename, glb=None, loc=None):
     """A function equivalent to the Python 2.x execfile statement."""

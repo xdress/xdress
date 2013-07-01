@@ -6,7 +6,7 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
-RELEASE = v0.1
+RELEASE = v0.2
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4

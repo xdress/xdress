@@ -336,6 +336,8 @@ cdef class _Map{tclsname}{uclsname}:
 {tpy2cbody.indent8}
 {upy2cbody.indent8}
         item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
+        if 0 < self.map_ptr.count({tpy2crtn}):
+            self.map_ptr.erase({tpy2crtn})
         self.map_ptr.insert(item)
 
     def __delitem__(self, key):
