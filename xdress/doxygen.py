@@ -244,11 +244,6 @@ def _func_docstr(func_dict, is_method=False):
     msg += main_wrap.fill('----------')
     msg += '\n'
 
-    # TODO: Either fix member_wrap so it observes '\n' or have each
-    #       element in params, rets be a tuple of strings. The first
-    #       element would give type information, the second would be
-    #       the actual string explaining the param
-
     # add parameters
     for p in params:
         lines = str.splitlines(p)
@@ -286,6 +281,8 @@ def _func_docstr(func_dict, is_method=False):
     msg += '\n'
     msg += main_wrap.fill('-----')
     msg += '\n'
+
+    # TODO: add notes section like in class function above.
 
     if is_method:
         return indentstr(msg).indent4
@@ -1004,7 +1001,3 @@ class XDressPlugin(Plugin):
         #       rc.env places
 
 # BUG: The docstring for the class doesn't show up.
-
-# BUG: Another problem is that all docstrings are too indented (by 4). see
-#      what @scopatz is doing when he pulls them out of desc.
-
