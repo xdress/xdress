@@ -60,16 +60,16 @@ except ImportError:
 ### Set up various TextWrapper instances
 # main_wrap is for the core content of the docstring. It adds 4 spaces
 #   before the main description as well as the parameters and
-main_wrap = TextWrapper(width=72, initial_indent=' ' * 4,
-                        subsequent_indent=' ' * 4)
+main_wrap = TextWrapper(width=72, initial_indent=' ' * 0,
+                        subsequent_indent=' ' * 0)
 
 # member_wrap is for anything under Paramters, Returns, Methods, ect.
-member_wrap = TextWrapper(width=72, initial_indent=' ' * 8,
-                          subsequent_indent=' ' * 8)
+member_wrap = TextWrapper(width=72, initial_indent=' ' * 0,
+                          subsequent_indent=' ' * 0)
 
 # attrib_wrap is for listing class attributes/methods
-attrib_wrap = TextWrapper(width=72, initial_indent=' ' * 4,
-                          subsequent_indent=' ' * 8)
+attrib_wrap = TextWrapper(width=72, initial_indent=' ' * 0,
+                          subsequent_indent=' ' * 4)
 
 _param_sec = 'Parameters\n----------'
 _return_sec = 'Returns\n-------'
@@ -926,18 +926,25 @@ class XDressPlugin(Plugin):
             func_keys = filter(lambda x: 'func' in x, parsed.keys())
             rc.env[kls_mod][kls]['docstring'] = _class_docstr(parsed)
 
-            print('#' * 75)
-            print('#' * 75)
-            print('#' * 75)
-            print("Here is rc.env[kls_mod][kls].keys()")
-            print(rc.env[kls_mod][kls].keys())
-            print('#' * 75)
-            print('#' * 75)
-            print('#' * 75)
-            print("Here is rc.env[kls_mod][kls]['docstring'].keys()")
-            print(rc.env[kls_mod][kls]['docstring'])
+            # print('#' * 75)
+            # print('#' * 75)
+            # print('#' * 75)
+            # print("Here is rc.env[kls_mod][kls].keys()")
+            # print(rc.env[kls_mod][kls].keys())
+            # print('#' * 75)
+            # print('#' * 75)
+            # print('#' * 75)
+            # print("Here is rc.env[kls_mod][kls]['methods'].keys()")
+            # print(rc.env[kls_mod][kls]['methods'].keys())
 
-            for m in rc.env[kls_mod][kls]['docstrings']['methods'].keys():
+            rc_methods = [i[0] for i in rc.env[kls_mod][kls]['methods'].keys()]
+
+            # Make docstrings dictionary if needed
+            if 'docstrings' not in rc.env[kls_mod][kls].keys():
+                rc.env[kls_mod][kls]['docstrings'] = {}
+                rc.env[kls_mod][kls]['docstrings']['methods'] = {}
+
+            for m in rc_methods:
                 for key in func_keys:
                     try:
                         # Grab the method dictionary and break out of for loop
@@ -995,3 +1002,9 @@ class XDressPlugin(Plugin):
         # TODO: Add the docstrings we found to the descriptions cache.
         #       This is probably easier to do as I am putting them in the
         #       rc.env places
+
+# BUG: The docstring for the class doesn't show up.
+
+# BUG: Another problem is that all docstrings are too indented (by 4). see
+#      what @scopatz is doing when he pulls them out of desc.
+
