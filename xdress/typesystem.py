@@ -277,7 +277,7 @@ def _memoize(obj):
 
 base_types = set(['char', 'uchar', 'str', 'int16', 'int32', 'int64', 'int128', 
                   'uint16', 'uint32', 'uint64', 'uint128', 'float32', 'float64', 
-                  'float128', 'complex128', 'void', 'bool', 'type', ])
+                  'float128', 'complex128', 'void', 'bool', 'type', 'file'])
 """Base types in the type system."""
 
 template_types = {
@@ -344,6 +344,7 @@ _humannames = {
     'float64': 'double',
     'float128': 'long double',
     'complex128': 'complex',
+    'file': 'file',
     'dict': 'dict of ({key_type}, {value_type}) items',
     'map': 'map of ({key_type}, {value_type}) items',
     'pair': '({key_type}, {value_type}) pair',
@@ -449,13 +450,13 @@ def canon(t):
             _raise_type_error(t)
         last_val = 0 if tlen == 1 else t[-1]
         if isinstance(t0, basestring):
-            if t0 in template_types:
+            if isdependent(t0):
+                return _resolve_dependent_type(t0, t)
+            elif t0 in template_types:
                 templen = len(template_types[t0])
                 last_val = 0 if tlen == 1 + templen else t[-1]
                 filledt = [t0] + [canon(tt) for tt in t[1:1+templen]] + [last_val]
                 return tuple(filledt)
-            elif isdependent(t0):
-                return _resolve_dependent_type(t0, t)
             else:
                 #if 2 < tlen:
                 #    _raise_type_error(t)
@@ -741,6 +742,8 @@ type_aliases = _LazyConfigDict({
     'v': 'void',
     's': 'str',
     'string': 'str',
+    'FILE': 'file',
+    '_IO_FILE': 'file',
     # 'c' has char / complex ambiguity, not included
     'NPY_BYTE': 'char',
     'NPY_UBYTE': 'uchar',
@@ -801,6 +804,7 @@ _cython_ctypes = _LazyConfigDict({
     'complex128': '{extra_types}complex_t',
     'bool': 'bint',
     'void': 'void', 
+    'file': 'c_file',
     'map': 'cpp_map',
     'dict': 'dict',
     'pair': 'cpp_pair',
@@ -811,12 +815,16 @@ _cython_ctypes = _LazyConfigDict({
 def _cython_ctypes_function(t):
     rtnct = cython_ctype(t[2][2])
     argcts = [cython_ctype(argt) for n, argt in t[1][2]]
+    if argcts == ['void']:
+        argcts = []
     return rtnct + " {type_name}(" + ", ".join(argcts) + ")"
 _cython_ctypes['function'] = _cython_ctypes_function
 
 def _cython_ctypes_function_pointer(t):
     rtnct = cython_ctype(t[2][2])
     argcts = [cython_ctype(argt) for n, argt in t[1][2]]
+    if argcts == ['void']:
+        argcts = []
     return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
 _cython_ctypes['function_pointer'] = _cython_ctypes_function_pointer
 
@@ -874,6 +882,7 @@ _cython_cimports = _LazyImportDict({
     'str': (('libcpp.string', 'string', 'std_string'),),
     'int16': (None,),
     'int32': (None,),
+    ('int32', '*'): 'int *',
     'int64':  (('{extra_types}',),),
     'uint16':  (('{extra_types}',),),
     'uint32': (('{extra_types}',),),  
@@ -884,6 +893,7 @@ _cython_cimports = _LazyImportDict({
     'complex128': (('{extra_types}',),),
     'bool': (None,), 
     'void': (None,), 
+    'file': (('libc.stdio', 'FILE', 'c_file'),),
     'map': (('libcpp.map', 'map', 'cpp_map'),),
     'dict': (None,),
     'pair': (('libcpp.utility', 'pair', 'cpp_pair'),),
@@ -917,6 +927,7 @@ _cython_cyimports = _LazyImportDict({
     'complex128': (('{extra_types}',),),  # for py2c_complex()
     'bool': (None,), 
     'void': (None,), 
+    'file': (('{extra_types}',),), 
     'map': (('{stlcontainers}',),),
     'dict': (None,),
     'pair': (('{stlcontainers}',),), 
@@ -1021,6 +1032,7 @@ _cython_pyimports = _LazyImportDict({
     'complex128': (None,),
     'bool': (None,), 
     'void': (None,), 
+    'file': (None,), 
     'map': (('{stlcontainers}',),),
     'dict': (None,),
     'pair': (('{stlcontainers}',),),
@@ -1104,6 +1116,7 @@ _cython_cytypes = _LazyConfigDict({
     'int16': 'short',
     #'int32': 'long',
     'int32': 'int',
+    ('int32', '*'): 'int *',
     'int64': 'long long',
     'uint16': 'unsigned short',  
     'uint32': 'unsigned long',  # 'unsigned int'
@@ -1114,6 +1127,7 @@ _cython_cytypes = _LazyConfigDict({
     'complex128': 'object',
     'bool': 'bint',
     'void': 'void',
+    'file': 'c_file',
     'map': '{stlcontainers}_Map{key_type}{value_type}',
     'dict': 'dict',
     'pair': '{stlcontainers}_Pair{value_type}',
@@ -1140,6 +1154,7 @@ _cython_functionnames = _LazyConfigDict({
     'complex128': 'complex',
     'bool': 'bool',
     'void': 'void',
+    'file': 'file',
     # template types
     'map': 'map_{key_type}_{value_type}',
     'dict': 'dict',
@@ -1192,6 +1207,7 @@ _cython_classnames = _LazyConfigDict({
     'complex128': 'Complex',
     'bool': 'Bool',
     'void': 'Void',
+    'file': 'File',
     # template types
     'map': 'Map{key_type}{value_type}',
     'dict': 'Dict',
@@ -1297,6 +1313,7 @@ _cython_pytypes = _LazyConfigDict({
     'float64': 'float',
     'float128': 'np.float128',
     'complex128': 'object',
+    'file': 'file',
     'bool': 'bool',
     'void': 'object',
     'map': '{stlcontainers}Map{key_type}{value_type}',
@@ -1416,6 +1433,7 @@ _cython_c2py_conv = _LazyConverterDict({
     'str': ('bytes(<char *> {var}.c_str()).decode()',),
     'int16': ('int({var})',),
     'int32': ('int({var})',),
+    ('int32', '*'): ('int({var}[0])',),
     'int64': ('int({var})',),
     'uint16': ('int({var})',),
     'uint32': ('int({var})',),
@@ -1427,6 +1445,8 @@ _cython_c2py_conv = _LazyConverterDict({
     'complex128': ('complex(float({var}.re), float({var}.im))',),
     'bool': ('bool({var})',),
     'void': ('None',),
+    'file': ('{extra_types}PyFile_FromFile(&{var}, "{var}", "r+", NULL)',),
+    ('file', '*'): ('{extra_types}PyFile_FromFile({var}, "{var}", "r+", NULL)',),
     # template types
     'map': ('{pytype}({var})', 
            ('{proxy_name} = {pytype}(False, False)\n'
@@ -1502,6 +1522,8 @@ _cython_c2py_conv = _LazyConverterDict({
                 )),
     'nucid': ('nucname.zzaaam({var})',),
     'nucname': ('nucname.name({var})',),
+    TypeMatcher((('enum', MatchAny, MatchAny), '*')): ('int({var}[0])',),
+    TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): ('int({var}[0])',),
     })
 
 def _cython_c2py_conv_function_pointer(t_):
@@ -1518,31 +1540,39 @@ def _cython_c2py_conv_function_pointer(t_):
         argrtns.append(rtn)
     rtnname = 'rtn'
     rtnprox = 'c_' + rtnname
+    rtncall = 'c_call_' + rtnname
     while rtnname in argnames or rtnprox in argnames:
         rtnname += '_'
         rtnprox += '_'
     argdecls = _indent4(argdecls)
     argbodys = _indent4(argbodys)
-    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtnname, t[2][2], cached=False, 
-                                              proxy_name=rtnprox)
+#    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtnname, t[2][2], cached=False, 
+#                                              proxy_name=rtnprox, 
+#                                              existing_name=rtncall)
+    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtncall, t[2][2], cached=False, 
+                                              proxy_name=rtnprox,
+                                              existing_name=rtncall)
     if rtndecl is None and rtnbody is None:
         rtnprox = rtnname
-    rtndecl = _indent4(rtndecl)
-    rtnbody = _indent4(rtnbody)
+    rtndecl = _indent4([rtndecl, "cdef {0} {1}".format(cython_ctype(t[2][2]), rtncall)])
+    #rtndecl = _indent4(["cdef {0} {1}".format(cython_ctype(t[2][2]), rtncall)])
+    rtnbody = _indent4([rtnbody])
     s = """def {{proxy_name}}({arglist}):
 {argdecls}
 {rtndecl}
     if {{var}} == NULL:
         raise RuntimeError("{{var}} is NULL and may not be safely called!")
 {argbodys}
-    {rtnprox} = {{var}}({carglist})
+    {rtncall} = {{var}}({carglist})
 {rtnbody}
-    return {rtnrtn}
 """
-    s = s.format(arglist=", ".join(argnames), argdecls=argdecls, cvartypeptr=cython_ctype(t_).format(type_name='cvartype'), 
-                 argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
-                 carglist=", ".join(argrtns), rtnbody=rtnbody, rtnrtn=rtnrtn)
+    s = s.format(arglist=", ".join(argnames), argdecls=argdecls, 
+                 cvartypeptr=cython_ctype(t_).format(type_name='cvartype'), 
+                 argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, rtncall=rtncall,
+                 carglist=", ".join(argrtns), rtnbody=rtnbody)
     caches = 'if {cache_name} is None:\n' + _indent4([s]) 
+    if t[2][2] != 'void':
+        caches += "\n        return {rtnrtn}".format(rtnrtn=rtnrtn)
     caches += '\n    {cache_name} = {proxy_name}\n'
     return s, s, caches
 
@@ -1561,6 +1591,8 @@ from_pytypes = {
     'float32': ['float', 'int'],
     'float64': ['float', 'int'],
     'complex128': ['complex', 'float'],
+    'file': ['file'],
+    ('file', '*'): ['file'],
     'set': ['set', 'list', 'basestring', 'tuple'],
     'vector': ['list', 'tuple', 'np.ndarray'],
     }
@@ -1625,8 +1657,16 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
         decl = decl or ''
         decl += "\ncdef np.npy_intp {proxy_name}_shape[1]".format(proxy_name=proxy_name)
     if decl is not None and body is not None:
-        decl += '\n'+"\n".join([l for l in body.splitlines() if l.startswith('cdef')])
+        newdecl = '\n'+"\n".join([l for l in body.splitlines() if l.startswith('cdef')])
         body = "\n".join([l for l in body.splitlines() if not l.startswith('cdef')])
+        proxy_in_newdecl = proxy_name in [l.split()[-1] for l in newdecl.splitlines() if 0 < len(l)]
+        if proxy_in_newdecl:
+            for d in decl.splitlines():
+                if d.split()[-1] != proxy_name:
+                    newdecl += '\n' + d
+            decl = newdecl
+        else:
+            decl += newdecl
     return decl, body, rtn, iscached
 
 
@@ -1634,10 +1674,14 @@ _cython_py2c_conv = _LazyConverterDict({
     # Has tuple form of (body or return,  return or False)
     # base types
     'char': ('{var}_bytes = {var}.encode()', '(<char *> {var}_bytes)[0]'),
+    ('char', '*'): ('{var}_bytes = {var}.encode()', '<char *> {var}_bytes'),
     'uchar': ('{var}_bytes = {var}.encode()', '(<unsigned char *> {var}_bytes)[0]'),
+    ('uchar', '*'): ('{var}_bytes = {var}.encode()', '<unsigned char *> {var}_bytes'),
     'str': ('{var}_bytes = {var}.encode()', 'std_string(<char *> {var}_bytes)'),
     'int16': ('<short> {var}', False),
     'int32': ('<int> {var}', False),
+    #('int32', '*'): ('&(<int> {var})', False),
+    ('int32', '*'): ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
     'int64': ('<long long> {var}', False),
     'uint16': ('<unsigned short> {var}', False),
     'uint32': ('<{ctype}> long({var})', False),
@@ -1652,6 +1696,8 @@ _cython_py2c_conv = _LazyConverterDict({
     'bool': ('<bint> {var}', False),
     'void': ('NULL', False),
     ('void', '*'): ('NULL', False),
+    'file': ('{extra_types}PyFile_AsFile({var})[0]', False), 
+    ('file', '*'): ('{extra_types}PyFile_AsFile({var})', False), 
     # template types
     'map': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
             '{proxy_name}.map_ptr[0]'),
@@ -1708,12 +1754,17 @@ _cython_py2c_conv = _LazyConverterDict({
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
     'nucname': ('nucname.name({var})', False),
+    TypeMatcher((('enum', MatchAny, MatchAny), '*')): \
+        ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
+    TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): \
+        ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
     })
 
 _cython_py2c_conv[TypeMatcher((('vector', MatchAny, '&'), 'const'))] = \
     _cython_py2c_conv[TypeMatcher((('vector', MatchAny, 'const'), '&'))] = \
     _cython_py2c_conv[TypeMatcher(('vector', MatchAny, '&'))]
-
+    
+    
 
 def _cython_py2c_conv_function_pointer(t):
     t = t[1]
@@ -1726,29 +1777,33 @@ def _cython_py2c_conv_function_pointer(t):
         argnames.append(n)
         decl, body, rtn, _ = cython_c2py(n, argt, proxy_name="c_" + n, cached=False)
         argdecls.append(decl)
+        #argdecls.append("cdef {0} {1}".format(cython_pytype(argt), "c_" + n))
         argbodys.append(body)
         argrtns.append(rtn)
         argct = cython_ctype(argt)
         argcts.append(argct)
     rtnname = 'rtn'
     rtnprox = 'c_' + rtnname
+    rtncall = 'call_' + rtnname
     while rtnname in argnames or rtnprox in argnames:
         rtnname += '_'
         rtnprox += '_'
     rtnct = cython_ctype(t[2][2])
     argdecls = _indent4(argdecls)
     argbodys = _indent4(argbodys)
-    rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtnprox)
+    #rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtnprox)
+    #rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtncall)
+    rtndecl, rtnbody, rtnrtn = cython_py2c(rtncall, t[2][2], proxy_name=rtnprox)
     if rtndecl is None and rtnbody is None:
         rtnprox = rtnname
-    rtndecl = _indent4(rtndecl)
-    rtnbody = _indent4(rtnbody)
+    rtndecl = _indent4([rtndecl])
+    rtnbody = _indent4([rtnbody])
     s = """cdef {rtnct} {{proxy_name}}({arglist}):
 {argdecls}
 {rtndecl}
     global {{var}}
 {argbodys}
-    {rtnprox} = {{var}}({pyarglist})
+    {rtncall} = {{var}}({pyarglist})
 {rtnbody}
     return {rtnrtn}
 """
@@ -1756,7 +1811,7 @@ def _cython_py2c_conv_function_pointer(t):
     pyarglist=", ".join(argrtns)
     s = s.format(rtnct=rtnct, arglist=arglist, argdecls=argdecls, rtndecl=rtndecl,
                  argbodys=argbodys, rtnprox=rtnprox, pyarglist=pyarglist,
-                 rtnbody=rtnbody, rtnrtn=rtnrtn)
+                 rtnbody=rtnbody, rtnrtn=rtnrtn, rtncall=rtncall)
     return s, False
 
 _cython_py2c_conv['function_pointer'] = _cython_py2c_conv_function_pointer
@@ -2083,17 +2138,25 @@ def _redot_class_name(name, d, value):
     d[name] = value + '.' + d[name]
 
 @contextmanager
-def local_classes(classnames):
+def local_classes(classnames, typesets=frozenset(['cy', 'py'])):
     """A context manager for making sure the given classes are local."""
     saved = {}
     for name in classnames:
-        saved[name, 'cy'] = _undot_class_name(name, _cython_cytypes)
-        saved[name, 'py'] = _undot_class_name(name, _cython_pytypes)
+        if 'c' in typesets:
+            saved[name, 'c'] = _undot_class_name(name, _cython_ctypes)
+        if 'cy' in typesets:
+            saved[name, 'cy'] = _undot_class_name(name, _cython_cytypes)
+        if 'py' in typesets:
+            saved[name, 'py'] = _undot_class_name(name, _cython_pytypes)
     clearmemo()
     yield
     for name in classnames:
-        _redot_class_name(name, _cython_cytypes, saved[name, 'cy'])
-        _redot_class_name(name, _cython_pytypes, saved[name, 'py'])
+        if 'c' in typesets:
+            _redot_class_name(name, _cython_ctypes, saved[name, 'c'])
+        if 'cy' in typesets:
+            _redot_class_name(name, _cython_cytypes, saved[name, 'cy'])
+        if 'py' in typesets:
+            _redot_class_name(name, _cython_pytypes, saved[name, 'py'])
     clearmemo()
 
 _indent4 = lambda x: '' if x is None else "\n".join(["    " + l for l in "\n".join(

@@ -1,4 +1,5 @@
 """C++ wrapper for extra types header."""
+from libc.stdio cimport FILE
 
 ctypedef unsigned char uchar
 ctypedef long long int64
@@ -14,3 +15,8 @@ cdef extern from "{extra_types}.h" namespace "{extra_types}":
         double im
 
 cdef complex_t py2c_complex(object pyv)
+
+cdef extern from "Python.h":
+
+    object PyFile_FromFile(FILE *fp, char *name, char *mode, int (*close)(FILE*))
+    FILE* PyFile_AsFile(object p)

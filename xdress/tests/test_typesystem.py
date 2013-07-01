@@ -1,4 +1,6 @@
 from __future__ import print_function
+import pprint
+
 from xdress import typesystem as ts
 from xdress.typesystem import MatchAny
 
@@ -11,8 +13,18 @@ new_refined = {
     ('nucrange', ('low', 'nucid'), ('high', 'nucid')): 'nucid',
     ('range', 'vtype', ('low', 'vtype'), ('high', 'vtype')): 'vtype',
     }
-add_new_refined = lambda: ts.refined_types.update(new_refined)
-del_new_refined = lambda: [ts.refined_types.pop(key) for key in new_refined]
+new_template = {
+    'range': ('vtype', ('low', 'vtype'), ('high', 'vtype')),
+    }
+
+def add_new_refined():
+    ts.refined_types.update(new_refined)
+    ts.template_types.update(new_template)
+
+def del_new_refined():
+    [ts.refined_types.pop(key) for key in new_refined]
+    for key in new_template:
+        del ts.template_types[key]
 
 new_py2c = {
     'comp_map': ('stlcontainers.dict_to_map_int_dbl({var})', False),
@@ -27,6 +39,8 @@ del_new_py2c = lambda: [ts._cython_py2c_conv.pop(key) for key in new_py2c]
 
 def check_canon(t, exp):
     obs = ts.canon(t)
+    pprint.pprint(exp)
+    pprint.pprint(obs)
     assert_equal(exp, obs)
 
 @with_setup(add_new_refined, del_new_refined)
@@ -67,7 +81,6 @@ def test_canon():
     for t, exp in cases:
         yield check_canon, t, exp            # Check that the case works,
         yield check_canon, ts.canon(t), exp  # And that it is actually canonical.
-
 
 def check_cython_ctype(t, exp):
     obs = ts.cython_ctype(t)
@@ -373,7 +386,7 @@ def test_cython_py2c():
         (('frog', 'comp_map', 'self._inst'), (None, None, 
             'stlcontainers.dict_to_map_int_dbl(self._inst.frog)')),
         (('frog', ('char', '*'), None), ('cdef char * frog_proxy\n',
-            'frog_bytes = frog.encode()', '(<char *> frog_bytes)[0]')),
+            'frog_bytes = frog.encode()', '<char *> frog_bytes')),
         (('frog', ('char', 42), None), ('cdef char [42] frog_proxy\n',
             'frog_bytes = frog.encode()', '(<char *> frog_bytes)[0]')),
         (('frog', ('map', 'nucid', ('set', 'nucname')), 'self._inst'), 
@@ -439,3 +452,4 @@ def test_strip_predicates():
         ]
     for t, exp in cases:
         yield check_strip_predicates, t, exp
+

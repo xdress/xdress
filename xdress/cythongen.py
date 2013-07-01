@@ -68,6 +68,53 @@ def gencpppxd(env, exceptions=True):
         cpppxds[name] = modcpppxd(mod, exceptions)
     return cpppxds
 
+def _addotherclsnames(t, classes, name, others):
+    if t is None or t == (None, '*'):
+        return
+    spt = ts.strip_predicates(t)
+    if spt in classes:
+        others[name].add(spt)
+    elif ts.isfunctionpointer(spt):
+        for subt in spt[1:]:
+            spsubt = ts.strip_predicates(subt)
+            if spsubt in classes:
+                others[name].add(spsubt)
+
+def cpppxd_sorted_names(mod):
+    """Sorts the variable names in a cpp_*.pxd module so that C/C++ 
+    declarations happen in the proper order.
+    """
+    classes = set([name for name, desc in  mod.items() if isclassdesc(desc)])
+    clssort = sorted(classes)
+    othercls = {}
+    for name in clssort:
+        desc = mod[name]
+        othercls[name] = set()
+        for aname, atype in desc['attrs'].items():
+            _addotherclsnames(atype, classes, name, othercls)
+        for mkey, mtype in desc['methods'].items():
+            mname, margs = mkey[0], mkey[1:]
+            _addotherclsnames(mtype, classes, name, othercls)
+            for marg in margs:
+                _addotherclsnames(marg[1], classes, name, othercls)
+    clssort.sort(key=lambda x: len(othercls[x]))
+    names = clssort[:1]
+    for name in clssort[1:]:
+        if name in names:
+            continue
+        for i, n in enumerate(names[:]):
+            if name in othercls[n]:
+                names.insert(i, name)
+                break
+            if othercls[name] <= set(names[:i+1] + [name]):
+                names.insert(i+1, name)
+                break
+        else:
+            names.append(name)
+    names += sorted([name for name, desc in  mod.items() if isvardesc(desc)])    
+    names += sorted([name for name, desc in  mod.items() if isfuncdesc(desc)])    
+    return names
+
 
 def modcpppxd(mod, exceptions=True):
     """Generates a cpp_*.pxd Cython header file for exposing a C/C++ module to
@@ -92,17 +139,20 @@ def modcpppxd(mod, exceptions=True):
          "srcpxd_filename": mod.get("srcpxd_filename", "")}
     attrs = []
     cimport_tups = set()
-    for name, desc in mod.items():
-        if isvardesc(desc):
-            ci_tup, attr_str = varcpppxd(desc, exceptions)
-        elif isfuncdesc(desc):
-            ci_tup, attr_str = funccpppxd(desc, exceptions)
-        elif isclassdesc(desc):
-            ci_tup, attr_str = classcpppxd(desc, exceptions)
-        else:
-            continue
-        cimport_tups |= ci_tup
-        attrs.append(attr_str)
+    classnames = [name for name, desc in  mod.items() if isclassdesc(desc)]
+    with ts.local_classes(classnames, frozenset(['c'])):
+        for name in cpppxd_sorted_names(mod):
+            desc = mod[name]
+            if isvardesc(desc):
+                ci_tup, attr_str = varcpppxd(desc, exceptions)
+            elif isfuncdesc(desc):
+                ci_tup, attr_str = funccpppxd(desc, exceptions)
+            elif isclassdesc(desc):
+                ci_tup, attr_str = classcpppxd(desc, exceptions)
+            else:
+                continue
+            cimport_tups |= ci_tup
+            attrs.append(attr_str)
     m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
     m['attrs_block'] = "\n".join(attrs)
     t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
@@ -212,6 +262,8 @@ def funccpppxd(desc, exceptions=True):
         fname, fargs = fkey[0], fkey[1:]
         if fname.startswith('_'):
             continue  # private
+        if any([a[1] is None or a[1][0] is None for a in fargs + (frtn,)]):
+            continue
         argfill = ", ".join([cython_ctype(a[1]) for a in fargs])
         for a in fargs:
             cython_cimport_tuples(a[1], cimport_tups, inc)
@@ -244,6 +296,7 @@ _cpppxd_class_template = \
 
         # methods
 {methods_block}
+        pass
 
 {extra}
 """
@@ -402,6 +455,7 @@ _pxd_class_template = \
 
 cdef class {name}{parents}:
 {body}
+    pass    
 
 {extra}
 """
@@ -462,6 +516,8 @@ def classpxd(desc, classes=()):
             if _isclassptr(atype, classes):
                 atype_nopred = ts.strip_predicates(atype)
                 cyt = cython_cytype(atype_nopred)
+            elif _isclassdblptr(atype, classes):
+                cyt = 'list'
             else:
                 cyt = cython_cytype(atype)
             decl = "cdef public {0} {1}".format(cyt, cachename)
@@ -932,6 +988,8 @@ cdef class {name}{parents}:
     # methods
 {methods_block}
 
+    pass
+
 {extra}
 '''
 
@@ -1017,6 +1075,8 @@ def classpyx(desc, classes=None):
         mname, margs = mkey[0], mkey[1:]
         if mname.startswith('_'):
             continue  # skip private
+        if any([a[1] is None or a[1][0] is None for a in margs]):
+            continue
         if 1 < methcounts[mname]:
             mname_mangled = "_{0}_{1}_{2:0{3}}".format(desc['name'], mname,
                     currcounts[mname], int(math.log(methcounts[mname], 10)+1)).lower()
@@ -1164,6 +1224,8 @@ def funcpyx(desc):
         fname, fargs = fkey[0], fkey[1:]
         if fname.startswith('_'):
             continue  # skip private
+        if any([a[1] is None or a[1][0] is None for a in fargs + (frtn,)]):
+            continue
         if 1 < funccounts[fname]:
             fname_mangled = "_{0}_{1:0{2}}".format(fname, currcounts[fname],
                                         int(math.log(funccounts[fname], 10)+1)).lower()
@@ -1200,6 +1262,7 @@ class XDressPlugin(Plugin):
     """
 
     requires = ('xdress.autodescribe',)
+    """This plugin requires autodescribe."""
 
     def execute(self, rc):
         print("cythongen: creating C/C++ API wrappers")
@@ -1248,6 +1311,11 @@ def _mangle_function_pointer_name(name, classname):
 def _isclassptr(t, classes):
     return (not isinstance(t, basestring) and t[1] == '*' and 
             isinstance(t[0], basestring) and t[0] in classes)
+
+def _isclassdblptr(t, classes):
+    if 2 != len(t):
+        return False
+    return _isclassptr(t[0], classes) and t[1] == '*'
 
 _exc_c_base = frozenset(['int16', 'int32', 'int64', 'int128', 
                          'float32', 'float64', 'float128'])

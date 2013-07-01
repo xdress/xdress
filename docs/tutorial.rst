@@ -4,7 +4,7 @@
 Tutorial
 *******************
 At its core, xdress is type system on which code generation utilities are written.
-These utilities may be executed via the ``xdress`` command line interface.  This 
+These utilities may be executed via the ``xdress`` command line interface.  This
 tutorial presents a brief walk through of the type system, the STL container wrapper
 generator, and the C/C++ API wrapper generator.
 
@@ -19,14 +19,14 @@ achieved by providing canonical abstractions of various kinds of types:
 * Refined types (even or odd ints, strings containing the letter 'a')
 * Dependent types (templates such arrays, maps, sets, vectors)
 
-All types are known by their name (a string identifier) and may be aliased with 
+All types are known by their name (a string identifier) and may be aliased with
 other names.  However, the string id of a type is not sufficient to fully describe
 most types.  The system here implements a canonical form for all kinds of types.
-This canonical form is itself hashable, being comprised only of strings, ints, 
+This canonical form is itself hashable, being comprised only of strings, ints,
 and tuples.
 
-These canonical forms are covered in detail in the :ref:`xdress_typesystem` 
-documentation.  However, what are more important and useful from an end-user 
+These canonical forms are covered in detail in the :ref:`xdress_typesystem`
+documentation.  However, what are more important and useful from an end-user
 perspective are the short hand notations that should be used by mortals::
 
     # Base type are just their names
@@ -59,9 +59,9 @@ perspective are the short hand notations that should be used by mortals::
 ========================
 STL Containers (stlwrap)
 ========================
-The first tool we discuss is the C++ STL container wrapper generator.  This tool 
-relies solely on the type system.  XDress is governed by a run control file, called 
-``xdressrc.py`` by default.  This is a pure Python file that should be placed 
+The first tool we discuss is the C++ STL container wrapper generator.  This tool
+relies solely on the type system.  XDress is governed by a run control file, called
+``xdressrc.py`` by default.  This is a pure Python file that should be placed
 in the directory where you will run the ``xdress`` command.  A simple stlwrap run
 control file would contain the following variables.
 
@@ -70,7 +70,7 @@ control file would contain the following variables.
     package = 'mypack'     # top-level python package name
     packagedir = 'mypack'  # location of the python package
     sourcedir = 'src'      # location of C/C++ source
-    
+
     stlcontainers = [
         ('vector', 'str'),
         ('set', 'uint'),
@@ -83,7 +83,7 @@ control file would contain the following variables.
 
 This would tell ``xdress`` to generate a numpy dtype for ``std::string`` (to be used
 with normal numpy arrays), a wrapper class for ``std::set<unsigned int>``,  and a
-wrapper class for ``std::map<int, double>``.  Suppose we started with an empty 
+wrapper class for ``std::map<int, double>``.  Suppose we started with an empty
 project,
 
 .. code-block:: bash
@@ -98,30 +98,30 @@ project,
 
     src:
 
-We would then run xdress with the "no-cython" option to only execute stlwrap. 
-This then generates the following files:
+We would then run xdress to execute stlwrap.  This then generates the following
+files:
 
 .. code-block:: bash
 
-    scopatz@ares ~/mypack $ xdress --no-cython
+    scopatz@ares ~/mypack $ xdress
     generating C++ standard library wrappers & converters
     scopatz@ares ~/mypack $ ls *
     xdressrc.py
 
     mypack:
-    stlcontainers.pxd       stlcontainers.pyx  tests        xdress_extra_types.pxd  
+    stlcontainers.pxd       stlcontainers.pyx  tests        xdress_extra_types.pxd
     xdress_extra_types.pyx  __init__.pxd       __init__.py
 
     src:
     xdress_extra_types.h
 
-It is then our job to pass these files off to Cython and a C++ compiler, typically 
+It is then our job to pass these files off to Cython and a C++ compiler, typically
 as part of a larger build system.
 
 ================================
 C/C++ API Generation (cythongen)
 ================================
-The next tool that is built off of the xdress type system may be used for 
+The next tool that is built off of the xdress type system may be used for
 automatically creating Python wrappers of C/C++ APIs.  This requires that the user
 has GCC-XML and lxml installed are their system.  Now suppose we had some C++ code
 living in the ``src/`` directory.
@@ -136,9 +136,9 @@ living in the ``src/`` directory.
 .. literalinclude:: mypack/src/hoover.cpp
    :language: cpp
 
-To tell xdress that we what to wrap the A & B classes and the do nothing function, 
+To tell xdress that we what to wrap the A & B classes and the do nothing function,
 we simply need to tell xdress that they live in hoover.  We do this by adding to the
-``classes`` and ``functions`` lists in the run control file.  
+``classes`` and ``functions`` lists in the run control file.
 
 **xdressrc.py**::
 
@@ -149,16 +149,16 @@ we simply need to tell xdress that they live in hoover.  We do this by adding to
 
     functions = [('do_nothing_ab', 'hoover')]
 
-Note that to do this we need only give the construct names -- no signatures need 
+Note that to do this we need only give the construct names -- no signatures need
 be specified.  That is the point of API generation!  Also note that we only give
 the base file name without the preceding ``src/`` directory or the file extension
 (``.cpp``, ``.h``).  Furthermore, the base names of the source and target files need
-not be the same...even for APIs which share the same source file!  We may then run 
+not be the same...even for APIs which share the same source file!  We may then run
 xdress normally:
 
 .. code-block:: bash
 
-    scopatz@ares ~/mypack $ xdress 
+    scopatz@ares ~/mypack $ xdress
     generating C++ standard library wrappers & converters
     parsing A
     registering A
@@ -181,11 +181,11 @@ xdress normally:
     src:
     hoover.cpp  hoover.h  xdress_extra_types.h
 
-Since C/C++ API scraping may be an expensive task for large codes or files, 
-the descriptions of classes and functions that are generated are stored in the 
-``build/desc.cache``.  This cache is simply a pickled dictionary that maps 
+Since C/C++ API scraping may be an expensive task for large codes or files,
+the descriptions of classes and functions that are generated are stored in the
+``build/desc.cache``.  This cache is simply a pickled dictionary that maps
 names, source files, and kinds to a hash of the source file and the description.
-Thus API elements are not re-described if the source file has not changed.  
+Thus API elements are not re-described if the source file has not changed.
 You may view the contents of a description cache with the ``dump-desc`` option.
 
 .. code-block:: bash
@@ -212,13 +212,13 @@ You may view the contents of a description cache with the ``dump-desc`` option.
                                                     'namespace': 'hoover',
                                                     'signatures': {('do_nothing_ab', ('a', 'A'), ('b', 'B')): 'void'}})}
 
-Be aware that the ``y`` member variable on class ``A`` -- which has type 
+Be aware that the ``y`` member variable on class ``A`` -- which has type
 ``map<int, double>`` -- requires that stlwrap tool also have a matching container.
-Luckily, we declared ``('map', 'int', 'float')`` in the ``stlcontainers`` list 
+Luckily, we declared ``('map', 'int', 'float')`` in the ``stlcontainers`` list
 previously =).
 
 **Once again, it is up to the user to integrate the files created by xdress into their
-own build system.**  However, for the above example the following ``setup.py`` file 
+own build system.**  However, for the above example the following ``setup.py`` file
 will work:
 
 **setup.py**:
@@ -226,10 +226,23 @@ will work:
 .. literalinclude:: mypack/setup.py
    :language: py
 
+Or, the following ``CMakeLists.txt`` files will work to build the modules with
+`CMake <http://cmake.org>`_.
+
+**CMakeLists.txt**:
+
+.. literalinclude:: mypack/CMakeLists.txt
+   :language: cmake
+
+**mypack/CMakeLists.txt**:
+
+.. literalinclude:: mypack/mypack/CMakeLists.txt
+   :language: cmake
+
 =============
 Code Listings
 =============
-The following are code listings of the files generated above, since they are too 
+The following are code listings of the files generated above, since they are too
 large to in-line into the tutorial text.  You may also find `this example implemented
 in the xdress repo <https://github.com/scopatz/xdress/tree/master/docs/mypack>`_
 
@@ -243,7 +256,7 @@ in the xdress repo <https://github.com/scopatz/xdress/tree/master/docs/mypack>`_
 =======================
 Putting It All Together
 =======================
-The following is a more complete, realistic example of an xdressrc.py file that 
+The following is a more complete, realistic example of an xdressrc.py file that
 one might run across in a production level environment.
 
 .. code-block:: python
@@ -253,11 +266,11 @@ one might run across in a production level environment.
     sourcedir = 'src'      # location of C/C++ source
 
     # wrappers for non-standard types (uints, complex)
-    extra_types = 'xdress_extra_types'  
+    extra_types = 'xdress_extra_types'
 
-    # List of C++ standard library container template types 
-    # to instantiate and wrap with Cython. See the type 
-    # system documentation for more details.  Note that 
+    # List of C++ standard library container template types
+    # to instantiate and wrap with Cython. See the type
+    # system documentation for more details.  Note that
     # vectors are wrapped as numpy arrays of the appropriate
     # type.  If the type has no corresponding primitive C++
     # type, then a new numpy dtype is created to handle it.
@@ -310,18 +323,18 @@ one might run across in a production level environment.
     # the packagedir
     #stlcontainers_module = 'stlcontainers'  # default value
 
-    # List of classes to wrap.  These may take one of the following 
+    # List of classes to wrap.  These may take one of the following
     # forms:
     #
     #   (classname, base source filename)
     #   (classname, base source filename, base package filename)
     #   (classname, base source filename, None)
     #
-    # In the first case, the base source filename will be used as 
+    # In the first case, the base source filename will be used as
     # the base package name as well. In the last case, a None value
-    # will register this class for the purpose of generating other 
-    # APIs, but will not create the corresponding bindings.  Additionally, 
-    # if the "xdress.autoall" plugin is enabled, you may also use an 
+    # will register this class for the purpose of generating other
+    # APIs, but will not create the corresponding bindings.  Additionally,
+    # if the "xdress.autoall" plugin is enabled, you may also use an
     # asterix (or star) to tell xdress to search the source file for
     # all classes, functions, and/or variables:
     #
@@ -331,11 +344,11 @@ one might run across in a production level environment.
     #
     # This is useful for wrapping larger existing libraries.
     classes = [
-        ('FCComp', 'fccomp'), 
-        ('EnrichmentParameters', 'enrichment_parameters'), 
-        ('Enrichment', 'bright_enrichment', 'enrichment'), 
-        ('DontWrap', 'bright_enrichment', None), 
-        ('Reprocess', 'reprocess'), 
+        ('FCComp', 'fccomp'),
+        ('EnrichmentParameters', 'enrichment_parameters'),
+        ('Enrichment', 'bright_enrichment', 'enrichment'),
+        ('DontWrap', 'bright_enrichment', None),
+        ('Reprocess', 'reprocess'),
         ]
 
     # List of functions to wrap

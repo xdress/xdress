@@ -4,6 +4,7 @@ and certain variable types.  It is not used to actually describe these elements.
 That is the job of the autodescriber.
 
 This module is available as an xdress plugin by the name ``xdress.autoall``.
+
 Including this plugin enables the ``classes``, ``functions``, and ``variables``  
 run control parameters to have an asterix ('*') in the name positon (index 0).
 For example, rather tha writing::
@@ -30,6 +31,7 @@ Automatic Finder API
 from __future__ import print_function
 import os
 import io
+import re
 import sys
 from hashlib import md5
 from pprint import pprint, pformat
@@ -46,7 +48,7 @@ except ImportError:
 from . import utils
 from . import astparsers
 
-from .utils import find_source
+from .utils import find_source, FORBIDDEN_NAMES, NotSpecified, RunControl
 
 if os.name == 'nt':
     import ntpath
@@ -134,6 +136,7 @@ class GccxmlFinder(object):
             names = []
             for k in kinds:
                 names += self.visit_kinds(node, k)
+            names = [n for n in names if n not in FORBIDDEN_NAMES]
             return names
         names = set()
         for child in node.iterfind(".//" + kinds):
@@ -141,6 +144,8 @@ class GccxmlFinder(object):
                 continue
             name = child.attrib.get('name', '_')
             if name.startswith('_'):
+                continue
+            if name in FORBIDDEN_NAMES:
                 continue
             names.add(name)
             self._pprint(child)
@@ -252,6 +257,8 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
         name = node.name
         if name.startswith('_'):
             return
+        if name in FORBIDDEN_NAMES:
+            return
         self._pprint(node)
         self.variables.append(name)
 
@@ -264,17 +271,41 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
             name = node.type.declname
         if name is None or name.startswith('_'):
             return
+        if name in FORBIDDEN_NAMES:
+            return
         self._pprint(node)
         self.functions.append(name)
 
     def visit_Struct(self, node):
-        self._pprint(node)
         if node.coord.file not in self.onlyin:
             return
         name = node.name
+        if name is None:
+            self._status = "<name-not-found>"
+            return
+        if name.startswith('_'):
+            return 
+        if name in FORBIDDEN_NAMES:
+            return
+        self._pprint(node)
+        self.classes.append(name)
+
+    def visit_Typedef(self, node):
+        if node.coord.file not in self.onlyin:
+            return
+        self._pprint(node)
+        self._status = None
+        self.visit(node.type)
+        stat = self._status
+        self._status = None
+        if stat is None:
+            return
+        if stat == "<name-not-found>":
+            name = node.name
         if name is None or name.startswith('_'):
             return
-        #self._pprint(node)
+        if name in FORBIDDEN_NAMES:
+            return
         self.classes.append(name)
 
 
@@ -442,6 +473,15 @@ class XDressPlugin(astparsers.ParserPlugin):
     source files prio to describing them. 
     """
 
+    def defaultrc(self):
+        rc = RunControl()
+        rc._update(super(XDressPlugin, self).defaultrc)
+        rc.selectclasses = '.*'
+        rc.selectfunctions = '.*'
+        rc.selectvariables = '.*'
+        return rc
+
+
     def setup(self, rc):
         """Expands variables, functions, and classes in the rc based on 
         copying src filenames to tar filename and the special '*' all syntax."""
@@ -471,6 +511,10 @@ class XDressPlugin(astparsers.ParserPlugin):
             if len(cls) == 2:
                 rc.classes[i] = (cls[0], cls[1], cls[1])
 
+        rc.selectclasses = re.compile(rc.selectclasses)
+        rc.selectfunctions = re.compile(rc.selectfunctions)
+        rc.selectvariables = re.compile(rc.selectvariables)
+
         self.allsrc = allsrc
         self.varhasstar = varhasstar
         self.fnchasstar = fnchasstar
@@ -479,6 +523,7 @@ class XDressPlugin(astparsers.ParserPlugin):
     def execute(self, rc):
         print("autoall: discovering API names")
         if not self.varhasstar and not self.fnchasstar and not self.clshasstar:
+            print("autoall: no API names to discover!")
             return
         allsrc = self.allsrc
 
@@ -490,8 +535,7 @@ class XDressPlugin(astparsers.ParserPlugin):
             srcfname, hdrfname, lang, ext = find_source(srcname, 
                                                         sourcedir=rc.sourcedir)
             filename = os.path.join(rc.sourcedir, srcfname)
-            if rc.verbose:
-                print("autoall: searching {0} (from {1!r})".format(srcfname, srcname))
+            print("autoall: searching {0} (from {1!r})".format(srcfname, srcname))
             if autonamecache.isvalid(filename):
                 found = autonamecache[filename]
             else:
@@ -502,6 +546,12 @@ class XDressPlugin(astparsers.ParserPlugin):
                 autonamecache[filename] = found
                 autonamecache.dump()
             allnames[srcname] = found
+            if 0 < len(found[0]):
+                print("autoall: found variables: " + ", ".join(found[0]))
+            if 0 < len(found[1]):
+                print("autoall: found functions: " + ", ".join(found[1]))
+            if 0 < len(found[2]):
+                print("autoall: found classes: " + ", ".join(found[2]))
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 
@@ -510,7 +560,12 @@ class XDressPlugin(astparsers.ParserPlugin):
             newvars = []
             for var in rc.variables:
                 if var[0] == '*':
-                    newvars += [(x, var[1], var[2]) for x in allnames[var[1]][0]]
+                    for x in allnames[var[1]][0]:
+                        m = rc.selectvariables.match(x)
+                        if m is None:
+                            newvars.append((x, var[1], None))
+                        else:
+                            newvars.append((x, var[1], var[2]))
                 else:
                     newvars.append(var)
             rc.variables = newvars
@@ -518,7 +573,12 @@ class XDressPlugin(astparsers.ParserPlugin):
             newfncs = []
             for fnc in rc.functions:
                 if fnc[0] == '*':
-                    newfncs += [(x, fnc[1], fnc[2]) for x in allnames[fnc[1]][1]]
+                    for x in allnames[fnc[1]][1]:
+                        m = rc.selectfunctions.match(x)
+                        if m is None:
+                            newfncs.append((x, fnc[1], None))
+                        else:
+                            newfncs.append((x, fnc[1], fnc[2]))
                 else:
                     newfncs.append(fnc)
             rc.functions = newfncs
@@ -526,7 +586,12 @@ class XDressPlugin(astparsers.ParserPlugin):
             newclss = []
             for cls in rc.classes:
                 if cls[0] == '*':
-                    newclss += [(x, cls[1], cls[2]) for x in allnames[cls[1]][2]]
+                    for x in allnames[cls[1]][2]:
+                        m = rc.selectclasses.match(x)
+                        if m is None:
+                            newclss.append((x, cls[1], None))
+                        else:
+                            newclss.append((x, cls[1], cls[2]))
                 else:
                     newclss.append(cls)
             rc.classes = newclss
