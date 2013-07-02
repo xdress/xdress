@@ -59,8 +59,8 @@ case xdress will flatten all argument types and if the single type
 identifier appears anywhere in the flattened argument description, the
 method will be filtered out.
 
-For example, if 'float64' were in the ``skiptypes`` it would any of the
-following argument types (this is by no means a comprehensive list):
+For example, if 'float64' were in the ``skiptypes`` it would catch any
+of the following argument types (this is by no means a complete list):
 
     "float64"
     "(('vector', 'float64', 'const'), '&')"
