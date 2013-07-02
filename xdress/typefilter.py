@@ -82,12 +82,9 @@ being wrapped.
 
 """
 from __future__ import print_function
-from .utils import isclassdesc
+from .utils import isclassdesc, NotSpecified
 from .typesystem import TypeMatcher
 from .plugins import Plugin
-
-# TODO: subclass or monkey patch TypeMatcher and give it a match_anywhere
-# method that I can call to get things done below.
 
 
 def _flatten(iterable):
@@ -127,10 +124,10 @@ class XDressPlugin(Plugin):
 
     requires = ('xdress.base', 'xdress.autoall')
 
-    defaultrc = {'skiptypes': None}
+    defaultrc = {'skiptypes': NotSpecified}
 
     def setup(self, rc):
-        if rc.skiptypes is not None:
+        if not isinstance(rc.skiptypes, NotSpecified):
 
             # Update dict so everything is a TypeMatcher instance
             if isinstance(rc.skiptypes, dict):
@@ -148,7 +145,7 @@ class XDressPlugin(Plugin):
 
     def execute(self, rc):
         print("typefilter: removing unwanted types from desc dictionary")
-        if rc.skiptypes is not None:
+        if not isinstance(rc.skiptypes, NotSpecified):
             if isinstance(rc.skiptypes, dict):
                 skip_classes = rc.skiptypes.keys()
                 for mod_key, mod in rc.env.items():
