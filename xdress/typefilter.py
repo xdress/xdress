@@ -18,11 +18,12 @@ for your project.
 
 1. Add it to the list of plugins
 2. Define the ``skiptpyes`` list or dictionary. If ``skiptypes`` is a
-dictionary the keys are class names and the values are lists (or tuples)
-of data types that should be left out of the generated code for the
-class. If ``skiptypes`` is a list or tuple, the skipped types will be
-applied to all classes listed in the ``classes`` list in xdressrc. If
-``skiptypes`` is empty or ``None`` this plugin will do nothing.
+   dictionary the keys are class names and the values are lists (or
+   tuples) of data types that should be left out of the generated code
+   for the class. If ``skiptypes`` is a list or tuple, the skipped types
+   will be applied to all classes listed in the ``classes`` list in
+   xdressrc. If ``skiptypes`` is empty or ``None`` this plugin will do
+   nothing.
 
 This might be done with something like:
 
@@ -53,23 +54,25 @@ As of right now ``xdress.typefilter`` is set up to handle skiptype
 elements of two flavors.
 
 1. A single type identifier. This could be any base type,  (e.g. int32,
-char, float64, ect), an STL type (e.g. vector, map, set), or any type
-xdress knows about (like classA in the first example above). In this
-case xdress will flatten all argument types and if the single type
-identifier appears anywhere in the flattened argument description, the
-method will be filtered out.
+   char, float64, ect), an STL type (e.g. vector, map, set), or any type
+   xdress knows about (like classA in the first example above). In this
+   case xdress will flatten all argument types and if the single type
+   identifier appears anywhere in the flattened argument description,
+   the method will be filtered out.
 
-For example, if 'float64' were in the ``skiptypes`` it would catch any
-of the following argument types (this is by no means a complete list):
+   For example, if 'float64' were in the ``skiptypes`` it would catch any
+   of the following argument types (this is by no means a complete list):
+
+.. code-block::
 
     "float64"
     (('vector', 'float64', 'const'), '&')
     ('set', 'float64')
 
 2. A specific argument or return type that will match exactly. This
-option provides more control over what ``xdress.typefilter`` will catch
-and can prevent the plugin from being to ambitious with regards to the
-methods that are filtered out.
+   option provides more control over what ``xdress.typefilter`` will
+   catch and can prevent the plugin from being to ambitious with regards
+   to the methods that are filtered out.
 
 Typically, the first option would be used in situations where xdress,
 for whatever reason, cannot create a wrapper for a user-defined C++
