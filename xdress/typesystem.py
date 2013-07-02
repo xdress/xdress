@@ -252,6 +252,7 @@ from collections import Sequence, Set, Iterable, MutableMapping
 if sys.version_info[0] >= 3:
     basestring = str
 
+
 def _ishashable(x):
     try:
         hash(x)
@@ -259,9 +260,11 @@ def _ishashable(x):
     except TypeError:
         return False
 
+
 def _memoize(obj):
     # based off code from http://wiki.python.org/moin/PythonDecoratorLibrary
     cache = obj.cache = {}
+
     @functools.wraps(obj)
     def memoizer(*args, **kwargs):
         key = args + tuple(sorted(kwargs.items()))
@@ -292,6 +295,7 @@ template_types = {
 """Template types are types whose instantiations are based on meta-types.
 this dict maps their names to meta-type names in order."""
 
+
 @_memoize
 def istemplate(t):
     """Returns whether t is a template type or not."""
@@ -320,6 +324,7 @@ def isenum(t):
     t = canon(t)
     return isinstance(t, Sequence) and t[0] == 'int32' and \
            isinstance(t[1], Sequence) and t[1][0] == 'enum'
+
 
 @_memoize
 def isfunctionpointer(t):
@@ -352,6 +357,7 @@ _humannames = {
     'vector': 'vector [ndarray] of {value_type}',
     }
 
+
 @_memoize
 def humanname(t, hnt=None):
     """Computes human names for types."""
@@ -372,6 +378,7 @@ def humanname(t, hnt=None):
             val, _ = humanname(x, _humannames[x[0]])
         d[key] = val
     return t, hnt.format(**d)
+
 
 @_memoize
 def isdependent(t):
@@ -394,6 +401,7 @@ def isrefinement(t):
 
 def _raise_type_error(t):
     raise TypeError("type of {0!r} could not be determined".format(t))
+
 
 @_memoize
 def _resolve_dependent_type(tname, tinst=None):
@@ -424,6 +432,7 @@ def _resolve_dependent_type(tname, tinst=None):
         assert len(tinst) == len(depkey)
         return canon(depval), (tname,) + tuple([(kname, canon(ktype), instval) \
                         for (kname, ktype), instval in zip(depkey[1:], tinst[1:])])
+
 
 @_memoize
 def canon(t):
@@ -476,6 +485,7 @@ def canon(t):
     else:
         _raise_type_error(t)
 
+
 @_memoize
 def strip_predicates(t):
     """Removes all outer predicates from a type."""
@@ -491,7 +501,6 @@ def strip_predicates(t):
             return t[:-1] + (0,)
     else:
         _raise_type_error(t)
-
 
 
 class MatchAny(object):
@@ -627,6 +636,7 @@ STLCONTAINERS = 'stlcontainers'
 _ensuremod = lambda x: x if x is not None and 0 < len(x) else ''
 _ensuremoddot = lambda x: x + '.' if x is not None and 0 < len(x) else ''
 
+
 def _recurse_replace(x, a, b):
     if isinstance(x, basestring):
         return x.replace(a, b)
@@ -634,6 +644,7 @@ def _recurse_replace(x, a, b):
         return tuple([_recurse_replace(y, a, b) for y in x])
     else:
         return x
+
 
 class _LazyConfigDict(MutableMapping):
     def __init__(self, items):
@@ -652,7 +663,7 @@ class _LazyConfigDict(MutableMapping):
     def __getitem__(self, key):
         value = self._d[key]
         kw = {'extra_types': _ensuremoddot(EXTRA_TYPES),
-              'stlcontainers': _ensuremoddot(STLCONTAINERS),}
+              'stlcontainers': _ensuremoddot(STLCONTAINERS), }
         for k, v in kw.items():
             value = _recurse_replace(value, '{' + k + '}', v)
         return value
@@ -662,6 +673,7 @@ class _LazyConfigDict(MutableMapping):
 
     def __delitem__(self, key):
         del self._d[key]
+
 
 class _LazyImportDict(MutableMapping):
     def __init__(self, items):
@@ -692,6 +704,7 @@ class _LazyImportDict(MutableMapping):
 
     def __delitem__(self, key):
         del self._d[key]
+
 
 class _LazyConverterDict(MutableMapping):
     def __init__(self, items):
@@ -845,6 +858,7 @@ _cython_ctypes = _LazyConfigDict({
     'vector': 'cpp_vector',
     })
 
+
 def _cython_ctypes_function(t):
     rtnct = cython_ctype(t[2][2])
     argcts = [cython_ctype(argt) for n, argt in t[1][2]]
@@ -852,6 +866,7 @@ def _cython_ctypes_function(t):
         argcts = []
     return rtnct + " {type_name}(" + ", ".join(argcts) + ")"
 _cython_ctypes['function'] = _cython_ctypes_function
+
 
 def _cython_ctypes_function_pointer(t):
     rtnct = cython_ctype(t[2][2])
@@ -878,7 +893,7 @@ def cython_ctype(t):
 #    if t in _cython_ctypes:
 #        return _cython_ctypes[t]
     if isinstance(t, basestring):
-        if  t in base_types:
+        if t in base_types:
             return _cython_ctypes[t]
     # must be tuple below this line
     tlen = len(t)
@@ -936,6 +951,7 @@ _cython_cimports = _LazyImportDict({
     'nucname': (('pyne', 'cpp_nucname'), ('libcpp.string', 'string', 'std_string')),
     })
 
+
 def _cython_cimports_functionish(t, seen):
     seen.add(('cython.operator', 'dereference', 'deref'))
     for n, argt in t[1][2]:
@@ -970,12 +986,14 @@ _cython_cyimports = _LazyImportDict({
     'nucname': (('pyne', 'nucname'),),
     })
 
+
 def _cython_cyimports_functionish(t, seen):
     for n, argt in t[1][2]:
         cython_cimport_tuples(argt, seen=seen, inc=('cy',))
     cython_cimport_tuples(t[2][2], seen=seen, inc=('cy',))
 _cython_cyimports['function'] = _cython_cyimports_functionish
 _cython_cyimports['function_pointer'] = _cython_cyimports_functionish
+
 
 @_memoize
 def cython_cimport_tuples(t, seen=None, inc=frozenset(['c', 'cy'])):
@@ -1039,6 +1057,7 @@ _cython_cimport_cases = {
                     "from {0} cimport {1} as {2}".format(*tup)),
     }
 
+
 @_memoize
 def cython_cimports(x, inc=frozenset(['c', 'cy'])):
     """Returns the cimport lines associated with a type or a set of seen tuples.
@@ -1046,7 +1065,6 @@ def cython_cimports(x, inc=frozenset(['c', 'cy'])):
     if not isinstance(x, Set):
         x = cython_cimport_tuples(x, inc=inc)
     return set([_cython_cimport_cases[len(tup)](tup) for tup in x if 0 != len(tup)])
-
 
 
 _cython_pyimports = _LazyImportDict({
@@ -1075,6 +1093,7 @@ _cython_pyimports = _LazyImportDict({
     'nucname': (('pyne', 'nucname'),),
     })
 
+
 def _cython_pyimports_functionish(t, seen):
     seen.add(('warnings',))
     for n, argt in t[1][2]:
@@ -1102,7 +1121,7 @@ def cython_import_tuples(t, seen=None):
     if seen is None:
         seen = set()
     if isinstance(t, basestring):
-        if  t in base_types:
+        if t in base_types:
             seen.update(_cython_pyimports[t])
             seen -= set((None, (None,)))
             return seen
@@ -1131,6 +1150,7 @@ _cython_import_cases = {
     3: lambda tup: ("import {0} as {2}".format(*tup) if tup[1] == 'as' else \
                     "from {0} import {1} as {2}".format(*tup)),
     }
+
 
 @_memoize
 def cython_imports(x):
@@ -1200,6 +1220,7 @@ _cython_functionnames = _LazyConfigDict({
     'function_pointer': 'functionpointer',
     })
 
+
 @_memoize
 def cython_functionname(t, cycyt=None):
     """Computes variable or function names for cython types."""
@@ -1251,6 +1272,7 @@ _cython_classnames = _LazyConfigDict({
     'nucname': 'Nucname',
     })
 
+
 @_memoize
 def _fill_cycyt(cycyt, t):
     """Helper for cython_cytype()."""
@@ -1264,6 +1286,7 @@ def _fill_cycyt(cycyt, t):
             val, _ = _fill_cycyt(_cython_classnames[x[0]], x)
         d[key] = val
     return cycyt.format(**d), t
+
 
 @_memoize
 def cython_classname(t, cycyt=None):
@@ -1286,6 +1309,7 @@ def cython_classname(t, cycyt=None):
         d[key] = val
     return t, cycyt.format(**d)
 
+
 def _cython_cytype_add_predicate(t, last):
     """Adds a predicate to a cytype"""
     if last == '*':
@@ -1294,6 +1318,7 @@ def _cython_cytype_add_predicate(t, last):
         return '{0} [{1}]'.format(t, last)
     else:
         return t
+
 
 @_memoize
 def cython_cytype(t):
@@ -1356,6 +1381,7 @@ _cython_pytypes = _LazyConfigDict({
     'vector': 'np.ndarray',
     })
 
+
 @_memoize
 def _fill_cypyt(cypyt, t):
     """Helper for cython_pytype()."""
@@ -1378,7 +1404,7 @@ def cython_pytype(t):
 #    if t in _cython_pytypes:
 #        return _cython_pytypes[t]
     if isinstance(t, basestring):
-        if  t in base_types:
+        if t in base_types:
             return _cython_pytypes[t]
     # must be tuple below this line
     tlen = len(t)
@@ -1407,9 +1433,6 @@ def cython_pytype(t):
         #    cypyt += ' {0}'.format(last)
         return cypyt
 
-
-
-
 _numpy_types = _LazyConfigDict({
     'char': 'np.NPY_BYTE',
     'uchar': 'np.NPY_UBYTE',
@@ -1427,6 +1450,7 @@ _numpy_types = _LazyConfigDict({
     'bool': 'np.NPY_BOOL',
     'void': 'np.NPY_VOID',
     })
+
 
 @_memoize
 def cython_nptype(t, depth=0):
@@ -1558,6 +1582,7 @@ _cython_c2py_conv = _LazyConverterDict({
     TypeMatcher((('enum', MatchAny, MatchAny), '*')): ('int({var}[0])',),
     TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): ('int({var}[0])',),
     })
+
 
 def _cython_c2py_conv_function_pointer(t_):
     t = t_[1]
@@ -1798,7 +1823,6 @@ _cython_py2c_conv[TypeMatcher((('vector', MatchAny, '&'), 'const'))] = \
     _cython_py2c_conv[TypeMatcher(('vector', MatchAny, '&'))]
 
 
-
 def _cython_py2c_conv_function_pointer(t):
     t = t[1]
     argnames = []
@@ -1942,6 +1966,7 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
 
 ######################  Some utility functions for the typesystem #############
 
+
 @_memoize
 def _ensure_importable(x):
     if isinstance(x, basestring) or x is None:
@@ -1951,6 +1976,7 @@ def _ensure_importable(x):
     else:
         r = x
     return r
+
 
 def register_class(name=None, template_args=None, cython_c_type=None,
                    cython_cimport=None, cython_cy_type=None, cython_py_type=None,
@@ -2096,6 +2122,7 @@ def register_specialization(t, cython_c_type=None, cython_cy_type=None,
     if cython_pyimport is not None:
         _cython_pyimports[t] = cython_pyimport
 
+
 def deregister_specialization(t):
     """This function will remove previously registered template specialization."""
     t = canon(t)
@@ -2145,6 +2172,7 @@ def clearmemo():
         if callable(x) and hasattr(x, 'cache'):
             x.cache.clear()
 
+
 @contextmanager
 def swap_stlcontainers(s):
     """A context manager for temporarily swapping out the STLCONTAINERS value
@@ -2157,6 +2185,7 @@ def swap_stlcontainers(s):
     clearmemo()
     STLCONTAINERS = old
 
+
 def _undot_class_name(name, d):
     value = d[name]
     if '.' not in value:
@@ -2165,10 +2194,12 @@ def _undot_class_name(name, d):
     d[name] = v2
     return v1
 
+
 def _redot_class_name(name, d, value):
     if 0 == len(value):
         return
     d[name] = value + '.' + d[name]
+
 
 @contextmanager
 def local_classes(classnames, typesets=frozenset(['cy', 'py'])):
@@ -2195,6 +2226,7 @@ def local_classes(classnames, typesets=frozenset(['cy', 'py'])):
 _indent4 = lambda x: '' if x is None else "\n".join(["    " + l for l in "\n".join(
                      [xx for xx in x if xx is not None]).splitlines()])
 
+
 def _maprecurse(f, x):
     if not isinstance(x, list):
         return [f(x)]
@@ -2203,4 +2235,3 @@ def _maprecurse(f, x):
     for y in x:
         l += _maprecurse(f, y)
     return l
-
