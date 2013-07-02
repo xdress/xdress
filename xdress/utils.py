@@ -18,7 +18,7 @@ try:
 except ImportError:
     import pickle
 
-if sys.version_info[0] >= 3: 
+if sys.version_info[0] >= 3:
     basestring = str
 
 DEFAULT_RC_FILE = "xdressrc.py"
@@ -40,9 +40,9 @@ def indent(s, n=4, join=True):
 
 
 class indentstr(str):
-    """A special string subclass that can be used to indent the whol string 
+    """A special string subclass that can be used to indent the whol string
     inside of format strings by accessing an ``indentN`` attr.  For example,
-    ``s.indent8`` will return a copy of the string s where every line starts 
+    ``s.indent8`` will return a copy of the string s where every line starts
     with 8 spaces."""
     def __getattr__(self, key):
         if key.startswith('indent'):
@@ -51,14 +51,14 @@ class indentstr(str):
 
 
 def expand_default_args(methods):
-    """This function takes a collection of method tuples and expands all of 
+    """This function takes a collection of method tuples and expands all of
     the default arguments, returning a set of all methods possible."""
     methitems = set()
     for mkey, mrtn in methods:
         mname, margs = mkey[0], mkey[1:]
         havedefaults = [3 == len(arg) for arg in margs]
         if any(havedefaults):
-            # expand default arguments  
+            # expand default arguments
             n = havedefaults.index(True)
             items = [((mname,)+tuple(margs[:n]), mrtn)] + \
                     [((mname,)+tuple(margs[:i]), mrtn) for i in range(n+1,len(margs)+1)]
@@ -70,7 +70,7 @@ def expand_default_args(methods):
 
 
 def newoverwrite(s, filename, verbose=False):
-    """Useful for not forcing re-compiles and thus playing nicely with the 
+    """Useful for not forcing re-compiles and thus playing nicely with the
     build system.  This is acomplished by not writing the file if the existsing
     contents are exactly the same as what would be written out.
 
@@ -95,7 +95,7 @@ def newoverwrite(s, filename, verbose=False):
         print("  wrote " + filename)
 
 def newcopyover(f1, f2, verbose=False):
-    """Useful for not forcing re-compiles and thus playing nicely with the 
+    """Useful for not forcing re-compiles and thus playing nicely with the
     build system.  This is acomplished by not writing the file if the existsing
     contents are exactly the same as what would be written out.
 
@@ -116,7 +116,7 @@ def newcopyover(f1, f2, verbose=False):
 
 def writenewonly(s, filename, verbose=False):
     """Only writes the contents of the string to a file if the file does not exist.
-    Useful for not tocuhing files. 
+    Useful for not tocuhing files.
 
     Parameters
     ----------
@@ -144,7 +144,7 @@ def ensuredirs(f):
 
 def isvardesc(desc):
     """Tests if a description is a variable-type description."""
-    return desc is not None and 'type' in desc 
+    return desc is not None and 'type' in desc
 
 def isfuncdesc(desc):
     """Tests if a description is a function-type description."""
@@ -161,18 +161,18 @@ def exec_file(filename, glb=None, loc=None):
     exec(compile(src, filename, "exec"), glb, loc)
 
 class NotSpecified(object):
-    """A helper class singleton for run control meaning that a 'real' value 
+    """A helper class singleton for run control meaning that a 'real' value
     has not been given."""
     def __repr__(self):
         return "NotSpecified"
 
 NotSpecified = NotSpecified()
-"""A helper class singleton for run control meaning that a 'real' value 
+"""A helper class singleton for run control meaning that a 'real' value
 has not been given."""
 
 class RunControl(object):
-    """A composable configuration class for xdress. Unlike argparse.Namespace, 
-    this keeps the object dictionary (__dict__) separate from the run control 
+    """A composable configuration class for xdress. Unlike argparse.Namespace,
+    this keeps the object dictionary (__dict__) separate from the run control
     attributes dictionary (_dict)."""
 
     def __init__(self, **kwargs):
@@ -332,8 +332,8 @@ nyansep = r'~\_/' * 17 + '~=[,,_,,]:3'
 """WAT?!"""
 
 class DescriptionCache(object):
-    """A quick persistent cache for descriptions from files.  
-    The keys are (classname, filename, kind) tuples.  The values are 
+    """A quick persistent cache for descriptions from files.
+    The keys are (classname, filename, kind) tuples.  The values are
     (hashes-of-the-file, description-dictionary) tuples."""
 
     def __init__(self, cachefile=os.path.join('build', 'desc.cache')):
@@ -388,7 +388,7 @@ class DescriptionCache(object):
         return pformat(self.cache)
 
 def merge_descriptions(descriptions):
-    """Given a sequence of descriptions, in order of increasing precedence, 
+    """Given a sequence of descriptions, in order of increasing precedence,
     merge them into a single description dictionary."""
     attrsmeths = frozenset(['attrs', 'methods', 'signatures'])
     desc = {}
