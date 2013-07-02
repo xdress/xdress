@@ -94,6 +94,68 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
+def _modify_desc(skips, desc):
+    """
+    Deletes specified methods from a class description (desc).
+
+    Parameters
+    ----------
+    skips : dict or list
+        The attribute rc.skiptypes from the run controller managing
+        the desc dictionary. This is filled with
+        xdress.typesystem.TypeMatcher objects and should have been
+        populated as such by xdress.typefilter.setup
+
+    desc : dictionary
+        The class dictionary that is to be altered or tested to see
+        if any methods need to be removed.
+
+    Returns
+    -------
+    desc : dict
+        The modified desc dictionary with methods containing offending
+        types removed
+
+    """
+    # remove attrs with bad types
+    for at_name, at_t in desc['attrs'].copy().items():
+        for tm in skips:
+            if tm.flatmatches(at_t):
+                del desc['attrs'][at_name]
+                break
+
+    # remove methods with bad parameter types or return types
+    for m_key, m_ret in desc['methods'].copy().items():
+        _deleted = False
+        # Check return types
+        for tm in skips:
+            if tm.flatmatches(m_ret):
+                del desc['methods'][m_key]
+                _deleted = True
+                break
+
+        # Stop here if we already got it
+        if _deleted:
+            continue
+
+        m_args = m_key[1:]
+
+        for arg in m_args:
+            t = arg[1]  # Just use type, not parameter name or default val
+            for tm in skips:
+                # c1 = tm.flatmatches(t)
+                # c2 =
+                if tm.flatmatches(t):
+                    del desc['methods'][m_key]
+                    _deleted = True
+                    break
+
+            if _deleted:
+                break
+
+    return desc
+
+
 class XDressPlugin(Plugin):
 
     requires = ('xdress.base', 'xdress.autoall')
@@ -126,56 +188,16 @@ class XDressPlugin(Plugin):
                 for kls_key, desc in mod.items():
                     if isclassdesc(desc):
                         if desc['name'] in skip_classes:
-                            rc.env[mod_key][kls_key] = \
-                                self._modify_class_desc(rc, desc,
-                                                        name=desc['name'])
+                            # Pull out skiptypes
+                            skips = rc.skips[desc['name']]
+
+                            # let _modify_desc remove unwanted methods
+                            rc.env[mod_key][kls_key] = _modify_desc(skips,
+                                                                    desc)
 
         elif isinstance(rc.skiptypes, collections.Sequence):
-            for mod in rc.env.values():
-                for desc in mod.values():
+            for mod_key, mod in rc.env.items():
+                for kls_key, desc in mod.items():
                     if isclassdesc(desc):
-                        self._modify_class_desc(rc, desc)
-
-    def _modify_class_desc(self, rc, desc, name=None):
-        if name is None:
-            skips = rc.skiptypes
-        else:
-            skips = rc.skiptypes[name]
-
-        # remove attrs with bad types
-        for at_name, at_t in desc['attrs'].copy().items():
-            for tm in skips:
-                if tm.flatmatches(at_t):
-                    del desc['attrs'][at_name]
-                    break
-
-        # remove methods with bad parameter types or return types
-        for m_key, m_ret in desc['methods'].copy().items():
-            _deleted = False
-            # Check return types
-            for tm in skips:
-                if tm.flatmatches(m_ret):
-                    del desc['methods'][m_key]
-                    _deleted = True
-                    break
-
-            # Stop here if we already got it
-            if _deleted:
-                continue
-
-            m_args = m_key[1:]
-
-            for arg in m_args:
-                t = arg[1]  # Just use type, not parameter name or default val
-                for tm in skips:
-                    # c1 = tm.flatmatches(t)
-                    # c2 =
-                    if tm.flatmatches(t):
-                        del desc['methods'][m_key]
-                        _deleted = True
-                        break
-
-                if _deleted:
-                    break
-
-        return desc
+                        skips = rc.skiptypes
+                        rc.env[mod_key][kls_key] = _modify_desc(skips, desc)
