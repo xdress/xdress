@@ -13,18 +13,18 @@ achieved by providing canonical abstractions of various kinds of types:
 * Refined types (even or odd ints, strings containing the letter 'a')
 * Dependent types (templates such arrays, maps, sets, vectors)
 
-All types are known by their name (a string identifier) and may be aliased with 
+All types are known by their name (a string identifier) and may be aliased with
 other names.  However, the string id of a type is not sufficient to fully describe
 most types.  The system here implements a canonical form for all kinds of types.
-This canonical form is itself hashable, being comprised only of strings, ints, 
+This canonical form is itself hashable, being comprised only of strings, ints,
 and tuples.
 
 Canonical Forms
 ---------------
 First, let us examine the base types and the forms that they may take.  Base types
-are fiducial.  The type system itself may not make any changes (refinements, 
+are fiducial.  The type system itself may not make any changes (refinements,
 template filling) to types of this kind.  They are basically a collection of bits.
-(The job of ascribing meaning to these bits falls on someone else.)  Thus base types 
+(The job of ascribing meaning to these bits falls on someone else.)  Thus base types
 may be referred to simply by their string identifier.  For example::
 
     'str'
@@ -43,36 +43,36 @@ Aliases to these -- or any -- type names are given in the type_aliases dictionar
         }
 
 Furthermore, length-2 tuples are used to denote a type and the name or flag of its
-predicate.  A predicate is a function or transformation that may be applied to 
-verify, validate, cast, coerce, or extend a variable of the given type.  A common 
-usage is to declare a pointer or reference of the underlying type.  This is done with 
+predicate.  A predicate is a function or transformation that may be applied to
+verify, validate, cast, coerce, or extend a variable of the given type.  A common
+usage is to declare a pointer or reference of the underlying type.  This is done with
 the string flags '*' and '&'::
 
     ('char', '*')
     ('float64', '&')
 
-If the predicate is a positive integer, then this is interpreted as a 
-homogeneous array of the underlying type with the given length.  If this length 
-is zero, then the tuple is often interpreted as a scalar of this type, equivalent 
-to the type itself.  The length-0 scalar interpretation depends on context.  Here 
+If the predicate is a positive integer, then this is interpreted as a
+homogeneous array of the underlying type with the given length.  If this length
+is zero, then the tuple is often interpreted as a scalar of this type, equivalent
+to the type itself.  The length-0 scalar interpretation depends on context.  Here
 are some examples of array types::
 
     ('char', 42)  # length-42 character array
     ('bool', 1)   # length-1 boolean array
     ('f8', 0)     # scalar 64-bit float
 
-.. note:: 
+.. note::
 
-    length-1 tuples are converted to length-2 tuples with a 0 predicate, 
+    length-1 tuples are converted to length-2 tuples with a 0 predicate,
     i.e. ``('char',)`` will become ``('char', 0)``.
-    
+
 The next kind of type are **refinement types** or **refined types**.  A refined type
-is a sub-type of another type but restricts in some way what constitutes a valid 
-element.  For example, if we first take all integers, the set of all positive 
+is a sub-type of another type but restricts in some way what constitutes a valid
+element.  For example, if we first take all integers, the set of all positive
 integers is a refinement of the original.  Similarly, starting with all possible
 strings the set of all strings starting with 'A' is a refinement.
 
-In the system here, refined types are given their own unique names (e.g. 'posint' 
+In the system here, refined types are given their own unique names (e.g. 'posint'
 and 'astr').  The type system has a mapping (``refined_types``) from all refinement
 type names to the names of their super-type.  The user may refer to refinement types
 simply by their string name.  However the canonical form refinement types is to use
@@ -85,20 +85,20 @@ It is these refinement types that give the second index in the tuple its 'predic
 name.  Additionally, the predicate is used to look up the converter and validation
 functions when doing code generation or type verification.
 
-The last kind of types are known as **dependent types** or **template types**, 
-similar in concept to C++ template classes.  These are meta-types whose 
+The last kind of types are known as **dependent types** or **template types**,
+similar in concept to C++ template classes.  These are meta-types whose
 instantiation requires one or more parameters to be filled in by further values or
-types. Dependent types may nest with themselves or other dependent types.  Fully 
+types. Dependent types may nest with themselves or other dependent types.  Fully
 qualifying a template type requires the resolution of all dependencies.
 
 Classic examples of dependent types include the C++ template classes.  These take
-other types as their dependencies.  Other cases may require only values as 
+other types as their dependencies.  Other cases may require only values as
 their dependencies.  For example, suppose we want to restrict integers to various
 ranges.  Rather than creating a refinement type for every combination of integer
 bounds, we can use a single 'intrange' type that defines high and low dependencies.
 
 The ``template_types`` mapping takes the dependent type names (e.g. 'map')
-to a tuple of their dependency names ('key', 'value').   The ``refined_types`` 
+to a tuple of their dependency names ('key', 'value').   The ``refined_types``
 mapping also accepts keys that are tuples of the following form::
 
     ('<type name>', '<dep0-name>', ('dep1-name', 'dep1-type'), ...)
@@ -109,10 +109,10 @@ Note that template names may be reused as types of other template parameters::
 
 As we have seen, dependent
 types may either be base types (when based off of template classes), refined types,
-or both.  Their canonical form thus follows the rules above with some additional 
-syntax.  The first element of the tuple is still the type name and the last 
+or both.  Their canonical form thus follows the rules above with some additional
+syntax.  The first element of the tuple is still the type name and the last
 element is still the predicate (default 0).  However the type tuples now have a
-length equal to 2 plus the number of dependencies.  These dependencies are 
+length equal to 2 plus the number of dependencies.  These dependencies are
 placed between the name and the predicate: ``('<name>', <dep0>, ..., <predicate>)``.
 These dependencies, of course, may be other type names or tuples!  Let's see
 some examples.
@@ -136,14 +136,14 @@ canonical form::
     ('int32', ('intrange', ('low', 'int32', -42), ('high', 'int32', 42)))
 
 Note that the low and high dependencies here are length three tuples of the form
-``('<dep-name>', <dep-type>, <dep-value>)``.  How the dependency values end up 
+``('<dep-name>', <dep-type>, <dep-value>)``.  How the dependency values end up
 being used is solely at the discretion of the implementation.  These values may
-be anything, though they are most useful when they are easily convertible into 
+be anything, though they are most useful when they are easily convertible into
 strings in the target language.
 
-.. warning:: 
+.. warning::
 
-    Do not confuse length-3 dependency tuples with length-3 type tuples!  
+    Do not confuse length-3 dependency tuples with length-3 type tuples!
     The last element here is a value, not a predicate.
 
 Next, consider a 'range' type which behaves similarly to 'intrange' except that
@@ -153,7 +153,7 @@ canonical form::
     refined_types = {('range', 'vtype', ('low', 'vtype'), ('high', 'vtype')): 'vtype'}
 
     # integer range from 1 -> 2
-    ('int32', ('range', 'int32', ('low', 'int32', 1), ('high', 'int32', 2)))    
+    ('int32', ('range', 'int32', ('low', 'int32', 1), ('high', 'int32', 2)))
 
     # positive integer range from 42 -> 65
     (('int32', 'posint'), ('range', ('int32', 'posint'),
@@ -163,8 +163,8 @@ canonical form::
 Shorthand Forms
 ---------------
 The canonical forms for types contain all the information needed to fully describe
-different kinds of types.  However, as human-facing code, they can be exceedingly 
-verbose.  Therefore there are number of shorthand techniques that may be used to 
+different kinds of types.  However, as human-facing code, they can be exceedingly
+verbose.  Therefore there are number of shorthand techniques that may be used to
 also denote the various types.  Converting from these shorthands to the fully
 expanded version may be done via the the ``canon(t)`` function.  This function
 takes a single type and returns the canonical form of that type.  The following
@@ -192,7 +192,7 @@ are operations that ``canon()``  performs:
     t = ('set', 'float')
     canon(t) == ('set', 'float64', 0)
 
-* Applies dependencies:: 
+* Applies dependencies::
 
     t = ('intrange', 1, 2)
     canon(t) = ('int32', ('intrange', ('low', 'int32', 1), ('high', 'int32', 2)))
@@ -203,14 +203,14 @@ are operations that ``canon()``  performs:
 * Performs all of the above recursively::
 
     t = (('map', 'posint', ('set', ('intrange', 1, 2))),)
-    canon(t) == (('map', 
-                 ('int32', 'posint'),  
-                 ('set', ('int32', 
+    canon(t) == (('map',
+                 ('int32', 'posint'),
+                 ('set', ('int32',
                     ('intrange', ('low', 'int32', 1), ('high', 'int32', 2))), 0)), 0)
 
 These shorthands are thus far more useful and intuitive than canonical form described
 above.  It is therefore recommended that users and developers write code that uses
-the shorter versions, Note that ``canon()`` is guaranteed to return strings, tuples, 
+the shorter versions, Note that ``canon()`` is guaranteed to return strings, tuples,
 and integers only -- making the output of this function hashable.
 
 Built-in Template Types
@@ -235,8 +235,8 @@ Refined type definitions that come stock with xdress::
         'nucid': 'int32',
         'nucname': 'str',
         ('enum', ('name', 'str'), ('aliases', ('dict', 'str', 'int32', 0))): 'int32',
-        ('function', ('arguments', ('list', ('pair', 'str', 'type'))), ('returns', 'type')): 'void', 
-        ('function_pointer', ('arguments', ('list', ('pair', 'str', 'type'))), ('returns', 'type')): ('void', '*'), 
+        ('function', ('arguments', ('list', ('pair', 'str', 'type'))), ('returns', 'type')): 'void',
+        ('function_pointer', ('arguments', ('list', ('pair', 'str', 'type'))), ('returns', 'type')): ('void', '*'),
         }
 
 Type System API
@@ -249,7 +249,7 @@ import functools
 from contextlib import contextmanager
 from collections import Sequence, Set, Iterable, MutableMapping
 
-if sys.version_info[0] >= 3: 
+if sys.version_info[0] >= 3:
     basestring = str
 
 def _ishashable(x):
@@ -257,7 +257,7 @@ def _ishashable(x):
         hash(x)
         return True
     except TypeError:
-        return False 
+        return False
 
 def _memoize(obj):
     # based off code from http://wiki.python.org/moin/PythonDecoratorLibrary
@@ -275,8 +275,8 @@ def _memoize(obj):
     return memoizer
 
 
-base_types = set(['char', 'uchar', 'str', 'int16', 'int32', 'int64', 'int128', 
-                  'uint16', 'uint32', 'uint64', 'uint128', 'float32', 'float64', 
+base_types = set(['char', 'uchar', 'str', 'int16', 'int32', 'int64', 'int128',
+                  'uint16', 'uint32', 'uint64', 'uint128', 'float32', 'float64',
                   'float128', 'complex128', 'void', 'bool', 'type', 'file'])
 """Base types in the type system."""
 
@@ -305,13 +305,13 @@ refined_types = {
     'nucid': 'int32',
     'nucname': 'str',
     ('enum', ('name', 'str'), ('aliases', ('dict', 'str', 'int32', 0))): 'int32',
-    ('function', ('arguments', ('list', ('pair', 'str', 'type'))), 
-                 ('returns', 'type')): 'void', 
-    ('function_pointer', ('arguments', ('list', ('pair', 'str', 'type'))), 
-                         ('returns', 'type')): ('void', '*'), 
+    ('function', ('arguments', ('list', ('pair', 'str', 'type'))),
+                 ('returns', 'type')): 'void',
+    ('function_pointer', ('arguments', ('list', ('pair', 'str', 'type'))),
+                         ('returns', 'type')): ('void', '*'),
     }
 """This is a mapping from refinement type names to the parent types.
-The parent types may either be base types, compound types, template 
+The parent types may either be base types, compound types, template
 types, or other refined types!"""
 
 
@@ -368,7 +368,7 @@ def humanname(t, hnt=None):
             val = _humannames[x]
         elif x[0] in base_types:
             val = _humannames[x[0]]
-        else: 
+        else:
             val, _ = humanname(x, _humannames[x[0]])
         d[key] = val
     return t, hnt.format(**d)
@@ -390,7 +390,7 @@ def isrefinement(t):
     if isinstance(t, basestring):
         return t in refined_types
     return isdependent(t)
-        
+
 
 def _raise_type_error(t):
     raise TypeError("type of {0!r} could not be determined".format(t))
@@ -439,10 +439,10 @@ def canon(t):
             return _resolve_dependent_type(t)
         else:
             _raise_type_error(t)
-            # BELOW this would be for complicated string representations, 
+            # BELOW this would be for complicated string representations,
             # such as 'char *' or 'map<nucid, double>'.  Would need to write
             # the parse_type() function and that might be a lot of work.
-            #parse_type(t)  
+            #parse_type(t)
     elif isinstance(t, Sequence):
         t0 = t[0]
         tlen = len(t)
@@ -491,7 +491,7 @@ def strip_predicates(t):
             return t[:-1] + (0,)
     else:
         _raise_type_error(t)
-    
+
 
 
 class MatchAny(object):
@@ -506,6 +506,19 @@ class MatchAny(object):
 MatchAny = MatchAny()
 """A singleton helper class for matching any portion of a type."""
 
+
+def _flatten(iterable):
+    "Recursive hack to flatten arbitrary lists/tuples of lists/tuples"
+    for el in iterable:
+        if isinstance(el, basestring):
+            yield el
+        elif isinstance(el, Iterable):
+            for subel in _flatten(el):
+                yield subel
+        else:
+            yield el
+
+
 class TypeMatcher(object):
     """A class that is used for checking whether a type matches a given pattern."""
 
@@ -514,8 +527,8 @@ class TypeMatcher(object):
         ----------
         pattern : nested tuples, str, int
             This is a type-like entity that may have certain elements replaced
-            by MatchAny, indicating that any value in a concrete type may match 
-            this pattern.  For example ('float64', MatchAny) will match the 
+            by MatchAny, indicating that any value in a concrete type may match
+            this pattern.  For example ('float64', MatchAny) will match the
             following::
 
                 ('float64', 0)
@@ -555,7 +568,7 @@ class TypeMatcher(object):
         if isinstance(pattern, basestring):
             #return t == pattern if isinstance(t, basestring) else False
             return False
-        # now we know both pattern and t should be different non-string sequences, 
+        # now we know both pattern and t should be different non-string sequences,
         # nominally tuples or lists
         if len(t) != len(pattern):
             return False
@@ -565,6 +578,25 @@ class TypeMatcher(object):
             if not submatcher.matches(subt):
                 return False
         return True
+
+    def flatmatches(self, t):
+        """
+        Flattens t and then sees if any part of it matches
+        TypeMatcher.pattern
+        """
+        try:
+            # See if user gave entire type
+            if self.matches(t):
+                return True
+        except TypeError:
+            # This might fail, if it does just move on
+            pass
+
+        else:
+            if isinstance(t, basestring):
+                return self.matches(t)
+            elif isinstance(t, (tuple, list)):
+                return any([self.matches(i) for i in _flatten(t)])
 
     def __eq__(self, other):
         if isinstance(other, TypeMatcher):
@@ -578,6 +610,7 @@ class TypeMatcher(object):
     def __repr__(self):
         return "{0}({1!r})".format(self.__class__.__name__, self._pattern)
 
+
 def matches(pattern, t):
     """Indicates whether a type t matches a pattern. See TypeMatcher for more details.
     """
@@ -589,7 +622,7 @@ def matches(pattern, t):
 
 EXTRA_TYPES = 'xdress_extra_types'
 
-STLCONTAINERS = 'stlcontainers' 
+STLCONTAINERS = 'stlcontainers'
 
 _ensuremod = lambda x: x if x is not None and 0 < len(x) else ''
 _ensuremoddot = lambda x: x + '.' if x is not None and 0 < len(x) else ''
@@ -601,7 +634,7 @@ def _recurse_replace(x, a, b):
         return tuple([_recurse_replace(y, a, b) for y in x])
     else:
         return x
-    
+
 class _LazyConfigDict(MutableMapping):
     def __init__(self, items):
         self._d = dict(items)
@@ -794,7 +827,7 @@ _cython_ctypes = _LazyConfigDict({
     #'uint16': 'unsigned short',
     'uint16': '{extra_types}uint16',
     #'uint32': 'unsigned long',
-    'uint32': '{extra_types}uint32',  
+    'uint32': '{extra_types}uint32',
     #'uint64': 'unsigned long long',
     'uint64': '{extra_types}uint64',
     'float32': 'float',
@@ -803,7 +836,7 @@ _cython_ctypes = _LazyConfigDict({
     'float128': '{extra_types}float128',
     'complex128': '{extra_types}complex_t',
     'bool': 'bint',
-    'void': 'void', 
+    'void': 'void',
     'file': 'c_file',
     'map': 'cpp_map',
     'dict': 'dict',
@@ -885,14 +918,14 @@ _cython_cimports = _LazyImportDict({
     ('int32', '*'): 'int *',
     'int64':  (('{extra_types}',),),
     'uint16':  (('{extra_types}',),),
-    'uint32': (('{extra_types}',),),  
+    'uint32': (('{extra_types}',),),
     'uint64':  (('{extra_types}',),),
     'float32': (None,),
     'float64': (None,),
     'float128':  (('{extra_types}',),),
     'complex128': (('{extra_types}',),),
-    'bool': (None,), 
-    'void': (None,), 
+    'bool': (None,),
+    'void': (None,),
     'file': (('libc.stdio', 'FILE', 'c_file'),),
     'map': (('libcpp.map', 'map', 'cpp_map'),),
     'dict': (None,),
@@ -925,12 +958,12 @@ _cython_cyimports = _LazyImportDict({
     'float64': (None,),
     'float128': (None,),
     'complex128': (('{extra_types}',),),  # for py2c_complex()
-    'bool': (None,), 
-    'void': (None,), 
-    'file': (('{extra_types}',),), 
+    'bool': (None,),
+    'void': (None,),
+    'file': (('{extra_types}',),),
     'map': (('{stlcontainers}',),),
     'dict': (None,),
-    'pair': (('{stlcontainers}',),), 
+    'pair': (('{stlcontainers}',),),
     'set': (('{stlcontainers}',),),
     'vector': (('numpy', 'as', 'np'),),
     'nucid': (('pyne', 'nucname'),),
@@ -946,14 +979,14 @@ _cython_cyimports['function_pointer'] = _cython_cyimports_functionish
 
 @_memoize
 def cython_cimport_tuples(t, seen=None, inc=frozenset(['c', 'cy'])):
-    """Given a type t, and possibly previously seen cimport tuples (set), 
-    return the set of all seen cimport tuples.  These tuple have four possible 
+    """Given a type t, and possibly previously seen cimport tuples (set),
+    return the set of all seen cimport tuples.  These tuple have four possible
     interpretations based on the length and values:
 
     * ``(module-name,)`` becomes ``cimport {module-name}``
-    * ``(module-name, var-or-mod)`` becomes 
+    * ``(module-name, var-or-mod)`` becomes
       ``from {module-name} cimport {var-or-mod}``
-    * ``(module-name, var-or-mod, alias)`` becomes 
+    * ``(module-name, var-or-mod, alias)`` becomes
       ``from {module-name} cimport {var-or-mod} as {alias}``
     * ``(module-name, 'as', alias)`` becomes ``cimport {module-name} as {alias}``
 
@@ -968,7 +1001,7 @@ def cython_cimport_tuples(t, seen=None, inc=frozenset(['c', 'cy'])):
             if 'cy' in inc:
                 seen.update(_cython_cyimports[t])
             seen -= set((None, (None,)))
-            return seen        
+            return seen
     # must be tuple below this line
     tlen = len(t)
     if 2 == tlen:
@@ -1030,9 +1063,9 @@ _cython_pyimports = _LazyImportDict({
     'float64': (None,),
     'float128': (None,),
     'complex128': (None,),
-    'bool': (None,), 
-    'void': (None,), 
-    'file': (None,), 
+    'bool': (None,),
+    'void': (None,),
+    'file': (None,),
     'map': (('{stlcontainers}',),),
     'dict': (None,),
     'pair': (('{stlcontainers}',),),
@@ -1053,14 +1086,14 @@ _cython_pyimports['function_pointer'] = _cython_pyimports_functionish
 
 @_memoize
 def cython_import_tuples(t, seen=None):
-    """Given a type t, and possibly previously seen import tuples (set), 
-    return the set of all seen import tuples.  These tuple have four possible 
+    """Given a type t, and possibly previously seen import tuples (set),
+    return the set of all seen import tuples.  These tuple have four possible
     interpretations based on the length and values:
 
     * ``(module-name,)`` becomes ``import {module-name}``
-    * ``(module-name, var-or-mod)`` becomes 
+    * ``(module-name, var-or-mod)`` becomes
       ``from {module-name} import {var-or-mod}``
-    * ``(module-name, var-or-mod, alias)`` becomes 
+    * ``(module-name, var-or-mod, alias)`` becomes
       ``from {module-name} import {var-or-mod} as {alias}``
     * ``(module-name, 'as', alias)`` becomes ``import {module-name} as {alias}``
 
@@ -1118,9 +1151,9 @@ _cython_cytypes = _LazyConfigDict({
     'int32': 'int',
     ('int32', '*'): 'int *',
     'int64': 'long long',
-    'uint16': 'unsigned short',  
+    'uint16': 'unsigned short',
     'uint32': 'unsigned long',  # 'unsigned int'
-    'uint64': 'unsigned long long', 
+    'uint64': 'unsigned long long',
     'float32': 'float',
     'float64': 'float',
     'float128': 'long double',
@@ -1160,11 +1193,11 @@ _cython_functionnames = _LazyConfigDict({
     'dict': 'dict',
     'pair': 'pair_{key_type}_{value_type}',
     'set': 'set_{value_type}',
-    'vector': 'vector_{value_type}',    
-    'nucid': 'nucid', 
+    'vector': 'vector_{value_type}',
+    'nucid': 'nucid',
     'nucname': 'nucname',
-    'function': 'function', 
-    'function_pointer': 'functionpointer', 
+    'function': 'function',
+    'function_pointer': 'functionpointer',
     })
 
 @_memoize
@@ -1183,7 +1216,7 @@ def cython_functionname(t, cycyt=None):
             val = _cython_functionnames[x]
         elif x[0] in base_types:
             val = _cython_functionnames[x[0]]
-        else: 
+        else:
             _, val = cython_functionname(x, _cython_functionnames[x[0]])
         d[key] = val
     return t, cycyt.format(**d)
@@ -1213,8 +1246,8 @@ _cython_classnames = _LazyConfigDict({
     'dict': 'Dict',
     'pair': 'Pair{key_type}{value_type}',
     'set': 'Set{value_type}',
-    'vector': 'Vector{value_type}',    
-    'nucid': 'Nucid', 
+    'vector': 'Vector{value_type}',
+    'nucid': 'Nucid',
     'nucname': 'Nucname',
     })
 
@@ -1227,11 +1260,11 @@ def _fill_cycyt(cycyt, t):
             val = _cython_classnames[x]
         elif x[0] in base_types:
             val = _cython_classnames[x[0]]
-        else: 
+        else:
             val, _ = _fill_cycyt(_cython_classnames[x[0]], x)
         d[key] = val
     return cycyt.format(**d), t
-    
+
 @_memoize
 def cython_classname(t, cycyt=None):
     """Computes classnames for cython types."""
@@ -1248,7 +1281,7 @@ def cython_classname(t, cycyt=None):
             val = _cython_classnames[x]
         elif x[0] in base_types:
             val = _cython_classnames[x[0]]
-        else: 
+        else:
             _, val = cython_classname(x, _cython_classnames[x[0]])
         d[key] = val
     return t, cycyt.format(**d)
@@ -1258,7 +1291,7 @@ def _cython_cytype_add_predicate(t, last):
     if last == '*':
         return '{0} {1}'.format(t, last)
     elif isinstance(last, int) and 0 < last:
-        return '{0} [{1}]'.format(t, last)        
+        return '{0} [{1}]'.format(t, last)
     else:
         return t
 
@@ -1292,7 +1325,7 @@ def cython_cytype(t):
         assert t[0] in template_types
         assert len(t) == len(template_types[t[0]]) + 2
         template_name = _cython_cytypes[t[0]]
-        assert template_name is not NotImplemented        
+        assert template_name is not NotImplemented
         cycyt = _cython_cytypes[t[0]]
         cycyt, t = _fill_cycyt(cycyt, t)
         cycyt = _cython_cytype_add_predicate(cycyt, t[-1])
@@ -1332,11 +1365,11 @@ def _fill_cypyt(cypyt, t):
             val = _cython_classnames[x]
         elif x[0] in base_types:
             val = _cython_classnames[x[0]]
-        else: 
+        else:
             val, _ = _fill_cypyt(_cython_classnames[x[0]], x)
         d[key] = val
     return cypyt.format(**d), t
-    
+
 
 @_memoize
 def cython_pytype(t):
@@ -1365,7 +1398,7 @@ def cython_pytype(t):
         assert t[0] in template_types
         assert len(t) == len(template_types[t[0]]) + 2
         template_name = _cython_pytypes[t[0]]
-        assert template_name is not NotImplemented        
+        assert template_name is not NotImplemented
         cypyt = _cython_pytypes[t[0]]
         cypyt, t = _fill_cypyt(cypyt, t)
         # FIXME last is ignored for strings, but what about other types?
@@ -1392,13 +1425,13 @@ _numpy_types = _LazyConfigDict({
     'float128': 'np.NPY_FLOAT128',
     'complex128': 'np.NPY_COMPLEX128',
     'bool': 'np.NPY_BOOL',
-    'void': 'np.NPY_VOID',     
+    'void': 'np.NPY_VOID',
     })
 
 @_memoize
 def cython_nptype(t, depth=0):
-    """Given a type t, returns the corresponding numpy type.  If depth is 
-    greater than 0 then this returns of a list of numpy types for all internal 
+    """Given a type t, returns the corresponding numpy type.  If depth is
+    greater than 0 then this returns of a list of numpy types for all internal
     template types, ie the float in ('vector', 'float', 0)."""
     t = canon(t)
     if isinstance(t, basestring):
@@ -1448,7 +1481,7 @@ _cython_c2py_conv = _LazyConverterDict({
     'file': ('{extra_types}PyFile_FromFile(&{var}, "{var}", "r+", NULL)',),
     ('file', '*'): ('{extra_types}PyFile_FromFile({var}, "{var}", "r+", NULL)',),
     # template types
-    'map': ('{pytype}({var})', 
+    'map': ('{pytype}({var})',
            ('{proxy_name} = {pytype}(False, False)\n'
             '{proxy_name}.map_ptr = &{var}\n'),
            ('if {cache_name} is None:\n'
@@ -1487,18 +1520,18 @@ _cython_c2py_conv = _LazyConverterDict({
                ('cdef int i\n'
                 '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
                 '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptypes[0]})\n'
-                'for i in range({proxy_name}_shape[0]):\n' 
+                'for i in range({proxy_name}_shape[0]):\n'
                 '    {proxy_name}[i] = {var}[i]\n'),
                ('cdef int i\n'
                 '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
                 '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptypes[0]})\n'
-                'for i in range({proxy_name}_shape[0]):\n' 
+                'for i in range({proxy_name}_shape[0]):\n'
                 '    {proxy_name}[i] = {var}[i]\n'),
                ('cdef int i\n'
                 'if {cache_name} is None:\n'
                 '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
                 '    {proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptype[0]})\n'
-                '    for i in range({proxy_name}_shape[0]):\n' 
+                '    for i in range({proxy_name}_shape[0]):\n'
                 '        {proxy_name}[i] = {var}[i]\n'
                 '    {cache_name} = {proxy_name}\n'
                 )),
@@ -1506,12 +1539,12 @@ _cython_c2py_conv = _LazyConverterDict({
                ('cdef int i\n'
                 '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
                 '{proxy_name} = np.empty({proxy_name}_shape[0], "U1")\n'
-                'for i in range({proxy_name}_shape[0]):\n' 
+                'for i in range({proxy_name}_shape[0]):\n'
                 '    {proxy_name}[i] = chr(<int> {var}[i])\n'),
                ('cdef int i\n'
                 '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
                 '{proxy_name} = np.empty({proxy_name}_shape[0], "U1")\n'
-                'for i in range({proxy_name}_shape[0]):\n' 
+                'for i in range({proxy_name}_shape[0]):\n'
                 '    {proxy_name}[i] = chr(<int> {var}[i])\n'),
                ('cdef int i\n'
                 'if {cache_name} is None:\n'
@@ -1546,10 +1579,10 @@ def _cython_c2py_conv_function_pointer(t_):
         rtnprox += '_'
     argdecls = _indent4(argdecls)
     argbodys = _indent4(argbodys)
-#    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtnname, t[2][2], cached=False, 
-#                                              proxy_name=rtnprox, 
+#    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtnname, t[2][2], cached=False,
+#                                              proxy_name=rtnprox,
 #                                              existing_name=rtncall)
-    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtncall, t[2][2], cached=False, 
+    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtncall, t[2][2], cached=False,
                                               proxy_name=rtnprox,
                                               existing_name=rtncall)
     if rtndecl is None and rtnbody is None:
@@ -1566,11 +1599,11 @@ def _cython_c2py_conv_function_pointer(t_):
     {rtncall} = {{var}}({carglist})
 {rtnbody}
 """
-    s = s.format(arglist=", ".join(argnames), argdecls=argdecls, 
-                 cvartypeptr=cython_ctype(t_).format(type_name='cvartype'), 
+    s = s.format(arglist=", ".join(argnames), argdecls=argdecls,
+                 cvartypeptr=cython_ctype(t_).format(type_name='cvartype'),
                  argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, rtncall=rtncall,
                  carglist=", ".join(argrtns), rtnbody=rtnbody)
-    caches = 'if {cache_name} is None:\n' + _indent4([s]) 
+    caches = 'if {cache_name} is None:\n' + _indent4([s])
     if t[2][2] != 'void':
         caches += "\n        return {rtnrtn}".format(rtnrtn=rtnrtn)
     caches += '\n    {cache_name} = {proxy_name}\n'
@@ -1599,9 +1632,9 @@ from_pytypes = {
 
 
 @_memoize
-def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None, 
+def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None,
                 cache_name=None, cache_prefix='self', existing_name=None):
-    """Given a varibale name and type, returns cython code (declaration, body, 
+    """Given a varibale name and type, returns cython code (declaration, body,
     and return statements) to convert the variable from C/C++ to Python."""
     tkey = t = canon(t)
     while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
@@ -1637,9 +1670,9 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
     cache_name = cache_name if cache_prefix is None else "{0}.{1}".format(cache_prefix, cache_name)
     proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
     iscached = False
-    template_kw = dict(var=var, cache_name=cache_name, ctype=ct, cytype=cyt, 
-                       pytype=pyt, proxy_name=proxy_name, nptype=npt, 
-                       nptypes=npts, ctype_nopred=ct_nopred, 
+    template_kw = dict(var=var, cache_name=cache_name, ctype=ct, cytype=cyt,
+                       pytype=pyt, proxy_name=proxy_name, nptype=npt,
+                       nptypes=npts, ctype_nopred=ct_nopred,
                        cytype_nopred=cyt_nopred,)
     if 1 == len(c2pyt) or ind == 0:
         decl = body = None
@@ -1696,15 +1729,15 @@ _cython_py2c_conv = _LazyConverterDict({
     'bool': ('<bint> {var}', False),
     'void': ('NULL', False),
     ('void', '*'): ('NULL', False),
-    'file': ('{extra_types}PyFile_AsFile({var})[0]', False), 
-    ('file', '*'): ('{extra_types}PyFile_AsFile({var})', False), 
+    'file': ('{extra_types}PyFile_AsFile({var})[0]', False),
+    ('file', '*'): ('{extra_types}PyFile_AsFile({var})', False),
     # template types
     'map': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
             '{proxy_name}.map_ptr[0]'),
     'dict': ('dict({var})', False),
     'pair': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
              '{proxy_name}.pair_ptr[0]'),
-    'set': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))', 
+    'set': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
             '{proxy_name}.set_ptr[0]'),
     'vector': (('cdef int i\n'
                 'cdef int {var}_size\n'
@@ -1712,11 +1745,11 @@ _cython_py2c_conv = _LazyConverterDict({
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
                 '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = {var}_data[i]\n'
                 'else:\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = <{npctypes[0]}> {var}[i]\n'),
                '{proxy_name}'),     # FIXME There might be improvements here...
@@ -1727,11 +1760,11 @@ _cython_py2c_conv = _LazyConverterDict({
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == <int> {nptype}:\n'
                 '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = {var}[i]\n'
                 'else:\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n' 
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
                 '    for i in range({var}_size):\n'
                 '        _ = {var}[i].encode()\n'
                 '        {proxy_name}[i] = deref(<char *> _)\n'),
@@ -1743,11 +1776,11 @@ _cython_py2c_conv = _LazyConverterDict({
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
                 '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
-                '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n' 
+                '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = {var}_data[i]\n'
                 'else:\n'
-                '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n' 
+                '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
                 '    for i in range({var}_size):\n'
                 '        {proxy_name}[i] = <{npctypes[0]}> {var}[i]\n'),
                 '{proxy_name}'),     # FIXME There might be improvements here...
@@ -1763,8 +1796,8 @@ _cython_py2c_conv = _LazyConverterDict({
 _cython_py2c_conv[TypeMatcher((('vector', MatchAny, '&'), 'const'))] = \
     _cython_py2c_conv[TypeMatcher((('vector', MatchAny, 'const'), '&'))] = \
     _cython_py2c_conv[TypeMatcher(('vector', MatchAny, '&'))]
-    
-    
+
+
 
 def _cython_py2c_conv_function_pointer(t):
     t = t[1]
@@ -1819,7 +1852,7 @@ _cython_py2c_conv['function_pointer'] = _cython_py2c_conv_function_pointer
 
 @_memoize
 def cython_py2c(name, t, inst_name=None, proxy_name=None):
-    """Given a varibale name and type, returns cython code (declaration, body, 
+    """Given a varibale name and type, returns cython code (declaration, body,
     and return statement) to convert the variable from Python to C/C++."""
     t = canon(t)
     if isinstance(t, basestring) or 0 == t[-1] or isrefinement(t[-1]):
@@ -1857,8 +1890,8 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
     cyt_nopred = cython_cytype(t_nopred)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
     proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
-    template_kw = dict(var=var, proxy_name=proxy_name, pytype=pyt, cytype=cyt, 
-                       ctype=ct, last=last, nptype=npt, npctype=npct, 
+    template_kw = dict(var=var, proxy_name=proxy_name, pytype=pyt, cytype=cyt,
+                       ctype=ct, last=last, nptype=npt, npctype=npct,
                        nptypes=npts, npctypes=npcts, ctype_nopred=ct_nopred,
                        cytype_nopred=cyt_nopred)
     nested = False
@@ -1879,7 +1912,7 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
     body_filled = body_template.format(**template_kw)
     if rtn_template:
         if '{ctype}'in body_template:
-            deft = ct 
+            deft = ct
         elif '{ctype_nopred}'in body_template:
             deft = ct_nopred
         elif '{cytype_nopred}'in body_template:
@@ -1904,7 +1937,7 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
         body = (vbody + '\n' + body).strip()
         body = None if 0 == len(body) else body
     return decl, body, rtn
- 
+
 
 
 ######################  Some utility functions for the typesystem #############
@@ -1919,19 +1952,19 @@ def _ensure_importable(x):
         r = x
     return r
 
-def register_class(name=None, template_args=None, cython_c_type=None, 
+def register_class(name=None, template_args=None, cython_c_type=None,
                    cython_cimport=None, cython_cy_type=None, cython_py_type=None,
-                   cython_template_class_name=None, cython_cyimport=None, 
+                   cython_template_class_name=None, cython_cyimport=None,
                    cython_pyimport=None, cython_c2py=None, cython_py2c=None):
-    """Classes are user specified types.  This function will add a class to 
-    the type system so that it may be used normally with the rest of the 
+    """Classes are user specified types.  This function will add a class to
+    the type system so that it may be used normally with the rest of the
     type system.
 
     """
     # register the class name
     isbase = True
-    if template_args is None: 
-        base_types.add(name)  # normal class        
+    if template_args is None:
+        base_types.add(name)  # normal class
     elif isinstance(template_args, Sequence):
         if 0 == len(template_args):
             base_types.add(name)  # normal class
@@ -1996,16 +2029,16 @@ def deregister_class(name):
     _cython_classnames.pop(name, None)
 
     # clear all caches
-    funcs = [isdependent, isrefinement, _resolve_dependent_type, canon, 
+    funcs = [isdependent, isrefinement, _resolve_dependent_type, canon,
              cython_ctype, cython_cimport_tuples, cython_cimports, _fill_cycyt,
              cython_cytype, _fill_cypyt, cython_pytype, cython_c2py, cython_py2c]
     for f in funcs:
         f.cache.clear()
 
 
-def register_refinement(name, refinementof, cython_cimport=None, cython_cyimport=None, 
+def register_refinement(name, refinementof, cython_cimport=None, cython_cyimport=None,
                         cython_pyimport=None, cython_c2py=None, cython_py2c=None):
-    """This function will add a refinement to the type system so that it may be used 
+    """This function will add a refinement to the type system so that it may be used
     normally with the rest of the type system.
     """
     refined_types[name] = refinementof
@@ -2043,10 +2076,10 @@ def deregister_refinement(name):
     _cython_pyimports.pop(name, None)
 
 
-def register_specialization(t, cython_c_type=None, cython_cy_type=None, 
-                            cython_py_type=None, cython_cimport=None, 
+def register_specialization(t, cython_c_type=None, cython_cy_type=None,
+                            cython_py_type=None, cython_cimport=None,
                             cython_cyimport=None, cython_pyimport=None):
-    """This function will add a template specialization so that it may be used 
+    """This function will add a template specialization so that it may be used
     normally with the rest of the type system.
     """
     t = canon(t)
@@ -2170,4 +2203,4 @@ def _maprecurse(f, x):
     for y in x:
         l += _maprecurse(f, y)
     return l
-     
+
