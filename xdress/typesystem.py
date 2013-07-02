@@ -248,6 +248,7 @@ import sys
 import functools
 from contextlib import contextmanager
 from collections import Sequence, Set, Iterable, MutableMapping
+from .utils import flatten
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -516,18 +517,6 @@ MatchAny = MatchAny()
 """A singleton helper class for matching any portion of a type."""
 
 
-def _flatten(iterable):
-    "Recursive hack to flatten arbitrary lists/tuples of lists/tuples"
-    for el in iterable:
-        if isinstance(el, basestring):
-            yield el
-        elif isinstance(el, Iterable):
-            for subel in _flatten(el):
-                yield subel
-        else:
-            yield el
-
-
 class TypeMatcher(object):
     """A class that is used for checking whether a type matches a given pattern."""
 
@@ -605,7 +594,7 @@ class TypeMatcher(object):
             if isinstance(t, basestring):
                 return self.matches(t)
             elif isinstance(t, (tuple, list)):
-                return any([self.matches(i) for i in _flatten(t)])
+                return any([self.matches(i) for i in flatten(t)])
 
     def __eq__(self, other):
         if isinstance(other, TypeMatcher):

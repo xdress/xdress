@@ -11,7 +11,7 @@ import io
 import sys
 from copy import deepcopy
 from pprint import pformat
-from collections import Mapping
+from collections import Mapping, Iterable
 from hashlib import md5
 try:
     import cPickle as pickle
@@ -416,3 +416,14 @@ def merge_descriptions(descriptions):
             del methods[methkey]  # constructor for parent
     return desc
 
+
+def flatten(iterable):
+    "Recursive hack to flatten arbitrary lists/tuples of lists/tuples"
+    for el in iterable:
+        if isinstance(el, basestring):
+            yield el
+        elif isinstance(el, Iterable):
+            for subel in flatten(el):
+                yield subel
+        else:
+            yield el
