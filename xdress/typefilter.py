@@ -30,8 +30,8 @@ This might be done with something like:
                'xdress.typefilter', 'xdress.cythongen')
 
     # Later in the xdressrc
-    skiptypes = {'classA': ['float64', "(('int32', 'const'), '&')"],
-                 'classB': ['classA', "('vector', 'float32')"]}
+    skiptypes = {'classA': ['float64', (('int32', 'const'), '&')],
+                 'classB': ['classA', ('vector', 'float32')]}
 
 .. warning::
 
