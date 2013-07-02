@@ -85,45 +85,13 @@ being wrapped.
 """
 from __future__ import print_function
 import sys
+import collections
 from .utils import isclassdesc, NotSpecified
 from .typesystem import TypeMatcher
 from .plugins import Plugin
 
 if sys.version_info[0] >= 3:
     basestring = str
-
-
-def _flatten(iterable):
-    "Recursive hack to flatten arbitrary lists/tuples of lists/tuples"
-    res = []
-    try:
-        for el in iterable:
-            if isinstance(el, (list, tuple)):
-                res.extend(_flatten(el))
-                continue
-            res.append(el)
-    except TypeError:
-        res = iterable
-    return res
-
-
-def _match_anywhere(self, t):
-    "To be monkey-patched into TypeMatcher"
-    try:
-        # See if user gave entire type
-        if self.matches(t):
-            return True
-    except TypeError:
-        # This might fail, if it does just move on
-        pass
-
-    else:
-        if isinstance(t, basestring):
-            return self.matches(t)
-        elif isinstance(t, (tuple, list)):
-            return any([self.matches(i) for i in _flatten(t)])
-
-TypeMatcher._match_anywhere = _match_anywhere
 
 
 class XDressPlugin(Plugin):
@@ -133,10 +101,10 @@ class XDressPlugin(Plugin):
     defaultrc = {'skiptypes': NotSpecified}
 
     def setup(self, rc):
-        if not isinstance(rc.skiptypes, NotSpecified):
+        if not rc.skiptypes is NotSpecified:
 
             # Update dict so everything is a TypeMatcher instance
-            if isinstance(rc.skiptypes, dict):
+            if isinstance(rc.skiptypes, collections.Mapping):
                 _skippers = {}
                 for kls in rc.skiptypes.keys():
                     _skippers[kls] = [TypeMatcher(t) for t in rc.skiptypes[kls]]
@@ -144,29 +112,29 @@ class XDressPlugin(Plugin):
                 rc.skiptypes = _skippers
 
             # Update tuple or list to be full of TypeMatchers
-            elif isinstance(rc.skiptypes, list) or isinstance(rc.skiptypes,
-                                                              tuple):
+            elif isinstance(rc.skiptypes, collections.Sequence):
                 rc.skiptypes = [TypeMatcher(t) for t in rc.skiptypes]
                 print(rc.skiptypes)
 
     def execute(self, rc):
+        if rc.skiptypes is NotSpecified:
+            return
         print("typefilter: removing unwanted types from desc dictionary")
-        if not isinstance(rc.skiptypes, NotSpecified):
-            if isinstance(rc.skiptypes, dict):
-                skip_classes = rc.skiptypes.keys()
-                for mod_key, mod in rc.env.items():
-                    for kls_key, desc in mod.items():
-                        if isclassdesc(desc):
-                            if desc['name'] in skip_classes:
-                                rc.env[mod_key][kls_key] = \
-                                    self._modify_class_desc(rc, desc,
-                                                            name=desc['name'])
+        if isinstance(rc.skiptypes, collections.Mapping):
+            skip_classes = rc.skiptypes.keys()
+            for mod_key, mod in rc.env.items():
+                for kls_key, desc in mod.items():
+                    if isclassdesc(desc):
+                        if desc['name'] in skip_classes:
+                            rc.env[mod_key][kls_key] = \
+                                self._modify_class_desc(rc, desc,
+                                                        name=desc['name'])
 
-            elif isinstance(rc.skiptypes, list):
-                for mod in rc.env.values():
-                    for desc in mod.values():
-                        if isclassdesc(desc):
-                            self._modify_class_desc(rc, desc)
+        elif isinstance(rc.skiptypes, collections.Sequence):
+            for mod in rc.env.values():
+                for desc in mod.values():
+                    if isclassdesc(desc):
+                        self._modify_class_desc(rc, desc)
 
     def _modify_class_desc(self, rc, desc, name=None):
         if name is None:
@@ -177,7 +145,7 @@ class XDressPlugin(Plugin):
         # remove attrs with bad types
         for at_name, at_t in desc['attrs'].copy().items():
             for tm in skips:
-                if tm._match_anywhere(at_t):
+                if tm.flatmatches(at_t):
                     del desc['attrs'][at_name]
                     break
 
@@ -186,7 +154,7 @@ class XDressPlugin(Plugin):
             _deleted = False
             # Check return types
             for tm in skips:
-                if tm._match_anywhere(m_ret):
+                if tm.flatmatches(m_ret):
                     del desc['methods'][m_key]
                     _deleted = True
                     break
@@ -200,9 +168,9 @@ class XDressPlugin(Plugin):
             for arg in m_args:
                 t = arg[1]  # Just use type, not parameter name or default val
                 for tm in skips:
-                    # c1 = tm._match_anywhere(t)
+                    # c1 = tm.flatmatches(t)
                     # c2 =
-                    if tm._match_anywhere(t):
+                    if tm.flatmatches(t):
                         del desc['methods'][m_key]
                         _deleted = True
                         break
