@@ -63,8 +63,8 @@ For example, if 'float64' were in the ``skiptypes`` it would catch any
 of the following argument types (this is by no means a complete list):
 
     "float64"
-    "(('vector', 'float64', 'const'), '&')"
-    "('set', 'float64')
+    (('vector', 'float64', 'const'), '&')
+    ('set', 'float64')
 
 2. A specific argument or return type that will match exactly. This
 option provides more control over what ``xdress.typefilter`` will catch
