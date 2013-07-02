@@ -84,9 +84,13 @@ being wrapped.
 
 """
 from __future__ import print_function
+import sys
 from .utils import isclassdesc, NotSpecified
 from .typesystem import TypeMatcher
 from .plugins import Plugin
+
+if sys.version_info[0] >= 3:
+    basestring = str
 
 
 def _flatten(iterable):
@@ -114,7 +118,7 @@ def _match_anywhere(self, t):
         pass
 
     else:
-        if isinstance(t, str):
+        if isinstance(t, basestring):
             return self.matches(t)
         elif isinstance(t, (tuple, list)):
             return any([self.matches(i) for i in _flatten(t)])
