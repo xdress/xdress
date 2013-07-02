@@ -82,7 +82,6 @@ being wrapped.
 
 """
 from __future__ import print_function
-
 from .utils import isclassdesc
 from .typesystem import TypeMatcher
 from .plugins import Plugin
@@ -151,12 +150,12 @@ class XDressPlugin(Plugin):
         print("typefilter: removing unwanted types from desc dictionary")
         if rc.skiptypes is not None:
             if isinstance(rc.skiptypes, dict):
-                skip_mods = rc.skiptypes.keys()
+                skip_classes = rc.skiptypes.keys()
                 for mod_key, mod in rc.env.items():
-                    for desc_key, desc in mod.items():
+                    for kls_key, desc in mod.items():
                         if isclassdesc(desc):
-                            if desc['name'] in skip_mods:
-                                rc.env[mod_key][desc_key] = \
+                            if desc['name'] in skip_classes:
+                                rc.env[mod_key][kls_key] = \
                                     self._modify_class_desc(rc, desc,
                                                             name=desc['name'])
 
