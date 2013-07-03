@@ -288,6 +288,9 @@ template_types = {
     'list': ('value_type',),
     'tuple': ('value_type',),
     'vector': ('value_type',),
+    'enum': ('name', 'aliases'),
+    'function': ('arguments', 'returns'),
+    'function_pointer': ('arguments', 'returns'),
     }
 """Template types are types whose instantiations are based on meta-types.
 this dict maps their names to meta-type names in order."""
