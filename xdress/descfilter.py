@@ -126,7 +126,6 @@ from .plugins import Plugin
 if sys.version_info[0] >= 3:
     basestring = str
 
-
 def modify_desc(skips, desc):
     """Deletes specified methods from a class description (desc).
 
@@ -190,56 +189,59 @@ class XDressPlugin(Plugin):
                  'skipmethods': NotSpecified}
 
     def setup(self, rc):
-        if not rc.skiptypes is NotSpecified:
-
+        if rc.skiptypes is NotSpecified:
+            return 
+        if isinstance(rc.skiptypes, collections.Mapping):
             # Update dict so everything is a TypeMatcher instance
-            if isinstance(rc.skiptypes, collections.Mapping):
-                _skippers = {}
-                for kls in rc.skiptypes.keys():
-                    _skippers[kls] = [TypeMatcher(t) for t in rc.skiptypes[kls]]
-
-                rc.skiptypes = _skippers
-
+            _skippers = {}
+            for kls in rc.skiptypes.keys():
+                _skippers[kls] = [TypeMatcher(t) for t in rc.skiptypes[kls]]
+            rc.skiptypes = _skippers
+        elif isinstance(rc.skiptypes, collections.Sequence):
             # Update tuple or list to be full of TypeMatchers
-            elif isinstance(rc.skiptypes, collections.Sequence):
-                rc.skiptypes = [TypeMatcher(t) for t in rc.skiptypes]
-                print(rc.skiptypes)
+            rc.skiptypes = [TypeMatcher(t) for t in rc.skiptypes]
+            if rc.verbose:
+                print("descfilter: skipping these types: {0}".format(rc.skiptypes))
+
+    def skip_types(self, rc):
+        if rc.skiptypes is NotSpecified:
+            return
+        print("descfilter: removing unwanted types from desc dictionary")
+        if isinstance(rc.skiptypes, collections.Mapping):
+            skip_classes = rc.skiptypes.keys()
+            for mod_key, mod in rc.env.items():
+                for kls_key, desc in mod.items():
+                    if isclassdesc(desc):
+                        if desc['name'] in skip_classes:
+                            # Pull out skiptypes
+                            skips = rc.skips[desc['name']]
+                            # let modify_desc remove unwanted methods
+                            modify_desc(skips, desc)
+        elif isinstance(rc.skiptypes, collections.Sequence):
+            for mod_key, mod in rc.env.items():
+                for kls_key, desc in mod.items():
+                    if isclassdesc(desc):
+                        skips = rc.skiptypes
+                        modify_desc(skips, desc)
+
+    def skip_methods(self, rc):
+        if rc.skipmethods is NotSpecified:
+            return
+        print("descfilter: removing unwanted methods from desc dictionary")
+        skip_classes = rc.skipmethods.keys()
+        for m_key, mod in rc.env.items():
+            for k_key, kls_desc in mod.items():
+                if isclassdesc(kls_desc):
+                    if kls_desc['name'] in skip_classes:
+                        skippers = rc.skipmethods[k_key]
+                        m_nms = rc.env[m_key][k_key]['methods'].keys()
+                        for m in skippers:
+                            # Find method key
+                            del_key = filter(lambda x: x[0].startswith(m),
+                                             m_nms)[0]
+                            # Remove that method
+                            del rc.env[m_key][k_key]['methods'][del_key]
 
     def execute(self, rc):
-        if rc.skiptypes is not NotSpecified:
-            print("descfilter: removing unwanted types from desc dictionary")
-            if isinstance(rc.skiptypes, collections.Mapping):
-                skip_classes = rc.skiptypes.keys()
-                for mod_key, mod in rc.env.items():
-                    for kls_key, desc in mod.items():
-                        if isclassdesc(desc):
-                            if desc['name'] in skip_classes:
-                                # Pull out skiptypes
-                                skips = rc.skips[desc['name']]
-
-                                # let modify_desc remove unwanted methods
-                                modify_desc(skips, desc)
-
-            elif isinstance(rc.skiptypes, collections.Sequence):
-                for mod_key, mod in rc.env.items():
-                    for kls_key, desc in mod.items():
-                        if isclassdesc(desc):
-                            skips = rc.skiptypes
-                            modify_desc(skips, desc)
-
-        if rc.skipmethods is not NotSpecified:
-            print("descfilter: removing unwanted methods from desc dictionary")
-            skip_classes = rc.skipmethods.keys()
-            for m_key, mod in rc.env.items():
-                for k_key, kls_desc in mod.items():
-                    if isclassdesc(kls_desc):
-                        if kls_desc['name'] in skip_classes:
-                            skippers = rc.skipmethods[k_key]
-                            m_nms = rc.env[m_key][k_key]['methods'].keys()
-                            for m in skippers:
-                                # Find method key
-                                del_key = filter(lambda x: x[0].startswith(m),
-                                                 m_nms)[0]
-
-                                # Remove that method
-                                del rc.env[m_key][k_key]['methods'][del_key]
+        self.skip_types(rc)
+        self.skip_methods(rc)
