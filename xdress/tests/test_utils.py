@@ -1,5 +1,5 @@
 from __future__ import print_function
-from xdress.utils import NotSpecified, RunControl
+from xdress.utils import NotSpecified, RunControl, flatten
 
 from nose.tools import assert_equal, with_setup, assert_false
 
@@ -22,3 +22,7 @@ def test_rc_update():
     rc._update({'a': 42, 'c': NotSpecified})
     assert_equal(rc, {'a': 42, 'b': 'world', 'c': 1})
 
+def test_flatten():
+    exp = ["hello", None, 1, 3, 2, 5, 6]
+    obs = [x for x in flatten(["hello", None, (1, 3, (2, 5, 6))])]
+    assert_equal(exp, obs)

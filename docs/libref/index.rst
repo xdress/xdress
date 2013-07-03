@@ -28,3 +28,4 @@ dynamic type system.
     plugins
     base
     extratypes
+    descfilter
