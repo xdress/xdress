@@ -485,3 +485,56 @@ def test_strip_predicates():
     for t, exp in cases:
         yield check_strip_predicates, t, exp
 
+def check_cpp_type(t, exp):
+    obs = ts.cpp_type(t)
+    assert_equal(exp, obs)
+
+@with_setup(add_new_refined, del_new_refined)
+def test_cpp_type():
+    cases = (
+        ('str', 'std::string'),
+        (('str',), 'std::string'),
+        ('f4', 'float'),
+        ('nucid', 'int'),
+        (('nucid',), 'int'), 
+        (('set', 'complex'), 'std::set< xdress_extra_types.complex_t >'),
+        (('map', 'nucid', 'float'), 'std::map< int, double >'),
+        ('comp_map', 'std::map< int, double >'),
+        (('char', '*'), 'char *'),
+        (('char', 42), 'char [42]'),
+        (('map', 'nucid', ('set', 'nucname')), 
+            'std::map< int, std::set< std::string > >'),
+        (('intrange', 1, 2), 'int'), 
+        (('nucrange', 92000, 93000), 'int'),
+        (('range', 'int32', 1, 2), 'int'), 
+        (('range', 'nucid', 92000, 93000), 'int'), 
+    )
+    for t, exp in cases:
+        yield check_cpp_type, t, exp  # Check that the case works,
+
+def check_gccxml_type(t, exp):
+    obs = ts.gccxml_type(t)
+    assert_equal(exp, obs)
+
+@with_setup(add_new_refined, del_new_refined)
+def test_gccxml_type():
+    cases = (
+        ('str', 'std::string'),
+        (('str',), 'std::string'),
+        ('f4', 'float'),
+        ('nucid', 'int'),
+        (('nucid',), 'int'), 
+        (('set', 'complex'), 'std::set&lt;xdress_extra_types.complex_t&gt;'),
+        (('map', 'nucid', 'float'), 'std::map&lt;int, double&gt;'),
+        ('comp_map', 'std::map&lt;int, double&gt;'),
+        (('char', '*'), 'char *'),
+        (('char', 42), 'char [42]'),
+        (('map', 'nucid', ('set', 'nucname')), 
+            'std::map&lt;int, std::set&lt;std::string&gt;&gt;'),
+        (('intrange', 1, 2), 'int'), 
+        (('nucrange', 92000, 93000), 'int'),
+        (('range', 'int32', 1, 2), 'int'), 
+        (('range', 'nucid', 92000, 93000), 'int'), 
+    )
+    for t, exp in cases:
+        yield check_gccxml_type, t, exp  # Check that the case works,

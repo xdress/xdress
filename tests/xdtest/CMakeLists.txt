@@ -29,6 +29,12 @@ cython_add_module(typeconverters typeconverters.pyx)
 cython_add_module(pydevice pydevice.pyx)
 target_link_libraries(pydevice cdevice)
 
+# bright
+set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/bright.pyx
+                            PROPERTIES CYTHON_IS_CXX TRUE)
+cython_add_module(bright bright.pyx)
+target_link_libraries(bright bright_bright)
+
 # fccomp
 set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/fccomp.pyx
                             PROPERTIES CYTHON_IS_CXX TRUE)

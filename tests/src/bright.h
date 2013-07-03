@@ -733,7 +733,7 @@ namespace bright {
     };
   };
 
-
+SparseMatrix<double> spdubs;
 
 // End bright namespace
 };

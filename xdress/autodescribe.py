@@ -1728,11 +1728,11 @@ class XDressPlugin(astparsers.ParserPlugin):
         cache = rc._cache
         env = rc.env  # target environment, not source one
         for i, (classname, srcname, tarname) in enumerate(rc.classes):
-            print("autodescribe: describing " + classname)
+            print("autodescribe: describing {0}".format(classname))
             desc = self.compute_desc(classname, srcname, tarname, 'class', rc)
             if rc.verbose:
                 pprint(desc)
-            print("autodescribe: registering " + classname)
+            print("autodescribe: registering {0}".format(classname))
             if tarname is None:
                 _, _, _, ext = find_source(srcname, sourcedir=rc.sourcedir)
                 cpppxd_base = '{0}_{1}'.format(ext, srcname)

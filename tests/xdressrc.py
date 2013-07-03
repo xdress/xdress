@@ -71,4 +71,5 @@ classes = [
     ('Enrichment', 'bright_enrichment', 'enrichment'), 
     #('Reprocess', 'reprocess'), 
     ('*', 'reprocess'), 
+    (('SparseMatrix', 'float64'), 'bright'), 
     ]

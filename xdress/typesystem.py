@@ -794,6 +794,98 @@ type_aliases = _LazyConfigDict({
     })
 """Aliases that may be used to substitute one type name for another."""
 
+###########################   C++ Functions   ##################################
+
+_cpp_types = _LazyConfigDict({
+    'char': 'char',
+    'uchar': 'unsigned char',
+    'str': 'std::string',
+    'int16': 'short',
+    'int32': 'int',
+    'int64': 'long long',
+    'uint16': 'unsigned short',
+    'uint32': 'unsigned long',
+    'uint64': 'unsigned long long',
+    'float32': 'float',
+    'float64': 'double',
+    'float128': 'long double',
+    'complex128': '{extra_types}complex_t',
+    'bool': 'bool',
+    'void': 'void', 
+    'file': 'FILE',
+    'map': 'std::map',
+    'dict': 'std::map',
+    'pair': 'std::pair',
+    'set': 'std::set',
+    'vector': 'std::vector',
+    })
+
+def _cpp_types_function(t):
+    rtnct = cpp_type(t[2][2])
+    argcts = [cpp_type(argt) for n, argt in t[1][2]]
+    if argcts == ['void']:
+        argcts = []
+    return rtnct + " {type_name}(" + ", ".join(argcts) + ")"
+_cpp_types['function'] = _cpp_types_function
+
+def _cpp_types_function_pointer(t):
+    rtnct = cpp_type(t[2][2])
+    argcts = [cpp_type(argt) for n, argt in t[1][2]]
+    if argcts == ['void']:
+        argcts = []
+    return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
+_cpp_types['function_pointer'] = _cpp_types_function_pointer
+
+
+def _cpp_type_add_predicate(t, last):
+    """Adds a predicate to a C++ type"""
+    if last == 'const':
+        x, y = last, t
+    else:
+        x, y = t, last
+    return '{0} {1}'.format(x, y)
+
+@_memoize
+def cpp_type(t):
+    """Given a type t, returns the corresponding C++ type declaration."""
+    t = canon(t)
+    if isinstance(t, basestring):
+        if  t in base_types:
+            return _cpp_types[t]
+    # must be tuple below this line
+    tlen = len(t)
+    if 2 == tlen:
+        if 0 == t[1]:
+            return cpp_type(t[0])
+        elif isrefinement(t[1]):
+            if t[1][0] in _cpp_types:
+                subtype = _cpp_types[t[1][0]]
+                if callable(subtype):
+                    subtype = subtype(t[1])
+                return subtype
+            else:
+                return cpp_type(t[0])
+        else:
+            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+            return _cpp_type_add_predicate(cpp_type(t[0]), last)
+    elif 3 <= tlen:
+        assert t[0] in template_types
+        assert len(t) == len(template_types[t[0]]) + 2
+        template_name = _cpp_types[t[0]]
+        assert template_name is not NotImplemented
+        template_filling = ', '.join([cpp_type(x) for x in t[1:-1]])
+        cppt = '{0}< {1} >'.format(template_name, template_filling)
+        if 0 != t[-1]:
+            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+            cppt = _cpp_type_add_predicate(cppt, last)
+        return cppt
+
+@_memoize
+def gccxml_type(t):
+    """Given a type t, returns the corresponding GCC-XML type name."""
+    cppt = cpp_type(t)
+    gxt = cppt.replace('< ', '&lt;').replace(' >', '&gt;')
+    return gxt
 
 #########################   Cython Functions   ################################
 
