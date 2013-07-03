@@ -1614,6 +1614,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         for i, cls in enumerate(rc.classes):
             if len(cls) == 2:
                 rc.classes[i] = (cls[0], cls[1], cls[1])
+        self.register_classes(rc)
 
     def execute(self, rc):
         print("autodescribe: scraping C/C++ APIs from source")
@@ -1723,12 +1724,9 @@ class XDressPlugin(astparsers.ParserPlugin):
             env[tarname][name] = desc
             env[tarname]['extra'] += self.pysrcenv[srcname].get('extra', '')
 
-    def compute_classes(self, rc):
-        """Computes class descriptions and loads them into the environment and 
-        type system."""
-        # compute all class descriptions first 
-        cache = rc._cache
-        env = rc.env  # target environment, not source one
+    def register_classes(self, rc):
+        """Registers classes with the type system.  This can and should be done
+        trying to describe the class."""
         for i, (classname, srcname, tarname) in enumerate(rc.classes):
             if isinstance(classname, basestring):
                 template_args = None
@@ -1822,6 +1820,17 @@ class XDressPlugin(astparsers.ParserPlugin):
                 cython_pyimport=kwclass['cython_pyimport'],
                 )
             ts.register_class(**kwclassdblptr)
+
+    def compute_classes(self, rc):
+        """Computes class descriptions and loads them into the environment."""
+        # compute all class descriptions first 
+        cache = rc._cache
+        env = rc.env  # target environment, not source one
+        for i, (classname, srcname, tarname) in enumerate(rc.classes):
+            print("autodescribe: describing " + classname)
+            desc = self.compute_desc(classname, srcname, tarname, 'class', rc)
+            if rc.verbose:
+                pprint(desc)
             cache.dump()
             self.adddesc2env(desc, env, classname, srcname, tarname)
             if 0 == i%rc.clear_parser_cache_period:
