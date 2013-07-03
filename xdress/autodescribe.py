@@ -580,9 +580,11 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
 
         """
         if node is None:
-            node = self._root.find("Class[@name='{0}']".format(self.name))
+            query = "Class[@name='{0}']".format(ts.gccxml_type(self.name))
+            node = self._root.find(query)
             if node is None:
-                node = self._root.find("Struct[@name='{0}']".format(self.name))
+                query = "Struct[@name='{0}']".format(ts.gccxml_type(self.name))
+                node = self._root.find(query)
             if node.attrib['file'] not in self.onlyin:
                 msg = ("{0} autodescribing failed: found class in {1!r} but "
                        "expected it in {2!r}.")
@@ -1728,6 +1730,15 @@ class XDressPlugin(astparsers.ParserPlugin):
         cache = rc._cache
         env = rc.env  # target environment, not source one
         for i, (classname, srcname, tarname) in enumerate(rc.classes):
+            if isinstance(classname, basestring):
+                template_args = None
+                baseclassname = classname
+            else:
+                template_args = ['T{0}'.format(i) for i in range(len(classname)-2)]
+                template_args = tuple(template_args)
+                baseclassname = ts.basename(classname)
+            # preregister
+            ts.register_class(baseclassname, template_args=template_args)            
             print("autodescribe: describing {0}".format(classname))
             desc = self.compute_desc(classname, srcname, tarname, 'class', rc)
             if rc.verbose:

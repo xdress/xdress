@@ -312,7 +312,7 @@ def dumpast(filename, parsers, sourcedir, includes=(), defines=('XDRESS',),
         root = gccxml_parse(filename, includes=includes, defines=defines, 
                             undefines=undefines, verbose=verbose, debug=debug, 
                             builddir=builddir)
-        if FOUND_LXML:
+        if HAVE_LXML:
             print(etree.tostring(root, pretty_print=True))
         else:
             _pformat_etree_inplace(root)
