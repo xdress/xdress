@@ -22,8 +22,9 @@ car_class = {
                      ('howFast', 'float32'),
                      ('when', 'Date')): ('vector', 'uint32'),
         ('traffic', ('coord', (('vector', 'int32', 'const'), '&'))): 'str',
-        ('isValid',): 'bool'}
-}
+        ('isValid',): 'bool', 
+        }
+    }
 
 plane_class = {
     'name': 'Plane',
@@ -44,8 +45,9 @@ plane_class = {
                      ('when', 'Date')): ('vector', 'uint32'),
         ('land', ('coord', (('vector', 'int32', 'const'), '&'))): 'str',
         ('dogfight', ('who', 'Chopper'), ('why', 'str')): 'bool',
-        ('isOnFire',): 'bool'}
-}
+        ('isOnFire',): 'bool', 
+        }
+    }
 
 filt_types_list = ['str', (('vector', 'int32', 'const'), '&')]
 filt_types_dict = {'Car': ['uint32'],
@@ -115,9 +117,7 @@ def test_typefilter_dict():
             ('land', ('coord', (('vector', 'int32', 'const'), '&'))): 'str',
             ('isOnFire',): 'bool'}
     }
-
     pprint.pprint(car_class_copy)
     pprint.pprint(exp_car)
-
     assert_equal(car_class_copy, exp_car)
     assert_equal(plane_class_copy, exp_plane)

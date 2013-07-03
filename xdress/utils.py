@@ -416,9 +416,8 @@ def merge_descriptions(descriptions):
             del methods[methkey]  # constructor for parent
     return desc
 
-
 def flatten(iterable):
-    "Recursive hack to flatten arbitrary lists/tuples of lists/tuples"
+    """Generator which returns flattened version of nested sequences."""
     for el in iterable:
         if isinstance(el, basestring):
             yield el
