@@ -82,6 +82,38 @@ def test_canon():
         yield check_canon, t, exp            # Check that the case works,
         yield check_canon, ts.canon(t), exp  # And that it is actually canonical.
 
+
+def check_basename(t, exp):
+    obs = ts.basename(t)
+    pprint.pprint(exp)
+    pprint.pprint(obs)
+    assert_equal(exp, obs)
+
+@with_setup(add_new_refined, del_new_refined)
+def test_basename():
+    cases = (
+        ('str', 'str'),
+        (('str',), 'str'),
+        ('f4', 'float32'),
+        ('nucid', 'int32'),
+        (('nucid',), 'int32'),
+        (('set', 'complex'), 'set',),
+        (('map', 'nucid', 'float'), 'map'),
+        ('comp_map', 'map'), 
+        (('char', '*'), 'char'),
+        (('char', 42), 'char'),
+        (('map', 'nucid', ('set', 'nucname')), 'map'),
+        (('intrange', 1, 2), 'int32'),
+        (('nucrange', 92000, 93000), 'int32'),
+        (('range', 'int32', 1, 2), 'int32'), 
+        (('range', 'nucid', 92000, 93000), 'int32'),
+        (('function_pointer', (('_0', ('uint32', '*')),), 'int'), 'void'), 
+    )
+    for t, exp in cases:
+        yield check_basename, t, exp  # Check that the case works,
+
+
+
 def check_cython_ctype(t, exp):
     obs = ts.cython_ctype(t)
     assert_equal(exp, obs)

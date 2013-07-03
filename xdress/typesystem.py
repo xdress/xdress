@@ -494,7 +494,20 @@ def strip_predicates(t):
             return t[:-1] + (0,)
     else:
         _raise_type_error(t)
-    
+
+@_memoize
+def basename(t):
+    """Retrieves basename from a type, e.g. 'map' in ('map', 'int', 'float')."""
+    t = canon(t)
+    if isinstance(t, basestring):
+        return t
+    elif isinstance(t, Sequence):
+        t0 = t
+        while not isinstance(t0, basestring):
+            t0 = t0[0]
+        return t0
+    else:
+        _raise_type_error(t)
 
 
 class MatchAny(object):
