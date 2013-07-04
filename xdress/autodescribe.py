@@ -174,7 +174,7 @@ except ImportError:
 
 from . import utils
 from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
-    find_source, FORBIDDEN_NAMES
+    find_source, FORBIDDEN_NAMES, find_filenames
 from . import astparsers
 
 from . import typesystem as ts

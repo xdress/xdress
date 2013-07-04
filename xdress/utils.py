@@ -348,7 +348,7 @@ def find_filenames(srcname, tarname=None, sourcedir='src'):
 
     """
     desc = {}
-    srcfname, hdrfname, lang, ext = find_source(srcname, sourcedir=rc.sourcedir)
+    srcfname, hdrfname, lang, ext = find_source(srcname, sourcedir=sourcedir)
     desc['source_filename'] = srcfname
     desc['header_filename'] = hdrfname
     desc['language'] = lang

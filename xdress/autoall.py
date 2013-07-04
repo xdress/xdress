@@ -481,12 +481,26 @@ class XDressPlugin(astparsers.ParserPlugin):
         rc.selectvariables = '.*'
         return rc
 
+    def report_debug(self, rc):
+        msg = super(XDressPlugin, self).report_debug(rc)
+        msg += "Autoall:\n\n"
+        msg += "allsrc = {0}\n\n".format(pformat(self.allsrc))
+        msg += "varhasstar = {0}\n\n".format(pformat(self.varhasstar))
+        msg += "fnchasstar = {0}\n\n".format(pformat(self.fnchasstar))
+        msg += "clshasstar = {0}\n\n".format(pformat(self.clshasstar))
+        return msg
 
     def setup(self, rc):
         """Expands variables, functions, and classes in the rc based on 
         copying src filenames to tar filename and the special '*' all syntax."""
         super(XDressPlugin, self).setup(rc)
+        self.setup_basic(rc)
+        self.setup_heavy(rc)
 
+    # Helper methods
+
+    def setup_basic(self, rc):
+        """Does the easy part of setting up an autodecsibe environment"""
         # first pass -- gather and expand target
         allsrc = set()
         varhasstar = False
@@ -520,7 +534,8 @@ class XDressPlugin(astparsers.ParserPlugin):
         self.fnchasstar = fnchasstar
         self.clshasstar = clshasstar
 
-    def execute(self, rc):
+    def setup_heavy(self, rc):
+        """Does the hard work of actually searching the source files."""
         print("autoall: discovering API names")
         if not self.varhasstar and not self.fnchasstar and not self.clshasstar:
             print("autoall: no API names to discover!")
@@ -596,11 +611,3 @@ class XDressPlugin(astparsers.ParserPlugin):
                     newclss.append(cls)
             rc.classes = newclss
 
-    def report_debug(self, rc):
-        msg = super(XDressPlugin, self).report_debug(rc)
-        msg += "Autoall:\n\n"
-        msg += "allsrc = {0}\n\n".format(pformat(self.allsrc))
-        msg += "varhasstar = {0}\n\n".format(pformat(self.varhasstar))
-        msg += "fnchasstar = {0}\n\n".format(pformat(self.fnchasstar))
-        msg += "clshasstar = {0}\n\n".format(pformat(self.clshasstar))
-        return msg
