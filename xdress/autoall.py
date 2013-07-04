@@ -476,9 +476,6 @@ class XDressPlugin(astparsers.ParserPlugin):
     def defaultrc(self):
         rc = RunControl()
         rc._update(super(XDressPlugin, self).defaultrc)
-        rc.selectclasses = '.*'
-        rc.selectfunctions = '.*'
-        rc.selectvariables = '.*'
         return rc
 
     def report_debug(self, rc):
@@ -524,11 +521,6 @@ class XDressPlugin(astparsers.ParserPlugin):
                 clshasstar = True
             if len(cls) == 2:
                 rc.classes[i] = (cls[0], cls[1], cls[1])
-
-        rc.selectclasses = re.compile(rc.selectclasses)
-        rc.selectfunctions = re.compile(rc.selectfunctions)
-        rc.selectvariables = re.compile(rc.selectvariables)
-
         self.allsrc = allsrc
         self.varhasstar = varhasstar
         self.fnchasstar = fnchasstar
@@ -576,11 +568,7 @@ class XDressPlugin(astparsers.ParserPlugin):
             for var in rc.variables:
                 if var[0] == '*':
                     for x in allnames[var[1]][0]:
-                        m = rc.selectvariables.match(x)
-                        if m is None:
-                            newvars.append((x, var[1], None))
-                        else:
-                            newvars.append((x, var[1], var[2]))
+                        newvars.append((x, var[1], var[2]))
                 else:
                     newvars.append(var)
             rc.variables = newvars
@@ -589,11 +577,7 @@ class XDressPlugin(astparsers.ParserPlugin):
             for fnc in rc.functions:
                 if fnc[0] == '*':
                     for x in allnames[fnc[1]][1]:
-                        m = rc.selectfunctions.match(x)
-                        if m is None:
-                            newfncs.append((x, fnc[1], None))
-                        else:
-                            newfncs.append((x, fnc[1], fnc[2]))
+                        newfncs.append((x, fnc[1], fnc[2]))
                 else:
                     newfncs.append(fnc)
             rc.functions = newfncs
@@ -602,11 +586,7 @@ class XDressPlugin(astparsers.ParserPlugin):
             for cls in rc.classes:
                 if cls[0] == '*':
                     for x in allnames[cls[1]][2]:
-                        m = rc.selectclasses.match(x)
-                        if m is None:
-                            newclss.append((x, cls[1], None))
-                        else:
-                            newclss.append((x, cls[1], cls[2]))
+                        newclss.append((x, cls[1], cls[2]))
                 else:
                     newclss.append(cls)
             rc.classes = newclss

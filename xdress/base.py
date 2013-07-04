@@ -65,9 +65,9 @@ class XDressPlugin(Plugin):
             os.makedirs(rc.builddir)
         writenewonly("", os.path.join(rc.packagedir, '__init__.py'), rc.verbose)
         writenewonly("", os.path.join(rc.packagedir, '__init__.pxd'), rc.verbose)
+        rc._cache = DescriptionCache(cachefile=os.path.join(rc.builddir, 'desc.cache'))
 
     def execute(self, rc):
-        rc._cache = DescriptionCache(cachefile=os.path.join(rc.builddir, 'desc.cache'))
         if rc.dumpdesc:
             print(str(rc._cache))
             sys.exit()
