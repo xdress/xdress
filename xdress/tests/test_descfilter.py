@@ -22,7 +22,7 @@ car_class = {
                      ('howFast', 'float32'),
                      ('when', 'Date')): ('vector', 'uint32'),
         ('traffic', ('coord', (('vector', 'int32', 'const'), '&'))): 'str',
-        ('isValid',): 'bool', 
+        ('isValid',): 'bool',
         }
     }
 
@@ -45,7 +45,7 @@ plane_class = {
                      ('when', 'Date')): ('vector', 'uint32'),
         ('land', ('coord', (('vector', 'int32', 'const'), '&'))): 'str',
         ('dogfight', ('who', 'Chopper'), ('why', 'str')): 'bool',
-        ('isOnFire',): 'bool', 
+        ('isOnFire',): 'bool',
         }
     }
 
@@ -68,8 +68,11 @@ def test_typefilter_list():
         ('~Car',): None,
         ('isValid',): 'bool'}
         }
+
+    print('********\nCar class stuff (actual then expected):\n')
+    pprint.pprint(car_class_copy)
+    pprint.pprint(exp)
     assert_equal(car_class_copy, exp)
-    assert_equal(1, 1)
 
 
 def test_typefilter_dict():
@@ -117,7 +120,13 @@ def test_typefilter_dict():
             ('land', ('coord', (('vector', 'int32', 'const'), '&'))): 'str',
             ('isOnFire',): 'bool'}
     }
+
+    print('********\nCar class stuff (actual then expected):\n')
     pprint.pprint(car_class_copy)
     pprint.pprint(exp_car)
+    print('********\nplane class stuff (actual then expected):\n')
+    pprint.pprint(plane_class_copy)
+    pprint.pprint(exp_plane)
+
     assert_equal(car_class_copy, exp_car)
     assert_equal(plane_class_copy, exp_plane)
