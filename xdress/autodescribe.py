@@ -1614,6 +1614,9 @@ class XDressPlugin(astparsers.ParserPlugin):
         for i, cls in enumerate(rc.classes):
             if len(cls) == 2:
                 rc.classes[i] = (cls[0], cls[1], cls[1])
+            if not isinstance(cls[0], basestring) and cls[0][-1] != 0:
+                # ensure the predicate is a scalar for template specializations
+                rc.classes[i] = (tuple(cls[0]) + (0,), cls[1], cls[1])
         self.register_classes(rc)
 
     def execute(self, rc):
@@ -1628,106 +1631,12 @@ class XDressPlugin(astparsers.ParserPlugin):
 
     # Helper methods below
 
-    def load_pysrcmod(self, srcname, rc):
-        """Loads a module dictionary from a src file intox the pysrcenv cache."""
-        if srcname in self.pysrcenv:
-            return
-        pyfilename = os.path.join(rc.sourcedir, srcname + '.py')
-        if os.path.isfile(pyfilename):
-            glbs = globals()
-            locs = {}
-            exec_file(pyfilename, glbs, locs)
-            if 'mod' not in locs:
-                pymod = {}
-            elif callable(locs['mod']):
-                pymod = eval('mod()', glbs, locs)
-            else:
-                pymod = locs['mod']
-        else:
-            pymod = {}
-        self.pysrcenv[srcname] = pymod
-
-    def load_sidecars(self, rc):
-        """Loads all sidecar files."""
-        srcnames = set([x[1] for x in rc.variables])
-        srcnames |= set([x[1] for x in rc.functions])
-        srcnames |= set([x[1] for x in rc.classes])
-        for x in srcnames:
-            self.load_pysrcmod(x, rc)
-
-    def compute_desc(self, name, srcname, tarname, kind, rc):
-        """Returns a description dictionary for a class or function
-        implemented in a source file and bound into a target file.
-
-        Parameters
-        ----------
-        name : str
-            Class or function name to describe.
-        srcname : str
-            File basename of implementation.  
-        tarname : str
-            File basename where the bindings will be generated.  
-        kind : str
-            The kind of type to describe, valid flags are 'class', 'func', and 'var'.
-        rc : xdress.utils.RunControl
-            Run contoler for this xdress execution.
-
-        Returns
-        -------
-        desc : dict
-            Description dictionary.
-
-        """
-        # description
-        srcfname, hdrfname, lang, ext = find_source(srcname, sourcedir=rc.sourcedir)
-        filename = os.path.join(rc.sourcedir, srcfname)
-        cache = rc._cache
-        if cache.isvalid(name, filename, kind):
-            srcdesc = cache[name, filename, kind]
-        else:
-            srcdesc = describe(filename, name=name, kind=kind, includes=rc.includes, 
-                               defines=rc.defines, undefines=rc.undefines, 
-                               parsers=rc.parsers, verbose=rc.verbose, 
-                               debug=rc.debug, builddir=rc.builddir)
-            cache[name, filename, kind] = srcdesc
-
-        # python description
-        pydesc = self.pysrcenv[srcname].get(name, {})
-
-        desc = merge_descriptions([srcdesc, pydesc])
-        desc['source_filename'] = srcfname
-        desc['header_filename'] = hdrfname
-        desc['metadata_filename'] = '{0}.py'.format(srcname)
-        if tarname is None:
-            desc['pxd_filename'] = desc['pyx_filename'] = \
-                                   desc['srcpxd_filename'] = None
-        else:
-            desc['pxd_filename'] = '{0}.pxd'.format(tarname)
-            desc['pyx_filename'] = '{0}.pyx'.format(tarname)
-            desc['srcpxd_filename'] = '{0}_{1}.pxd'.format(ext, tarname)
-        return desc
-
-    def adddesc2env(self, desc, env, name, srcname, tarname):
-        """Adds a description to environment"""
-        # Add to target environment
-        # docstrings overwrite, extras accrete 
-        mod = {name: desc, 'docstring': self.pysrcenv[srcname].get('docstring', ''),
-               'srcpxd_filename': desc['srcpxd_filename'],
-               'pxd_filename': desc['pxd_filename'],
-               'pyx_filename': desc['pyx_filename']}
-        if tarname not in env:
-            env[tarname] = mod
-            env[tarname]["name"] = tarname
-            env[tarname]['extra'] = self.pysrcenv[srcname].get('extra', '')
-        else:
-            #env[tarname].update(mod)
-            env[tarname][name] = desc
-            env[tarname]['extra'] += self.pysrcenv[srcname].get('extra', '')
-
     def register_classes(self, rc):
         """Registers classes with the type system.  This can and should be done
         trying to describe the class."""
         for i, (classname, srcname, tarname) in enumerate(rc.classes):
+            print("autodescribe: registering {0}".format(classname))
+            fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir)
             if isinstance(classname, basestring):
                 template_args = None
                 baseclassname = classname
@@ -1735,19 +1644,11 @@ class XDressPlugin(astparsers.ParserPlugin):
                 template_args = ['T{0}'.format(i) for i in range(len(classname)-2)]
                 template_args = tuple(template_args)
                 baseclassname = ts.basename(classname)
-            # preregister
-            ts.register_class(baseclassname, template_args=template_args)            
-            print("autodescribe: describing {0}".format(classname))
-            desc = self.compute_desc(classname, srcname, tarname, 'class', rc)
-            if rc.verbose:
-                pprint(desc)
-            print("autodescribe: registering {0}".format(classname))
             if tarname is None:
-                _, _, _, ext = find_source(srcname, sourcedir=rc.sourcedir)
-                cpppxd_base = '{0}_{1}'.format(ext, srcname)
+                cpppxd_base = '{0}_{1}'.format(fnames['language_extension'], srcname)
             else:
-                pxd_base = desc['pxd_filename'].rsplit('.', 1)[0]  # eg, fccomp
-                cpppxd_base = desc['srcpxd_filename'].rsplit('.', 1)[0]  # eg, cpp_fccomp
+                pxd_base = fnames['pxd_filename'].rsplit('.', 1)[0]  # eg, fccomp
+                cpppxd_base = fnames['srcpxd_filename'].rsplit('.', 1)[0]  # eg, cpp_fccomp
             class_c2py = ('{pytype}({var})',
                           ('{proxy_name} = {pytype}()\n'
                            '(<{ctype} *> {proxy_name}._inst)[0] = {var}'),
@@ -1820,6 +1721,89 @@ class XDressPlugin(astparsers.ParserPlugin):
                 cython_pyimport=kwclass['cython_pyimport'],
                 )
             ts.register_class(**kwclassdblptr)
+
+    def load_pysrcmod(self, srcname, rc):
+        """Loads a module dictionary from a src file intox the pysrcenv cache."""
+        if srcname in self.pysrcenv:
+            return
+        pyfilename = os.path.join(rc.sourcedir, srcname + '.py')
+        if os.path.isfile(pyfilename):
+            glbs = globals()
+            locs = {}
+            exec_file(pyfilename, glbs, locs)
+            if 'mod' not in locs:
+                pymod = {}
+            elif callable(locs['mod']):
+                pymod = eval('mod()', glbs, locs)
+            else:
+                pymod = locs['mod']
+        else:
+            pymod = {}
+        self.pysrcenv[srcname] = pymod
+
+    def load_sidecars(self, rc):
+        """Loads all sidecar files."""
+        srcnames = set([x[1] for x in rc.variables])
+        srcnames |= set([x[1] for x in rc.functions])
+        srcnames |= set([x[1] for x in rc.classes])
+        for x in srcnames:
+            self.load_pysrcmod(x, rc)
+
+    def compute_desc(self, name, srcname, tarname, kind, rc):
+        """Returns a description dictionary for a class or function
+        implemented in a source file and bound into a target file.
+
+        Parameters
+        ----------
+        name : str
+            Class or function name to describe.
+        srcname : str
+            File basename of implementation.  
+        tarname : str
+            File basename where the bindings will be generated.  
+        kind : str
+            The kind of type to describe, valid flags are 'class', 'func', and 'var'.
+        rc : xdress.utils.RunControl
+            Run contoler for this xdress execution.
+
+        Returns
+        -------
+        desc : dict
+            Description dictionary.
+
+        """
+        fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir)
+        srcfname = desc['source_filename']
+        filename = os.path.join(rc.sourcedir, srcfname)
+        cache = rc._cache
+        if cache.isvalid(name, filename, kind):
+            srcdesc = cache[name, filename, kind]
+        else:
+            srcdesc = describe(filename, name=name, kind=kind, includes=rc.includes, 
+                               defines=rc.defines, undefines=rc.undefines, 
+                               parsers=rc.parsers, verbose=rc.verbose, 
+                               debug=rc.debug, builddir=rc.builddir)
+            cache[name, filename, kind] = srcdesc
+        pydesc = self.pysrcenv[srcname].get(name, {})  # python description
+        desc = merge_descriptions([srcdesc, pydesc, fnames])
+        return desc
+
+    def adddesc2env(self, desc, env, name, srcname, tarname):
+        """Adds a description to environment"""
+        # Add to target environment
+        # docstrings overwrite, extras accrete 
+        mod = {name: desc, 'docstring': self.pysrcenv[srcname].get('docstring', ''),
+               'srcpxd_filename': desc['srcpxd_filename'],
+               'pxd_filename': desc['pxd_filename'],
+               'pyx_filename': desc['pyx_filename']}
+        if tarname not in env:
+            env[tarname] = mod
+            env[tarname]["name"] = tarname
+            env[tarname]['extra'] = self.pysrcenv[srcname].get('extra', '')
+        else:
+            #env[tarname].update(mod)
+            env[tarname][name] = desc
+            env[tarname]['extra'] += self.pysrcenv[srcname].get('extra', '')
 
     def compute_classes(self, rc):
         """Computes class descriptions and loads them into the environment."""

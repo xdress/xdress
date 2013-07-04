@@ -328,6 +328,41 @@ def find_source(basename, sourcedir='.'):
         srcext = _lang_exts[lang]
     return src, hdr, lang, srcext
 
+def find_filenames(srcname, tarname=None, sourcedir='src'):
+    """Returns a description dictionary for a class or function
+    implemented in a source file and bound into a target file.
+
+    Parameters
+    ----------
+    srcname : str
+        File basename of implementation.  
+    tarname : str, optional
+        File basename where the bindings will be generated.  
+    srcdir : str, optional
+        Source directory.
+
+    Returns
+    -------
+    desc : dict
+        Description dictionary containing only filenames.
+
+    """
+    desc = {}
+    srcfname, hdrfname, lang, ext = find_source(srcname, sourcedir=rc.sourcedir)
+    desc['source_filename'] = srcfname
+    desc['header_filename'] = hdrfname
+    desc['language'] = lang
+    desc['language_extension'] = ext
+    desc['metadata_filename'] = '{0}.py'.format(srcname)
+    if tarname is None:
+        desc['pxd_filename'] = desc['pyx_filename'] = \
+                               desc['srcpxd_filename'] = None
+    else:
+        desc['pxd_filename'] = '{0}.pxd'.format(tarname)
+        desc['pyx_filename'] = '{0}.pyx'.format(tarname)
+        desc['srcpxd_filename'] = '{0}_{1}.pxd'.format(ext, tarname)
+    return desc
+
 nyansep = r'~\_/' * 17 + '~=[,,_,,]:3'
 """WAT?!"""
 
