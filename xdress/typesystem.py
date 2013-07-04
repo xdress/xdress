@@ -884,7 +884,8 @@ def cpp_type(t):
 def gccxml_type(t):
     """Given a type t, returns the corresponding GCC-XML type name."""
     cppt = cpp_type(t)
-    gxt = cppt.replace('< ', '&lt;').replace(' >', '&gt;')
+    #gxt = cppt.replace('< ', '&lt;').replace(' >', '&gt;')
+    gxt = cppt.replace('< ', '<').replace(' >', '>')
     return gxt
 
 #########################   Cython Functions   ################################
@@ -2030,7 +2031,8 @@ def _ensure_importable(x):
 def register_class(name=None, template_args=None, cython_c_type=None, 
                    cython_cimport=None, cython_cy_type=None, cython_py_type=None,
                    cython_template_class_name=None, cython_cyimport=None, 
-                   cython_pyimport=None, cython_c2py=None, cython_py2c=None):
+                   cython_pyimport=None, cython_c2py=None, cython_py2c=None,
+                   cpp_type=None):
     """Classes are user specified types.  This function will add a class to 
     the type system so that it may be used normally with the rest of the 
     type system.
@@ -2056,6 +2058,8 @@ def register_class(name=None, template_args=None, cython_c_type=None,
         _cython_cytypes[name] = cython_cy_type
     if (cython_py_type is not None):
         _cython_pytypes[name] = cython_py_type
+    if cpp_type is not None:
+        _cpp_types[name] = cpp_type
 
     if (cython_cimport is not None):
         cython_cimport = _ensure_importable(cython_cimport)
@@ -2095,6 +2099,7 @@ def deregister_class(name):
     _cython_ctypes.pop(name, None)
     _cython_cytypes.pop(name, None)
     _cython_pytypes.pop(name, None)
+    _cpp_types.pop(name, None)
     _cython_cimports.pop(name, None)
     _cython_cyimports.pop(name, None)
     _cython_pyimports.pop(name, None)

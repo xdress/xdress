@@ -1637,13 +1637,15 @@ class XDressPlugin(astparsers.ParserPlugin):
         for i, (classname, srcname, tarname) in enumerate(rc.classes):
             print("autodescribe: registering {0}".format(classname))
             fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir)
+            baseclassname = classname
             if isinstance(classname, basestring):
                 template_args = None
                 baseclassname = classname
             else:
                 template_args = ['T{0}'.format(i) for i in range(len(classname)-2)]
                 template_args = tuple(template_args)
-                baseclassname = ts.basename(classname)
+                while not isinstance(baseclassname, basestring):
+                    baseclassname = baseclassname[0]  # hack version of ts.basename()
             if tarname is None:
                 cpppxd_base = '{0}_{1}'.format(fnames['language_extension'], srcname)
             else:
@@ -1662,12 +1664,15 @@ class XDressPlugin(astparsers.ParserPlugin):
                           '(<{ctype_nopred} *> {proxy_name}._inst)[0]')
             class_cimport = (rc.package, cpppxd_base)
             kwclass = dict(
-                name=classname,                                 # FCComp
-                cython_c_type=cpppxd_base + '.' + classname,    # cpp_fccomp.FCComp
+                name=baseclassname,                                 # FCComp
+                #name=classname,                                 # FCComp
+                template_args=template_args,
+                cython_c_type=cpppxd_base + '.' + baseclassname, # cpp_fccomp.FCComp
                 cython_cimport=class_cimport,
-                cython_cy_type=pxd_base + '.' + classname,      # fccomp.FCComp   
-                cython_py_type=pxd_base + '.' + classname,      # fccomp.FCComp   
-                cython_template_class_name=classname.replace('_', '').capitalize(),
+                cython_cy_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
+                cython_py_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
+                cpp_type=baseclassname,
+                cython_template_class_name=baseclassname.replace('_', '').capitalize(),
                 cython_cyimport=pxd_base,                       # fccomp
                 cython_pyimport=pxd_base,                       # fccomp
                 cython_c2py=class_c2py,
@@ -1679,7 +1684,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                               # '{proxy_name} = {pytype}()\n'
                               # '(<{ctype}> {proxy_name}._inst) = {var}'),
                               ('cdef {pytype} {proxy_name} = {pytype}()\n'
-                               #'{proxy_name} = {pytype}()\n'
+                              #'{proxy_name} = {pytype}()\n'
                                '(<{ctype}> {proxy_name}._inst)[0] = {var}[0]'),
                               ('if {cache_name} is None:\n'
                                '    {proxy_name} = {pytype}()\n'
@@ -1691,8 +1696,10 @@ class XDressPlugin(astparsers.ParserPlugin):
                               '(<{ctype_nopred} *> {proxy_name}._inst)')
             kwclassptr = dict(
                 name=(classname, '*'),
-                cython_py_type=pxd_base + '.' + classname,
-                cython_cy_type=pxd_base + '.' + classname,
+                template_args=template_args,
+                cython_py_type=pxd_base + '.' + baseclassname,
+                cython_cy_type=pxd_base + '.' + baseclassname,
+                cpp_type=baseclassname,
                 cython_c2py=class_ptr_c2py,
                 cython_py2c=class_ptr_py2c,
                 cython_cimport=kwclass['cython_cimport'],
@@ -1714,6 +1721,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                                  '(<{ctype_nopred} **> {proxy_name}._inst)')
             kwclassdblptr = dict(
                 name=((classname, '*'), '*'),
+                template_args=template_args,
                 cython_c2py=class_dblptr_c2py,
                 cython_py2c=class_dblptr_py2c,
                 cython_cimport=kwclass['cython_cimport'],
@@ -1773,7 +1781,7 @@ class XDressPlugin(astparsers.ParserPlugin):
 
         """
         fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir)
-        srcfname = desc['source_filename']
+        srcfname = fnames['source_filename']
         filename = os.path.join(rc.sourcedir, srcfname)
         cache = rc._cache
         if cache.isvalid(name, filename, kind):
@@ -1811,7 +1819,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         cache = rc._cache
         env = rc.env  # target environment, not source one
         for i, (classname, srcname, tarname) in enumerate(rc.classes):
-            print("autodescribe: describing " + classname)
+            print("autodescribe: describing {0}".format(classname))
             desc = self.compute_desc(classname, srcname, tarname, 'class', rc)
             if rc.verbose:
                 pprint(desc)

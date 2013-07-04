@@ -494,6 +494,10 @@ class XDressPlugin(astparsers.ParserPlugin):
         self.setup_basic(rc)
         self.setup_heavy(rc)
 
+    def execute(self, rc):
+        # dummy
+        pass
+
     # Helper methods
 
     def setup_basic(self, rc):
