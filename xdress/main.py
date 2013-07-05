@@ -148,6 +148,11 @@ import sys
 import argparse
 from pprint import pprint, pformat
 
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 from .utils import NotSpecified, RunControl, DEFAULT_RC_FILE, DEFAULT_PLUGINS, \
     exec_file
 
@@ -165,6 +170,10 @@ def main():
                            help="path to run control file")
     preparser.add_argument('--plugins', default=NotSpecified, nargs="+",
                            help="plugins to include")
+    preparser.add_argument('--bash-completion', default=True, action='store_true',
+                           help="enable bash completion", dest="bash_completion")
+    preparser.add_argument('--no-bash-completion', action='store_false',
+                           help="disable bash completion", dest="bash_completion")
     prens = preparser.parse_known_args()[0]
     predefaultrc = RunControl(rc=DEFAULT_RC_FILE, plugins=DEFAULT_PLUGINS)
     prerc = RunControl()
@@ -180,6 +189,8 @@ def main():
     # run plugins
     plugins = Plugins(prerc.plugins)
     parser = plugins.build_cli()
+    if argcomplete is not None and prerc.bash_completion:
+        argcomplete.autocomplete(parser)
     ns = parser.parse_args()
     rc = plugins.merge_defaultrcs()
     rc._update(rcdict)
