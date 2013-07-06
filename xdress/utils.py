@@ -461,3 +461,20 @@ def flatten(iterable):
                 yield subel
         else:
             yield el
+
+def split_template_args(s, open_brace='<', close_brace='>', separator=','):
+    """Takes a string with template specialization and returns a list 
+    of the argument values."""
+    targs = []
+    ns = s.split(open_brace, 1)[-1].rsplit(close_brace, 1)[0].split(separator)
+    count = 0
+    targ_name = ''
+    for n in ns:
+        count += int(open_brace in n)
+        count -= int(close_brace in n)
+        targ_name += n
+        if count == 0:
+            targs.append(targ_name.strip())
+            targ_name = ''
+    return targs
+

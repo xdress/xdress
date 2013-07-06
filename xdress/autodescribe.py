@@ -246,6 +246,7 @@ class GccxmlBaseDescriber(object):
     constructor.  The default visitor methods are valid for classes."""
 
     _funckey = None
+    _describes = None
     _integer_types = frozenset(['int32', 'int64', 'uint32', 'uint64'])
 
     def __init__(self, name, root=None, onlyin=None, verbose=False):
@@ -279,6 +280,7 @@ class GccxmlBaseDescriber(object):
         self._currfuncsig = None
         self._currclass = []  # this must be a stack to handle nested classes  
         self._level = -1
+        #self._template_args.update(ts.template_types)
 
     def __str__(self):
         return pformat(self.desc)
@@ -319,15 +321,20 @@ class GccxmlBaseDescriber(object):
             return 'str'
         inst = [template_name]
         self._level += 1
+        targ_nodes = []
         if template_name in self._template_args:
             for targ in self._template_args[template_name]:
-                targ_nodes = [c for c in children if c.attrib['name'] == targ]
-                targ_node = targ_nodes[0]
-                targ_type = self.type(targ_node.attrib['id'])
-                inst.append(targ_type)
+                possible_targ_nodes = [c for c in children if c.attrib['name'] == targ]
+                targ_nodes.append(possible_targ_nodes[0])
         else:
-            # fill in later with string parsing of node name if needed.
-            pass
+            # gross but string parsing of node name is needed.
+            targs = utils.split_template_args(name)
+            print(targs)
+            query = ".//*[@name='{0}']"
+            targ_nodes = [self._root.find(query.format(targ)) for targ in targs]
+        for targ_node in targ_nodes:
+            targ_type = self.type(targ_node.attrib['id'])
+            inst.append(targ_type)
         self._level -= 1
         return tuple(inst)
 
@@ -336,7 +343,7 @@ class GccxmlBaseDescriber(object):
         self._pprint(node)
         name = node.attrib['name']
         self._currclass.append(name)
-        if name == self.name:
+        if self._describes == 'class' and name == ts.gccxml_type(self.name):
             bases = node.attrib['bases'].split()
             bases = None if len(bases) == 0 else [self.type(b) for b in bases]
             self.desc['parents'] = bases
@@ -546,6 +553,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
     """Class used to generate class descriptions via GCC-XML output."""
 
     _funckey = 'methods'
+    _describes = 'class'
     _constructvalue = 'class'
 
     def __init__(self, name, root=None, onlyin=None, verbose=False):
@@ -606,6 +614,8 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
 class GccxmlVarDescriber(GccxmlBaseDescriber):
     """Class used to generate variable descriptions via GCC-XML output."""
 
+    _describes = 'var'
+
     def __init__(self, name, root=None, onlyin=None, verbose=False):
         """Parameters
         -------------
@@ -652,6 +662,7 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
     """Class used to generate function descriptions via GCC-XML output."""
 
     _funckey = 'signatures'
+    _describes = 'func'
 
     def __init__(self, name, root=None, onlyin=None, verbose=False):
         """Parameters
@@ -1679,6 +1690,9 @@ class XDressPlugin(astparsers.ParserPlugin):
                 cython_py2c=class_py2c,
                 )
             ts.register_class(**kwclass)
+            #if template_args is not None:
+            #    kwclass['name'] = classname
+            #    ts.register_class(**kwclass)
             class_ptr_c2py = ('{pytype}({var})',
                               #('cdef {pytype} {proxy_name}\n'
                               # '{proxy_name} = {pytype}()\n'

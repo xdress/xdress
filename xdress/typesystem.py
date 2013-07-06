@@ -919,8 +919,7 @@ def cpp_type(t):
 def gccxml_type(t):
     """Given a type t, returns the corresponding GCC-XML type name."""
     cppt = cpp_type(t)
-    #gxt = cppt.replace('< ', '&lt;').replace(' >', '&gt;')
-    gxt = cppt.replace('< ', '<').replace(' >', '>')
+    gxt = cppt.replace('< ', '<').replace(' >', '>').replace('>>', '> >')
     return gxt
 
 #########################   Cython Functions   ################################

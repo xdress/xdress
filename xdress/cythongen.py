@@ -18,6 +18,7 @@ import os
 import sys
 import math
 from copy import deepcopy
+from pprint import pprint
 
 from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
     isvardesc, guess_language, newoverwrite
@@ -139,7 +140,7 @@ def modcpppxd(mod, exceptions=True):
          "srcpxd_filename": mod.get("srcpxd_filename", "")}
     attrs = []
     cimport_tups = set()
-    classnames = [name for name, desc in  mod.items() if isclassdesc(desc)]
+    classnames = [ts.basename(name) for name, desc in  mod.items() if isclassdesc(desc)]
     with ts.local_classes(classnames, frozenset(['c'])):
         for name in cpppxd_sorted_names(mod):
             desc = mod[name]
