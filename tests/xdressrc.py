@@ -66,10 +66,10 @@ classes = [
     ('TwoNums', 'device', 'pydevice'),
     ('DeviceParamTag', 'device', 'pydevice'),
     ('DeviceDescriptorTag', 'device', 'pydevice'),
-#    ('FCComp', 'fccomp'), 
+    ('FCComp', 'fccomp'), 
     ('EnrichmentParameters', 'enrichment_parameters'), 
-#    ('Enrichment', 'bright_enrichment', 'enrichment'), 
+    ('Enrichment', 'bright_enrichment', 'enrichment'), 
     #('Reprocess', 'reprocess'), 
-#    ('*', 'reprocess'), 
+    ('*', 'reprocess'), 
     (('SparseMatrix', 'float64'), 'bright'), 
     ]

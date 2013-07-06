@@ -140,7 +140,7 @@ def modcpppxd(mod, exceptions=True):
          "srcpxd_filename": mod.get("srcpxd_filename", "")}
     attrs = []
     cimport_tups = set()
-    classnames = [ts.basename(name) for name, desc in  mod.items() if isclassdesc(desc)]
+    classnames = [ts.basename(name) for name, desc in mod.items() if isclassdesc(desc)]
     with ts.local_classes(classnames, frozenset(['c'])):
         for name in cpppxd_sorted_names(mod):
             desc = mod[name]
@@ -433,7 +433,8 @@ def modpxd(mod, classes=()):
          "pxd_filename": mod.get("pxd_filename", "")}
     attrs = []
     cimport_tups = set()
-    classnames = [name for name, desc in  mod.items() if isclassdesc(desc)]
+    #classnames = [name for name, desc in  mod.items() if isclassdesc(desc)]
+    classnames = [ts.basename(name) for name, desc in mod.items() if isclassdesc(desc)]
     with ts.local_classes(classnames):
         for name, desc in mod.items():
             if isclassdesc(desc):
@@ -616,7 +617,8 @@ def modpyx(mod, classes=None):
     attrs = []
     import_tups = set()
     cimport_tups = set()
-    classnames = [name for name, desc in  mod.items() if isclassdesc(desc)]
+    #classnames = [name for name, desc in  mod.items() if isclassdesc(desc)]
+    classnames = [ts.basename(name) for name, desc in mod.items() if isclassdesc(desc)]
     with ts.local_classes(classnames):
         for name, desc in mod.items():
             if isvardesc(desc):

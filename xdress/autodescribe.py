@@ -329,7 +329,6 @@ class GccxmlBaseDescriber(object):
         else:
             # gross but string parsing of node name is needed.
             targs = utils.split_template_args(name)
-            print(targs)
             query = ".//*[@name='{0}']"
             targ_nodes = [self._root.find(query.format(targ)) for targ in targs]
         for targ_node in targ_nodes:
