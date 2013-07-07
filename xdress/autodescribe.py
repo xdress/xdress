@@ -335,6 +335,7 @@ class GccxmlBaseDescriber(object):
             targ_type = self.type(targ_node.attrib['id'])
             inst.append(targ_type)
         self._level -= 1
+        inst.append(0)
         return tuple(inst)
 
     def visit_class(self, node):
@@ -1650,12 +1651,16 @@ class XDressPlugin(astparsers.ParserPlugin):
             baseclassname = classname
             if isinstance(classname, basestring):
                 template_args = None
-                baseclassname = classname
+                #templateclassname = baseclassname.replace('_', '').capitalize()
+                templateclassname = baseclassname
             else:
                 template_args = ['T{0}'.format(i) for i in range(len(classname)-2)]
                 template_args = tuple(template_args)
                 while not isinstance(baseclassname, basestring):
                     baseclassname = baseclassname[0]  # hack version of ts.basename()
+                templateclassname = baseclassname
+                templateclassname = templateclassname + \
+                                    ''.join(["{"+targ+"}" for targ in template_args])
             if tarname is None:
                 cpppxd_base = '{0}_{1}'.format(fnames['language_extension'], srcname)
             else:
@@ -1682,16 +1687,20 @@ class XDressPlugin(astparsers.ParserPlugin):
                 cython_cy_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
                 cython_py_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
                 cpp_type=baseclassname,
-                cython_template_class_name=baseclassname.replace('_', '').capitalize(),
+                cython_template_class_name=templateclassname,
                 cython_cyimport=pxd_base,                       # fccomp
                 cython_pyimport=pxd_base,                       # fccomp
                 cython_c2py=class_c2py,
                 cython_py2c=class_py2c,
                 )
             ts.register_class(**kwclass)
-            #if template_args is not None:
-            #    kwclass['name'] = classname
-            #    ts.register_class(**kwclass)
+            if template_args is not None:
+                kwclassspec = dict(
+                    name=classname,
+                    cython_c_type=cpppxd_base + '.' + \
+                                  ts.cython_classname(classname)[1],
+                    )
+                ts.register_class(**kwclassspec)
             class_ptr_c2py = ('{pytype}({var})',
                               #('cdef {pytype} {proxy_name}\n'
                               # '{proxy_name} = {pytype}()\n'

@@ -140,7 +140,7 @@ def modcpppxd(mod, exceptions=True):
          "srcpxd_filename": mod.get("srcpxd_filename", "")}
     attrs = []
     cimport_tups = set()
-    classnames = [ts.basename(name) for name, desc in mod.items() if isclassdesc(desc)]
+    classnames = _classnames_in_mod(mod)
     with ts.local_classes(classnames, frozenset(['c'])):
         for name in cpppxd_sorted_names(mod):
             desc = mod[name]
@@ -288,7 +288,7 @@ def funccpppxd(desc, exceptions=True):
 _cpppxd_class_template = \
 """cdef extern from "{header_filename}" {namespace}:
 
-    cdef {construct_kind} {name}{parents}:
+    cdef {construct_kind} {name}{parents}{alias}:
         # constructors
 {constructors_block}
 
@@ -325,11 +325,16 @@ def classcpppxd(desc, exceptions=True):
 
     """
     pars = ', '.join([cython_ctype(p) for p in desc['parents'] or ()])
-    d = {'parents': pars if 0 == len(pars) else '('+pars+')'}
-    copy_from_desc = ['name', 'header_filename']
-    for key in copy_from_desc:
-        d[key] = desc[key]
+    d = {'parents': pars if 0 == len(pars) else '('+pars+')',
+         'header_filename': desc['header_filename'],}
     d['namespace'] = _format_ns(desc)
+    name = desc['name']
+    if isinstance(name, basestring):
+        d['name'] = name
+        d['alias'] = ''
+    else:
+        d['name'] = ts.cython_classname(name)[1]
+        d['alias'] = ' ' + _format_alias(desc)
     construct_kinds = {'struct': 'struct', 'class': 'cppclass'}
     d['construct_kind'] = construct_kinds[desc.get('construct', 'class')]
     inc = set(['c'])
@@ -366,6 +371,7 @@ def classcpppxd(desc, exceptions=True):
         line = "{0}({1}) {2}".format(mname, argfill, estr)
         if mrtn is None:
             # this must be a constructor
+            line = "{0}({1}) {2}".format(d['name'], argfill, estr)
             if line not in clines:
                 clines.append(line)
         else:
@@ -433,8 +439,7 @@ def modpxd(mod, classes=()):
          "pxd_filename": mod.get("pxd_filename", "")}
     attrs = []
     cimport_tups = set()
-    #classnames = [name for name, desc in  mod.items() if isclassdesc(desc)]
-    classnames = [ts.basename(name) for name, desc in mod.items() if isclassdesc(desc)]
+    classnames = _classnames_in_mod(mod)
     with ts.local_classes(classnames):
         for name, desc in mod.items():
             if isclassdesc(desc):
@@ -617,8 +622,7 @@ def modpyx(mod, classes=None):
     attrs = []
     import_tups = set()
     cimport_tups = set()
-    #classnames = [name for name, desc in  mod.items() if isclassdesc(desc)]
-    classnames = [ts.basename(name) for name, desc in mod.items() if isclassdesc(desc)]
+    classnames = _classnames_in_mod(mod)
     with ts.local_classes(classnames):
         for name, desc in mod.items():
             if isvardesc(desc):
@@ -1306,6 +1310,14 @@ def _format_ns(desc):
     else:
         return 'namespace "{0}"'.format(ns)
 
+def _format_alias(desc):
+    ns = desc.get('namespace', None)
+    cpp_name = ts.cpp_type(desc['name'])
+    if ns is None or len(ns) == 0:
+        return '"{0}"'.format(cpp_name)
+    else:
+        return '"{0}::{1}"'.format(ns, cpp_name)
+
 def _mangle_function_pointer_name(name, classname):
     pyref = "_xdress_{0}_{1}_proxy".format(classname, name)
     cref = pyref + "_func"
@@ -1346,3 +1358,12 @@ def _exception_str(exceptions, srcfile, rtntype):
     else:
         return ""
 
+
+def _classnames_in_mod(mod):
+    classnames = set()
+    for name, desc in mod.items():
+        if not isclassdesc(desc):
+            continue
+        classnames.add(name)
+        classnames.add(ts.basename(name))
+    return classnames

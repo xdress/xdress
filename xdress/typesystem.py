@@ -987,8 +987,8 @@ def _cython_ctype_add_predicate(t, last):
 def cython_ctype(t):
     """Given a type t, returns the corresponding Cython C type declaration."""
     t = canon(t)
-#    if t in _cython_ctypes:
-#        return _cython_ctypes[t]
+    if t in _cython_ctypes:
+        return _cython_ctypes[t]
     if isinstance(t, basestring):
         if t in base_types:
             return _cython_ctypes[t]
@@ -2307,20 +2307,20 @@ def local_classes(classnames, typesets=frozenset(['cy', 'py'])):
     """A context manager for making sure the given classes are local."""
     saved = {}
     for name in classnames:
-        if 'c' in typesets:
+        if 'c' in typesets and name in _cython_ctypes:
             saved[name, 'c'] = _undot_class_name(name, _cython_ctypes)
-        if 'cy' in typesets:
+        if 'cy' in typesets and name in _cython_cytypes:
             saved[name, 'cy'] = _undot_class_name(name, _cython_cytypes)
-        if 'py' in typesets:
+        if 'py' in typesets and name in _cython_pytypes:
             saved[name, 'py'] = _undot_class_name(name, _cython_pytypes)
     clearmemo()
     yield
     for name in classnames:
-        if 'c' in typesets:
+        if 'c' in typesets and name in _cython_ctypes:
             _redot_class_name(name, _cython_ctypes, saved[name, 'c'])
-        if 'cy' in typesets:
+        if 'cy' in typesets and name in _cython_cytypes:
             _redot_class_name(name, _cython_cytypes, saved[name, 'cy'])
-        if 'py' in typesets:
+        if 'py' in typesets and name in _cython_pytypes:
             _redot_class_name(name, _cython_pytypes, saved[name, 'py'])
     clearmemo()
 
