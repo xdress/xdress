@@ -1695,10 +1695,12 @@ class XDressPlugin(astparsers.ParserPlugin):
                 )
             ts.register_class(**kwclass)
             if template_args is not None:
+                specname = ts.cython_classname(classname)[1]
                 kwclassspec = dict(
                     name=classname,
-                    cython_c_type=cpppxd_base + '.' + \
-                                  ts.cython_classname(classname)[1],
+                    cython_c_type=cpppxd_base + '.' + specname,
+                    cython_cy_type=pxd_base + '.' + specname,
+                    cython_py_type=pxd_base + '.' + specname,
                     )
                 ts.register_class(**kwclassspec)
             class_ptr_c2py = ('{pytype}({var})',

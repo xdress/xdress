@@ -1078,7 +1078,7 @@ _cython_cyimports = _LazyImportDict({
     'dict': (None,),
     'pair': (('{stlcontainers}',),),
     'set': (('{stlcontainers}',),),
-    'vector': (('numpy', 'as', 'np'),),
+    'vector': (('numpy', 'as', 'np'), ('{stlcontainers}',)),
     'nucid': (('pyne', 'nucname'),),
     'nucname': (('pyne', 'nucname'),),
     })

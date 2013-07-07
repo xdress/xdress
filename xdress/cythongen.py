@@ -1020,10 +1020,12 @@ def classpyx(desc, classes=None):
         classes = {desc['name']: desc}
     nodocmsg = "no docstring for {0}, please file a bug report!"
     pars = ', '.join([cython_cytype(p) for p in desc['parents'] or ()])
-    d = {'parents': pars if 0 == len(pars) else '('+pars+')'}
-    copy_from_desc = ['name', 'namespace', 'header_filename']
-    for key in copy_from_desc:
-        d[key] = desc[key]
+    d = {'parents': pars if 0 == len(pars) else '('+pars+')',
+         'namespace': desc['namespace'],
+         'header_filename': desc['header_filename'],
+         }
+    name = desc['name']
+    d['name'] = name if isinstance(name, basestring) else ts.cython_classname(name)[1]
     class_doc = desc.get('docstrings', {}).get('class', nodocmsg.format(desc['name']))
     d['class_docstring'] = indent('\"\"\"{0}\"\"\"'.format(class_doc))
 

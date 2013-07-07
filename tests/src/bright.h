@@ -733,6 +733,7 @@ namespace bright {
     };
   };
 
+//SparseMatrix<int> spints;
 SparseMatrix<double> spdubs;
 
 // End bright namespace
