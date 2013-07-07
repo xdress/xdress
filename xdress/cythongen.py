@@ -632,6 +632,9 @@ def modpyx(mod, classes=None):
             import_tups |= i_tup
             cimport_tups |= ci_tup
             attrs.append(attr_str)
+        template_classes = _template_classnames_in_mod(mod)
+        template_dispatcher = _gen_template_dispatcher(template_classes)
+        attrs.append(template_dispatcher)
     import_tups.discard((mod["name"],))
     cimport_tups.discard((mod["name"],))
     m['imports'] = "\n".join(sorted(cython_imports(import_tups)))
@@ -643,6 +646,34 @@ def modpyx(mod, classes=None):
     pyx = _pyx_mod_template.format(**m)
     return pyx
 
+def _gen_template_dispatcher(templates):
+    """Generates a dictionary-based dispacher for templates.
+    """
+    if 0 == len(templates):
+        return ""
+    templates = sorted(templates)
+    disp = ['', "#", "# Dispatchers", "#",]
+    alreadyinitd = set()
+    for t in templates:
+        initline = "{0} = {{}}".format(t[0])
+        if initline not in alreadyinitd:
+            disp.append("")
+            disp.append("# {0} Dispatcher".format(t[0]))
+            disp.append(initline)
+            alreadyinitd.add(initline)
+        args = t[1:-1]
+        pytype = ts.cython_pytype(t)
+        if 0 == len(args):
+            raise ValueError("type {0!r} not a template".format(t))
+        elif 1 == len(args):
+            disp.append("{0}[{1!r}] = {2}".format(t[0], t[1], pytype))
+            disp.append("{0}[{1}] = {2}".format(t[0], ts.cython_pytype(t[1]), pytype))
+        else:
+            rs = [repr(_) for _ in t[1:-1]]
+            pyts = [ts.cython_pytypes(_) for _ in t[1:-1]]
+            disp.append("{0}[{1}] = {2}".format(t[0], ", ".join(rs), pytype))
+            disp.append("{0}[{1}] = {2}".format(t[0], ", ".join(pyts), pytype))
+    return "\n".join(disp)
 
 def _gen_property_get(name, t, cached_names=None, inst_name="self._inst",
                       classes=()):
@@ -661,7 +692,6 @@ def _gen_property_get(name, t, cached_names=None, inst_name="self._inst",
     lines += indent("return {0}".format(rtn), join=False)
     return lines
 
-
 def _gen_property_set(name, t, inst_name="self._inst", cached_name=None, 
                       classes=()):
     """This generates a Cython property setter for a variable of a given
@@ -676,7 +706,6 @@ def _gen_property_set(name, t, inst_name="self._inst", cached_name=None,
     if cached_name is not None:
         lines += indent("{0} = None".format(cached_name), join=False)
     return lines
-
 
 def _gen_property(name, t, doc=None, cached_names=None, inst_name="self._inst", 
                   classes=()):
@@ -1151,7 +1180,6 @@ def classpyx(desc, classes=None):
         desc['pyx_filename'] = '{0}.pyx'.format(d['name'].lower())
     return import_tups, cimport_tups, pyx
 
-
 def varpyx(desc):
     """Generates a ``*.pyx`` Cython wrapper implementation for exposing a C/C++
     variable based off of a dictionary description.
@@ -1356,7 +1384,6 @@ def _exception_str(exceptions, srcfile, rtntype):
     else:
         return ""
 
-
 def _classnames_in_mod(mod):
     classnames = set()
     for name, desc in mod.items():
@@ -1364,4 +1391,12 @@ def _classnames_in_mod(mod):
             continue
         classnames.add(name)
         classnames.add(ts.basename(name))
+    return classnames
+
+def _template_classnames_in_mod(mod):
+    classnames = set()
+    for name, desc in mod.items():
+        if isinstance(name, basestring) or not isclassdesc(desc):
+            continue
+        classnames.add(name)
     return classnames
