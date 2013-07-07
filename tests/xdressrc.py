@@ -70,9 +70,10 @@ classes = [
     ('FCComp', 'fccomp'), 
     ('EnrichmentParameters', 'enrichment_parameters'), 
     ('Enrichment', 'bright_enrichment', 'enrichment'), 
-    #('Reprocess', 'reprocess'), 
     ('*', 'reprocess'), 
-#    (('SparseMatrix', 'int32'), 'bright'), 
-#    (('SparseMatrix', 'float64'), 'bright'), 
-    ('*', 'bright'), 
+    (('SparseMatrix', 'int32'), 'bright'), 
+    (('SparseMatrix', 'float64'), 'bright'), 
+    (('sparse_matrix_entry', 'int32'), 'bright'), 
+    (('sparse_matrix_entry', 'float64'), 'bright'), 
+#    ('*', 'bright'),  # doesn't work yet due to *_t types
     ]

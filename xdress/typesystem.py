@@ -281,7 +281,8 @@ def _memoize(obj):
 
 base_types = set(['char', 'uchar', 'str', 'int16', 'int32', 'int64', 'int128',
                   'uint16', 'uint32', 'uint64', 'uint128', 'float32', 'float64',
-                  'float128', 'complex128', 'void', 'bool', 'type', 'file'])
+                  'float128', 'complex128', 'void', 'bool', 'type', 'file', 
+                  'exception'])
 """Base types in the type system."""
 
 template_types = {
@@ -354,6 +355,7 @@ _humannames = {
     'float128': 'long double',
     'complex128': 'complex',
     'file': 'file',
+    'exception': 'exception',
     'dict': 'dict of ({key_type}, {value_type}) items',
     'map': 'map of ({key_type}, {value_type}) items',
     'pair': '({key_type}, {value_type}) pair',
@@ -849,6 +851,7 @@ _cpp_types = _LazyConfigDict({
     'bool': 'bool',
     'void': 'void', 
     'file': 'FILE',
+    'exception': '{extra_types}exception',
     'map': 'std::map',
     'dict': 'std::map',
     'pair': 'std::pair',
@@ -949,6 +952,7 @@ _cython_ctypes = _LazyConfigDict({
     'bool': 'bint',
     'void': 'void',
     'file': 'c_file',
+    'exception': '{extra_types}exception',
     'map': 'cpp_map',
     'dict': 'dict',
     'pair': 'cpp_pair',
@@ -1040,6 +1044,7 @@ _cython_cimports = _LazyImportDict({
     'bool': (None,),
     'void': (None,),
     'file': (('libc.stdio', 'FILE', 'c_file'),),
+    'exception': (('{extra_types}',),),
     'map': (('libcpp.map', 'map', 'cpp_map'),),
     'dict': (None,),
     'pair': (('libcpp.utility', 'pair', 'cpp_pair'),),
@@ -1075,6 +1080,7 @@ _cython_cyimports = _LazyImportDict({
     'bool': (None,),
     'void': (None,),
     'file': (('{extra_types}',),),
+    'exception': (('{extra_types}',),),
     'map': (('{stlcontainers}',),),
     'dict': (None,),
     'pair': (('{stlcontainers}',),),
@@ -1182,6 +1188,7 @@ _cython_pyimports = _LazyImportDict({
     'bool': (None,),
     'void': (None,),
     'file': (None,),
+    'exception': (None,),
     'map': (('{stlcontainers}',),),
     'dict': (None,),
     'pair': (('{stlcontainers}',),),
@@ -1279,6 +1286,7 @@ _cython_cytypes = _LazyConfigDict({
     'bool': 'bint',
     'void': 'void',
     'file': 'c_file',
+    'exception': '{extra_types}exception',
     'map': '{stlcontainers}_Map{key_type}{value_type}',
     'dict': 'dict',
     'pair': '{stlcontainers}_Pair{value_type}',
@@ -1306,6 +1314,7 @@ _cython_functionnames = _LazyConfigDict({
     'bool': 'bool',
     'void': 'void',
     'file': 'file',
+    'exception': 'exception',
     # template types
     'map': 'map_{key_type}_{value_type}',
     'dict': 'dict',
@@ -1360,6 +1369,7 @@ _cython_classnames = _LazyConfigDict({
     'bool': 'Bool',
     'void': 'Void',
     'file': 'File',
+    'exception': 'Exception',
     # template types
     'map': 'Map{key_type}{value_type}',
     'dict': 'Dict',
@@ -1470,6 +1480,7 @@ _cython_pytypes = _LazyConfigDict({
     'float128': 'np.float128',
     'complex128': 'object',
     'file': 'file',
+    'exception': 'Exception',
     'bool': 'bool',
     'void': 'object',
     'map': '{stlcontainers}Map{key_type}{value_type}',

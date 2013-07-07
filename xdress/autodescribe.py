@@ -460,6 +460,7 @@ class GccxmlBaseDescriber(object):
 
     _fundemntal_to_base = {
         'char': 'char', 
+        'int16_t': 'int16',
         'int': 'int32', 
         'long int': 'int64', 
         'unsigned int': 'uint32',
