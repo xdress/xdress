@@ -478,3 +478,16 @@ def split_template_args(s, open_brace='<', close_brace='>', separator=','):
             targ_name = ''
     return targs
 
+def parse_template(s, open_brace='<', close_brace='>', separator=','):
+    """Takes a string -- which may represent a template specialization -- 
+    and returns the corresponding type."""
+    if open_brace not in s and close_brace not in s:
+        return s
+    t = [s.split(open_brace, 1)[0]]
+    targs = split_template_args(s, open_brace=open_brace, 
+                                close_brace=close_brace, separator=separator)
+    for targ in targs:
+        t.append(parse_template(targ, open_brace=open_brace, 
+                                close_brace=close_brace, separator=separator))
+    t.append(0)
+    return tuple(t)

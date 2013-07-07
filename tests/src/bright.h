@@ -734,7 +734,10 @@ namespace bright {
   };
 
 std::vector< std::vector<int> > vvi;
+sparse_matrix_entry<int> smeints;
 SparseMatrix<int> spints;
+
+sparse_matrix_entry<double> smedubs;
 SparseMatrix<double> spdubs;
 
 // End bright namespace

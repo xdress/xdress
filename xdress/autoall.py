@@ -147,7 +147,7 @@ class GccxmlFinder(object):
                 continue
             if name in FORBIDDEN_NAMES:
                 continue
-            names.add(name)
+            names.add(utils.parse_template(name))
             self._pprint(child)
         return sorted(names)
             
@@ -558,11 +558,14 @@ class XDressPlugin(astparsers.ParserPlugin):
                 autonamecache.dump()
             allnames[srcname] = found
             if 0 < len(found[0]):
-                print("autoall: found variables: " + ", ".join(found[0]))
+                fstr = ", ".join([str(_) for _ in found[0]])
+                print("autoall: found variables: " + fstr)
             if 0 < len(found[1]):
-                print("autoall: found functions: " + ", ".join(found[1]))
+                fstr = ", ".join([str(_) for _ in found[1]])
+                print("autoall: found functions: " + fstr)
             if 0 < len(found[2]):
-                print("autoall: found classes: " + ", ".join(found[2]))
+                fstr = ", ".join([str(_) for _ in found[2]])
+                print("autoall: found classes: " + fstr)
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 

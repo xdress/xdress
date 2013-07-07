@@ -349,6 +349,11 @@ class GccxmlBaseDescriber(object):
         name = node.attrib['name']
         self._currclass.append(name)
         if self._describes == 'class' and name == ts.gccxml_type(self.name):
+            if 'bases' not in node.attrib:
+                msg = ("The type {0!r} is used as part of an API element but no "
+                       "declarations were made with it.  Please declare a variable "
+                       "of type {0!r} somewhere in the source or header.")
+                raise NotImplementedError(msg.format(name))            
             bases = node.attrib['bases'].split()
             bases = None if len(bases) == 0 else [self.type(b) for b in bases]
             self.desc['parents'] = bases

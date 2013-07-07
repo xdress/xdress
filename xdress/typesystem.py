@@ -788,6 +788,7 @@ type_aliases = _LazyConfigDict({
     'f8': 'float64',
     'f16': 'float128',
     'float': 'float64',
+    'double': 'float64',
     'complex': 'complex128',
     'b': 'bool',
     'v': 'void',
