@@ -492,9 +492,8 @@ def classpxd(desc, classes=()):
         desc['pxd_filename'] = '{0}.pxd'.format(desc['name'].lower())
     pars = ', '.join([cython_cytype(p) for p in desc['parents'] or ()])
     d = {'parents': pars if 0 == len(pars) else '('+pars+')'}
-    copy_from_desc = ['name',]
-    for key in copy_from_desc:
-        d[key] = desc[key]
+    name = desc['name']
+    d['name'] = name if isinstance(name, basestring) else ts.cython_classname(name)[1]
     max_callbacks = desc.get('extra', {}).get('max_callbacks', 8)
     mczeropad = int(math.log10(max_callbacks)) + 1
 
@@ -504,9 +503,6 @@ def classpxd(desc, classes=()):
 
 
     from_cpppxd = desc['srcpxd_filename'].rsplit('.', 1)[0]
-    # This is taken care of in main!
-    #register_class(desc['name'], cython_cimport=from_cpppxd,
-    #               cython_c_type="{0}.{1}".format(from_cpppxd, desc['name']),)
     d['name_type'] = cython_ctype(desc['name'])
     cython_cimport_tuples(desc['name'], cimport_tups, set(['c']))
 
