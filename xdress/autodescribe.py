@@ -313,6 +313,11 @@ class GccxmlBaseDescriber(object):
     def _visit_template(self, node):
         name = node.attrib['name']
         members = node.attrib.get('members', '').strip().split()
+        if 0 == len(members):
+            msg = ("The type {0!r} is used as part of an API element but no "
+                   "declarations were made with it.  Please declare a variable "
+                   "of type {0!r} somewhere in the source or header.")
+            raise NotImplementedError(msg.format(name))
         children = [child for m in members for child in \
                                 self._root.iterfind(".//*[@id='{0}']".format(m))]
         tags = [child.tag for child in children]

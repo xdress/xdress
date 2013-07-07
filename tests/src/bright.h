@@ -733,7 +733,8 @@ namespace bright {
     };
   };
 
-//SparseMatrix<int> spints;
+std::vector< std::vector<int> > vvi;
+SparseMatrix<int> spints;
 SparseMatrix<double> spdubs;
 
 // End bright namespace
