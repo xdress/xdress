@@ -464,6 +464,10 @@ class GccxmlBaseDescriber(object):
         else:
             if t in self._integer_types:
                 default = int(default)
+            elif default == 'true':
+                default = True
+            elif default == 'false':
+                default = False
             arg = (name, t, default)
         self._currfuncsig.append(arg)
 
