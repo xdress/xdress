@@ -1863,50 +1863,54 @@ _cython_py2c_conv = _LazyConverterDict({
              '{proxy_name}.pair_ptr[0]'),
     'set': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
             '{proxy_name}.set_ptr[0]'),
-    'vector': (('cdef int i\n'
+    'vector': ((
+                '# {var} is a {type}\n'
+                'cdef int i{var}\n'
                 'cdef int {var}_size\n'
                 'cdef {npctypes[0]} * {var}_data\n'
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
                 '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
-                '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = {var}_data[i]\n'
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = {var}_data[i{var}]\n'
                 'else:\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
-                '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = <{npctypes[0]}> {var}[i]\n'),
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = <{npctypes[0]}> {var}[i{var}]\n'),
                '{proxy_name}'),     # FIXME There might be improvements here...
     ('vector', 'char', 0): ((
-                'cdef int i\n'
+                '# {var} is a {type}\n'
+                'cdef int i{var}\n'
                 'cdef int {var}_size\n'
                 'cdef {npctypes[0]} * {var}_data\n'
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == <int> {nptype}:\n'
                 '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
-                '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = {var}[i]\n'
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = {var}[i{var}]\n'
                 'else:\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
-                '    for i in range({var}_size):\n'
+                '    for i{var} in range({var}_size):\n'
                 '        _ = {var}[i].encode()\n'
-                '        {proxy_name}[i] = deref(<char *> _)\n'),
+                '        {proxy_name}[i{var}] = deref(<char *> _)\n'),
                '{proxy_name}'),
     TypeMatcher(('vector', MatchAny, '&')): ((
-                'cdef int i\n'
+                '# {var} is a {type}\n'
+                'cdef int i{var}\n'
                 'cdef int {var}_size\n'
-                'cdef {npctypes[0]} * {var}_data\n'
+                'cdef {npctypes_nopred[0]} * {var}_data\n'
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
-                '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+                '    {var}_data = <{npctypes_nopred[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
                 '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
-                '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = {var}_data[i]\n'
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = {var}_data[i{var}]\n'
                 'else:\n'
                 '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
-                '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = <{npctypes[0]}> {var}[i]\n'),
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = <{npctypes_nopred[0]}> {var}[i{var}]\n'),
                 '{proxy_name}'),     # FIXME There might be improvements here...
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
@@ -1919,6 +1923,10 @@ _cython_py2c_conv = _LazyConverterDict({
 
 _cython_py2c_conv[TypeMatcher((('vector', MatchAny, '&'), 'const'))] = \
     _cython_py2c_conv[TypeMatcher((('vector', MatchAny, 'const'), '&'))] = \
+    _cython_py2c_conv[TypeMatcher(((('vector', MatchAny, 0), 'const'), '&'))] = \
+    _cython_py2c_conv[TypeMatcher(((('vector', MatchAny, 0), '&'), 'const'))] = \
+    _cython_py2c_conv[TypeMatcher((('vector', MatchAny, 0), '&'))] = \
+    _cython_py2c_conv[TypeMatcher((('vector', MatchAny, '&'), 0))] = \
     _cython_py2c_conv[TypeMatcher(('vector', MatchAny, '&'))]
 
 
@@ -2011,12 +2019,19 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
     t_nopred = strip_predicates(t)
     ct_nopred = cython_ctype(t_nopred)
     cyt_nopred = cython_cytype(t_nopred)
+    npt_nopred =  cython_nptype(t_nopred)
+    npct_nopred = cython_ctype(npt_nopred)
+    npts_nopred = cython_nptype(t_nopred, depth=1)
+    npcts_nopred = [npct_nopred] if isinstance(npts_nopred, basestring) \
+                                 else _maprecurse(cython_ctype, npts_nopred)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
     proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
-    template_kw = dict(var=var, proxy_name=proxy_name, pytype=pyt, cytype=cyt,
-                       ctype=ct, last=last, nptype=npt, npctype=npct,
+    template_kw = dict(var=var, type=t, proxy_name=proxy_name, pytype=pyt, 
+                       cytype=cyt, ctype=ct, last=last, nptype=npt, npctype=npct,
                        nptypes=npts, npctypes=npcts, ctype_nopred=ct_nopred,
-                       cytype_nopred=cyt_nopred)
+                       cytype_nopred=cyt_nopred, nptype_nopred=npt_nopred, 
+                       npctype_nopred=npct_nopred, nptypes_nopred=npts_nopred, 
+                       npctypes_nopred=npcts_nopred)
     nested = False
     if isdependent(tkey):
         tsig = [ts for ts in refined_types if ts[0] == tkey][0]
