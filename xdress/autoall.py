@@ -472,6 +472,7 @@ class XDressPlugin(astparsers.ParserPlugin):
     """This plugin resolves the '*' syntax in wrapper types by parsing the 
     source files prio to describing them. 
     """
+    allsrc = varhasstar = fnchasstar = clshasstar = None
 
     def defaultrc(self):
         rc = RunControl()

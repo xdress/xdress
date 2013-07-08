@@ -1682,6 +1682,15 @@ _cython_c2py_conv = _LazyConverterDict({
     TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): ('int({var}[0])',),
     })
 
+# Strip const when going c -> py 
+def _cython_c2py_matchany_const(t):
+    rtn = _cython_c2py_conv[t[0]]
+    #if callable(rtn):
+    #    rtn = rtn(t[0])
+    return rtn
+_cython_c2py_conv[TypeMatcher((MatchAny, 'const'))] = _cython_c2py_matchany_const
+#_cython_c2py_conv[TypeMatcher((MatchAny, '&'))] = lambda t: _cython_c2py_conv[t[0]]
+#_cython_c2py_conv[TypeMatcher(((MatchAny, 'const'), '&'))] = lambda t: _cython_c2py_conv[t[0][0]]
 
 def _cython_c2py_conv_function_pointer(t_):
     t = t_[1]
@@ -1798,6 +1807,8 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
                        pytype=pyt, proxy_name=proxy_name, nptype=npt,
                        nptypes=npts, ctype_nopred=ct_nopred,
                        cytype_nopred=cyt_nopred,)
+    if callable(c2pyt):
+        import pdb; pdb.set_trace()
     if 1 == len(c2pyt) or ind == 0:
         decl = body = None
         rtn = c2pyt[0].format(**template_kw)
@@ -2094,9 +2105,9 @@ def _ensure_importable(x):
 
 def register_class(name=None, template_args=None, cython_c_type=None,
                    cython_cimport=None, cython_cy_type=None, cython_py_type=None,
-                   cython_template_class_name=None, cython_cyimport=None, 
-                   cython_pyimport=None, cython_c2py=None, cython_py2c=None,
-                   cpp_type=None):
+                   cython_template_class_name=None, cython_template_function_name=None,
+                   cython_cyimport=None, cython_pyimport=None, cython_c2py=None, 
+                   cython_py2c=None, cpp_type=None):
     """Classes are user specified types.  This function will add a class to 
     the type system so that it may be used normally with the rest of the 
     type system.
@@ -2146,7 +2157,8 @@ def register_class(name=None, template_args=None, cython_c_type=None,
         _cython_py2c_conv[name] = cython_py2c
     if (cython_template_class_name is not None):
         _cython_classnames[name] = cython_template_class_name
-
+    if (cython_template_function_name is not None):
+        _cython_functionnames[name] = cython_template_function_name
 
 def deregister_class(name):
     """This function will remove a previously registered class from the type system.
@@ -2252,7 +2264,8 @@ def deregister_specialization(t):
     _cython_pyimports.pop(t, None)
 
 
-def register_numpy_dtype(t, cython_cimport=None, cython_cyimport=None, cython_pyimport=None):
+def register_numpy_dtype(t, cython_cimport=None, cython_cyimport=None, 
+                         cython_pyimport=None):
     """This function will add a type to the system as numpy dtype that lives in
     the stlcontainers module.
     """
