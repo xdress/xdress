@@ -464,30 +464,19 @@ def canon(t):
         if 0 == tlen:
             _raise_type_error(t)
         last_val = 0 if tlen == 1 else t[-1]
-        if isinstance(t0, basestring):
-            if isdependent(t0):
-                return _resolve_dependent_type(t0, t)
-            elif t0 in template_types:
-                templen = len(template_types[t0])
-                last_val = 0 if tlen == 1 + templen else t[-1]
-                filledt = [t0] + [canon(tt) for tt in t[1:1+templen]] + [last_val]
-                return tuple(filledt)
-            else:
-                #if 2 < tlen:
-                #    _raise_type_error(t)
-                return (canon(t0), last_val)
-        elif isinstance(t0, Sequence):
-            t00 = t0[0]
-            if isinstance(t00, basestring):
-                # template or independent refinement type
-                return (canon(t0), last_val)
-            elif isinstance(t00, Sequence):
-                # zOMG dependent type
-                return _resolve_dependent_type(t00, t0)
-            # BELOW is for possible compound types...
-            #return (tuple([canon(subt) for subt in t[0]]), last_val)
-        else:
+        if not isinstance(t0, basestring) and not isinstance(t0, Sequence):
             _raise_type_error(t)
+        if isdependent(t0):
+            return _resolve_dependent_type(t0, t)
+        elif t0 in template_types:
+            templen = len(template_types[t0])
+            last_val = 0 if tlen == 1 + templen else t[-1]
+            filledt = [t0] + [canon(tt) for tt in t[1:1+templen]] + [last_val]
+            return tuple(filledt)
+        else:
+            #if 2 < tlen:
+            #    _raise_type_error(t)
+            return (canon(t0), last_val)
     else:
         _raise_type_error(t)
 
@@ -584,6 +573,9 @@ class TypeMatcher(object):
         if isinstance(pattern, basestring):
             #return t == pattern if isinstance(t, basestring) else False
             return False
+        if isinstance(t, basestring) or isinstance(t, bool) or \
+           isinstance(t, int) or isinstance(t, float):
+            return False
         # now we know both pattern and t should be different non-string sequences,
         # nominally tuples or lists
         if len(t) != len(pattern):
@@ -596,9 +588,7 @@ class TypeMatcher(object):
         return True
 
     def flatmatches(self, t):
-        """
-        Flattens t and then sees if any part of it matches
-        TypeMatcher.pattern
+        """Flattens t and then sees if any part of it matches self.pattern.
         """
         try:
             # See if user gave entire type

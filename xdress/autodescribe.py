@@ -149,6 +149,7 @@ Automatic Descriptions API
 from __future__ import print_function
 import os
 import io
+import re
 import sys
 from copy import deepcopy
 import linecache
@@ -181,6 +182,9 @@ from . import typesystem as ts
 
 if sys.version_info[0] >= 3: 
     basestring = str
+
+# d = int64, u = uint64
+_GCCXML_LITERAL_INTS = re.compile('(\d+)([du])')
 
 def clearmemo():
     """Clears all function memoizations for autodescribers."""
@@ -310,6 +314,20 @@ class GccxmlBaseDescriber(object):
         'vector': ('value_type',),
         }
 
+    def _template_literal_arg(self, targ):
+        """Parses a literal template parameter."""
+        if targ == 'true':
+            return 'True'
+            #return True
+        elif targ == 'false':
+            return 'False'
+            #return True
+        m = _GCCXML_LITERAL_INTS.match(targ)
+        if m is not None:
+            return m.group(1)
+            #return int(m.group(1))
+        return targ
+
     def _visit_template(self, node):
         name = node.attrib['name']
         members = node.attrib.get('members', '').strip().split()
@@ -327,17 +345,29 @@ class GccxmlBaseDescriber(object):
         inst = [template_name]
         self._level += 1
         targ_nodes = []
+        targ_islit = []
         if template_name in self._template_args:
             for targ in self._template_args[template_name]:
                 possible_targ_nodes = [c for c in children if c.attrib['name'] == targ]
                 targ_nodes.append(possible_targ_nodes[0])
+                targ_islit.append(False)
         else:
             # gross but string parsing of node name is needed.
             targs = utils.split_template_args(name)
             query = ".//*[@name='{0}']"
-            targ_nodes = [self._root.find(query.format(targ)) for targ in targs]
-        for targ_node in targ_nodes:
-            targ_type = self.type(targ_node.attrib['id'])
+            for targ in targs:
+                targ_node = self._root.find(query.format(targ))
+                if targ_node is None:
+                    targ_node = self._template_literal_arg(targ)
+                    targ_islit.append(True)
+                else:
+                    targ_islit.append(False)
+                targ_nodes.append(targ_node)
+        for targ_node, targ_lit in zip(targ_nodes, targ_islit):
+            if targ_lit:
+                targ_type = targ_node
+            else:
+                targ_type = self.type(targ_node.attrib['id'])
             inst.append(targ_type)
         self._level -= 1
         inst.append(0)
