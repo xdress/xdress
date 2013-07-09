@@ -34,10 +34,7 @@ import re
 import os
 from subprocess import call
 from textwrap import TextWrapper
-from .utils import indentstr
 from xdress.plugins import Plugin
-
-import pprint
 
 # XML conditional imports
 try:
@@ -79,9 +76,6 @@ wrap_64 = TextWrapper(width=64, initial_indent=' ' * 0,
 
 # attrib_wrap is for listing class attributes/methods
 attrib_wrap = TextWrapper(width=64, initial_indent=' ' * 0,
-                          subsequent_indent=' ' * 4)
-
-m_attrib_wrap = TextWrapper(width=68, initial_indent=' ' * 0,
                           subsequent_indent=' ' * 4)
 
 _param_sec = 'Parameters\n----------'
@@ -1013,5 +1007,3 @@ class XDressPlugin(Plugin):
         # TODO: Add the docstrings we found to the descriptions cache.
         #       This is probably easier to do as I am putting them in the
         #       rc.env places
-
-# BUG: The docstring for the class doesn't show up.
