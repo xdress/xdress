@@ -12,16 +12,22 @@ This module is available as an xdress plugin by the name
 Usage Details
 =============
 
-So after autodescribe has run
-there is an env dictionary on rc (rc.env) that represents the whole environment
-The target / package environment that is
-This dict has keys which are module names and values which are module dictionaries
-The module dictionaries then have the variable names and keys and the desc dictionaries as values
-So to get to a docstring you would do:
-rc.env['modulename']['myclass']['docstrings']
-rc.env['modulename']['myfunc']['docstring']
-and
-rc.env['modulename']['myvar']['docstring']
+The usage of this plugin is very simple; you simply need to add it to
+the list of plugins in the xdressrc.py file. The most common issue users
+make with this plugin is including it in the plugins list in the wrong
+order. Because xdress tries to execute plugins in the order they are
+listed in xdressrc, it is important that ``xdress.doxygen`` come after
+``xdress.autodescribe``, but before ``xdress.cythongen``. autodescribe
+will ensure that the description dictionary is in place and ready for
+dOxygen to alter before cythongen has a chance to produce wrapper code.
+This might be done as follows:
+
+    plugins = ('xdress.stlwrap', 'xdress.autoall', 'xdress.autodescribe',
+               'xdress.doxygen', 'xdress.cythongen')
+
+
+dOygen API
+==========
 """
 from __future__ import print_function
 import re
@@ -30,6 +36,8 @@ from subprocess import call
 from textwrap import TextWrapper
 from .utils import indentstr
 from xdress.plugins import Plugin
+
+import pprint
 
 # XML conditional imports
 try:
@@ -58,17 +66,22 @@ except ImportError:
 ##
 ##############################################################################
 ### Set up various TextWrapper instances
-# main_wrap is for the core content of the docstring. It adds 4 spaces
-#   before the main description as well as the parameters and
-main_wrap = TextWrapper(width=72, initial_indent=' ' * 0,
-                        subsequent_indent=' ' * 0)
+# wrap_68 is for the core content of the docstring. It wraps, assuming there
+# will be 4 spaces preceding the text. This is suitable for the docstring
+# for a class or a function
+wrap_68 = TextWrapper(width=68, initial_indent=' ' * 0,
+                      subsequent_indent=' ' * 0)
 
-# member_wrap is for anything under Paramters, Returns, Methods, ect.
-member_wrap = TextWrapper(width=72, initial_indent=' ' * 0,
-                          subsequent_indent=' ' * 0)
+# wrap_64 is for core part of a class method. It wraps, assuming there
+# will be 8 spaces preceding the text
+wrap_64 = TextWrapper(width=64, initial_indent=' ' * 0,
+                      subsequent_indent=' ' * 0)
 
 # attrib_wrap is for listing class attributes/methods
-attrib_wrap = TextWrapper(width=72, initial_indent=' ' * 0,
+attrib_wrap = TextWrapper(width=64, initial_indent=' ' * 0,
+                          subsequent_indent=' ' * 4)
+
+m_attrib_wrap = TextWrapper(width=68, initial_indent=' ' * 0,
                           subsequent_indent=' ' * 4)
 
 _param_sec = 'Parameters\n----------'
@@ -83,7 +96,7 @@ _no_arg_links = re.compile('(<param>\n\s+<type>)<ref.+>(\w+)</ref>(.+</type>)')
 ## -- Functions to create docstrings
 ##
 ##############################################################################
-def _class_docstr(class_dict, desc_funcs=False):
+def class_docstr(class_dict, desc_funcs=False):
     """
     Generate the main docstring for a class given a dictionary of the
     parsed dOxygen xml.
@@ -108,14 +121,14 @@ def _class_docstr(class_dict, desc_funcs=False):
     class_name = class_dict['kls_name'].split('::')[-1]
     cls_msg = class_dict['public-func'][class_name]['detaileddescription']
 
-    msg = main_wrap.fill(cls_msg)
+    msg = wrap_68.fill(cls_msg)
 
     # Get a list of the methods and variables to list here.
     methods = list(set(class_dict['members']['methods']))
     variables = class_dict['members']['variables']
 
     ivar_keys = filter(lambda x: 'attrib' in x, class_dict.keys())
-    func_keys = filter(lambda x: 'func' in x, class_dict.keys())
+    func_grp_keys = filter(lambda x: 'func' in x, class_dict.keys())
 
     # Flatten instance variables and functions from class dictionary.
     ivar_items = []
@@ -124,15 +137,15 @@ def _class_docstr(class_dict, desc_funcs=False):
     ivars = dict(ivar_items)
 
     func_items = []
-    for i in func_keys:
+    for i in func_grp_keys:
         func_items += class_dict[i].items()
     funcs = dict(func_items)
 
     # skip a line and begin Attributes section
     msg += '\n\n'
-    msg += main_wrap.fill('Attributes')
+    msg += wrap_68.fill('Attributes')
     msg += '\n'
-    msg += main_wrap.fill('----------')
+    msg += wrap_68.fill('----------')
     msg += '\n'
 
     for i in variables:
@@ -144,9 +157,9 @@ def _class_docstr(class_dict, desc_funcs=False):
 
     # skip a line and begin Methods section
     msg += '\n\n'
-    msg += main_wrap.fill('Methods')
+    msg += wrap_68.fill('Methods')
     msg += '\n'
-    msg += main_wrap.fill('-------')
+    msg += wrap_68.fill('-------')
     msg += '\n'
 
     # sort them
@@ -166,22 +179,22 @@ def _class_docstr(class_dict, desc_funcs=False):
 
     # skip a line and begin notes section
     msg += '\n'
-    msg += main_wrap.fill('Notes')
+    msg += wrap_68.fill('Notes')
     msg += '\n'
-    msg += main_wrap.fill('-----')
+    msg += wrap_68.fill('-----')
     msg += '\n'
 
     def_msg = "This class was defined in %s" % (class_dict['file_name'])
     ns_msg = 'The class is found in the "%s" namespace'
 
-    msg += main_wrap.fill(def_msg)
+    msg += wrap_68.fill(def_msg)
     msg += '\n\n'
-    msg += main_wrap.fill(ns_msg % (class_dict['namespace']))
+    msg += wrap_68.fill(ns_msg % (class_dict['namespace']))
 
     return msg
 
 
-def _func_docstr(func_dict, is_method=False):
+def func_docstr(func_dict, is_method=False):
     """
     Generate the docstring for a function given a dictionary of the
     parsed dOxygen xml.
@@ -196,7 +209,8 @@ def _func_docstr(func_dict, is_method=False):
 
     is_method : bool, optional(default=False)
         Whether or not to the function is a class method. If it is,
-        an extra 4 spaces of indentation will be added to all lines.
+        the text will be wrapped 4 spaces earlier to offset additional
+        indentation
 
     Returns
     -------
@@ -205,6 +219,10 @@ def _func_docstr(func_dict, is_method=False):
         function.
 
     """
+    if is_method:
+        wrapper = wrap_64
+    else:
+        wrapper = wrap_68
 
     detailed_desc = func_dict['detaileddescription']
     brief_desc = func_dict['briefdescription']
@@ -235,25 +253,25 @@ def _func_docstr(func_dict, is_method=False):
                 i += 1
 
     # put main section in
-    msg = main_wrap.fill(desc)
+    msg = wrapper.fill(desc)
 
     # skip a line and begin parameters section
     msg += '\n\n'
-    msg += main_wrap.fill('Parameters')
+    msg += wrapper.fill('Parameters')
     msg += '\n'
-    msg += main_wrap.fill('----------')
+    msg += wrapper.fill('----------')
     msg += '\n'
 
     # add parameters
     for p in params:
         lines = str.splitlines(p)
-        msg += main_wrap.fill(lines[0])
+        msg += wrapper.fill(lines[0])
         msg += '\n'
         more = False
         for i in range(1, len(lines)):
             more = True
             l = lines[i]
-            msg += member_wrap.fill(l)
+            msg += wrapper.fill(l)
 
         if more:
             msg += '\n\n'
@@ -261,31 +279,27 @@ def _func_docstr(func_dict, is_method=False):
             msg += '\n'
 
     # skip a line and begin returns section
-    msg += main_wrap.fill('Returns')
+    msg += wrapper.fill('Returns')
     msg += '\n'
-    msg += main_wrap.fill('-------')
+    msg += wrapper.fill('-------')
     msg += '\n'
 
     # add return values
     for r in rets:
         lines = str.splitlines(r)
-        msg += main_wrap.fill(lines[0])
+        msg += wrapper.fill(lines[0])
         msg += '\n'
         for i in range(1, len(lines)):
             l = lines[i]
-            msg += member_wrap.fill(l)
+            msg += wrapper.fill(l)
         msg += '\n\n'
 
-    # skip a line and begin notes section
-    msg += main_wrap.fill('Notes')
-    msg += '\n'
-    msg += main_wrap.fill('-----')
-    msg += '\n'
-
     # TODO: add notes section like in class function above.
-
-    if is_method:
-        return indentstr(msg).indent4
+    # # skip a line and begin notes section
+    # msg += wrapper.fill('Notes')
+    # msg += '\n'
+    # msg += wrapper.fill('-----')
+    # msg += '\n'
 
     return msg
 
@@ -297,7 +311,7 @@ def _func_docstr(func_dict, is_method=False):
 # this is the meat of the template doxyfile template returned by: doxygen -g
 # NOTE: I have changed a few things like no html/latex generation.
 
-# NOTE: Also, there are three placeholders for format: project, output,
+# NOTE: Also, there are three placeholders for format: project, output_dir,
 #       src_dir
 _doxyfile_content =\
 """
@@ -490,26 +504,14 @@ DOT_MULTI_TARGETS      = NO
 GENERATE_LEGEND        = NO
 DOT_CLEANUP            = YES
 """
-
-# TODO: Allow user to pass additional doxygen arguments for more control
-
-doxyfile = open('doxyfile', 'w')
-doxyfile.write(_doxyfile_content.format(project='test',
-                                        output_dir='build',
-                                        src_dir='src/'))
-# FIXME: Get src_dir from rc.package
-# FIXME: Maybe get output_dir from rc.builddir?
-doxyfile.close()
-
-# call(['doxygen', 'doxyfile'])
-
-
 ##############################################################################
 ##
 ## -- Functions to parse the xml
 ##
 ##############################################################################
-def _parse_index_xml(index_path):
+
+
+def parse_index_xml(index_path):
     """
     Parses index.xml to get list of dictionaries for class and function
     names. Each dictionary will have as keys the object (function
@@ -589,7 +591,7 @@ def _parse_index_xml(index_path):
     return classes, funcs
 
 
-def _fix_xml_links(file_name):
+def fix_xml_links(file_name):
     """
     For some reason I can't get doxygen to remove hyperlinks to members
     defined in the same file. This messes up the parsing. To overcome this
@@ -811,7 +813,7 @@ def parse_class(class_dict):
     c1 = class_dict
     fn = c1['file_name'] + '.xml'
 
-    _fix_xml_links(fn)
+    fix_xml_links(fn)
 
     croot = etree.parse(fn)
     compd_def = croot.find('compounddef')
@@ -870,6 +872,13 @@ def parse_class(class_dict):
 ##
 ##############################################################################
 
+_overload_msg = \
+"""
+This {f_type} was overloaded in the C-based source. To overcome this we
+ill put the relevant docstring for each version below. Each version will begin
+with a line of # characters.
+"""
+
 
 class XDressPlugin(Plugin):
     """
@@ -885,7 +894,7 @@ class XDressPlugin(Plugin):
         Runs doxygen to produce the xml, then parses it and adds
         docstrings to the desc dictionary.
         """
-        print("doxygen: Adding dOxygen to docstrings")
+        print("doxygen: Running dOxygen")
         # Get directories from our rc
         src_dir = rc.sourcedir
         build_dir = rc.builddir
@@ -903,7 +912,10 @@ class XDressPlugin(Plugin):
         # Run doxygen
         call(['doxygen', 'doxyfile'])
 
-        classes, funcs = _parse_index_xml(xml_dir + os.path.sep + 'index.xml')
+        # Parse index.xml and obtain list of classes and functions
+        print("doxygen: Adding dOxygen to docstrings")
+        classes, funcs = parse_index_xml(xml_dir + os.path.sep + 'index.xml')
+
         # Go for the classes!
         for c in rc.classes:
             kls = c[0]
@@ -920,41 +932,46 @@ class XDressPlugin(Plugin):
             prepend_fn = build_dir + os.path.sep + 'xml' + os.path.sep
             this_kls['file_name'] = prepend_fn + this_kls['file_name']
             parsed = parse_class(this_kls)
-            func_keys = filter(lambda x: 'func' in x, parsed.keys())
-            rc.env[kls_mod][kls]['docstring'] = _class_docstr(parsed)
-
-            # print('#' * 75)
-            # print('#' * 75)
-            # print('#' * 75)
-            # print("Here is rc.env[kls_mod][kls].keys()")
-            # print(rc.env[kls_mod][kls].keys())
-            # print('#' * 75)
-            # print('#' * 75)
-            # print('#' * 75)
-            # print("Here is rc.env[kls_mod][kls]['methods'].keys()")
-            # print(rc.env[kls_mod][kls]['methods'].keys())
-
-            rc_methods = [i[0] for i in rc.env[kls_mod][kls]['methods'].keys()]
 
             # Make docstrings dictionary if needed
             if 'docstrings' not in rc.env[kls_mod][kls].keys():
                 rc.env[kls_mod][kls]['docstrings'] = {}
                 rc.env[kls_mod][kls]['docstrings']['methods'] = {}
 
+            # Add class docstring
+            rc.env[kls_mod][kls]['docstrings']['class'] = class_docstr(parsed)
+
+            # Grab list of methods in rc.env
+            rc_methods = [i[0] for i in rc.env[kls_mod][kls]['methods'].keys()]
+
+            # Grab function group keys from parsed dOxygen
+            func_grp_keys = filter(lambda x: 'func' in x, parsed.keys())
+
+            # Loop over rc.env methods and try to match them with dOxygen
             for m in rc_methods:
-                for key in func_keys:
+                matches = []
+                for key in func_grp_keys:
                     try:
-                        # Grab the method dictionary and break out of for loop
-                        m_dict = parsed[key][m]
-                        break
+                        # Grab the method dictionary and extend matches list
+                        m_names = filter(lambda x: x.startswith(m), parsed[key].keys())
+                        matches.extend(parsed[key][i] for i in m_names)
                     except KeyError:
                         # Just try a different key and move on
-                        m_dict = None
                         continue
 
-                if m_dict is not None:
-                    m_ds = _func_docstr(m_dict, is_method=True)
+                if len(matches) == 1:
+                    m_ds = func_docstr(matches[0], is_method=True)
                     # m_ds = '\n\n' + m_ds
+                    rc.env[kls_mod][kls]['docstrings']['methods'][m] = m_ds
+                elif len(matches) > 1:
+                    ds_list = [func_docstr(i, is_method=True) for i in matches]
+                    m_ds = _overload_msg.format(f_type='method')
+                    m_ds = wrap_64.fill(m_ds)
+                    m_ds += '\n\n'
+
+                    ds = str('#' * 64 + '\n\n').join(ds_list)
+                    m_ds += ds
+
                     rc.env[kls_mod][kls]['docstrings']['methods'][m] = m_ds
                 else:
                     print("Couldn't find method %s in xml. Skipping it" % (m)
@@ -973,18 +990,15 @@ class XDressPlugin(Plugin):
 
             if matches is not None:
                 if len(matches) == 1:
-                    f_ds = _func_docstr(parse_function(funcs[f]))
+                    f_ds = func_docstr(parse_function(funcs[f]))
                 else:
                     # Overloaded function
-                    ds_list = [_func_docstr(parse_function(funcs[i]))
+                    print('HERE OVERLOADING!')
+                    ds_list = [func_docstr(parse_function(funcs[i]))
                                for i in matches]
-                    f_ds = 'This function was overloaded on the C/C++ side.\n'
-                    f_ds += 'To overcome this we will put the relevant\n'
-                    f_ds += 'docstring for each version below. The Notes\n'
-                    f_ds += 'section is the last section for each version.\n'
-                    f_ds += 'Each version will begin with a line of #\n'
-                    f_ds += 'characters.'
-                    f_ds = main_wrap.fill(f_ds)
+                    f_ds = _overload_msg.format(f_type='function')
+                    f_ds = wrap_68.fill(f_ds)
+                    f_ds += '\n\n'
                     ds = str('\n\n' + '#' * 72 + '\n\n').join(ds_list)
                     f_ds += ds
 
