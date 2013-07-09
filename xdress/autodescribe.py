@@ -149,6 +149,7 @@ Automatic Descriptions API
 from __future__ import print_function
 import os
 import io
+import re
 import sys
 from copy import deepcopy
 import linecache
@@ -174,13 +175,16 @@ except ImportError:
 
 from . import utils
 from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
-    find_source, FORBIDDEN_NAMES
+    find_source, FORBIDDEN_NAMES, find_filenames
 from . import astparsers
 
 from . import typesystem as ts
 
 if sys.version_info[0] >= 3: 
     basestring = str
+
+# d = int64, u = uint64
+_GCCXML_LITERAL_INTS = re.compile('(\d+)([du])')
 
 def clearmemo():
     """Clears all function memoizations for autodescribers."""
@@ -246,6 +250,7 @@ class GccxmlBaseDescriber(object):
     constructor.  The default visitor methods are valid for classes."""
 
     _funckey = None
+    _describes = None
     _integer_types = frozenset(['int32', 'int64', 'uint32', 'uint64'])
 
     def __init__(self, name, root=None, onlyin=None, verbose=False):
@@ -279,6 +284,7 @@ class GccxmlBaseDescriber(object):
         self._currfuncsig = None
         self._currclass = []  # this must be a stack to handle nested classes  
         self._level = -1
+        #self._template_args.update(ts.template_types)
 
     def __str__(self):
         return pformat(self.desc)
@@ -308,9 +314,28 @@ class GccxmlBaseDescriber(object):
         'vector': ('value_type',),
         }
 
+    def _template_literal_arg(self, targ):
+        """Parses a literal template parameter."""
+        if targ == 'true':
+            return 'True'
+            #return True
+        elif targ == 'false':
+            return 'False'
+            #return True
+        m = _GCCXML_LITERAL_INTS.match(targ)
+        if m is not None:
+            return m.group(1)
+            #return int(m.group(1))
+        return targ
+
     def _visit_template(self, node):
         name = node.attrib['name']
         members = node.attrib.get('members', '').strip().split()
+        if 0 == len(members):
+            msg = ("The type {0!r} is used as part of an API element but no "
+                   "declarations were made with it.  Please declare a variable "
+                   "of type {0!r} somewhere in the source or header.")
+            raise NotImplementedError(msg.format(name))
         children = [child for m in members for child in \
                                 self._root.iterfind(".//*[@id='{0}']".format(m))]
         tags = [child.tag for child in children]
@@ -319,16 +344,33 @@ class GccxmlBaseDescriber(object):
             return 'str'
         inst = [template_name]
         self._level += 1
+        targ_nodes = []
+        targ_islit = []
         if template_name in self._template_args:
             for targ in self._template_args[template_name]:
-                targ_nodes = [c for c in children if c.attrib['name'] == targ]
-                targ_node = targ_nodes[0]
-                targ_type = self.type(targ_node.attrib['id'])
-                inst.append(targ_type)
+                possible_targ_nodes = [c for c in children if c.attrib['name'] == targ]
+                targ_nodes.append(possible_targ_nodes[0])
+                targ_islit.append(False)
         else:
-            # fill in later with string parsing of node name if needed.
-            pass
+            # gross but string parsing of node name is needed.
+            targs = utils.split_template_args(name)
+            query = ".//*[@name='{0}']"
+            for targ in targs:
+                targ_node = self._root.find(query.format(targ))
+                if targ_node is None:
+                    targ_node = self._template_literal_arg(targ)
+                    targ_islit.append(True)
+                else:
+                    targ_islit.append(False)
+                targ_nodes.append(targ_node)
+        for targ_node, targ_lit in zip(targ_nodes, targ_islit):
+            if targ_lit:
+                targ_type = targ_node
+            else:
+                targ_type = self.type(targ_node.attrib['id'])
+            inst.append(targ_type)
         self._level -= 1
+        inst.append(0)
         return tuple(inst)
 
     def visit_class(self, node):
@@ -336,7 +378,12 @@ class GccxmlBaseDescriber(object):
         self._pprint(node)
         name = node.attrib['name']
         self._currclass.append(name)
-        if name == self.name:
+        if self._describes == 'class' and name == ts.gccxml_type(self.name):
+            if 'bases' not in node.attrib:
+                msg = ("The type {0!r} is used as part of an API element but no "
+                       "declarations were made with it.  Please declare a variable "
+                       "of type {0!r} somewhere in the source or header.")
+                raise NotImplementedError(msg.format(name))            
             bases = node.attrib['bases'].split()
             bases = None if len(bases) == 0 else [self.type(b) for b in bases]
             self.desc['parents'] = bases
@@ -417,6 +464,10 @@ class GccxmlBaseDescriber(object):
         else:
             if t in self._integer_types:
                 default = int(default)
+            elif default == 'true':
+                default = True
+            elif default == 'false':
+                default = False
             arg = (name, t, default)
         self._currfuncsig.append(arg)
 
@@ -443,6 +494,7 @@ class GccxmlBaseDescriber(object):
 
     _fundemntal_to_base = {
         'char': 'char', 
+        'int16_t': 'int16',
         'int': 'int32', 
         'long int': 'int64', 
         'unsigned int': 'uint32',
@@ -546,6 +598,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
     """Class used to generate class descriptions via GCC-XML output."""
 
     _funckey = 'methods'
+    _describes = 'class'
     _constructvalue = 'class'
 
     def __init__(self, name, root=None, onlyin=None, verbose=False):
@@ -580,9 +633,11 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
 
         """
         if node is None:
-            node = self._root.find("Class[@name='{0}']".format(self.name))
+            query = "Class[@name='{0}']".format(ts.gccxml_type(self.name))
+            node = self._root.find(query)
             if node is None:
-                node = self._root.find("Struct[@name='{0}']".format(self.name))
+                query = "Struct[@name='{0}']".format(ts.gccxml_type(self.name))
+                node = self._root.find(query)
             if node.attrib['file'] not in self.onlyin:
                 msg = ("{0} autodescribing failed: found class in {1!r} but "
                        "expected it in {2!r}.")
@@ -603,6 +658,8 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
 
 class GccxmlVarDescriber(GccxmlBaseDescriber):
     """Class used to generate variable descriptions via GCC-XML output."""
+
+    _describes = 'var'
 
     def __init__(self, name, root=None, onlyin=None, verbose=False):
         """Parameters
@@ -650,6 +707,7 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
     """Class used to generate function descriptions via GCC-XML output."""
 
     _funckey = 'signatures'
+    _describes = 'func'
 
     def __init__(self, name, root=None, onlyin=None, verbose=False):
         """Parameters
@@ -1612,6 +1670,10 @@ class XDressPlugin(astparsers.ParserPlugin):
         for i, cls in enumerate(rc.classes):
             if len(cls) == 2:
                 rc.classes[i] = (cls[0], cls[1], cls[1])
+            if not isinstance(cls[0], basestring) and cls[0][-1] != 0:
+                # ensure the predicate is a scalar for template specializations
+                rc.classes[i] = (tuple(cls[0]) + (0,), cls[1], cls[1])
+        self.register_classes(rc)
 
     def execute(self, rc):
         print("autodescribe: scraping C/C++ APIs from source")
@@ -1624,6 +1686,118 @@ class XDressPlugin(astparsers.ParserPlugin):
         super(XDressPlugin, self).report_debug(rc)
 
     # Helper methods below
+
+    def register_classes(self, rc):
+        """Registers classes with the type system.  This can and should be done
+        trying to describe the class."""
+        for i, (classname, srcname, tarname) in enumerate(rc.classes):
+            print("autodescribe: registering {0}".format(classname))
+            fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir)
+            baseclassname = classname
+            if isinstance(classname, basestring):
+                template_args = None
+                #templateclassname = baseclassname.replace('_', '').capitalize()
+                templateclassname = baseclassname
+            else:
+                template_args = ['T{0}'.format(i) for i in range(len(classname)-2)]
+                template_args = tuple(template_args)
+                while not isinstance(baseclassname, basestring):
+                    baseclassname = baseclassname[0]  # hack version of ts.basename()
+                templateclassname = baseclassname
+                templateclassname = templateclassname + \
+                                    ''.join(["{"+targ+"}" for targ in template_args])
+            if tarname is None:
+                cpppxd_base = '{0}_{1}'.format(fnames['language_extension'], srcname)
+            else:
+                pxd_base = fnames['pxd_filename'].rsplit('.', 1)[0]  # eg, fccomp
+                cpppxd_base = fnames['srcpxd_filename'].rsplit('.', 1)[0]  # eg, cpp_fccomp
+            class_c2py = ('{pytype}({var})',
+                          ('{proxy_name} = {pytype}()\n'
+                           '(<{ctype} *> {proxy_name}._inst)[0] = {var}'),
+                          ('if {cache_name} is None:\n'
+                           '    {proxy_name} = {pytype}()\n'
+                           '    {proxy_name}._free_inst = False\n'
+                           '    {proxy_name}._inst = &{var}\n'
+                           '    {cache_name} = {proxy_name}\n')
+                         )
+            class_py2c = ('{proxy_name} = <{cytype_nopred}> {var}',
+                          '(<{ctype_nopred} *> {proxy_name}._inst)[0]')
+            class_cimport = (rc.package, cpppxd_base)
+            kwclass = dict(
+                name=baseclassname,                                 # FCComp
+                #name=classname,                                 # FCComp
+                template_args=template_args,
+                cython_c_type=cpppxd_base + '.' + baseclassname, # cpp_fccomp.FCComp
+                cython_cimport=class_cimport,
+                cython_cy_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
+                cython_py_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
+                cpp_type=baseclassname,
+                cython_template_class_name=templateclassname,
+                cython_cyimport=pxd_base,                       # fccomp
+                cython_pyimport=pxd_base,                       # fccomp
+                cython_c2py=class_c2py,
+                cython_py2c=class_py2c,
+                )
+            ts.register_class(**kwclass)
+            if template_args is not None:
+                specname = ts.cython_classname(classname)[1]
+                kwclassspec = dict(
+                    name=classname,
+                    cython_c_type=cpppxd_base + '.' + specname,
+                    cython_cy_type=pxd_base + '.' + specname,
+                    cython_py_type=pxd_base + '.' + specname,
+                    )
+                ts.register_class(**kwclassspec)
+            class_ptr_c2py = ('{pytype}({var})',
+                              #('cdef {pytype} {proxy_name}\n'
+                              # '{proxy_name} = {pytype}()\n'
+                              # '(<{ctype}> {proxy_name}._inst) = {var}'),
+                              ('cdef {pytype} {proxy_name} = {pytype}()\n'
+                              #'{proxy_name} = {pytype}()\n'
+                               '(<{ctype}> {proxy_name}._inst)[0] = {var}[0]'),
+                              ('if {cache_name} is None:\n'
+                               '    {proxy_name} = {pytype}()\n'
+                               '    {proxy_name}._free_inst = False\n'
+                               '    {proxy_name}._inst = {var}\n'
+                               '    {cache_name} = {proxy_name}\n')
+                             )
+            class_ptr_py2c = ('{proxy_name} = <{cytype_nopred}> {var}',
+                              '(<{ctype_nopred} *> {proxy_name}._inst)')
+            kwclassptr = dict(
+                name=(classname, '*'),
+                template_args=template_args,
+                cython_py_type=pxd_base + '.' + baseclassname,
+                cython_cy_type=pxd_base + '.' + baseclassname,
+                cpp_type=baseclassname,
+                cython_c2py=class_ptr_c2py,
+                cython_py2c=class_ptr_py2c,
+                cython_cimport=kwclass['cython_cimport'],
+                cython_cyimport=kwclass['cython_cyimport'],
+                cython_pyimport=kwclass['cython_pyimport'],
+                )
+            ts.register_class(**kwclassptr)
+            class_dblptr_c2py = ('{pytype}({var})',
+                              ('{proxy_name} = {proxy_name}_obj._inst\n'
+                               '(<{ctype} *> {proxy_name}._inst) = {var}'),
+                              ('if {cache_name} is None:\n'
+                               '    {proxy_name} = {pytype}()\n'
+                               '    {proxy_name}._free_inst = False\n'
+                               '    {proxy_name}._inst = {var}\n'
+                               '    {proxy_name}_list = [{proxy_name}]\n'
+                               '    {cache_name} = {proxy_name}_list\n')
+                             )
+            class_dblptr_py2c = ('{proxy_name} = <{cytype_nopred}> {var}[0]',
+                                 '(<{ctype_nopred} **> {proxy_name}._inst)')
+            kwclassdblptr = dict(
+                name=((classname, '*'), '*'),
+                template_args=template_args,
+                cython_c2py=class_dblptr_c2py,
+                cython_py2c=class_dblptr_py2c,
+                cython_cimport=kwclass['cython_cimport'],
+                cython_cyimport=kwclass['cython_cyimport'],
+                cython_pyimport=kwclass['cython_pyimport'],
+                )
+            ts.register_class(**kwclassdblptr)
 
     def load_pysrcmod(self, srcname, rc):
         """Loads a module dictionary from a src file intox the pysrcenv cache."""
@@ -1675,8 +1849,8 @@ class XDressPlugin(astparsers.ParserPlugin):
             Description dictionary.
 
         """
-        # description
-        srcfname, hdrfname, lang, ext = find_source(srcname, sourcedir=rc.sourcedir)
+        fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir)
+        srcfname = fnames['source_filename']
         filename = os.path.join(rc.sourcedir, srcfname)
         cache = rc._cache
         if cache.isvalid(name, filename, kind):
@@ -1687,21 +1861,8 @@ class XDressPlugin(astparsers.ParserPlugin):
                                parsers=rc.parsers, verbose=rc.verbose, 
                                debug=rc.debug, builddir=rc.builddir)
             cache[name, filename, kind] = srcdesc
-
-        # python description
-        pydesc = self.pysrcenv[srcname].get(name, {})
-
-        desc = merge_descriptions([srcdesc, pydesc])
-        desc['source_filename'] = srcfname
-        desc['header_filename'] = hdrfname
-        desc['metadata_filename'] = '{0}.py'.format(srcname)
-        if tarname is None:
-            desc['pxd_filename'] = desc['pyx_filename'] = \
-                                   desc['srcpxd_filename'] = None
-        else:
-            desc['pxd_filename'] = '{0}.pxd'.format(tarname)
-            desc['pyx_filename'] = '{0}.pyx'.format(tarname)
-            desc['srcpxd_filename'] = '{0}_{1}.pxd'.format(ext, tarname)
+        pydesc = self.pysrcenv[srcname].get(name, {})  # python description
+        desc = merge_descriptions([srcdesc, pydesc, fnames])
         return desc
 
     def adddesc2env(self, desc, env, name, srcname, tarname):
@@ -1722,95 +1883,15 @@ class XDressPlugin(astparsers.ParserPlugin):
             env[tarname]['extra'] += self.pysrcenv[srcname].get('extra', '')
 
     def compute_classes(self, rc):
-        """Computes class descriptions and loads them into the environment and 
-        type system."""
+        """Computes class descriptions and loads them into the environment."""
         # compute all class descriptions first 
         cache = rc._cache
         env = rc.env  # target environment, not source one
         for i, (classname, srcname, tarname) in enumerate(rc.classes):
-            print("autodescribe: describing " + classname)
+            print("autodescribe: describing {0}".format(classname))
             desc = self.compute_desc(classname, srcname, tarname, 'class', rc)
             if rc.verbose:
                 pprint(desc)
-            print("autodescribe: registering " + classname)
-            if tarname is None:
-                _, _, _, ext = find_source(srcname, sourcedir=rc.sourcedir)
-                cpppxd_base = '{0}_{1}'.format(ext, srcname)
-            else:
-                pxd_base = desc['pxd_filename'].rsplit('.', 1)[0]  # eg, fccomp
-                cpppxd_base = desc['srcpxd_filename'].rsplit('.', 1)[0]  # eg, cpp_fccomp
-            class_c2py = ('{pytype}({var})',
-                          ('{proxy_name} = {pytype}()\n'
-                           '(<{ctype} *> {proxy_name}._inst)[0] = {var}'),
-                          ('if {cache_name} is None:\n'
-                           '    {proxy_name} = {pytype}()\n'
-                           '    {proxy_name}._free_inst = False\n'
-                           '    {proxy_name}._inst = &{var}\n'
-                           '    {cache_name} = {proxy_name}\n')
-                         )
-            class_py2c = ('{proxy_name} = <{cytype_nopred}> {var}',
-                          '(<{ctype_nopred} *> {proxy_name}._inst)[0]')
-            class_cimport = (rc.package, cpppxd_base)
-            kwclass = dict(
-                name=classname,                                 # FCComp
-                cython_c_type=cpppxd_base + '.' + classname,    # cpp_fccomp.FCComp
-                cython_cimport=class_cimport,
-                cython_cy_type=pxd_base + '.' + classname,      # fccomp.FCComp   
-                cython_py_type=pxd_base + '.' + classname,      # fccomp.FCComp   
-                cython_template_class_name=classname.replace('_', '').capitalize(),
-                cython_cyimport=pxd_base,                       # fccomp
-                cython_pyimport=pxd_base,                       # fccomp
-                cython_c2py=class_c2py,
-                cython_py2c=class_py2c,
-                )
-            ts.register_class(**kwclass)
-            class_ptr_c2py = ('{pytype}({var})',
-                              #('cdef {pytype} {proxy_name}\n'
-                              # '{proxy_name} = {pytype}()\n'
-                              # '(<{ctype}> {proxy_name}._inst) = {var}'),
-                              ('cdef {pytype} {proxy_name} = {pytype}()\n'
-                               #'{proxy_name} = {pytype}()\n'
-                               '(<{ctype}> {proxy_name}._inst)[0] = {var}[0]'),
-                              ('if {cache_name} is None:\n'
-                               '    {proxy_name} = {pytype}()\n'
-                               '    {proxy_name}._free_inst = False\n'
-                               '    {proxy_name}._inst = {var}\n'
-                               '    {cache_name} = {proxy_name}\n')
-                             )
-            class_ptr_py2c = ('{proxy_name} = <{cytype_nopred}> {var}',
-                              '(<{ctype_nopred} *> {proxy_name}._inst)')
-            kwclassptr = dict(
-                name=(classname, '*'),
-                cython_py_type=pxd_base + '.' + classname,
-                cython_cy_type=pxd_base + '.' + classname,
-                cython_c2py=class_ptr_c2py,
-                cython_py2c=class_ptr_py2c,
-                cython_cimport=kwclass['cython_cimport'],
-                cython_cyimport=kwclass['cython_cyimport'],
-                cython_pyimport=kwclass['cython_pyimport'],
-                )
-            ts.register_class(**kwclassptr)
-            class_dblptr_c2py = ('{pytype}({var})',
-                              ('{proxy_name} = {proxy_name}_obj._inst\n'
-                               '(<{ctype} *> {proxy_name}._inst) = {var}'),
-                              ('if {cache_name} is None:\n'
-                               '    {proxy_name} = {pytype}()\n'
-                               '    {proxy_name}._free_inst = False\n'
-                               '    {proxy_name}._inst = {var}\n'
-                               '    {proxy_name}_list = [{proxy_name}]\n'
-                               '    {cache_name} = {proxy_name}_list\n')
-                             )
-            class_dblptr_py2c = ('{proxy_name} = <{cytype_nopred}> {var}[0]',
-                                 '(<{ctype_nopred} **> {proxy_name}._inst)')
-            kwclassdblptr = dict(
-                name=((classname, '*'), '*'),
-                cython_c2py=class_dblptr_c2py,
-                cython_py2c=class_dblptr_py2c,
-                cython_cimport=kwclass['cython_cimport'],
-                cython_cyimport=kwclass['cython_cyimport'],
-                cython_pyimport=kwclass['cython_pyimport'],
-                )
-            ts.register_class(**kwclassdblptr)
             cache.dump()
             self.adddesc2env(desc, env, classname, srcname, tarname)
             if 0 == i%rc.clear_parser_cache_period:

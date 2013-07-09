@@ -58,6 +58,8 @@ def test_canon():
         (('char', 42), ('char', 42)),
         (('map', 'nucid', ('set', 'nucname')), 
             ('map', ('int32', 'nucid'), ('set', ('str', 'nucname'), 0), 0)),
+        (((('vector', 'int32'), 'const'), '&'), 
+         ((('vector', 'int32', 0), 'const'), '&')),
         (('intrange', 1, 2), ('int32', ('intrange', 
                                             ('low', 'int32', 1), 
                                             ('high', 'int32', 2)))), 
@@ -81,6 +83,38 @@ def test_canon():
     for t, exp in cases:
         yield check_canon, t, exp            # Check that the case works,
         yield check_canon, ts.canon(t), exp  # And that it is actually canonical.
+
+
+def check_basename(t, exp):
+    obs = ts.basename(t)
+    pprint.pprint(exp)
+    pprint.pprint(obs)
+    assert_equal(exp, obs)
+
+@with_setup(add_new_refined, del_new_refined)
+def test_basename():
+    cases = (
+        ('str', 'str'),
+        (('str',), 'str'),
+        ('f4', 'float32'),
+        ('nucid', 'int32'),
+        (('nucid',), 'int32'),
+        (('set', 'complex'), 'set',),
+        (('map', 'nucid', 'float'), 'map'),
+        ('comp_map', 'map'), 
+        (('char', '*'), 'char'),
+        (('char', 42), 'char'),
+        (('map', 'nucid', ('set', 'nucname')), 'map'),
+        (('intrange', 1, 2), 'int32'),
+        (('nucrange', 92000, 93000), 'int32'),
+        (('range', 'int32', 1, 2), 'int32'), 
+        (('range', 'nucid', 92000, 93000), 'int32'),
+        (('function_pointer', (('_0', ('uint32', '*')),), 'int'), 'void'), 
+    )
+    for t, exp in cases:
+        yield check_basename, t, exp  # Check that the case works,
+
+
 
 def check_cython_ctype(t, exp):
     obs = ts.cython_ctype(t)
@@ -453,3 +487,56 @@ def test_strip_predicates():
     for t, exp in cases:
         yield check_strip_predicates, t, exp
 
+def check_cpp_type(t, exp):
+    obs = ts.cpp_type(t)
+    assert_equal(exp, obs)
+
+@with_setup(add_new_refined, del_new_refined)
+def test_cpp_type():
+    cases = (
+        ('str', 'std::string'),
+        (('str',), 'std::string'),
+        ('f4', 'float'),
+        ('nucid', 'int'),
+        (('nucid',), 'int'), 
+        (('set', 'complex'), 'std::set< xdress_extra_types.complex_t >'),
+        (('map', 'nucid', 'float'), 'std::map< int, double >'),
+        ('comp_map', 'std::map< int, double >'),
+        (('char', '*'), 'char *'),
+        (('char', 42), 'char [42]'),
+        (('map', 'nucid', ('set', 'nucname')), 
+            'std::map< int, std::set< std::string > >'),
+        (('intrange', 1, 2), 'int'), 
+        (('nucrange', 92000, 93000), 'int'),
+        (('range', 'int32', 1, 2), 'int'), 
+        (('range', 'nucid', 92000, 93000), 'int'), 
+    )
+    for t, exp in cases:
+        yield check_cpp_type, t, exp  # Check that the case works,
+
+def check_gccxml_type(t, exp):
+    obs = ts.gccxml_type(t)
+    assert_equal(exp, obs)
+
+@with_setup(add_new_refined, del_new_refined)
+def test_gccxml_type():
+    cases = (
+        ('str', 'std::string'),
+        (('str',), 'std::string'),
+        ('f4', 'float'),
+        ('nucid', 'int'),
+        (('nucid',), 'int'), 
+        (('set', 'complex'), 'std::set<xdress_extra_types.complex_t>'),
+        (('map', 'nucid', 'float'), 'std::map<int, double>'),
+        ('comp_map', 'std::map<int, double>'),
+        (('char', '*'), 'char *'),
+        (('char', 42), 'char [42]'),
+        (('map', 'nucid', ('set', 'nucname')), 
+            'std::map<int, std::set<std::string> >'),
+        (('intrange', 1, 2), 'int'), 
+        (('nucrange', 92000, 93000), 'int'),
+        (('range', 'int32', 1, 2), 'int'), 
+        (('range', 'nucid', 92000, 93000), 'int'), 
+    )
+    for t, exp in cases:
+        yield check_gccxml_type, t, exp  # Check that the case works,

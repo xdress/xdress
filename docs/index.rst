@@ -43,6 +43,12 @@ You may simply clone the development branch using git::
 
     git clone git://github.com/scopatz/xdress.git
 
+Also, if you wish to have the optional BASH completion, please add the 
+following lines to your ``~/.bashrc`` file::
+
+    # Enable completion for xdress
+    eval "$(register-python-argcomplete xdress)"
+
 ============
 Dependencies
 ============
@@ -53,6 +59,7 @@ XDress currently has the following external dependencies,
     #. `pycparser <https://bitbucket.org/eliben/pycparser>`_, optional for C
     #. `GCC-XML <http://www.gccxml.org/HTML/Index.html>`_, optional for C++
     #. `lxml <http://lxml.de/>`_, optional (but nice!)
+    #. `argcomplete <https://argcomplete.readthedocs.org/en/latest/>`_, optional for BASH completion
 
 *Compile Time:*
 

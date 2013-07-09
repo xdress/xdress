@@ -24,7 +24,7 @@ Please visit the website for more information: http://xdress.org/
 
 Ask questions on the mailing list: xdress@googlegroups.com
 
-Download the code from GitHub: http://github.com/scopatz/xdress
+Download the code from GitHub: http://github.com/xdress/xdress
 
 XDress is free & open source (BSD 2-clause license) and requires Python 2.7, 
 NumPy 1.5+, Cython 0.19+, and optionally GCC-XML, pycparser, and lxml.

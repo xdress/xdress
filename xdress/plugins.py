@@ -287,8 +287,11 @@ class Plugins(object):
     def setup(self):
         """Preforms all plugin setup tasks."""
         rc = self.rc
-        for plugin in self.plugins:
-            plugin.setup(rc)
+        try:
+            for plugin in self.plugins:
+                plugin.setup(rc)
+        except Exception as e:
+            self.exit(e)
 
     def execute(self):
         """Preforms all plugin executions."""
@@ -297,26 +300,34 @@ class Plugins(object):
             for plugin in self.plugins:
                 plugin.execute(rc)
         except Exception as e:
-            if rc.debug:
-                import traceback
-                sep = nyansep + '\n\n'
-                msg = '{0}xdress failed with the following error:\n\n'.format(sep)
-                msg += traceback.format_exc()
-                msg += '\n{0}Run control run-time contents:\n\n{1}\n\n'.format(sep, 
-                                                                        rc._pformat())
-                for plugin in self.plugins:
-                    plugin_msg = plugin.report_debug(rc) or ''
-                    if 0 < len(plugin_msg):
-                        msg += sep
-                        msg += plugin_msg
-                with io.open(os.path.join(rc.builddir, 'debug.txt'), 'a+b') as f:
-                    f.write(msg)
-                raise
-            else:
-                sys.exit(str(e))
+            self.exit(e)
 
     def teardown(self):
         """Preforms all plugin teardown tasks."""
         rc = self.rc
-        for plugin in self.plugins:
-            plugin.teardown(rc)
+        try:
+            for plugin in self.plugins:
+                plugin.teardown(rc)
+        except Exception as e:
+            self.exit(e)
+
+    def exit(self, err=0):
+        """Exits the process, possibly printing debug info."""
+        rc = self.rc
+        if rc.debug:
+            import traceback
+            sep = nyansep + '\n\n'
+            msg = '{0}xdress failed with the following error:\n\n'.format(sep)
+            msg += traceback.format_exc()
+            msg += '\n{0}Run control run-time contents:\n\n{1}\n\n'.format(sep, 
+                                                                    rc._pformat())
+            for plugin in self.plugins:
+                plugin_msg = plugin.report_debug(rc) or ''
+                if 0 < len(plugin_msg):
+                    msg += sep
+                    msg += plugin_msg
+            with io.open(os.path.join(rc.builddir, 'debug.txt'), 'a+b') as f:
+                f.write(msg)
+            raise
+        else:
+            sys.exit(str(err))

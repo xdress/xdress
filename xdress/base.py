@@ -31,6 +31,7 @@ class XDressPlugin(Plugin):
         packagedir=NotSpecified,
         sourcedir='src',
         builddir='build',
+        bash_completion=True,
         )
 
     def update_argparser(self, parser):
@@ -50,6 +51,10 @@ class XDressPlugin(Plugin):
                             help="path to source directory")
         parser.add_argument('--builddir', action='store', dest='builddir',
                             help="path to build directory")
+        parser.add_argument('--bash-completion', action='store_true',
+                            help="enable bash completion", dest="bash_completion")
+        parser.add_argument('--no-bash-completion', action='store_false',
+                            help="disable bash completion", dest="bash_completion")
 
     def setup(self, rc):
         if rc.package is NotSpecified:
@@ -65,9 +70,8 @@ class XDressPlugin(Plugin):
             os.makedirs(rc.builddir)
         writenewonly("", os.path.join(rc.packagedir, '__init__.py'), rc.verbose)
         writenewonly("", os.path.join(rc.packagedir, '__init__.pxd'), rc.verbose)
-
-    def execute(self, rc):
         rc._cache = DescriptionCache(cachefile=os.path.join(rc.builddir, 'desc.cache'))
+
         if rc.dumpdesc:
             print(str(rc._cache))
             sys.exit()

@@ -1122,6 +1122,7 @@ class XDressPlugin(Plugin):
               dest='make_stlcontainers', help="don't make C++ STL container wrappers")
 
     def setup(self, rc):
+        print("stlwrap: registering C++ standard library types")
         ts.STLCONTAINERS = rc.stlcontainers_module
         # register dtypes
         for t in rc.stlcontainers:

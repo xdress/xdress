@@ -147,7 +147,7 @@ class GccxmlFinder(object):
                 continue
             if name in FORBIDDEN_NAMES:
                 continue
-            names.add(name)
+            names.add(utils.parse_template(name))
             self._pprint(child)
         return sorted(names)
             
@@ -476,17 +476,32 @@ class XDressPlugin(astparsers.ParserPlugin):
     def defaultrc(self):
         rc = RunControl()
         rc._update(super(XDressPlugin, self).defaultrc)
-        rc.selectclasses = '.*'
-        rc.selectfunctions = '.*'
-        rc.selectvariables = '.*'
         return rc
 
+    def report_debug(self, rc):
+        msg = super(XDressPlugin, self).report_debug(rc)
+        msg += "Autoall:\n\n"
+        msg += "allsrc = {0}\n\n".format(pformat(self.allsrc))
+        msg += "varhasstar = {0}\n\n".format(pformat(self.varhasstar))
+        msg += "fnchasstar = {0}\n\n".format(pformat(self.fnchasstar))
+        msg += "clshasstar = {0}\n\n".format(pformat(self.clshasstar))
+        return msg
 
     def setup(self, rc):
         """Expands variables, functions, and classes in the rc based on 
         copying src filenames to tar filename and the special '*' all syntax."""
         super(XDressPlugin, self).setup(rc)
+        self.setup_basic(rc)
+        self.setup_heavy(rc)
 
+    def execute(self, rc):
+        # dummy
+        pass
+
+    # Helper methods
+
+    def setup_basic(self, rc):
+        """Does the easy part of setting up an autodecsibe environment"""
         # first pass -- gather and expand target
         allsrc = set()
         varhasstar = False
@@ -510,17 +525,13 @@ class XDressPlugin(astparsers.ParserPlugin):
                 clshasstar = True
             if len(cls) == 2:
                 rc.classes[i] = (cls[0], cls[1], cls[1])
-
-        rc.selectclasses = re.compile(rc.selectclasses)
-        rc.selectfunctions = re.compile(rc.selectfunctions)
-        rc.selectvariables = re.compile(rc.selectvariables)
-
         self.allsrc = allsrc
         self.varhasstar = varhasstar
         self.fnchasstar = fnchasstar
         self.clshasstar = clshasstar
 
-    def execute(self, rc):
+    def setup_heavy(self, rc):
+        """Does the hard work of actually searching the source files."""
         print("autoall: discovering API names")
         if not self.varhasstar and not self.fnchasstar and not self.clshasstar:
             print("autoall: no API names to discover!")
@@ -547,11 +558,14 @@ class XDressPlugin(astparsers.ParserPlugin):
                 autonamecache.dump()
             allnames[srcname] = found
             if 0 < len(found[0]):
-                print("autoall: found variables: " + ", ".join(found[0]))
+                fstr = ", ".join([str(_) for _ in found[0]])
+                print("autoall: found variables: " + fstr)
             if 0 < len(found[1]):
-                print("autoall: found functions: " + ", ".join(found[1]))
+                fstr = ", ".join([str(_) for _ in found[1]])
+                print("autoall: found functions: " + fstr)
             if 0 < len(found[2]):
-                print("autoall: found classes: " + ", ".join(found[2]))
+                fstr = ", ".join([str(_) for _ in found[2]])
+                print("autoall: found classes: " + fstr)
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 
@@ -561,11 +575,7 @@ class XDressPlugin(astparsers.ParserPlugin):
             for var in rc.variables:
                 if var[0] == '*':
                     for x in allnames[var[1]][0]:
-                        m = rc.selectvariables.match(x)
-                        if m is None:
-                            newvars.append((x, var[1], None))
-                        else:
-                            newvars.append((x, var[1], var[2]))
+                        newvars.append((x, var[1], var[2]))
                 else:
                     newvars.append(var)
             rc.variables = newvars
@@ -574,11 +584,7 @@ class XDressPlugin(astparsers.ParserPlugin):
             for fnc in rc.functions:
                 if fnc[0] == '*':
                     for x in allnames[fnc[1]][1]:
-                        m = rc.selectfunctions.match(x)
-                        if m is None:
-                            newfncs.append((x, fnc[1], None))
-                        else:
-                            newfncs.append((x, fnc[1], fnc[2]))
+                        newfncs.append((x, fnc[1], fnc[2]))
                 else:
                     newfncs.append(fnc)
             rc.functions = newfncs
@@ -587,20 +593,8 @@ class XDressPlugin(astparsers.ParserPlugin):
             for cls in rc.classes:
                 if cls[0] == '*':
                     for x in allnames[cls[1]][2]:
-                        m = rc.selectclasses.match(x)
-                        if m is None:
-                            newclss.append((x, cls[1], None))
-                        else:
-                            newclss.append((x, cls[1], cls[2]))
+                        newclss.append((x, cls[1], cls[2]))
                 else:
                     newclss.append(cls)
             rc.classes = newclss
 
-    def report_debug(self, rc):
-        msg = super(XDressPlugin, self).report_debug(rc)
-        msg += "Autoall:\n\n"
-        msg += "allsrc = {0}\n\n".format(pformat(self.allsrc))
-        msg += "varhasstar = {0}\n\n".format(pformat(self.varhasstar))
-        msg += "fnchasstar = {0}\n\n".format(pformat(self.fnchasstar))
-        msg += "clshasstar = {0}\n\n".format(pformat(self.clshasstar))
-        return msg

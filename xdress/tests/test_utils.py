@@ -1,5 +1,5 @@
 from __future__ import print_function
-from xdress.utils import NotSpecified, RunControl, flatten
+from xdress.utils import NotSpecified, RunControl, flatten, split_template_args
 
 from nose.tools import assert_equal, with_setup, assert_false
 
@@ -26,3 +26,19 @@ def test_flatten():
     exp = ["hello", None, 1, 3, 2, 5, 6]
     obs = [x for x in flatten(["hello", None, (1, 3, (2, 5, 6))])]
     assert_equal(exp, obs)
+
+def check_split_template_args(s, exp):
+    obs = split_template_args(s)
+    assert_equal(exp, obs)
+
+def test_split_template_args():
+    cases = [
+        ('set<int>', ['int']),
+        ('map<int, double>', ['int', 'double']),
+        ('map<int, set<int> >', ['int', 'set<int>']),
+        ('map< int, set<int> >', ['int', 'set<int>']),
+        ('map< int, vector<set<int> > >', ['int', 'vector<set<int> >']),
+        ]
+
+    for s, exp in cases:
+        yield check_split_template_args, s, exp

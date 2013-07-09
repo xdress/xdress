@@ -281,7 +281,8 @@ def _memoize(obj):
 
 base_types = set(['char', 'uchar', 'str', 'int16', 'int32', 'int64', 'int128',
                   'uint16', 'uint32', 'uint64', 'uint128', 'float32', 'float64',
-                  'float128', 'complex128', 'void', 'bool', 'type', 'file'])
+                  'float128', 'complex128', 'void', 'bool', 'type', 'file', 
+                  'exception'])
 """Base types in the type system."""
 
 template_types = {
@@ -354,6 +355,7 @@ _humannames = {
     'float128': 'long double',
     'complex128': 'complex',
     'file': 'file',
+    'exception': 'exception',
     'dict': 'dict of ({key_type}, {value_type}) items',
     'map': 'map of ({key_type}, {value_type}) items',
     'pair': '({key_type}, {value_type}) pair',
@@ -462,30 +464,19 @@ def canon(t):
         if 0 == tlen:
             _raise_type_error(t)
         last_val = 0 if tlen == 1 else t[-1]
-        if isinstance(t0, basestring):
-            if isdependent(t0):
-                return _resolve_dependent_type(t0, t)
-            elif t0 in template_types:
-                templen = len(template_types[t0])
-                last_val = 0 if tlen == 1 + templen else t[-1]
-                filledt = [t0] + [canon(tt) for tt in t[1:1+templen]] + [last_val]
-                return tuple(filledt)
-            else:
-                #if 2 < tlen:
-                #    _raise_type_error(t)
-                return (canon(t0), last_val)
-        elif isinstance(t0, Sequence):
-            t00 = t0[0]
-            if isinstance(t00, basestring):
-                # template or independent refinement type
-                return (canon(t0), last_val)
-            elif isinstance(t00, Sequence):
-                # zOMG dependent type
-                return _resolve_dependent_type(t00, t0)
-            # BELOW is for possible compound types...
-            #return (tuple([canon(subt) for subt in t[0]]), last_val)
-        else:
+        if not isinstance(t0, basestring) and not isinstance(t0, Sequence):
             _raise_type_error(t)
+        if isdependent(t0):
+            return _resolve_dependent_type(t0, t)
+        elif t0 in template_types:
+            templen = len(template_types[t0])
+            last_val = 0 if tlen == 1 + templen else t[-1]
+            filledt = [t0] + [canon(tt) for tt in t[1:1+templen]] + [last_val]
+            return tuple(filledt)
+        else:
+            #if 2 < tlen:
+            #    _raise_type_error(t)
+            return (canon(t0), last_val)
     else:
         _raise_type_error(t)
 
@@ -506,6 +497,19 @@ def strip_predicates(t):
     else:
         _raise_type_error(t)
 
+@_memoize
+def basename(t):
+    """Retrieves basename from a type, e.g. 'map' in ('map', 'int', 'float')."""
+    t = canon(t)
+    if isinstance(t, basestring):
+        return t
+    elif isinstance(t, Sequence):
+        t0 = t
+        while not isinstance(t0, basestring):
+            t0 = t0[0]
+        return t0
+    else:
+        _raise_type_error(t)
 
 class MatchAny(object):
     """A singleton helper class for matching any portion of a type."""
@@ -569,6 +573,9 @@ class TypeMatcher(object):
         if isinstance(pattern, basestring):
             #return t == pattern if isinstance(t, basestring) else False
             return False
+        if isinstance(t, basestring) or isinstance(t, bool) or \
+           isinstance(t, int) or isinstance(t, float):
+            return False
         # now we know both pattern and t should be different non-string sequences,
         # nominally tuples or lists
         if len(t) != len(pattern):
@@ -581,9 +588,7 @@ class TypeMatcher(object):
         return True
 
     def flatmatches(self, t):
-        """
-        Flattens t and then sees if any part of it matches
-        TypeMatcher.pattern
+        """Flattens t and then sees if any part of it matches self.pattern.
         """
         try:
             # See if user gave entire type
@@ -775,6 +780,7 @@ type_aliases = _LazyConfigDict({
     'f8': 'float64',
     'f16': 'float128',
     'float': 'float64',
+    'double': 'float64',
     'complex': 'complex128',
     'b': 'bool',
     'v': 'void',
@@ -816,6 +822,99 @@ type_aliases = _LazyConfigDict({
     })
 """Aliases that may be used to substitute one type name for another."""
 
+###########################   C++ Functions   ##################################
+
+_cpp_types = _LazyConfigDict({
+    'char': 'char',
+    'uchar': 'unsigned char',
+    'str': 'std::string',
+    'int16': 'short',
+    'int32': 'int',
+    'int64': 'long long',
+    'uint16': 'unsigned short',
+    'uint32': 'unsigned long',
+    'uint64': 'unsigned long long',
+    'float32': 'float',
+    'float64': 'double',
+    'float128': 'long double',
+    'complex128': '{extra_types}complex_t',
+    'bool': 'bool',
+    'void': 'void', 
+    'file': 'FILE',
+    'exception': '{extra_types}exception',
+    'map': 'std::map',
+    'dict': 'std::map',
+    'pair': 'std::pair',
+    'set': 'std::set',
+    'vector': 'std::vector',
+    })
+
+def _cpp_types_function(t):
+    rtnct = cpp_type(t[2][2])
+    argcts = [cpp_type(argt) for n, argt in t[1][2]]
+    if argcts == ['void']:
+        argcts = []
+    return rtnct + " {type_name}(" + ", ".join(argcts) + ")"
+_cpp_types['function'] = _cpp_types_function
+
+def _cpp_types_function_pointer(t):
+    rtnct = cpp_type(t[2][2])
+    argcts = [cpp_type(argt) for n, argt in t[1][2]]
+    if argcts == ['void']:
+        argcts = []
+    return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
+_cpp_types['function_pointer'] = _cpp_types_function_pointer
+
+
+def _cpp_type_add_predicate(t, last):
+    """Adds a predicate to a C++ type"""
+    if last == 'const':
+        x, y = last, t
+    else:
+        x, y = t, last
+    return '{0} {1}'.format(x, y)
+
+@_memoize
+def cpp_type(t):
+    """Given a type t, returns the corresponding C++ type declaration."""
+    t = canon(t)
+    if isinstance(t, basestring):
+        if  t in base_types:
+            return _cpp_types[t]
+    # must be tuple below this line
+    tlen = len(t)
+    if 2 == tlen:
+        if 0 == t[1]:
+            return cpp_type(t[0])
+        elif isrefinement(t[1]):
+            if t[1][0] in _cpp_types:
+                subtype = _cpp_types[t[1][0]]
+                if callable(subtype):
+                    subtype = subtype(t[1])
+                return subtype
+            else:
+                return cpp_type(t[0])
+        else:
+            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+            return _cpp_type_add_predicate(cpp_type(t[0]), last)
+    elif 3 <= tlen:
+        assert t[0] in template_types
+        assert len(t) == len(template_types[t[0]]) + 2
+        template_name = _cpp_types[t[0]]
+        assert template_name is not NotImplemented
+        template_filling = ', '.join([cpp_type(x) for x in t[1:-1]])
+        cppt = '{0}< {1} >'.format(template_name, template_filling)
+        if 0 != t[-1]:
+            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+            cppt = _cpp_type_add_predicate(cppt, last)
+        return cppt
+
+@_memoize
+def gccxml_type(t):
+    """Given a type t, returns the corresponding GCC-XML type name."""
+    cppt = cpp_type(t)
+    gxt = cppt.replace('< ', '<').replace(' >', '>').replace('>>', '> >')
+    return gxt
 
 #########################   Cython Functions   ################################
 
@@ -843,6 +942,7 @@ _cython_ctypes = _LazyConfigDict({
     'bool': 'bint',
     'void': 'void',
     'file': 'c_file',
+    'exception': '{extra_types}exception',
     'map': 'cpp_map',
     'dict': 'dict',
     'pair': 'cpp_pair',
@@ -882,8 +982,8 @@ def _cython_ctype_add_predicate(t, last):
 def cython_ctype(t):
     """Given a type t, returns the corresponding Cython C type declaration."""
     t = canon(t)
-#    if t in _cython_ctypes:
-#        return _cython_ctypes[t]
+    if t in _cython_ctypes:
+        return _cython_ctypes[t]
     if isinstance(t, basestring):
         if t in base_types:
             return _cython_ctypes[t]
@@ -934,6 +1034,7 @@ _cython_cimports = _LazyImportDict({
     'bool': (None,),
     'void': (None,),
     'file': (('libc.stdio', 'FILE', 'c_file'),),
+    'exception': (('{extra_types}',),),
     'map': (('libcpp.map', 'map', 'cpp_map'),),
     'dict': (None,),
     'pair': (('libcpp.utility', 'pair', 'cpp_pair'),),
@@ -969,11 +1070,12 @@ _cython_cyimports = _LazyImportDict({
     'bool': (None,),
     'void': (None,),
     'file': (('{extra_types}',),),
+    'exception': (('{extra_types}',),),
     'map': (('{stlcontainers}',),),
     'dict': (None,),
     'pair': (('{stlcontainers}',),),
     'set': (('{stlcontainers}',),),
-    'vector': (('numpy', 'as', 'np'),),
+    'vector': (('numpy', 'as', 'np'), ('{stlcontainers}',)),
     'nucid': (('pyne', 'nucname'),),
     'nucname': (('pyne', 'nucname'),),
     })
@@ -1076,6 +1178,7 @@ _cython_pyimports = _LazyImportDict({
     'bool': (None,),
     'void': (None,),
     'file': (None,),
+    'exception': (None,),
     'map': (('{stlcontainers}',),),
     'dict': (None,),
     'pair': (('{stlcontainers}',),),
@@ -1173,6 +1276,7 @@ _cython_cytypes = _LazyConfigDict({
     'bool': 'bint',
     'void': 'void',
     'file': 'c_file',
+    'exception': '{extra_types}exception',
     'map': '{stlcontainers}_Map{key_type}{value_type}',
     'dict': 'dict',
     'pair': '{stlcontainers}_Pair{value_type}',
@@ -1200,6 +1304,7 @@ _cython_functionnames = _LazyConfigDict({
     'bool': 'bool',
     'void': 'void',
     'file': 'file',
+    'exception': 'exception',
     # template types
     'map': 'map_{key_type}_{value_type}',
     'dict': 'dict',
@@ -1254,6 +1359,7 @@ _cython_classnames = _LazyConfigDict({
     'bool': 'Bool',
     'void': 'Void',
     'file': 'File',
+    'exception': 'Exception',
     # template types
     'map': 'Map{key_type}{value_type}',
     'dict': 'Dict',
@@ -1364,6 +1470,7 @@ _cython_pytypes = _LazyConfigDict({
     'float128': 'np.float128',
     'complex128': 'object',
     'file': 'file',
+    'exception': 'Exception',
     'bool': 'bool',
     'void': 'object',
     'map': '{stlcontainers}Map{key_type}{value_type}',
@@ -1756,50 +1863,54 @@ _cython_py2c_conv = _LazyConverterDict({
              '{proxy_name}.pair_ptr[0]'),
     'set': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
             '{proxy_name}.set_ptr[0]'),
-    'vector': (('cdef int i\n'
+    'vector': ((
+                '# {var} is a {type}\n'
+                'cdef int i{var}\n'
                 'cdef int {var}_size\n'
                 'cdef {npctypes[0]} * {var}_data\n'
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
                 '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
-                '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = {var}_data[i]\n'
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = {var}_data[i{var}]\n'
                 'else:\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
-                '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = <{npctypes[0]}> {var}[i]\n'),
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = <{npctypes[0]}> {var}[i{var}]\n'),
                '{proxy_name}'),     # FIXME There might be improvements here...
     ('vector', 'char', 0): ((
-                'cdef int i\n'
+                '# {var} is a {type}\n'
+                'cdef int i{var}\n'
                 'cdef int {var}_size\n'
                 'cdef {npctypes[0]} * {var}_data\n'
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == <int> {nptype}:\n'
                 '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
-                '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = {var}[i]\n'
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = {var}[i{var}]\n'
                 'else:\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
-                '    for i in range({var}_size):\n'
+                '    for i{var} in range({var}_size):\n'
                 '        _ = {var}[i].encode()\n'
-                '        {proxy_name}[i] = deref(<char *> _)\n'),
+                '        {proxy_name}[i{var}] = deref(<char *> _)\n'),
                '{proxy_name}'),
     TypeMatcher(('vector', MatchAny, '&')): ((
-                'cdef int i\n'
+                '# {var} is a {type}\n'
+                'cdef int i{var}\n'
                 'cdef int {var}_size\n'
-                'cdef {npctypes[0]} * {var}_data\n'
+                'cdef {npctypes_nopred[0]} * {var}_data\n'
                 '{var}_size = len({var})\n'
                 'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
-                '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+                '    {var}_data = <{npctypes_nopred[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
                 '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
-                '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = {var}_data[i]\n'
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = {var}_data[i{var}]\n'
                 'else:\n'
                 '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
-                '    for i in range({var}_size):\n'
-                '        {proxy_name}[i] = <{npctypes[0]}> {var}[i]\n'),
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = <{npctypes_nopred[0]}> {var}[i{var}]\n'),
                 '{proxy_name}'),     # FIXME There might be improvements here...
     # refinement types
     'nucid': ('nucname.zzaaam({var})', False),
@@ -1812,6 +1923,10 @@ _cython_py2c_conv = _LazyConverterDict({
 
 _cython_py2c_conv[TypeMatcher((('vector', MatchAny, '&'), 'const'))] = \
     _cython_py2c_conv[TypeMatcher((('vector', MatchAny, 'const'), '&'))] = \
+    _cython_py2c_conv[TypeMatcher(((('vector', MatchAny, 0), 'const'), '&'))] = \
+    _cython_py2c_conv[TypeMatcher(((('vector', MatchAny, 0), '&'), 'const'))] = \
+    _cython_py2c_conv[TypeMatcher((('vector', MatchAny, 0), '&'))] = \
+    _cython_py2c_conv[TypeMatcher((('vector', MatchAny, '&'), 0))] = \
     _cython_py2c_conv[TypeMatcher(('vector', MatchAny, '&'))]
 
 
@@ -1904,12 +2019,19 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
     t_nopred = strip_predicates(t)
     ct_nopred = cython_ctype(t_nopred)
     cyt_nopred = cython_cytype(t_nopred)
+    npt_nopred =  cython_nptype(t_nopred)
+    npct_nopred = cython_ctype(npt_nopred)
+    npts_nopred = cython_nptype(t_nopred, depth=1)
+    npcts_nopred = [npct_nopred] if isinstance(npts_nopred, basestring) \
+                                 else _maprecurse(cython_ctype, npts_nopred)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
     proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
-    template_kw = dict(var=var, proxy_name=proxy_name, pytype=pyt, cytype=cyt,
-                       ctype=ct, last=last, nptype=npt, npctype=npct,
+    template_kw = dict(var=var, type=t, proxy_name=proxy_name, pytype=pyt, 
+                       cytype=cyt, ctype=ct, last=last, nptype=npt, npctype=npct,
                        nptypes=npts, npctypes=npcts, ctype_nopred=ct_nopred,
-                       cytype_nopred=cyt_nopred)
+                       cytype_nopred=cyt_nopred, nptype_nopred=npt_nopred, 
+                       npctype_nopred=npct_nopred, nptypes_nopred=npts_nopred, 
+                       npctypes_nopred=npcts_nopred)
     nested = False
     if isdependent(tkey):
         tsig = [ts for ts in refined_types if ts[0] == tkey][0]
@@ -1972,10 +2094,11 @@ def _ensure_importable(x):
 
 def register_class(name=None, template_args=None, cython_c_type=None,
                    cython_cimport=None, cython_cy_type=None, cython_py_type=None,
-                   cython_template_class_name=None, cython_cyimport=None,
-                   cython_pyimport=None, cython_c2py=None, cython_py2c=None):
-    """Classes are user specified types.  This function will add a class to
-    the type system so that it may be used normally with the rest of the
+                   cython_template_class_name=None, cython_cyimport=None, 
+                   cython_pyimport=None, cython_c2py=None, cython_py2c=None,
+                   cpp_type=None):
+    """Classes are user specified types.  This function will add a class to 
+    the type system so that it may be used normally with the rest of the 
     type system.
 
     """
@@ -1999,6 +2122,8 @@ def register_class(name=None, template_args=None, cython_c_type=None,
         _cython_cytypes[name] = cython_cy_type
     if (cython_py_type is not None):
         _cython_pytypes[name] = cython_py_type
+    if cpp_type is not None:
+        _cpp_types[name] = cpp_type
 
     if (cython_cimport is not None):
         cython_cimport = _ensure_importable(cython_cimport)
@@ -2038,6 +2163,7 @@ def deregister_class(name):
     _cython_ctypes.pop(name, None)
     _cython_cytypes.pop(name, None)
     _cython_pytypes.pop(name, None)
+    _cpp_types.pop(name, None)
     _cython_cimports.pop(name, None)
     _cython_cyimports.pop(name, None)
     _cython_pyimports.pop(name, None)
@@ -2198,20 +2324,20 @@ def local_classes(classnames, typesets=frozenset(['cy', 'py'])):
     """A context manager for making sure the given classes are local."""
     saved = {}
     for name in classnames:
-        if 'c' in typesets:
+        if 'c' in typesets and name in _cython_ctypes:
             saved[name, 'c'] = _undot_class_name(name, _cython_ctypes)
-        if 'cy' in typesets:
+        if 'cy' in typesets and name in _cython_cytypes:
             saved[name, 'cy'] = _undot_class_name(name, _cython_cytypes)
-        if 'py' in typesets:
+        if 'py' in typesets and name in _cython_pytypes:
             saved[name, 'py'] = _undot_class_name(name, _cython_pytypes)
     clearmemo()
     yield
     for name in classnames:
-        if 'c' in typesets:
+        if 'c' in typesets and name in _cython_ctypes:
             _redot_class_name(name, _cython_ctypes, saved[name, 'c'])
-        if 'cy' in typesets:
+        if 'cy' in typesets and name in _cython_cytypes:
             _redot_class_name(name, _cython_cytypes, saved[name, 'cy'])
-        if 'py' in typesets:
+        if 'py' in typesets and name in _cython_pytypes:
             _redot_class_name(name, _cython_pytypes, saved[name, 'py'])
     clearmemo()
 
