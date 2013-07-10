@@ -286,7 +286,7 @@ def func_docstr(func_dict, is_method=False):
         for i in range(1, len(lines)):
             l = lines[i]
             msg += wrapper.fill(l)
-        msg += '\n\n'
+        msg += '\n'
 
     # TODO: add notes section like in class function above.
     # # skip a line and begin notes section
@@ -926,6 +926,11 @@ class XDressPlugin(Plugin):
             prepend_fn = build_dir + os.path.sep + 'xml' + os.path.sep
             this_kls['file_name'] = prepend_fn + this_kls['file_name']
             parsed = parse_class(this_kls)
+
+            import shelve
+            x = shelve.open('/Users/sglyon/Desktop/parsed')
+            x['parsed'] = parsed
+            x.close()
 
             # Make docstrings dictionary if needed
             if 'docstrings' not in rc.env[kls_mod][kls].keys():
