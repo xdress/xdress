@@ -1,5 +1,4 @@
-"""
-Inserts dOxygen documentation into python docstrings. This is done using
+"""Inserts dOxygen documentation into python docstrings. This is done using
 the xml export capabilities of dOxygen. The docstrings are inserted into
 the desc dictionary for each function/class and will then be merged with
 standard auto-docstrings as well as any user input from sidecar files.
@@ -83,7 +82,7 @@ dOygen API
 from __future__ import print_function
 import re
 import os
-from subprocess import call
+import subprocess
 from textwrap import TextWrapper
 from .plugins import Plugin
 from .utils import newoverwrite
@@ -143,8 +142,7 @@ _no_arg_links = re.compile('(<param>\n\s+<type>)<ref.+>(\w+)</ref>(.+</type>)')
 ##
 ##############################################################################
 def class_docstr(class_dict, desc_funcs=False):
-    """
-    Generate the main docstring for a class given a dictionary of the
+    """Generate the main docstring for a class given a dictionary of the
     parsed dOxygen xml.
 
     Parameters
@@ -241,8 +239,7 @@ def class_docstr(class_dict, desc_funcs=False):
 
 
 def func_docstr(func_dict, is_method=False):
-    """
-    Generate the docstring for a function given a dictionary of the
+    """Generate the docstring for a function given a dictionary of the
     parsed dOxygen xml.
 
     Parameters
@@ -555,8 +552,7 @@ default_doxygen_config = {'DOXYFILE_ENCODING': 'UTF-8',
 
 
 def parse_index_xml(index_path):
-    """
-    Parses index.xml to get list of dictionaries for class and function
+    """Parses index.xml to get list of dictionaries for class and function
     names. Each dictionary will have as keys the object (function
     or class) names and the values will be dictionaries with (at least)
     key-value pairs representing the .xml file name where the
@@ -635,8 +631,7 @@ def parse_index_xml(index_path):
 
 
 def fix_xml_links(file_name):
-    """
-    For some reason I can't get doxygen to remove hyperlinks to members
+    """For some reason I can't get doxygen to remove hyperlinks to members
     defined in the same file. This messes up the parsing. To overcome this
     I will just use a little regex magic to do it myself.
     """
@@ -653,8 +648,7 @@ def fix_xml_links(file_name):
 
 
 def _parse_func(f_xml):
-    """
-    Parse a function given the xml representation of it
+    """Parse a function given the xml representation of it.
     """
     mem_dict = {}
 
@@ -712,8 +706,7 @@ def _parse_func(f_xml):
 
 
 def _parse_variable(v_xml):
-    """
-    Parse a variable given the xml representation of it
+    """Parse a variable given the xml representation of it.
     """
     mem_dict = {}
 
@@ -769,8 +762,7 @@ def _parse_common(xml, the_dict):
 
 
 def parse_function(func_dict):
-    """
-    Takes a dictionary defining where the xml for the function is, does
+    """Takes a dictionary defining where the xml for the function is, does
     some function specific parsing and returns a new dictionary with
     the parsed xml.
     """
@@ -789,8 +781,7 @@ def parse_function(func_dict):
 
 
 def parse_class(class_dict):
-    """
-    Parses a single class and returns a dictionary of dictionaries
+    """Parses a single class and returns a dictionary of dictionaries
     containing all the data for that class.
 
     Parameters
@@ -958,22 +949,21 @@ class XDressPlugin(Plugin):
 
     defaultrc = {"doxygen_config": default_doxygen_config,
                  "doxyfile_name": 'doxyfile'}
+
     rcupdaters = {'doxygen_config': merge_configs}
 
     def setup(self, rc):
-        """
-        Need setup method to get project, output_dir, and src_dir from
+        """Need setup method to get project, output_dir, and src_dir from
         rc and put them in the default_doxygen_config before running
         doxygen
         """
         rc_params = {'PROJECT_NAME': rc.package,
                      'OUTPUT_DIRECTORY': rc.builddir,
                      'INPUT': rc.sourcedir}
-        default_doxygen_config.update(rc_params)
+        rc.doxygen_config.update(rc_params)
 
     def execute(self, rc):
-        """
-        Runs doxygen to produce the xml, then parses it and adds
+        """Runs doxygen to produce the xml, then parses it and adds
         docstrings to the desc dictionary.
         """
         print("doxygen: Running dOxygen")
@@ -985,7 +975,7 @@ class XDressPlugin(Plugin):
         newoverwrite(doxyfile, rc.doxyfile_name)
 
         # Run doxygen
-        call(['doxygen', rc.doxyfile_name])
+        subprocess.call(['doxygen', rc.doxyfile_name])
 
         xml_dir = build_dir + os.path.sep + 'xml'
         # Parse index.xml and obtain list of classes and functions
