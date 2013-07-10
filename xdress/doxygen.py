@@ -26,6 +26,9 @@ This might be done as follows:
                'xdress.doxygen', 'xdress.cythongen')
 
 
+# TODO: notes about doxygen_config dict
+# TODO: notes about doxyfile_name variable
+
 dOygen API
 ==========
 """
@@ -34,7 +37,8 @@ import re
 import os
 from subprocess import call
 from textwrap import TextWrapper
-from xdress.plugins import Plugin
+from .plugins import Plugin
+from .utils import newoverwrite
 
 # XML conditional imports
 try:
@@ -307,197 +311,194 @@ def func_docstr(func_dict, is_method=False):
 
 # NOTE: Also, there are three placeholders for format: project, output_dir,
 #       src_dir
-_doxyfile_content =\
-"""
-DOXYFILE_ENCODING      = UTF-8
-PROJECT_NAME           = "{project}"
-PROJECT_NUMBER         = "0.1"
-OUTPUT_DIRECTORY       = {output_dir}
-CREATE_SUBDIRS         = NO
-OUTPUT_LANGUAGE        = English
-BRIEF_MEMBER_DESC      = YES
-REPEAT_BRIEF           = YES
-ALWAYS_DETAILED_SEC    = NO
-INLINE_INHERITED_MEMB  = NO
-FULL_PATH_NAMES        = YES
-SHORT_NAMES            = NO
-JAVADOC_AUTOBRIEF      = NO
-QT_AUTOBRIEF           = NO
-MULTILINE_CPP_IS_BRIEF = NO
-INHERIT_DOCS           = YES
-SEPARATE_MEMBER_PAGES  = NO
-TAB_SIZE               = 4
-OPTIMIZE_OUTPUT_FOR_C  = NO
-OPTIMIZE_OUTPUT_JAVA   = NO
-OPTIMIZE_FOR_FORTRAN   = NO
-OPTIMIZE_OUTPUT_VHDL   = NO
-MARKDOWN_SUPPORT       = YES
-AUTOLINK_SUPPORT       = YES
-BUILTIN_STL_SUPPORT    = NO
-CPP_CLI_SUPPORT        = NO
-SIP_SUPPORT            = NO
-IDL_PROPERTY_SUPPORT   = YES
-DISTRIBUTE_GROUP_DOC   = NO
-SUBGROUPING            = YES
-INLINE_GROUPED_CLASSES = NO
-INLINE_SIMPLE_STRUCTS  = NO
-TYPEDEF_HIDES_STRUCT   = NO
-LOOKUP_CACHE_SIZE      = 0
-EXTRACT_ALL            = NO
-EXTRACT_PRIVATE        = NO
-EXTRACT_PACKAGE        = NO
-EXTRACT_STATIC         = NO
-EXTRACT_LOCAL_CLASSES  = YES
-EXTRACT_LOCAL_METHODS  = NO
-EXTRACT_ANON_NSPACES   = NO
-HIDE_UNDOC_MEMBERS     = NO
-HIDE_UNDOC_CLASSES     = NO
-HIDE_FRIEND_COMPOUNDS  = NO
-HIDE_IN_BODY_DOCS      = NO
-INTERNAL_DOCS          = NO
-CASE_SENSE_NAMES       = NO
-HIDE_SCOPE_NAMES       = NO
-SHOW_INCLUDE_FILES     = YES
-FORCE_LOCAL_INCLUDES   = NO
-INLINE_INFO            = YES
-SORT_MEMBER_DOCS       = YES
-SORT_BRIEF_DOCS        = NO
-SORT_MEMBERS_CTORS_1ST = NO
-SORT_GROUP_NAMES       = NO
-SORT_BY_SCOPE_NAME     = NO
-STRICT_PROTO_MATCHING  = NO
-GENERATE_TODOLIST      = YES
-GENERATE_TESTLIST      = YES
-GENERATE_BUGLIST       = YES
-GENERATE_DEPRECATEDLIST= YES
-MAX_INITIALIZER_LINES  = 30
-SHOW_USED_FILES        = YES
-SHOW_FILES             = YES
-SHOW_NAMESPACES        = YES
-QUIET                  = YES
-WARNINGS               = YES
-WARN_IF_UNDOCUMENTED   = NO
-WARN_IF_DOC_ERROR      = YES
-WARN_NO_PARAMDOC       = NO
-WARN_FORMAT            = "$file:$line: $text"
-INPUT                  = {src_dir}
-INPUT_ENCODING         = UTF-8
-RECURSIVE              = NO
-EXCLUDE_SYMLINKS       = NO
-EXAMPLE_RECURSIVE      = NO
-FILTER_SOURCE_FILES    = NO
-SOURCE_BROWSER         = NO
-INLINE_SOURCES         = NO
-STRIP_CODE_COMMENTS    = YES
-REFERENCED_BY_RELATION = NO
-REFERENCES_RELATION    = NO
-REFERENCES_LINK_SOURCE = YES
-USE_HTAGS              = NO
-VERBATIM_HEADERS       = YES
-ALPHABETICAL_INDEX     = YES
-COLS_IN_ALPHA_INDEX    = 5
-GENERATE_HTML          = NO
-HTML_OUTPUT            = html
-HTML_FILE_EXTENSION    = .html
-HTML_COLORSTYLE_HUE    = 220
-HTML_COLORSTYLE_SAT    = 100
-HTML_COLORSTYLE_GAMMA  = 80
-HTML_TIMESTAMP         = YES
-HTML_DYNAMIC_SECTIONS  = NO
-HTML_INDEX_NUM_ENTRIES = 100
-GENERATE_DOCSET        = NO
-DOCSET_FEEDNAME        = "Doxygen generated docs"
-DOCSET_BUNDLE_ID       = org.doxygen.Project
-DOCSET_PUBLISHER_ID    = org.doxygen.Publisher
-DOCSET_PUBLISHER_NAME  = Publisher
-GENERATE_HTMLHELP      = NO
-GENERATE_CHI           = NO
-BINARY_TOC             = NO
-TOC_EXPAND             = NO
-GENERATE_QHP           = NO
-QHP_NAMESPACE          = org.doxygen.Project
-QHP_VIRTUAL_FOLDER     = doc
-GENERATE_ECLIPSEHELP   = NO
-ECLIPSE_DOC_ID         = org.doxygen.Project
-DISABLE_INDEX          = NO
-GENERATE_TREEVIEW      = NO
-ENUM_VALUES_PER_LINE   = 4
-TREEVIEW_WIDTH         = 250
-EXT_LINKS_IN_WINDOW    = NO
-FORMULA_FONTSIZE       = 10
-FORMULA_TRANSPARENT    = YES
-USE_MATHJAX            = NO
-MATHJAX_FORMAT         = HTML-CSS
-MATHJAX_RELPATH        = http://cdn.mathjax.org/mathjax/latest
-SEARCHENGINE           = YES
-SERVER_BASED_SEARCH    = NO
-EXTERNAL_SEARCH        = NO
-SEARCHDATA_FILE        = searchdata.xml
-GENERATE_LATEX         = NO
-LATEX_OUTPUT           = latex
-LATEX_CMD_NAME         = latex
-MAKEINDEX_CMD_NAME     = makeindex
-COMPACT_LATEX          = NO
-PAPER_TYPE             = a4
-PDF_HYPERLINKS         = YES
-USE_PDFLATEX           = YES
-LATEX_BATCHMODE        = NO
-LATEX_HIDE_INDICES     = NO
-LATEX_SOURCE_CODE      = NO
-LATEX_BIB_STYLE        = plain
-GENERATE_RTF           = NO
-RTF_OUTPUT             = rtf
-COMPACT_RTF            = NO
-RTF_HYPERLINKS         = NO
-GENERATE_MAN           = NO
-MAN_OUTPUT             = man
-MAN_EXTENSION          = .3
-MAN_LINKS              = NO
-GENERATE_XML           = YES
-XML_OUTPUT             = xml
-XML_PROGRAMLISTING     = YES
-GENERATE_DOCBOOK       = NO
-DOCBOOK_OUTPUT         = docbook
-GENERATE_AUTOGEN_DEF   = NO
-GENERATE_PERLMOD       = NO
-PERLMOD_LATEX          = NO
-PERLMOD_PRETTY         = YES
-ENABLE_PREPROCESSING   = YES
-MACRO_EXPANSION        = NO
-EXPAND_ONLY_PREDEF     = NO
-SEARCH_INCLUDES        = YES
-SKIP_FUNCTION_MACROS   = YES
-ALLEXTERNALS           = NO
-EXTERNAL_GROUPS        = YES
-EXTERNAL_PAGES         = YES
-PERL_PATH              = /usr/bin/perl
-CLASS_DIAGRAMS         = YES
-HIDE_UNDOC_RELATIONS   = YES
-HAVE_DOT               = NO
-DOT_NUM_THREADS        = 0
-DOT_FONTNAME           = Helvetica
-DOT_FONTSIZE           = 10
-CLASS_GRAPH            = YES
-COLLABORATION_GRAPH    = YES
-GROUP_GRAPHS           = YES
-UML_LOOK               = NO
-UML_LIMIT_NUM_FIELDS   = 10
-TEMPLATE_RELATIONS     = NO
-INCLUDE_GRAPH          = YES
-INCLUDED_BY_GRAPH      = YES
-CALL_GRAPH             = NO
-CALLER_GRAPH           = NO
-GRAPHICAL_HIERARCHY    = YES
-DIRECTORY_GRAPH        = YES
-DOT_IMAGE_FORMAT       = png
-INTERACTIVE_SVG        = NO
-DOT_GRAPH_MAX_NODES    = 50
-MAX_DOT_GRAPH_DEPTH    = 0
-DOT_TRANSPARENT        = NO
-DOT_MULTI_TARGETS      = NO
-GENERATE_LEGEND        = NO
-DOT_CLEANUP            = YES
-"""
+default_doxygen_config = {'DOXYFILE_ENCODING': 'UTF-8',
+                          'PROJECT_NAME': 'project',
+                          'PROJECT_NUMBER': '"0.1"',
+                          'OUTPUT_DIRECTORY': 'output_dir',
+                          'CREATE_SUBDIRS': 'NO',
+                          'OUTPUT_LANGUAGE': 'English',
+                          'BRIEF_MEMBER_DESC': 'YES',
+                          'REPEAT_BRIEF': 'YES',
+                          'ALWAYS_DETAILED_SEC': 'NO',
+                          'INLINE_INHERITED_MEMB': 'NO',
+                          'FULL_PATH_NAMES': 'YES',
+                          'SHORT_NAMES': 'NO',
+                          'JAVADOC_AUTOBRIEF': 'NO',
+                          'QT_AUTOBRIEF': 'NO',
+                          'MULTILINE_CPP_IS_BRIEF': 'NO',
+                          'INHERIT_DOCS': 'YES',
+                          'SEPARATE_MEMBER_PAGES': 'NO',
+                          'TAB_SIZE': '4',
+                          'OPTIMIZE_OUTPUT_FOR_C': 'NO',
+                          'OPTIMIZE_OUTPUT_JAVA': 'NO',
+                          'OPTIMIZE_FOR_FORTRAN': 'NO',
+                          'OPTIMIZE_OUTPUT_VHDL': 'NO',
+                          'MARKDOWN_SUPPORT': 'YES',
+                          'AUTOLINK_SUPPORT': 'YES',
+                          'BUILTIN_STL_SUPPORT': 'NO',
+                          'CPP_CLI_SUPPORT': 'NO',
+                          'SIP_SUPPORT': 'NO',
+                          'IDL_PROPERTY_SUPPORT': 'YES',
+                          'DISTRIBUTE_GROUP_DOC': 'NO',
+                          'SUBGROUPING': 'YES',
+                          'INLINE_GROUPED_CLASSES': 'NO',
+                          'INLINE_SIMPLE_STRUCTS': 'NO',
+                          'TYPEDEF_HIDES_STRUCT': 'NO',
+                          'LOOKUP_CACHE_SIZE': '0',
+                          'EXTRACT_ALL': 'NO',
+                          'EXTRACT_PRIVATE': 'NO',
+                          'EXTRACT_PACKAGE': 'NO',
+                          'EXTRACT_STATIC': 'NO',
+                          'EXTRACT_LOCAL_CLASSES': 'YES',
+                          'EXTRACT_LOCAL_METHODS': 'NO',
+                          'EXTRACT_ANON_NSPACES': 'NO',
+                          'HIDE_UNDOC_MEMBERS': 'NO',
+                          'HIDE_UNDOC_CLASSES': 'NO',
+                          'HIDE_FRIEND_COMPOUNDS': 'NO',
+                          'HIDE_IN_BODY_DOCS': 'NO',
+                          'INTERNAL_DOCS': 'NO',
+                          'CASE_SENSE_NAMES': 'NO',
+                          'HIDE_SCOPE_NAMES': 'NO',
+                          'SHOW_INCLUDE_FILES': 'YES',
+                          'FORCE_LOCAL_INCLUDES': 'NO',
+                          'INLINE_INFO': 'YES',
+                          'SORT_MEMBER_DOCS': 'YES',
+                          'SORT_BRIEF_DOCS': 'NO',
+                          'SORT_MEMBERS_CTORS_1ST': 'NO',
+                          'SORT_GROUP_NAMES': 'NO',
+                          'SORT_BY_SCOPE_NAME': 'NO',
+                          'STRICT_PROTO_MATCHING': 'NO',
+                          'GENERATE_TODOLIST': 'YES',
+                          'GENERATE_TESTLIST': 'YES',
+                          'GENERATE_BUGLIST': 'YES',
+                          'GENERATE_DEPRECATEDLIST': 'YES',
+                          'MAX_INITIALIZER_LINES': '30',
+                          'SHOW_USED_FILES': 'YES',
+                          'SHOW_FILES': 'YES',
+                          'SHOW_NAMESPACES': 'YES',
+                          'QUIET': 'YES',
+                          'WARNINGS': 'YES',
+                          'WARN_IF_UNDOCUMENTED': 'NO',
+                          'WARN_IF_DOC_ERROR': 'YES',
+                          'WARN_NO_PARAMDOC': 'NO',
+                          'WARN_FORMAT': '"$file:$line: $text"',
+                          'INPUT': '{src_dir}',
+                          'INPUT_ENCODING': 'UTF-8',
+                          'RECURSIVE': 'NO',
+                          'EXCLUDE_SYMLINKS': 'NO',
+                          'EXAMPLE_RECURSIVE': 'NO',
+                          'FILTER_SOURCE_FILES': 'NO',
+                          'SOURCE_BROWSER': 'NO',
+                          'INLINE_SOURCES': 'NO',
+                          'STRIP_CODE_COMMENTS': 'YES',
+                          'REFERENCED_BY_RELATION': 'NO',
+                          'REFERENCES_RELATION': 'NO',
+                          'REFERENCES_LINK_SOURCE': 'YES',
+                          'USE_HTAGS': 'NO',
+                          'VERBATIM_HEADERS': 'YES',
+                          'ALPHABETICAL_INDEX': 'YES',
+                          'COLS_IN_ALPHA_INDEX': '5',
+                          'GENERATE_HTML': 'NO',
+                          'HTML_OUTPUT': 'html',
+                          'HTML_FILE_EXTENSION': '.html',
+                          'HTML_COLORSTYLE_HUE': '220',
+                          'HTML_COLORSTYLE_SAT': '100',
+                          'HTML_COLORSTYLE_GAMMA': '80',
+                          'HTML_TIMESTAMP': 'YES',
+                          'HTML_DYNAMIC_SECTIONS': 'NO',
+                          'HTML_INDEX_NUM_ENTRIES': '100',
+                          'GENERATE_DOCSET': 'NO',
+                          'DOCSET_FEEDNAME': '"Doxygen generated docs"',
+                          'DOCSET_BUNDLE_ID': 'org.doxygen.Project',
+                          'DOCSET_PUBLISHER_ID': 'org.doxygen.Publisher',
+                          'DOCSET_PUBLISHER_NAME': 'Publisher',
+                          'GENERATE_HTMLHELP': 'NO',
+                          'GENERATE_CHI': 'NO',
+                          'BINARY_TOC': 'NO',
+                          'TOC_EXPAND': 'NO',
+                          'GENERATE_QHP': 'NO',
+                          'QHP_NAMESPACE': 'org.doxygen.Project',
+                          'QHP_VIRTUAL_FOLDER': 'doc',
+                          'GENERATE_ECLIPSEHELP': 'NO',
+                          'ECLIPSE_DOC_ID': 'org.doxygen.Project',
+                          'DISABLE_INDEX': 'NO',
+                          'GENERATE_TREEVIEW': 'NO',
+                          'ENUM_VALUES_PER_LINE': '4',
+                          'TREEVIEW_WIDTH': '250',
+                          'EXT_LINKS_IN_WINDOW': 'NO',
+                          'FORMULA_FONTSIZE': '10',
+                          'FORMULA_TRANSPARENT': 'YES',
+                          'USE_MATHJAX': 'NO',
+                          'MATHJAX_FORMAT': 'HTML-CSS',
+                          'MATHJAX_RELPATH': 'http://cdn.mathjax.org/mathjax/latest',
+                          'SEARCHENGINE': 'YES',
+                          'SERVER_BASED_SEARCH': 'NO',
+                          'EXTERNAL_SEARCH': 'NO',
+                          'SEARCHDATA_FILE': 'searchdata.xml',
+                          'GENERATE_LATEX': 'NO',
+                          'LATEX_OUTPUT': 'latex',
+                          'LATEX_CMD_NAME': 'latex',
+                          'MAKEINDEX_CMD_NAME': 'makeindex',
+                          'COMPACT_LATEX': 'NO',
+                          'PAPER_TYPE': 'a4',
+                          'PDF_HYPERLINKS': 'YES',
+                          'USE_PDFLATEX': 'YES',
+                          'LATEX_BATCHMODE': 'NO',
+                          'LATEX_HIDE_INDICES': 'NO',
+                          'LATEX_SOURCE_CODE': 'NO',
+                          'LATEX_BIB_STYLE': 'plain',
+                          'GENERATE_RTF': 'NO',
+                          'RTF_OUTPUT': 'rtf',
+                          'COMPACT_RTF': 'NO',
+                          'RTF_HYPERLINKS': 'NO',
+                          'GENERATE_MAN': 'NO',
+                          'MAN_OUTPUT': 'man',
+                          'MAN_EXTENSION': '.3',
+                          'MAN_LINKS': 'NO',
+                          'GENERATE_XML': 'YES',
+                          'XML_OUTPUT': 'xml',
+                          'XML_PROGRAMLISTING': 'YES',
+                          'GENERATE_DOCBOOK': 'NO',
+                          'DOCBOOK_OUTPUT': 'docbook',
+                          'GENERATE_AUTOGEN_DEF': 'NO',
+                          'GENERATE_PERLMOD': 'NO',
+                          'PERLMOD_LATEX': 'NO',
+                          'PERLMOD_PRETTY': 'YES',
+                          'ENABLE_PREPROCESSING': 'YES',
+                          'MACRO_EXPANSION': 'NO',
+                          'EXPAND_ONLY_PREDEF': 'NO',
+                          'SEARCH_INCLUDES': 'YES',
+                          'SKIP_FUNCTION_MACROS': 'YES',
+                          'ALLEXTERNALS': 'NO',
+                          'EXTERNAL_GROUPS': 'YES',
+                          'EXTERNAL_PAGES': 'YES',
+                          'PERL_PATH': '/usr/bin/perl',
+                          'CLASS_DIAGRAMS': 'YES',
+                          'HIDE_UNDOC_RELATIONS': 'YES',
+                          'HAVE_DOT': 'NO',
+                          'DOT_NUM_THREADS': '0',
+                          'DOT_FONTNAME': 'Helvetica',
+                          'DOT_FONTSIZE': '10',
+                          'CLASS_GRAPH': 'YES',
+                          'COLLABORATION_GRAPH': 'YES',
+                          'GROUP_GRAPHS': 'YES',
+                          'UML_LOOK': 'NO',
+                          'UML_LIMIT_NUM_FIELDS': '10',
+                          'TEMPLATE_RELATIONS': 'NO',
+                          'INCLUDE_GRAPH': 'YES',
+                          'INCLUDED_BY_GRAPH': 'YES',
+                          'CALL_GRAPH': 'NO',
+                          'CALLER_GRAPH': 'NO',
+                          'GRAPHICAL_HIERARCHY': 'YES',
+                          'DIRECTORY_GRAPH': 'YES',
+                          'DOT_IMAGE_FORMAT': 'png',
+                          'INTERACTIVE_SVG': 'NO',
+                          'DOT_GRAPH_MAX_NODES': '50',
+                          'MAX_DOT_GRAPH_DEPTH': '0',
+                          'DOT_TRANSPARENT': 'NO',
+                          'DOT_MULTI_TARGETS': 'NO',
+                          'GENERATE_LEGEND': 'NO',
+                          'DOT_CLEANUP': 'YES'}
 ##############################################################################
 ##
 ## -- Functions to parse the xml
@@ -874,6 +875,30 @@ with a line of # characters.
 """
 
 
+def merge_configs(old, new):
+    d = dict(old)
+    d.update(new)
+    return d
+
+
+def dox_dict2str(dox_dict):
+    s = ""
+    new_line = '{option} = {value}\n'
+    for key, value in dox_dict.items():
+
+        if value is True:
+            _value = 'YES'
+        elif value is False:
+            _value = 'NO'
+        else:
+            _value = value
+
+        s += new_line.format(option=key.upper(), value=_value)
+
+    # Don't need an empty line at the end
+    return s.strip()
+
+
 class XDressPlugin(Plugin):
     """
     Add python docstrings (in numpydoc format) from dOxygen markup in
@@ -883,29 +908,38 @@ class XDressPlugin(Plugin):
     # needs autodescribe to populate rc.classes, rc.functions, ect.
     requires = ('xdress.base', 'xdress.autodescribe')
 
+    defaultrc = {"doxygen_config": default_doxygen_config,
+                 "doxyfile_name": 'doxyfile'}
+    rcupdaters = {'doxygen_config': merge_configs}
+
+    def setup(self, rc):
+        """
+        Need setup method to get project, output_dir, and src_dir from
+        rc and put them in the default_doxygen_config before running
+        doxygen
+        """
+        rc_params = {'PROJECT_NAME': rc.package,
+                     'OUTPUT_DIRECTORY': rc.builddir,
+                     'INPUT': rc.sourcedir}
+        default_doxygen_config.update(rc_params)
+
     def execute(self, rc):
         """
         Runs doxygen to produce the xml, then parses it and adds
         docstrings to the desc dictionary.
         """
         print("doxygen: Running dOxygen")
-        # Get directories from our rc
-        src_dir = rc.sourcedir
-        build_dir = rc.builddir
-        pack_name = rc.package  # not sure this is necessary
 
-        xml_dir = build_dir + os.path.sep + 'xml'
+        build_dir = rc.builddir
 
         # Create the doxyfile
-        doxyfile = open('doxyfile', 'w')
-        doxyfile.write(_doxyfile_content.format(project=pack_name,
-                                                output_dir=build_dir,
-                                                src_dir=src_dir))
-        doxyfile.close()
+        doxyfile = dox_dict2str(rc.doxygen_config)
+        newoverwrite(doxyfile, rc.doxyfile_name)
 
         # Run doxygen
-        call(['doxygen', 'doxyfile'])
+        call(['doxygen', rc.doxyfile_name])
 
+        xml_dir = build_dir + os.path.sep + 'xml'
         # Parse index.xml and obtain list of classes and functions
         print("doxygen: Adding dOxygen to docstrings")
         classes, funcs = parse_index_xml(xml_dir + os.path.sep + 'index.xml')
