@@ -41,7 +41,7 @@ The source code repository for xdress may be found at the
 `GitHub project site <http://github.com/scopatz/xdress>`_.
 You may simply clone the development branch using git::
 
-    git clone git://github.com/scopatz/xdress.git
+    git clone git://github.com/xdress/xdress.git
 
 Also, if you wish to have the optional BASH completion, please add the 
 following lines to your ``~/.bashrc`` file::
@@ -72,7 +72,7 @@ Examples of Use
 To see examples of xdress in action (and sample run control files), here are a
 few places to look:
 
-* `xdress/tests <https://github.com/scopatz/xdress/tree/master/tests>`_: This is 
+* `xdress/tests <https://github.com/xdress/xdress/tree/master/tests>`_: This is 
   a fully functioning sample project which uses xdress locally (no install needed).
 * `PyNE <http://pynesim.org/>`_: This uses xdress to generate STL container wrappers.
 * `Bright <http://bright-dev.github.com/>`_: This uses xdress to automatically
