@@ -346,6 +346,8 @@ class ParserPlugin(Plugin):
         dumpast=NotSpecified,
         )
 
+    rcupdaters = {'includes': lambda old, new: list(new) + list(old)}
+
     def update_argparser(self, parser):
         parser.add_argument('-I', '--includes', action='store', dest='includes', 
                             nargs="+", help="additional include dirs")

@@ -192,7 +192,7 @@ def main():
     if argcomplete is not None and prerc.bash_completion:
         argcomplete.autocomplete(parser)
     ns = parser.parse_args()
-    rc = plugins.merge_defaultrcs()
+    rc = plugins.merge_rcs()
     rc._update(rcdict)
     rc._update([(k, v) for k, v in ns.__dict__.items()])
     plugins.setup()

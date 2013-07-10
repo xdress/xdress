@@ -148,6 +148,20 @@ class Plugin(object):
     parameters and the values are the associated default values.
     """
 
+    rcupdaters = {}
+    """This may be a dict, another mapping, a function which returns a mapping.
+    The keys are the string names of the run control parameters.  The values
+    are callables which indicate how to update or merge two rc parameters with 
+    this key. The callable should take two instances and return a copy that 
+    represents the merger, e.g. ``lambda old, new: old + new``.  One useful example 
+    is for paths.  Normally you want new paths to prepend old ones::
+
+        rcupdates = {'includes': lambda old, new: list(new) + list(old)}
+
+    If a callable is not supplied for an rc parameter then the the default 
+    behaviour is to simply override the old value with the new one.  
+    """
+
     def __init__(self):
         """The __init__() method may take no arguments or keyword arguments."""
         pass
@@ -226,7 +240,7 @@ class Plugins(object):
     The execution and control of plugins should happen in the following order:
 
     1. ``build_cli()``
-    2. ``merge_defaultrcs()``
+    2. ``merge_rcs()``
     3. ``setup()``
     4. ``execute()``
     5. ``teardown()``
@@ -272,15 +286,20 @@ class Plugins(object):
         self.parser = parser
         return parser
 
-    def merge_defaultrcs(self):
+    def merge_rcs(self):
         """Finds all of the default run controllers and returns a new and 
-        full default RunControl() instance."""
+        full default RunControl() instance.  This has also merged all of 
+        the rc updaters in the process."""
         rc = RunControl()
         for plugin in self.plugins:
             drc = plugin.defaultrc
             if callable(drc):
                 drc = drc()
             rc._update(drc)
+            uprc = plugin.rcupdaters
+            if callable(uprc):
+                uprc = uprc()
+            rc._updaters.update(uprc)
         self.rc = rc
         return rc
 

@@ -185,6 +185,7 @@ class RunControl(object):
         self._dict = {}
         for k, v in kwargs.items():
             setattr(self, k, v)
+        self._updaters = {}
 
     def __getattr__(self, key):
         if key in self._dict:
@@ -244,9 +245,12 @@ class RunControl(object):
         else:
             return NotImplemented
 
-    _update_as_list = set(['includes'])
-
     def _update(self, other):
+        """Updates the rc with values from another mapping.  If this rc has
+        if a key is in self, other, and self._updaters, then the updaters 
+        value is called to perform the update.  This function should return 
+        a copy to be safe and not update in-place.
+        """
         if hasattr(other, '_dict'):
             other = other._dict
         elif not hasattr(other, 'items'):
@@ -254,8 +258,8 @@ class RunControl(object):
         for k, v in other.items():
             if v is NotSpecified:
                 pass
-            elif k in self._update_as_list and k in self:
-                v = list(v) + list(getattr(self, k))
+            elif k in self._updaters and k in self:
+                v = self._updaters[k](getattr(self, k), v)
             setattr(self, k, v)
 
 _lang_exts = {
