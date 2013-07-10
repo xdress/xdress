@@ -248,6 +248,7 @@ import sys
 import functools
 from contextlib import contextmanager
 from collections import Sequence, Set, Iterable, MutableMapping
+from numbers import Number
 from .utils import flatten
 
 if sys.version_info[0] >= 3:
@@ -471,7 +472,23 @@ def canon(t):
         elif t0 in template_types:
             templen = len(template_types[t0])
             last_val = 0 if tlen == 1 + templen else t[-1]
-            filledt = [t0] + [canon(tt) for tt in t[1:1+templen]] + [last_val]
+            filledt = [t0]
+            for tt in t[1:1+templen]:
+                if isinstance(tt, Number):  # includes bool!
+                    filledt.append(tt)
+                elif isinstance(tt, basestring):
+                    try:
+                        canontt = canon(tt)
+                    except TypeError:
+                        canontt = tt
+                    except:
+                        raise
+                    filledt.append(canontt)
+                elif isinstance(tt, Sequence):
+                    filledt.append(canon(tt))
+                else:
+                    _raise_type_error(tt)
+            filledt.append(last_val)
             return tuple(filledt)
         else:
             #if 2 < tlen:
