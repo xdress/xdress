@@ -154,6 +154,8 @@ def modcpppxd(mod, exceptions=True):
                 continue
             cimport_tups |= ci_tup
             attrs.append(attr_str)
+    if mod.get('language', None) == 'c':
+        cimport_tups.discard((ts.STLCONTAINERS,))
     m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
     m['attrs_block'] = "\n".join(attrs)
     t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
@@ -450,6 +452,8 @@ def modpxd(mod, classes=()):
             cimport_tups |= ci_tup
             attrs.append(attr_str)
     cimport_tups.discard((mod["name"],))
+    if mod.get('language', None) == 'c':
+        cimport_tups.discard((ts.STLCONTAINERS,))
     m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
     m['attrs_block'] = "\n".join(attrs)
     t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
@@ -500,7 +504,6 @@ def classpxd(desc, classes=()):
     cimport_tups = set()
     for parent in desc['parents'] or ():
         cython_cimport_tuples(parent, cimport_tups, set(['cy']))
-
 
     from_cpppxd = desc['srcpxd_filename'].rsplit('.', 1)[0]
     d['name_type'] = cython_ctype(desc['name'])
@@ -637,6 +640,9 @@ def modpyx(mod, classes=None):
         attrs.append(template_dispatcher)
     import_tups.discard((mod["name"],))
     cimport_tups.discard((mod["name"],))
+    if mod.get('language', None) == 'c':
+        import_tups.discard((ts.STLCONTAINERS,))
+        cimport_tups.discard((ts.STLCONTAINERS,))
     m['imports'] = "\n".join(sorted(cython_imports(import_tups)))
     m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
     if 'numpy' in m['cimports']:

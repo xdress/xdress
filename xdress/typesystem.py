@@ -1904,7 +1904,7 @@ _cython_py2c_conv = _LazyConverterDict({
                 'else:\n'
                 '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
                 '    for i{var} in range({var}_size):\n'
-                '        _ = {var}[i].encode()\n'
+                '        _ = {var}[i{var}].encode()\n'
                 '        {proxy_name}[i{var}] = deref(<char *> _)\n'),
                '{proxy_name}'),
     TypeMatcher(('vector', MatchAny, '&')): ((

@@ -1882,8 +1882,9 @@ class XDressPlugin(astparsers.ParserPlugin):
         # docstrings overwrite, extras accrete 
         mod = {name: desc, 'docstring': self.pysrcenv[srcname].get('docstring', ''),
                'srcpxd_filename': desc['srcpxd_filename'],
-               'pxd_filename': desc['pxd_filename'],
-               'pyx_filename': desc['pyx_filename']}
+               'pxd_filename': desc['pxd_filename'], 
+               'pyx_filename': desc['pyx_filename'], 'language': desc['language'],
+               'language_extension': desc['language_extension'],}
         if tarname not in env:
             env[tarname] = mod
             env[tarname]["name"] = tarname
