@@ -40,7 +40,7 @@ The usage of this plugin is very straightforward and comes in two steps:
       containing xdressrc.py unless a path is specified for this
       variable. The path is assumed to be relative to the directory
       where ``xdress`` is run. The default value for this variable is
-      ``'doxyfile'``
+      ``'doxyfile'``.
 
 .. note::
 
@@ -51,7 +51,7 @@ The usage of this plugin is very straightforward and comes in two steps:
     assigned to ``rc.sourcedir`` and ``OUTPUT_DIRECTORY`` is assigned
     to ``rc.builddir``.
 
-The user might accomplish these steps as follows:
+The user might accomplish these steps as follows::
 
    plugins = ('xdress.stlwrap', 'xdress.autoall', 'xdress.autodescribe',
               'xdress.doxygen', 'xdress.cythongen')
@@ -794,7 +794,7 @@ def parse_class(class_dict):
     -------
     data : dict
         A dictionary with all docstrings for instance variables and
-        class methods. This object is structured as follows:
+        class methods. This object is structured as follows::
 
             data
                 'protected-func'
@@ -826,16 +826,21 @@ def parse_class(class_dict):
         follows:
 
         1. data
+
             - keys: Some of the following (more?): 'protected-func',
-            'protected-attrib', 'public-func',  'public-static-attrib',
-            'publib-static-func', 'public-type'
+              'protected-attrib', 'public-func',  'public-static-attrib',
+              'publib-static-func', 'public-type'
             - values: dictionaries of attribute types
+
         2. dictionaries of attribute types
+
             - keys: attribute names
             - values: attribute dictionaries
+
         3. attribute dictionaries
+
             - keys: arg_string, args, briefdescription, type, definition
-            detaileddescription,
+              detaileddescription,
             - values: objects containing the actual data we care about
 
     Notes

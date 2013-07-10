@@ -29,3 +29,4 @@ dynamic type system.
     base
     extratypes
     descfilter
+    doxygen
