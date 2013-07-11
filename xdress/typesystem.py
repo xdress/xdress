@@ -1736,12 +1736,12 @@ _cython_c2py_conv = _LazyConverterDict({
     })
 
 # Strip const when going c -> py 
-def _cython_c2py_matchany_const(t):
-    rtn = _cython_c2py_conv[t[0]]
+#def _cython_c2py_matchany_const(t):
+#    rtn = _cython_c2py_conv[t[0]]
     #if callable(rtn):
     #    rtn = rtn(t[0])
-    return rtn
-_cython_c2py_conv[TypeMatcher((MatchAny, 'const'))] = _cython_c2py_matchany_const
+#    return rtn
+#_cython_c2py_conv[TypeMatcher((MatchAny, 'const'))] = _cython_c2py_matchany_const
 #_cython_c2py_conv[TypeMatcher((MatchAny, '&'))] = lambda t: _cython_c2py_conv[t[0]]
 #_cython_c2py_conv[TypeMatcher(((MatchAny, 'const'), '&'))] = lambda t: _cython_c2py_conv[t[0][0]]
 
@@ -1860,8 +1860,8 @@ def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None
                        pytype=pyt, proxy_name=proxy_name, nptype=npt,
                        nptypes=npts, ctype_nopred=ct_nopred,
                        cytype_nopred=cyt_nopred,)
-    if callable(c2pyt):
-        import pdb; pdb.set_trace()
+#    if callable(c2pyt):
+#        import pdb; pdb.set_trace()
     if 1 == len(c2pyt) or ind == 0:
         decl = body = None
         rtn = c2pyt[0].format(**template_kw)

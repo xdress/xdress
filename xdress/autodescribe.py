@@ -383,7 +383,8 @@ class GccxmlBaseDescriber(object):
         self._pprint(node)
         name = node.attrib['name']
         self._currclass.append(name)
-        if self._describes == 'class' and name == ts.gccxml_type(self.name):
+        if self._describes == 'class' and (name == ts.gccxml_type(self.name) or 
+                                           name == self._name):
             if 'bases' not in node.attrib:
                 msg = ("The type {0!r} is used as part of an API element but no "
                        "declarations were made with it.  Please declare a variable "
@@ -626,6 +627,11 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
         self.desc[self._funckey] = {}
         self.desc['construct'] = self._constructvalue
         self.desc['type'] = ts.canon(name)
+        # Gross, but it solves the problem that for uint valued template parameters
+        # (ie MyClass<3>) gccxml names this MyClass<3u> or MyClass<3d> but 
+        # the type system has no way of dsitinguising this from MyClass<3> as an int.
+        # maybe it should, but I think this will get us pretty far.
+        self._name = None  
 
     def visit(self, node=None):
         """Visits the class node and all sub-nodes, generating the description
@@ -658,6 +664,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
                         continue
                     nodet = self._visit_template(node)
                     if nodet == namet:
+                        self._name = nodename  # gross
                         break
                     node = None
             if node is None:
