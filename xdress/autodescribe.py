@@ -335,18 +335,13 @@ class GccxmlBaseDescriber(object):
             return int(m.group(1))
         return targ
 
-    def _visit_template(self, node, check_has_members=True):
+    def _visit_template(self, node):
         name = node.attrib['name']
         members = node.attrib.get('members', '').strip().split()
-        if 0 == len(members) and check_has_members:
-            msg = ("The type {0!r} is used as part of an API element but no "
-                   "declarations were made with it.  Please declare a variable "
-                   "of type {0!r} somewhere in the source or header.")
-            raise NotImplementedError(msg.format(name))
-        children = [child for m in members for child in \
-                                self._root.iterfind(".//*[@id='{0}']".format(m))]
-        tags = [child.tag for child in children]
-        if check_has_members:
+        if 0 < len(members):
+            children = [child for m in members for child in \
+                        self._root.iterfind(".//*[@id='{0}']".format(m))]
+            tags = [child.tag for child in children]
             template_name = children[tags.index('Constructor')].attrib['name']  # 'map'
         else:
             template_name = name.split('<', 1)[0]
@@ -651,6 +646,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
             if node is None and not isinstance(self, basestring):
                 # Must be a template with some wacky argument values
                 basename = self.name[0]
+                canonname = ts.canon(self.name)
                 for node in self._root.iterfind("Class"):
                     if node.attrib['file'] not in self.onlyin:
                         continue
@@ -659,8 +655,8 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
                         continue
                     if '<' not in nodename or not nodename.endswith('>'):
                         continue
-                    nodet = self._visit_template(node, check_has_members=False)
-                    if nodet == self.name:
+                    nodet = self._visit_template(node)
+                    if nodet == canonname:
                         break
                     node = None
             if node is None:
