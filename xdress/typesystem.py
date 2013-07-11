@@ -1431,6 +1431,8 @@ def _fill_cycyt(cycyt, t):
     for key, x in zip(template_types[t[0]], t[1:-1]):
         if isinstance(x, basestring):
             val = _cython_classnames[x]
+        elif isinstance(x, Number):
+            val = str(x)
         elif x[0] in base_types:
             val = _cython_classnames[x[0]]
         else:
@@ -1541,6 +1543,8 @@ def _fill_cypyt(cypyt, t):
     for key, x in zip(template_types[t[0]], t[1:-1]):
         if isinstance(x, basestring):
             val = _cython_classnames[x]
+        elif isinstance(x, Number):
+            val = str(x)
         elif x[0] in base_types:
             val = _cython_classnames[x[0]]
         else:
@@ -1552,9 +1556,11 @@ def _fill_cypyt(cypyt, t):
 @_memoize
 def cython_pytype(t):
     """Given a type t, returns the corresponding Python type."""
+    if isinstance(t, Number):
+        return str(t)
     t = canon(t)
-#    if t in _cython_pytypes:
-#        return _cython_pytypes[t]
+    if t in _cython_pytypes:
+        return _cython_pytypes[t]
     if isinstance(t, basestring):
         if t in base_types:
             return _cython_pytypes[t]
@@ -1609,6 +1615,8 @@ def cython_nptype(t, depth=0):
     """Given a type t, returns the corresponding numpy type.  If depth is
     greater than 0 then this returns of a list of numpy types for all internal
     template types, ie the float in ('vector', 'float', 0)."""
+    if isinstance(t, Number):
+        return 'np.NPY_OBJECT'
     t = canon(t)
     if isinstance(t, basestring):
         return _numpy_types[t] if t in _numpy_types else 'np.NPY_OBJECT'

@@ -676,7 +676,7 @@ def _gen_template_dispatcher(templates):
             disp.append("{0}[{1}] = {2}".format(t[0], ts.cython_pytype(t[1]), pytype))
         else:
             rs = [repr(_) for _ in t[1:-1]]
-            pyts = [ts.cython_pytypes(_) for _ in t[1:-1]]
+            pyts = [ts.cython_pytype(x) for x in t[1:-1]]
             disp.append("{0}[{1}] = {2}".format(t[0], ", ".join(rs), pytype))
             disp.append("{0}[{1}] = {2}".format(t[0], ", ".join(pyts), pytype))
     return "\n".join(disp)
