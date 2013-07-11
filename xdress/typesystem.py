@@ -927,8 +927,6 @@ def cpp_type(t):
         assert len(t) == len(template_types[t[0]]) + 2
         template_name = _cpp_types[t[0]]
         assert template_name is not NotImplemented
-        #template_filling = ', '.join([cpp_type(x) for x in t[1:-1]])
-        #cppt = '{0}< {1} >'.format(template_name, ', template_filling)
         template_filling = []
         for x in t[1:-1]:
             if isinstance(x, bool):
@@ -1044,8 +1042,17 @@ def cython_ctype(t):
         assert len(t) == len(template_types[t[0]]) + 2
         template_name = _cython_ctypes[t[0]]
         assert template_name is not NotImplemented
-        template_filling = ', '.join([cython_ctype(x) for x in t[1:-1]])
-        cyct = '{0}[{1}]'.format(template_name, template_filling)
+        template_filling = []
+        for x in t[1:-1]:
+            #if isinstance(x, bool):
+            #    x = _cython_ctypes[x]
+            #elif isinstance(x, Number):
+            if isinstance(x, Number):
+                x = str(x)
+            else:
+                x = cython_ctype(x)
+            template_filling.append(x)
+        cyct = '{0}[{1}]'.format(template_name, ', '.join(template_filling))
         if 0 != t[-1]:
             last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
             cyct = _cython_ctype_add_predicate(cyct, last)
@@ -1176,6 +1183,10 @@ def cython_cimport_tuples(t, seen=None, inc=frozenset(['c', 'cy'])):
         if 'cy' in inc:
             seen.update(_cython_cyimports[t[0]])
         for x in t[1:-1]:
+            if isinstance(x, Number):
+                continue
+            elif isinstance(x, basestring) and x not in _cython_cimports:
+                continue
             cython_cimport_tuples(x, seen, inc)
         seen -= set((None, (None,)))
         return seen
@@ -1271,6 +1282,10 @@ def cython_import_tuples(t, seen=None):
         assert t[0] in template_types
         seen.update(_cython_pyimports[t[0]])
         for x in t[1:-1]:
+            if isinstance(x, Number):
+                continue
+            elif isinstance(x, basestring) and x not in _cython_cimports:
+                continue
             cython_import_tuples(x, seen)
         seen -= set((None, (None,)))
         return seen

@@ -1530,6 +1530,7 @@ class PycparserClassDescriber(PycparserBaseDescriber):
         self.desc[self._funckey] = {}
         self.desc['parents'] = None
         self.desc['construct'] = self._constructvalue
+        self.desc['type'] = ts.canon(name)
 
     def visit(self, node=None):
         """Visits the struct (class) node and all sub-nodes, generating the 

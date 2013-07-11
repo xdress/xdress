@@ -144,7 +144,8 @@ def ensuredirs(f):
 
 def isvardesc(desc):
     """Tests if a description is a variable-type description."""
-    return desc is not None and 'type' in desc
+    return desc is not None and 'type' in desc and 'signatures' not in desc and \
+           'methods' not in desc
 
 def isfuncdesc(desc):
     """Tests if a description is a function-type description."""
