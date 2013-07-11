@@ -625,6 +625,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
         self.desc['attrs'] = {}
         self.desc[self._funckey] = {}
         self.desc['construct'] = self._constructvalue
+        self.desc['type'] = ts.canon(name)
 
     def visit(self, node=None):
         """Visits the class node and all sub-nodes, generating the description
@@ -646,7 +647,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
             if node is None and not isinstance(self, basestring):
                 # Must be a template with some wacky argument values
                 basename = self.name[0]
-                canonname = ts.canon(self.name)
+                namet = self.desc['type']
                 for node in self._root.iterfind("Class"):
                     if node.attrib['file'] not in self.onlyin:
                         continue
@@ -656,7 +657,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
                     if '<' not in nodename or not nodename.endswith('>'):
                         continue
                     nodet = self._visit_template(node)
-                    if nodet == canonname:
+                    if nodet == namet:
                         break
                     node = None
             if node is None:
