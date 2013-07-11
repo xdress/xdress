@@ -639,7 +639,7 @@ def modpyx(mod, classes=None):
         template_dispatcher = _gen_template_dispatcher(template_classes)
         attrs.append(template_dispatcher)
     import_tups.discard((mod["name"],))
-    cimport_tups.discard((mod["name"],))
+    #cimport_tups.discard((mod["name"],))  # remain commented for decls
     if mod.get('language', None) == 'c':
         import_tups.discard((ts.STLCONTAINERS,))
         cimport_tups.discard((ts.STLCONTAINERS,))

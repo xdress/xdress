@@ -1786,6 +1786,9 @@ class XDressPlugin(astparsers.ParserPlugin):
                     cython_py_type=pxd_base + '.' + specname,
                     )
                 ts.register_class(**kwclassspec)
+                canonname = ts.canon(classname)
+                kwclassspec['name'] = canonname
+                ts.register_class(**kwclassspec)
             # register numpy type
             ts.register_numpy_dtype(classname,
                 cython_cimport=class_cimport,
