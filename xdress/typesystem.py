@@ -864,6 +864,12 @@ _cpp_types = _LazyConfigDict({
     'pair': 'std::pair',
     'set': 'std::set',
     'vector': 'std::vector',
+    True: 'true',
+    'true': 'true',
+    'True': 'true',
+    False: 'false',
+    'false': 'false',
+    'False': 'false',
     })
 
 def _cpp_types_function(t):
@@ -894,6 +900,8 @@ def _cpp_type_add_predicate(t, last):
 @_memoize
 def cpp_type(t):
     """Given a type t, returns the corresponding C++ type declaration."""
+    if t in _cpp_types:
+        return _cpp_types[t]
     t = canon(t)
     if isinstance(t, basestring):
         if  t in base_types:
@@ -919,8 +927,18 @@ def cpp_type(t):
         assert len(t) == len(template_types[t[0]]) + 2
         template_name = _cpp_types[t[0]]
         assert template_name is not NotImplemented
-        template_filling = ', '.join([cpp_type(x) for x in t[1:-1]])
-        cppt = '{0}< {1} >'.format(template_name, template_filling)
+        #template_filling = ', '.join([cpp_type(x) for x in t[1:-1]])
+        #cppt = '{0}< {1} >'.format(template_name, ', template_filling)
+        template_filling = []
+        for x in t[1:-1]:
+            if isinstance(x, bool):
+                x = _cpp_types[x]
+            elif isinstance(x, Number):
+                x = str(x)
+            else:
+                x = cpp_type(x)
+            template_filling.append(x)
+        cppt = '{0}< {1} >'.format(template_name, ', '.join(template_filling))
         if 0 != t[-1]:
             last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
             cppt = _cpp_type_add_predicate(cppt, last)
@@ -930,7 +948,8 @@ def cpp_type(t):
 def gccxml_type(t):
     """Given a type t, returns the corresponding GCC-XML type name."""
     cppt = cpp_type(t)
-    gxt = cppt.replace('< ', '<').replace(' >', '>').replace('>>', '> >')
+    gxt = cppt.replace('< ', '<').replace(' >', '>').\
+               replace('>>', '> >').replace(', ', ',')
     return gxt
 
 #########################   Cython Functions   ################################
@@ -1348,7 +1367,9 @@ def cython_functionname(t, cycyt=None):
     d = {}
     for key, x in zip(template_types[t[0]], t[1:-1]):
         if isinstance(x, basestring):
-            val = _cython_functionnames[x]
+            val = _cython_functionnames[x] if x in _cython_functionnames else x
+        elif isinstance(x, Number):
+            val = str(x).replace('-', 'Neg').replace('+', 'Pos').replace('.', 'point')
         elif x[0] in base_types:
             val = _cython_functionnames[x[0]]
         else:
@@ -1402,7 +1423,6 @@ def _fill_cycyt(cycyt, t):
         d[key] = val
     return cycyt.format(**d), t
 
-
 @_memoize
 def cython_classname(t, cycyt=None):
     """Computes classnames for cython types."""
@@ -1416,14 +1436,15 @@ def cython_classname(t, cycyt=None):
     d = {}
     for key, x in zip(template_types[t[0]], t[1:-1]):
         if isinstance(x, basestring):
-            val = _cython_classnames[x]
+            val = _cython_classnames[x] if x in _cython_classnames else x
+        elif isinstance(x, Number):
+            val = str(x).replace('-', 'Neg').replace('+', 'Pos').replace('.', 'point')
         elif x[0] in base_types:
             val = _cython_classnames[x[0]]
         else:
             _, val = cython_classname(x, _cython_classnames[x[0]])
         d[key] = val
     return t, cycyt.format(**d)
-
 
 def _cython_cytype_add_predicate(t, last):
     """Adds a predicate to a cytype"""

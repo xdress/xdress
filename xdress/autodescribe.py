@@ -274,8 +274,18 @@ class GccxmlBaseDescriber(object):
         origonlyin = onlyin
         onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
         onlyin = set() if onlyin is None else set(onlyin)
-        onlyin = [root.find("File[@name='{0}']".format(oi)) for oi in onlyin]
-        self.onlyin = set([oi.attrib['id'] for oi in onlyin if oi is not None])
+        self.onlyin = set()
+        self._filemap = {}
+        for fnode in root.iterfind("File"):
+            fid = fnode.attrib['id']
+            fname = fnode.attrib['name']
+            self._filemap[fid] = fname
+        for fname in onlyin:
+            fnode = root.find("File[@name='{0}']".format(fname))
+            if fnode is None:
+                continue
+            fid = fnode.attrib['id']
+            self.onlyin.add(fid)
         if 0 == len(self.onlyin):
             msg = "{0!r} is not present in {1!r}; autodescribing will probably fail."
             msg = msg.format(name, origonlyin)
@@ -317,21 +327,18 @@ class GccxmlBaseDescriber(object):
     def _template_literal_arg(self, targ):
         """Parses a literal template parameter."""
         if targ == 'true':
-            return 'True'
-            #return True
+            return True
         elif targ == 'false':
-            return 'False'
-            #return True
+            return True
         m = _GCCXML_LITERAL_INTS.match(targ)
         if m is not None:
-            return m.group(1)
-            #return int(m.group(1))
+            return int(m.group(1))
         return targ
 
-    def _visit_template(self, node):
+    def _visit_template(self, node, check_has_members=True):
         name = node.attrib['name']
         members = node.attrib.get('members', '').strip().split()
-        if 0 == len(members):
+        if 0 == len(members) and check_has_members:
             msg = ("The type {0!r} is used as part of an API element but no "
                    "declarations were made with it.  Please declare a variable "
                    "of type {0!r} somewhere in the source or header.")
@@ -339,7 +346,10 @@ class GccxmlBaseDescriber(object):
         children = [child for m in members for child in \
                                 self._root.iterfind(".//*[@id='{0}']".format(m))]
         tags = [child.tag for child in children]
-        template_name = children[tags.index('Constructor')].attrib['name']  # 'map'
+        if check_has_members:
+            template_name = children[tags.index('Constructor')].attrib['name']  # 'map'
+        else:
+            template_name = name.split('<', 1)[0]
         if template_name == 'basic_string':
             return 'str'
         inst = [template_name]
@@ -638,10 +648,30 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
             if node is None:
                 query = "Struct[@name='{0}']".format(ts.gccxml_type(self.name))
                 node = self._root.find(query)
+            if node is None and not isinstance(self, basestring):
+                # Must be a template with some wacky argument values
+                basename = self.name[0]
+                for node in self._root.iterfind("Class"):
+                    if node.attrib['file'] not in self.onlyin:
+                        continue
+                    nodename = node.attrib['name']
+                    if not nodename.startswith(basename):
+                        continue
+                    if '<' not in nodename or not nodename.endswith('>'):
+                        continue
+                    nodet = self._visit_template(node, check_has_members=False)
+                    if nodet == self.name:
+                        break
+                    node = None
+            if node is None:
+                raise RuntimeError("could not find class {0!r}".format(self.name))
             if node.attrib['file'] not in self.onlyin:
-                msg = ("{0} autodescribing failed: found class in {1!r} but "
-                       "expected it in {2!r}.")
-                msg = msg.format(self.name, node.attrib['file'], self.onlyin)
+                msg = ("{0} autodescribing failed: found class in {1!r} ({2!r}) but "
+                       "expected it in {3}.")
+                fid = node.attrib['file']
+                ois = ", ".join(["{0!r} ({1!r})".format(self._filemap[v], v) \
+                                                 for v in sorted(self.onlyin)])
+                msg = msg.format(self.name, self._filemap[fid], fid, ois)
                 raise RuntimeError(msg)
             self.visit_class(node)
         members = node.attrib.get('members', '').strip().split()
