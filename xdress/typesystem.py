@@ -1752,17 +1752,35 @@ _cython_c2py_conv = _LazyConverterDict({
     TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): ('int({var}[0])',),
     })
 
+@_memoize
+def _cython_c2py_getitem(t):
+    """Helps find the approriate c2py value for a given concrete type key."""
+    tkey = t = canon(t)
+    while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
+        #tkey = tkey[0]
+        tkey = tkey[1] if (0 < len(tkey) and isrefinement(tkey[1])) else tkey[0]
+    if tkey not in _cython_c2py_conv:
+        tkey = t
+        while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
+            tkey = tkey[0]
+    c2pyt = _cython_c2py_conv[tkey]
+    if callable(c2pyt):
+        _cython_c2py_conv[t] = c2pyt(t)
+        c2pyt = _cython_c2py_conv[t]
+    return c2pyt
+
 # Strip const when going c -> py 
-#def _cython_c2py_matchany_const(t):
-#    rtn = _cython_c2py_conv[t[0]]
-    #if callable(rtn):
-    #    rtn = rtn(t[0])
-#    return rtn
-#_cython_c2py_conv[TypeMatcher((MatchAny, 'const'))] = _cython_c2py_matchany_const
-#_cython_c2py_conv[TypeMatcher((MatchAny, '&'))] = lambda t: _cython_c2py_conv[t[0]]
-#_cython_c2py_conv[TypeMatcher(((MatchAny, 'const'), '&'))] = lambda t: _cython_c2py_conv[t[0][0]]
+_cython_c2py_conv[TypeMatcher((MatchAny, 'const'))] = \
+    lambda t: _cython_c2py_getitem(t[0])
+
+_cython_c2py_conv[TypeMatcher(((MatchAny, 'const'), '&'))] = \
+    lambda t: _cython_c2py_getitem((t[0][0], '&'))
+
+_cython_c2py_conv[TypeMatcher(((MatchAny, 'const'), '*'))] = \
+    lambda t: _cython_c2py_getitem((t[0][0], '*'))
 
 def _cython_c2py_conv_function_pointer(t_):
+    """Wrap function pointers in C/C++ to Python functions."""
     t = t_[1]
     argnames = []
     argdecls = []
@@ -1833,24 +1851,13 @@ from_pytypes = {
     'vector': ['list', 'tuple', 'np.ndarray'],
     }
 
-
 @_memoize
 def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None,
                 cache_name=None, cache_prefix='self', existing_name=None):
     """Given a varibale name and type, returns cython code (declaration, body,
     and return statements) to convert the variable from C/C++ to Python."""
-    tkey = t = canon(t)
-    while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
-        #tkey = tkey[0]
-        tkey = tkey[1] if (0 < len(tkey) and isrefinement(tkey[1])) else tkey[0]
-    if tkey not in _cython_c2py_conv:
-        tkey = t
-        while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
-            tkey = tkey[0]
-    c2pyt = _cython_c2py_conv[tkey]
-    if callable(c2pyt):
-        _cython_c2py_conv[t] = c2pyt(t)
-        c2pyt = _cython_c2py_conv[t]
+    t = canon(t)
+    c2pyt = _cython_c2py_getitem(t)
     ind = int(view) + int(cached)
     if cached and not view:
         raise ValueError('cached views require view=True.')
