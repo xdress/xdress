@@ -1799,11 +1799,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                 )
             # register pointer to class
             class_ptr_c2py = ('{pytype}({var})',
-                              #('cdef {pytype} {proxy_name}\n'
-                              # '{proxy_name} = {pytype}()\n'
-                              # '(<{ctype}> {proxy_name}._inst) = {var}'),
                               ('cdef {pytype} {proxy_name} = {pytype}()\n'
-                              #'{proxy_name} = {pytype}()\n'
                                '(<{ctype}> {proxy_name}._inst)[0] = {var}[0]'),
                               ('if {cache_name} is None:\n'
                                '    {proxy_name} = {pytype}()\n'
@@ -1826,6 +1822,8 @@ class XDressPlugin(astparsers.ParserPlugin):
                 cython_pyimport=kwclass['cython_pyimport'],
                 )
             ts.register_class(**kwclassptr)
+            #kwclassptr['name'] = (classname, '&')
+            #ts.register_class(**kwclassptr)
             # register doublepointer to class
             class_dblptr_c2py = ('{pytype}({var})',
                               ('{proxy_name} = {proxy_name}_obj._inst\n'

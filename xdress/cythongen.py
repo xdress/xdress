@@ -1400,6 +1400,7 @@ def _classnames_in_mod(mod):
             continue
         classnames.add(name)
         classnames.add(ts.basename(name))
+        classnames.add(desc['type'])
     return classnames
 
 def _template_classnames_in_mod(mod):

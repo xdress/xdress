@@ -1800,16 +1800,12 @@ def _cython_c2py_conv_function_pointer(t_):
         rtnprox += '_'
     argdecls = _indent4(argdecls)
     argbodys = _indent4(argbodys)
-#    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtnname, t[2][2], cached=False,
-#                                              proxy_name=rtnprox,
-#                                              existing_name=rtncall)
     rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtncall, t[2][2], cached=False,
                                               proxy_name=rtnprox,
                                               existing_name=rtncall)
     if rtndecl is None and rtnbody is None:
         rtnprox = rtnname
     rtndecl = _indent4([rtndecl, "cdef {0} {1}".format(cython_ctype(t[2][2]), rtncall)])
-    #rtndecl = _indent4(["cdef {0} {1}".format(cython_ctype(t[2][2]), rtncall)])
     rtnbody = _indent4([rtnbody])
     s = """def {{proxy_name}}({arglist}):
 {argdecls}
