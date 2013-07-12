@@ -329,7 +329,7 @@ class GccxmlBaseDescriber(object):
         if targ == 'true':
             return True
         elif targ == 'false':
-            return True
+            return False
         m = _GCCXML_LITERAL_INTS.match(targ)
         if m is not None:
             return int(m.group(1))
@@ -654,7 +654,8 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
                 # Must be a template with some wacky argument values
                 basename = self.name[0]
                 namet = self.desc['type']
-                for node in self._root.iterfind("Class"):
+                query = "Class"
+                for node in self._root.iterfind(query):
                     if node.attrib['file'] not in self.onlyin:
                         continue
                     nodename = node.attrib['name']
@@ -665,7 +666,8 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
                     nodet = self._visit_template(node)
                     if nodet == namet:
                         self._name = nodename  # gross
-                        break
+                        break 
+                else:
                     node = None
             if node is None:
                 raise RuntimeError("could not find class {0!r}".format(self.name))
@@ -1705,7 +1707,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         for i, cls in enumerate(rc.classes):
             if len(cls) == 2:
                 rc.classes[i] = (cls[0], cls[1], cls[1])
-            if not isinstance(cls[0], basestring) and cls[0][-1] != 0:
+            if not isinstance(cls[0], basestring) and cls[0][-1] is not 0:
                 # ensure the predicate is a scalar for template specializations
                 rc.classes[i] = (tuple(cls[0]) + (0,), cls[1], cls[1])
         self.register_classes(rc)
