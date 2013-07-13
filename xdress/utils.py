@@ -13,6 +13,7 @@ from copy import deepcopy
 from pprint import pformat
 from collections import Mapping, Iterable
 from hashlib import md5
+from warnings import warn
 try:
     import cPickle as pickle
 except ImportError:
@@ -27,7 +28,16 @@ DEFAULT_RC_FILE = "xdressrc.py"
 DEFAULT_PLUGINS = ('xdress.stlwrap', 'xdress.autoall', 'xdress.cythongen')
 """Default list of plugin module names."""
 
-FORBIDDEN_NAMES = frozenset(['del'])
+FORBIDDEN_NAMES = frozenset(['del', 'global'])
+
+def warn_forbidden_name(forname, inname=None, rename=None):
+    """Warns the user that a forbidden name has been found."""
+    msg = "found forbidden name {0!r}".format(forname)
+    if inname is not None:
+        msg += " in {0!r}".format(inname)
+    if rename is not None:
+        msg += ", renaming to {0!r}".format(rename)
+    warn(msg, RuntimeWarning)
 
 def indent(s, n=4, join=True):
     """Indents all lines in the string or list s by n spaces."""

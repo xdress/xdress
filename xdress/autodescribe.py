@@ -175,7 +175,7 @@ except ImportError:
 
 from . import utils
 from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
-    find_source, FORBIDDEN_NAMES, find_filenames
+    find_source, FORBIDDEN_NAMES, find_filenames, warn_forbidden_name
 from . import astparsers
 
 from . import typesystem as ts
@@ -411,6 +411,7 @@ class GccxmlBaseDescriber(object):
     def _visit_func(self, node):
         name = node.attrib['name']
         if name.startswith('_') or name in FORBIDDEN_NAMES:
+            warn_forbidden_name(name, self.name)
             return
         self._currfunc.append(name)
         self._currfuncsig = []
@@ -459,9 +460,13 @@ class GccxmlBaseDescriber(object):
         """visits a constructor, destructor, or method argument."""
         self._pprint(node)
         name = node.attrib.get('name', None)
-        if name is None or name in FORBIDDEN_NAMES:
+        if name is None: 
             self._currfuncsig = None
             return 
+        if name in FORBIDDEN_NAMES:
+            rename = name + '__'
+            warn_forbidden_name(name, self.name, rename)
+            name = rename
         tid = node.attrib['type']
         t = self.type(tid)
         default = node.attrib.get('default', None)
@@ -485,6 +490,7 @@ class GccxmlBaseDescriber(object):
             # assert this field is member of the class we are trying to parse
             name = node.attrib['name']
             if name in FORBIDDEN_NAMES:
+                warn_forbidden_name(name, self.name)
                 return 
             t = self.type(node.attrib['type'])
             self.desc['attrs'][name] = t
@@ -1263,6 +1269,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         name = node.decl.name
         ftype = node.decl.type
         if name.startswith('_') or name in FORBIDDEN_NAMES:
+            warn_forbidden_name(name, self.name)
             return
         self._currfunc.append(name)
         self._currfuncsig = []
@@ -1275,7 +1282,9 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
                 # skip foo(void) cases, since no arg name is given
                 continue
             if arg[0] in FORBIDDEN_NAMES:
-                return
+                rename = arg[0] + '__'
+                warn_forbidden_name(arg[0], self.name, rename)
+                arg = (rename, arg[1])
             self._currfuncsig.append(arg)
         self._level -= 1
         rtntype = self.type(ftype.type)
@@ -1403,6 +1412,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         for _, child in node.children():
             name = child.name
             if name.startswith('_') or name in FORBIDDEN_NAMES:
+                warn_forbidden_name(name, self.name)
                 continue
             t = self.type(child)
             if t == "<name-not-found>":
