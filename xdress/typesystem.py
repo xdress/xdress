@@ -2098,24 +2098,46 @@ def cython_py2c(name, t, inst_name=None, proxy_name=None):
     pyt = cython_pytype(t)
     npt = cython_nptype(t)
     npct = cython_ctype(npt)
+    npcyt = cython_cytype(npt)
+    nppyt = cython_pytype(npt)
     npts = cython_nptype(t, depth=1)
-    npcts = [npct] if isinstance(npts, basestring) else _maprecurse(cython_ctype, npts)
+    if isinstance(npts, basestring):
+        npcts = [npct] 
+        npcyts = [npcyt] 
+        nppyts = [nppyt] 
+    else:
+        npcts = _maprecurse(cython_ctype, npts)
+        npcyts = _maprecurse(cython_cytype, npts)
+        nppyts = _maprecurse(cython_pytype, npts)
     t_nopred = strip_predicates(t)
     ct_nopred = cython_ctype(t_nopred)
     cyt_nopred = cython_cytype(t_nopred)
+    pyt_nopred = cython_pytype(t_nopred)
     npt_nopred =  cython_nptype(t_nopred)
     npct_nopred = cython_ctype(npt_nopred)
+    npcyt_nopred = cython_cytype(npt_nopred)
+    nppyt_nopred = cython_pytype(npt_nopred)
     npts_nopred = cython_nptype(t_nopred, depth=1)
-    npcts_nopred = [npct_nopred] if isinstance(npts_nopred, basestring) \
-                                 else _maprecurse(cython_ctype, npts_nopred)
+    if isinstance(npts_nopred, basestring):
+        npcts_nopred = [npct_nopred] 
+        npcyts_nopred = [npcyt_nopred] 
+        nppyts_nopred = [nppyt_nopred] 
+    else:
+        npcts_nopred = _maprecurse(cython_ctype, npts_nopred)
+        npcyts_nopred = _maprecurse(cython_cytype, npts_nopred)
+        nppyts_nopred = _maprecurse(cython_pytype, npts_nopred)
     var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
     proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
     template_kw = dict(var=var, type=t, proxy_name=proxy_name, pytype=pyt, 
                        cytype=cyt, ctype=ct, last=last, nptype=npt, npctype=npct,
-                       nptypes=npts, npctypes=npcts, ctype_nopred=ct_nopred,
-                       cytype_nopred=cyt_nopred, nptype_nopred=npt_nopred, 
-                       npctype_nopred=npct_nopred, nptypes_nopred=npts_nopred, 
-                       npctypes_nopred=npcts_nopred)
+                       npcytype=npcyt,  nppytype=nppyt,
+                       nptypes=npts, npctypes=npcts,  npcytypes=npcyts, 
+                       nppytypes=nppyts, ctype_nopred=ct_nopred,
+                       cytype_nopred=cyt_nopred, pytype_nopred=pyt_nopred, 
+                       nptype_nopred=npt_nopred, npctype_nopred=npct_nopred, 
+                       npcytype_nopred=npcyt_nopred, nppytype_nopred=nppyt_nopred, 
+                       nptypes_nopred=npts_nopred, npctypes_nopred=npcts_nopred, 
+                       npcytypes_nopred=npcyts_nopred, nppytypes_nopred=nppyts_nopred,)
     nested = False
     if isdependent(tkey):
         tsig = [ts for ts in refined_types if ts[0] == tkey][0]

@@ -1771,6 +1771,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                            '    {cache_name} = {proxy_name}\n')
                          )
             class_py2c = ('{proxy_name} = <{cytype_nopred}> {var}',
+                          #'{proxy_name} = (<{ctype_nopred} *> (<{pytype_nopred}> {var})._inst)[0]',
                           '(<{ctype_nopred} *> {proxy_name}._inst)[0]')
             class_cimport = ((rc.package, cpppxd_base),)
             kwclass = dict(
@@ -1789,6 +1790,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                 cython_py2c=class_py2c,
                 )
             ts.register_class(**kwclass)
+            canonname = ts.canon(classname)
             if template_args is not None:
                 specname = ts.cython_classname(classname)[1]
                 kwclassspec = dict(
@@ -1798,7 +1800,6 @@ class XDressPlugin(astparsers.ParserPlugin):
                     cython_py_type=pxd_base + '.' + specname,
                     )
                 ts.register_class(**kwclassspec)
-                canonname = ts.canon(classname)
                 kwclassspec['name'] = canonname
                 ts.register_class(**kwclassspec)
             # register numpy type
@@ -1807,6 +1808,29 @@ class XDressPlugin(astparsers.ParserPlugin):
                 cython_cyimport=pxd_base,
                 cython_pyimport=pxd_base,
                 )
+            # register vector
+            class_vector_py2c = ((
+                '# {var} is a {type}\n'
+                'cdef int i{var}\n'
+                'cdef int {var}_size\n'
+                'cdef {npctypes[0]} * {var}_data\n'
+                '{var}_size = len({var})\n'
+                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
+                '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+                '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = {var}_data[i{var}]\n'
+                'else:\n'
+                '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = (<{npctypes_nopred[0]} *> (<{npcytypes_nopred[0]}> {var}[i{var}])._inst)[0]\n'),
+                '{proxy_name}')
+            ts.register_class(('vector', canonname, 0), cython_py2c=class_vector_py2c)
+            ts.register_class(('vector', classname, 0), cython_py2c=class_vector_py2c)
+            ts.register_class((('vector', canonname, 0), '&'), cython_py2c=class_vector_py2c)
+            ts.register_class((('vector', classname, 0), '&'), cython_py2c=class_vector_py2c)
+            ts.register_class(((('vector', canonname, 0), 'const'), '&'), cython_py2c=class_vector_py2c)
+            ts.register_class(((('vector', classname, 0), 'const'), '&'), cython_py2c=class_vector_py2c)
             # register pointer to class
             class_ptr_c2py = ('{pytype}({var})',
                               ('cdef {pytype} {proxy_name} = {pytype}()\n'
