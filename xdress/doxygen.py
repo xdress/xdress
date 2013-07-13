@@ -996,7 +996,7 @@ class XDressPlugin(Plugin):
             try:
                 this_kls = classes[kls]
             except KeyError:
-                print("Couldn't find class %s in xml. Skipping it - " % (kls)
+                print("Couldn't find class %s in xml. Skipping it - " % (str(kls))
                       + "it will not appear in wrapper docstrings.")
                 continue
 
