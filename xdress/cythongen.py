@@ -32,6 +32,8 @@ from .typesystem import cython_ctype, cython_cimport_tuples, \
 if sys.version_info[0] >= 3:
     basestring = str
 
+MATCH_REF = ts.TypeMatcher((ts.MatchAny, '&'))
+
 AUTOGEN_WARNING = \
 """################################################
 #                 WARNING!                     #
@@ -378,6 +380,8 @@ def classcpppxd(desc, exceptions=True):
                 clines.append(line)
         else:
             # this is a normal method
+            if MATCH_REF.matches(mrtn):
+                mrtn = mrtn[0]
             rtype = cython_ctype(mrtn)
             cython_cimport_tuples(mrtn, cimport_tups, inc)
             line = rtype + " " + line
@@ -852,14 +856,18 @@ def _gen_function(name, name_mangled, args, rtn, doc=None, inst_name="self._inst
         if abody is not None:
             argbodies += indent(abody, join=False)
         argrtns[a[0]] = artn
-    rtype = cython_ctype(rtn).replace('const ', "").replace(' &', '')
+    rtype_orig = cython_ctype(rtn)
+    rtype = rtype_orig.replace('const ', "").replace(' &', '')
     hasrtn = rtype not in set(['None', None, 'NULL', 'void'])
     argvals = ', '.join([argrtns[a[0]] for a in args])
     fcall = '{0}.{1}({2})'.format(inst_name, name, argvals)
     if hasrtn:
         fcdecl, fcbody, fcrtn, fccached = cython_c2py('rtnval', rtn, cached=False)
         decls += indent("cdef {0} {1}".format(rtype, 'rtnval'), join=False)
-        func_call = indent('rtnval = {0}'.format(fcall), join=False)
+        if 'const ' in rtype_orig:
+            func_call = indent('rtnval = <{0}> {1}'.format(rtype, fcall), join=False)
+        else:
+            func_call = indent('rtnval = {0}'.format(fcall), join=False)
         if fcdecl is not None:
             decls += indent(fcdecl, join=False)
         if fcbody is not None:

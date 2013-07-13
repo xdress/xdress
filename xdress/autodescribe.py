@@ -1753,7 +1753,7 @@ class XDressPlugin(astparsers.ParserPlugin):
             # register regular class
             class_c2py = ('{pytype}({var})',
                           ('{proxy_name} = {pytype}()\n'
-                           '(<{ctype} *> {proxy_name}._inst)[0] = {var}'),
+                           '(<{ctype_nopred} *> {proxy_name}._inst)[0] = {var}'),
                           ('if {cache_name} is None:\n'
                            '    {proxy_name} = {pytype}()\n'
                            '    {proxy_name}._free_inst = False\n'
@@ -1762,7 +1762,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                          )
             class_py2c = ('{proxy_name} = <{cytype_nopred}> {var}',
                           '(<{ctype_nopred} *> {proxy_name}._inst)[0]')
-            class_cimport = (rc.package, cpppxd_base)
+            class_cimport = ((rc.package, cpppxd_base),)
             kwclass = dict(
                 name=baseclassname,                              # FCComp
                 template_args=template_args,
@@ -1773,8 +1773,8 @@ class XDressPlugin(astparsers.ParserPlugin):
                 cpp_type=baseclassname,
                 cython_template_class_name=templateclassname,
                 cython_template_function_name=templatefuncname,
-                cython_cyimport=pxd_base,                       # fccomp
-                cython_pyimport=pxd_base,                       # fccomp
+                cython_cyimport=((pxd_base,),),                       # fccomp
+                cython_pyimport=((pxd_base,),),                       # fccomp
                 cython_c2py=class_c2py,
                 cython_py2c=class_py2c,
                 )
@@ -1800,7 +1800,10 @@ class XDressPlugin(astparsers.ParserPlugin):
             # register pointer to class
             class_ptr_c2py = ('{pytype}({var})',
                               ('cdef {pytype} {proxy_name} = {pytype}()\n'
-                               '(<{ctype}> {proxy_name}._inst)[0] = {var}[0]'),
+                               #'(<{ctype}> {proxy_name}._inst)[0] = {var}[0]'),
+                               'if {proxy_name}._free_inst:\n'
+                               '    free({proxy_name}._inst)\n'
+                               '(<{ctype}> {proxy_name}._inst) = {var}'),
                               ('if {cache_name} is None:\n'
                                '    {proxy_name} = {pytype}()\n'
                                '    {proxy_name}._free_inst = False\n'
@@ -1817,13 +1820,17 @@ class XDressPlugin(astparsers.ParserPlugin):
                 cpp_type=baseclassname,
                 cython_c2py=class_ptr_c2py,
                 cython_py2c=class_ptr_py2c,
-                cython_cimport=kwclass['cython_cimport'],
-                cython_cyimport=kwclass['cython_cyimport'],
+                cython_cimport=kwclass['cython_cimport'] ,
+                cython_cyimport=kwclass['cython_cyimport'] + (('libc.stdlib','free'),),
                 cython_pyimport=kwclass['cython_pyimport'],
                 )
             ts.register_class(**kwclassptr)
-            #kwclassptr['name'] = (classname, '&')
-            #ts.register_class(**kwclassptr)
+            kwclassref = dict(kwclassptr)
+            # Register reference to class
+            kwclassref['name'] = (classname, '&')
+            kwclassref['cython_c2py'] = class_c2py
+            kwclassref['cython_py2c'] = class_py2c
+            #ts.register_class(**kwclassref)
             # register doublepointer to class
             class_dblptr_c2py = ('{pytype}({var})',
                               ('{proxy_name} = {proxy_name}_obj._inst\n'
