@@ -421,6 +421,21 @@ class TypeSystem(object):
             'np.NPY_VOID': 'void',
             'np.NPY_OBJECT': 'void',
             }, self)
+
+        def cpp_types_function(t):
+            rtnct = self.cpp_type(t[2][2])
+            argcts = [self.cpp_type(argt) for n, argt in t[1][2]]
+            if argcts == ['void']:
+                argcts = []
+            return rtnct + " {type_name}(" + ", ".join(argcts) + ")"
+
+        def cpp_types_function_pointer(t):
+            rtnct = self.cpp_type(t[2][2])
+            argcts = [self.cpp_type(argt) for n, argt in t[1][2]]
+            if argcts == ['void']:
+                argcts = []
+            return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
+
         self.cpp_types = _LazyConfigDict(cpp_types or {
             'char': 'char',
             'uchar': 'unsigned char',
@@ -450,6 +465,8 @@ class TypeSystem(object):
             False: 'false',
             'false': 'false',
             'False': 'false',
+            'function': cpp_types_function,
+            'function_pointer': cpp_types_function_pointer,
             }, self)
 
     @_memoize
@@ -627,86 +644,68 @@ class TypeSystem(object):
         else:
             _raise_type_error(t)
 
-    ###########################   C++ Methods   #############################
+    ###########################   C/C++ Methods   #############################
 
-
-def _cpp_types_function(t):
-    rtnct = cpp_type(t[2][2])
-    argcts = [cpp_type(argt) for n, argt in t[1][2]]
-    if argcts == ['void']:
-        argcts = []
-    return rtnct + " {type_name}(" + ", ".join(argcts) + ")"
-_cpp_types['function'] = _cpp_types_function
-
-def _cpp_types_function_pointer(t):
-    rtnct = cpp_type(t[2][2])
-    argcts = [cpp_type(argt) for n, argt in t[1][2]]
-    if argcts == ['void']:
-        argcts = []
-    return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
-_cpp_types['function_pointer'] = _cpp_types_function_pointer
-
-
-def _cpp_type_add_predicate(t, last):
-    """Adds a predicate to a C++ type"""
-    if last == 'const':
-        x, y = last, t
-    else:
-        x, y = t, last
-    return '{0} {1}'.format(x, y)
-
-@_memoize
-def cpp_type(t):
-    """Given a type t, returns the corresponding C++ type declaration."""
-    if t in _cpp_types:
-        return _cpp_types[t]
-    t = canon(t)
-    if isinstance(t, basestring):
-        if  t in base_types:
-            return _cpp_types[t]
-    # must be tuple below this line
-    tlen = len(t)
-    if 2 == tlen:
-        if 0 == t[1]:
-            return cpp_type(t[0])
-        elif isrefinement(t[1]):
-            if t[1][0] in _cpp_types:
-                subtype = _cpp_types[t[1][0]]
-                if callable(subtype):
-                    subtype = subtype(t[1])
-                return subtype
-            else:
-                return cpp_type(t[0])
+    def _cpp_type_add_predicate(self, t, last):
+        """Adds a predicate to a C++ type"""
+        if last == 'const':
+            x, y = last, t
         else:
-            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-            return _cpp_type_add_predicate(cpp_type(t[0]), last)
-    elif 3 <= tlen:
-        assert t[0] in template_types
-        assert len(t) == len(template_types[t[0]]) + 2
-        template_name = _cpp_types[t[0]]
-        assert template_name is not NotImplemented
-        template_filling = []
-        for x in t[1:-1]:
-            if isinstance(x, bool):
-                x = _cpp_types[x]
-            elif isinstance(x, Number):
-                x = str(x)
-            else:
-                x = cpp_type(x)
-            template_filling.append(x)
-        cppt = '{0}< {1} >'.format(template_name, ', '.join(template_filling))
-        if 0 != t[-1]:
-            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-            cppt = _cpp_type_add_predicate(cppt, last)
-        return cppt
+            x, y = t, last
+        return '{0} {1}'.format(x, y)
 
-@_memoize
-def gccxml_type(t):
-    """Given a type t, returns the corresponding GCC-XML type name."""
-    cppt = cpp_type(t)
-    gxt = cppt.replace('< ', '<').replace(' >', '>').\
-               replace('>>', '> >').replace(', ', ',')
-    return gxt
+    @_memoize
+    def cpp_type(self, t):
+        """Given a type t, returns the corresponding C++ type declaration."""
+        if t in self.cpp_types:
+            return self.cpp_types[t]
+        t = canon(t)
+        if isinstance(t, basestring):
+            if  t in self.base_types:
+                return self.cpp_types[t]
+        # must be tuple below this line
+        tlen = len(t)
+        if 2 == tlen:
+            if 0 == t[1]:
+                return self.cpp_type(t[0])
+            elif isrefinement(t[1]):
+                if t[1][0] in self.cpp_types:
+                    subtype = self.cpp_types[t[1][0]]
+                    if callable(subtype):
+                        subtype = subtype(t[1])
+                    return subtype
+                else:
+                    return cpp_type(t[0])
+            else:
+                last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+                return self._cpp_type_add_predicate(cpp_type(t[0]), last)
+        elif 3 <= tlen:
+            assert t[0] in self.template_types
+            assert len(t) == len(self.template_types[t[0]]) + 2
+            template_name = self.cpp_types[t[0]]
+            assert template_name is not NotImplemented
+            template_filling = []
+            for x in t[1:-1]:
+                if isinstance(x, bool):
+                    x = self.cpp_types[x]
+                elif isinstance(x, Number):
+                    x = str(x)
+                else:
+                    x = self.cpp_type(x)
+                template_filling.append(x)
+            cppt = '{0}< {1} >'.format(template_name, ', '.join(template_filling))
+            if 0 != t[-1]:
+                last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+                cppt = self._cpp_type_add_predicate(cppt, last)
+            return cppt
+
+    @_memoize
+    def gccxml_type(self, t):
+        """Given a type t, returns the corresponding GCC-XML type name."""
+        cppt = self.cpp_type(t)
+        gxt = cppt.replace('< ', '<').replace(' >', '>').\
+                   replace('>>', '> >').replace(', ', ',')
+        return gxt
 
 # Default type system instance
 type_system = TypeSystem()
