@@ -287,9 +287,10 @@ class TypeSystem(object):
     def __init__(self, base_types=None, template_types=None, refined_types=None, 
                  humannames=None, extra_types='xdress_extra_types', 
                  stlcontainers='stlcontainers', type_aliases=None, cpp_types=None, 
-                 cython_ctypes=None, cython_cytypes=None, cython_pytypes=None, 
-                 cython_cimports=None, cython_cyimports=None, cython_pyimports=None, 
-                 cython_functionnames=None, cython_classnames=None):
+                 numpy_types=None, cython_ctypes=None, cython_cytypes=None, 
+                 cython_pytypes=None, cython_cimports=None, cython_cyimports=None, 
+                 cython_pyimports=None, cython_functionnames=None, 
+                 cython_classnames=None):
         """Parameters
         ----------
         base_types : set of str, optional
@@ -311,6 +312,8 @@ class TypeSystem(object):
             Aliases that may be used to substitute one type name for another.
         cpp_types : dict, optional
             The C/C++ representation of the types.
+        numpy_types : dict, optional
+            NumPy's Cython representation of the types.
         cython_ctypes : dict, optional
             Cython's C/C++ representation of the types.
         cython_cytypes : dict, optional
@@ -495,6 +498,24 @@ class TypeSystem(object):
             'False': 'false',
             'function': cpp_types_function,
             'function_pointer': cpp_types_function_pointer,
+            }, self)
+
+        self.numpy_types = _LazyConfigDict(numpy_types or {
+            'char': 'np.NPY_BYTE',
+            'uchar': 'np.NPY_UBYTE',
+            #'str': 'np.NPY_STRING',
+            'int16': 'np.NPY_INT16',
+            'int32': 'np.NPY_INT32',
+            'int64': 'np.NPY_INT64',
+            'uint16': 'np.NPY_UINT16',
+            'uint32': 'np.NPY_UINT32',
+            'uint64': 'np.NPY_UINT64',
+            'float32': 'np.NPY_FLOAT32',
+            'float64': 'np.NPY_FLOAT64',
+            'float128': 'np.NPY_FLOAT128',
+            'complex128': 'np.NPY_COMPLEX128',
+            'bool': 'np.NPY_BOOL',
+            'void': 'np.NPY_VOID',
             }, self)
 
         def cython_ctypes_function(t, ts):
@@ -995,6 +1016,38 @@ class TypeSystem(object):
                    replace('>>', '> >').replace(', ', ',')
         return gxt
 
+    @_memoize
+    def cython_nptype(self, t, depth=0):
+        """Given a type t, returns the corresponding numpy type.  If depth is
+        greater than 0 then this returns of a list of numpy types for all internal
+        template types, ie the float in ('vector', 'float', 0)."""
+        if isinstance(t, Number):
+            return 'np.NPY_OBJECT'
+        t = self.canon(t)
+        if isinstance(t, basestring):
+            return self.numpy_types[t] if t in self.numpy_types else 'np.NPY_OBJECT'
+        # must be tuple below this line
+        tlen = len(t)
+        if t in self.numpy_types and depth < 1:
+            return self.numpy_types[t]
+        elif 2 == tlen:
+            if 0 == t[1]:
+                return self.cython_nptype(t[0])
+            elif self.isrefinement(t[1]):
+                return self.cython_nptype(t[0])
+            else:
+                # FIXME last is ignored for strings, but what about other types?
+                #last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+                #return cython_pytype(t[0]) + ' {0}'.format(last)
+                return self.cython_nptype(t[0])
+        elif 0 < depth and self.istemplate(t):
+            depth -= 1
+            return [self.cython_nptype(u, depth=depth) for u in t[1:-1]]
+        elif 3 == tlen and self.istemplate(t):
+            return self.cython_nptype(t[1])
+        else:  #elif 3 <= tlen:
+            return 'np.NPY_OBJECT'
+
     #########################   Cython Functions   ############################
 
     def _cython_ctype_add_predicate(t, last):
@@ -1355,61 +1408,11 @@ class TypeSystem(object):
             d[key] = val
         return t, cycyt.format(**d)
 
+
 # Default type system instance
 type_system = TypeSystem()
 
 #################### Type System Above This Line ##########################
-
-_numpy_types = _LazyConfigDict({
-    'char': 'np.NPY_BYTE',
-    'uchar': 'np.NPY_UBYTE',
-    #'str': 'np.NPY_STRING',
-    'int16': 'np.NPY_INT16',
-    'int32': 'np.NPY_INT32',
-    'int64': 'np.NPY_INT64',
-    'uint16': 'np.NPY_UINT16',
-    'uint32': 'np.NPY_UINT32',
-    'uint64': 'np.NPY_UINT64',
-    'float32': 'np.NPY_FLOAT32',
-    'float64': 'np.NPY_FLOAT64',
-    'float128': 'np.NPY_FLOAT128',
-    'complex128': 'np.NPY_COMPLEX128',
-    'bool': 'np.NPY_BOOL',
-    'void': 'np.NPY_VOID',
-    })
-
-
-@_memoize
-def cython_nptype(t, depth=0):
-    """Given a type t, returns the corresponding numpy type.  If depth is
-    greater than 0 then this returns of a list of numpy types for all internal
-    template types, ie the float in ('vector', 'float', 0)."""
-    if isinstance(t, Number):
-        return 'np.NPY_OBJECT'
-    t = canon(t)
-    if isinstance(t, basestring):
-        return _numpy_types[t] if t in _numpy_types else 'np.NPY_OBJECT'
-    # must be tuple below this line
-    tlen = len(t)
-    if t in _numpy_types and depth < 1:
-        return _numpy_types[t]
-    elif 2 == tlen:
-        if 0 == t[1]:
-            return cython_nptype(t[0])
-        elif isrefinement(t[1]):
-            return cython_nptype(t[0])
-        else:
-            # FIXME last is ignored for strings, but what about other types?
-            #last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-            #return cython_pytype(t[0]) + ' {0}'.format(last)
-            return cython_nptype(t[0])
-    elif 0 < depth and istemplate(t):
-        depth -= 1
-        return [cython_nptype(u, depth=depth) for u in t[1:-1]]
-    elif 3 == tlen and istemplate(t):
-        return cython_nptype(t[1])
-    else:  #elif 3 <= tlen:
-        return 'np.NPY_OBJECT'
 
 _cython_c2py_conv = _LazyConverterDict({
     # Has tuple form of (copy, [view, [cached_view]])
