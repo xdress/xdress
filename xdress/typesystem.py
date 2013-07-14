@@ -291,7 +291,7 @@ class TypeSystem(object):
                  cython_cytypes=None, cython_pytypes=None, cython_cimports=None, 
                  cython_cyimports=None, cython_pyimports=None, 
                  cython_functionnames=None, cython_classnames=None, 
-                 cython_c2py_conv=None):
+                 cython_c2py_conv=None, cython_py2c_conv=None):
         """Parameters
         ----------
         base_types : set of str, optional
@@ -344,6 +344,9 @@ class TypeSystem(object):
             ie ``{'map': 'Map{key_type}{value_type}'}``.
         cython_c2py_conv : dict, optional
             Cython convertors from C/C++ types to the representative Python types.
+        cython_py2c_conv : dict, optional
+            Cython convertors from Python types to the representative C/C++ types.
+            Valuse are tuples with the form of ``(body or return, return or False)``.
 
         """
         self.base_types = base_types or set(['char', 'uchar', 'str', 'int16', 
@@ -971,6 +974,162 @@ class TypeSystem(object):
                 lambda t, ts: ts.cython_c2py_getitem((t[0][0], '*'))),
             'function_pointer': cython_c2py_conv_function_pointer,
             }, self)
+
+        cython_py2c_conv_vector_ref = ((
+            '# {var} is a {type}\n'
+            'cdef int i{var}\n'
+            'cdef int {var}_size\n'
+            'cdef {npctypes_nopred[0]} * {var}_data\n'
+            '{var}_size = len({var})\n'
+            'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
+            '    {var}_data = <{npctypes_nopred[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+            '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
+            '    for i{var} in range({var}_size):\n'
+            '        {proxy_name}[i{var}] = {var}_data[i{var}]\n'
+            'else:\n'
+            '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
+            '    for i{var} in range({var}_size):\n'
+            '        {proxy_name}[i{var}] = <{npctypes_nopred[0]}> {var}[i{var}]\n'),
+            '{proxy_name}')     # FIXME There might be improvements here...
+
+        def cython_py2c_conv_function_pointer(t, ts):
+            t = t[1]
+            argnames = []
+            argcts = []
+            argdecls = []
+            argbodys = []
+            argrtns = []
+            for n, argt in t[1][2]:
+                argnames.append(n)
+                decl, body, rtn, _ = ts.cython_c2py(n, argt, proxy_name="c_" + n, 
+                                                    cached=False)
+                argdecls.append(decl)
+                #argdecls.append("cdef {0} {1}".format(cython_pytype(argt), "c_" + n))
+                argbodys.append(body)
+                argrtns.append(rtn)
+                argct = ts.cython_ctype(argt)
+                argcts.append(argct)
+            rtnname = 'rtn'
+            rtnprox = 'c_' + rtnname
+            rtncall = 'call_' + rtnname
+            while rtnname in argnames or rtnprox in argnames:
+                rtnname += '_'
+                rtnprox += '_'
+            rtnct = ts.cython_ctype(t[2][2])
+            argdecls = _indent4(argdecls)
+            argbodys = _indent4(argbodys)
+            #rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtnprox)
+            #rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtncall)
+            rtndecl, rtnbody, rtnrtn = ts.cython_py2c(rtncall, t[2][2], 
+                                                      proxy_name=rtnprox)
+            if rtndecl is None and rtnbody is None:
+                rtnprox = rtnname
+            rtndecl = _indent4([rtndecl])
+            rtnbody = _indent4([rtnbody])
+            s = """cdef {rtnct} {{proxy_name}}({arglist}):
+{argdecls}
+{rtndecl}
+    global {{var}}
+{argbodys}
+    {rtncall} = {{var}}({pyarglist})
+{rtnbody}
+    return {rtnrtn}
+"""
+            arglist = ", ".join(["{0} {1}".format(*x) for x in zip(argcts, argnames)])
+            pyarglist=", ".join(argrtns)
+            s = s.format(rtnct=rtnct, arglist=arglist, argdecls=argdecls, 
+                         rtndecl=rtndecl, argbodys=argbodys, rtnprox=rtnprox, 
+                         pyarglist=pyarglist, rtnbody=rtnbody, rtnrtn=rtnrtn, 
+                         rtncall=rtncall)
+            return s, False
+
+        self.cython_py2c_conv = _LazyConverterDict(cython_py2c_conv or {
+            # Has tuple form of (body or return,  return or False)
+            # base types
+            'char': ('{var}_bytes = {var}.encode()', '(<char *> {var}_bytes)[0]'),
+            ('char', '*'): ('{var}_bytes = {var}.encode()', '<char *> {var}_bytes'),
+            'uchar': ('{var}_bytes = {var}.encode()', '(<unsigned char *> {var}_bytes)[0]'),
+            ('uchar', '*'): ('{var}_bytes = {var}.encode()', '<unsigned char *> {var}_bytes'),
+            'str': ('{var}_bytes = {var}.encode()', 'std_string(<char *> {var}_bytes)'),
+            'int16': ('<short> {var}', False),
+            'int32': ('<int> {var}', False),
+            #('int32', '*'): ('&(<int> {var})', False),
+            ('int32', '*'): ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
+            'int64': ('<long long> {var}', False),
+            'uint16': ('<unsigned short> {var}', False),
+            'uint32': ('<{ctype}> long({var})', False),
+            #'uint32': ('<unsigned long> {var}', False),
+            #('uint32', '*'): ('cdef unsigned long {proxy_name}_ = {var}', '&{proxy_name}_'),
+            ('uint32', '*'): ('cdef unsigned int {proxy_name}_ = {var}', '&{proxy_name}_'),
+            'uint64': ('<unsigned long long> {var}', False),
+            'float32': ('<float> {var}', False),
+            'float64': ('<double> {var}', False),
+            'float128': ('<long double> {var}', False),
+            'complex128': ('{extra_types}py2c_complex({var})', False),
+            'bool': ('<bint> {var}', False),
+            'void': ('NULL', False),
+            ('void', '*'): ('NULL', False),
+            'file': ('{extra_types}PyFile_AsFile({var})[0]', False),
+            ('file', '*'): ('{extra_types}PyFile_AsFile({var})', False),
+            # template types
+            'map': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
+                    '{proxy_name}.map_ptr[0]'),
+            'dict': ('dict({var})', False),
+            'pair': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
+                     '{proxy_name}.pair_ptr[0]'),
+            'set': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
+                    '{proxy_name}.set_ptr[0]'),
+            'vector': ((
+                '# {var} is a {type}\n'
+                'cdef int i{var}\n'
+                'cdef int {var}_size\n'
+                'cdef {npctypes[0]} * {var}_data\n'
+                '{var}_size = len({var})\n'
+                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
+                '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = {var}_data[i{var}]\n'
+                'else:\n'
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = <{npctypes[0]}> {var}[i{var}]\n'),
+                '{proxy_name}'),     # FIXME There might be improvements here...
+            ('vector', 'char', 0): ((
+                '# {var} is a {type}\n'
+                'cdef int i{var}\n'
+                'cdef int {var}_size\n'
+                'cdef {npctypes[0]} * {var}_data\n'
+                '{var}_size = len({var})\n'
+                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == <int> {nptype}:\n'
+                '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
+                '    for i{var} in range({var}_size):\n'
+                '        {proxy_name}[i{var}] = {var}[i{var}]\n'
+                'else:\n'
+                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
+                '    for i{var} in range({var}_size):\n'
+                '        _ = {var}[i{var}].encode()\n'
+                '        {proxy_name}[i{var}] = deref(<char *> _)\n'),
+                '{proxy_name}'),
+            TypeMatcher(('vector', MatchAny, '&')): cython_py2c_conv_vector_ref,
+            TypeMatcher((('vector', MatchAny, 0), '&')): cython_py2c_conv_vector_ref,
+            TypeMatcher((('vector', MatchAny, '&'), 0)): cython_py2c_conv_vector_ref,
+            TypeMatcher((('vector', MatchAny, '&'), 'const')): cython_py2c_conv_vector_ref,
+            TypeMatcher((('vector', MatchAny, 'const'), '&')): cython_py2c_conv_vector_ref,
+            TypeMatcher(((('vector', MatchAny, 0), 'const'), '&')): cython_py2c_conv_vector_ref,
+            TypeMatcher(((('vector', MatchAny, 0), '&'), 'const')): cython_py2c_conv_vector_ref,
+            # refinement types
+            'nucid': ('nucname.zzaaam({var})', False),
+            'nucname': ('nucname.name({var})', False),
+            TypeMatcher((('enum', MatchAny, MatchAny), '*')): \
+                ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
+            TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): \
+                ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
+            }, self)
+
+_cython_py2c_conv['function_pointer'] = _cython_py2c_conv_function_pointer
+
 
     @_memoize
     def istemplate(self, t):
@@ -1690,283 +1849,131 @@ class TypeSystem(object):
                 decl += newdecl
         return decl, body, rtn, iscached
 
+    @_memoize
+    def cython_py2c(self, name, t, inst_name=None, proxy_name=None):
+        """Given a varibale name and type, returns cython code (declaration, body,
+        and return statement) to convert the variable from Python to C/C++."""
+        t = self.canon(t)
+        if isinstance(t, basestring) or 0 == t[-1] or self.isrefinement(t[-1]):
+            last = ''
+        elif isinstance(t[-1], int):
+            last = ' [{0}]'.format(t[-1])
+        else:
+            last = ' ' + t[-1]
+        tkey = t
+        tinst = None
+        while tkey not in self.cython_py2c_conv and not isinstance(tkey, basestring):
+            tinst = tkey
+            tkey = tkey[1] if (0 < len(tkey) and self.isrefinement(tkey[1])) else tkey[0]
+        if tkey not in self.cython_py2c_conv:
+            tkey = t
+            while tkey not in self.cython_py2c_conv and \
+                       not isinstance(tkey, basestring):
+                tkey = tkey[0]
+        py2ct = self.cython_py2c_conv[tkey]
+        if callable(py2ct):
+            self.cython_py2c_conv[t] = py2ct(t, ts)
+            py2ct = self.cython_py2c_conv[t]
+        if py2ct is NotImplemented or py2ct is None:
+            raise NotImplementedError('conversion from Python to C/C++ for ' + \
+                                  str(t) + ' has not been implemented.')
+        body_template, rtn_template = py2ct
+        ct = self.cython_ctype(t)
+        cyt = self.cython_cytype(t)
+        pyt = self.cython_pytype(t)
+        npt = self.cython_nptype(t)
+        npct = self.cython_ctype(npt)
+        npcyt = self.cython_cytype(npt)
+        nppyt = self.cython_pytype(npt)
+        npts = self.cython_nptype(t, depth=1)
+        if isinstance(npts, basestring):
+            npcts = [npct] 
+            npcyts = [npcyt] 
+            nppyts = [nppyt] 
+        else:
+            npcts = _maprecurse(self.cython_ctype, npts)
+            npcyts = _maprecurse(self.cython_cytype, npts)
+            nppyts = _maprecurse(self.cython_pytype, npts)
+        t_nopred = self.strip_predicates(t)
+        ct_nopred = self.cython_ctype(t_nopred)
+        cyt_nopred = self.cython_cytype(t_nopred)
+        pyt_nopred = self.cython_pytype(t_nopred)
+        npt_nopred =  self.cython_nptype(t_nopred)
+        npct_nopred = self.cython_ctype(npt_nopred)
+        npcyt_nopred = self.cython_cytype(npt_nopred)
+        nppyt_nopred = self.cython_pytype(npt_nopred)
+        npts_nopred = self.cython_nptype(t_nopred, depth=1)
+        if isinstance(npts_nopred, basestring):
+            npcts_nopred = [npct_nopred] 
+            npcyts_nopred = [npcyt_nopred] 
+            nppyts_nopred = [nppyt_nopred] 
+        else:
+            npcts_nopred = _maprecurse(self.cython_ctype, npts_nopred)
+            npcyts_nopred = _maprecurse(self.cython_cytype, npts_nopred)
+            nppyts_nopred = _maprecurse(self.cython_pytype, npts_nopred)
+        var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
+        proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
+        template_kw = dict(var=var, type=t, proxy_name=proxy_name, pytype=pyt, 
+                           cytype=cyt, ctype=ct, last=last, nptype=npt, npctype=npct,
+                           npcytype=npcyt,  nppytype=nppyt,
+                           nptypes=npts, npctypes=npcts,  npcytypes=npcyts, 
+                           nppytypes=nppyts, ctype_nopred=ct_nopred,
+                           cytype_nopred=cyt_nopred, pytype_nopred=pyt_nopred, 
+                           nptype_nopred=npt_nopred, npctype_nopred=npct_nopred, 
+                           npcytype_nopred=npcyt_nopred, nppytype_nopred=nppyt_nopred, 
+                           nptypes_nopred=npts_nopred, npctypes_nopred=npcts_nopred, 
+                           npcytypes_nopred=npcyts_nopred, 
+                           nppytypes_nopred=nppyts_nopred,)
+        nested = False
+        if isdependent(tkey):
+            tsig = [ts for ts in self.refined_types if ts[0] == tkey][0]
+            for ts, ti in zip(tsig[1:], tinst[1:]):
+                if isinstance(ts, basestring):
+                    template_kw[ts] = self.cython_ctype(ti)
+                else:
+                    template_kw[ti[0]] = ti[2]
+            vartype = self.refined_types[tsig]
+            if vartype in tsig[1:]:
+                vartype = tinst[tsig.index(vartype)][1]
+            if self.isrefinement(vartype):
+                nested = True
+                vdecl, vbody, vrtn = self.cython_py2c(var, vartype)
+                template_kw['var'] = vrtn
+        body_filled = body_template.format(**template_kw)
+        if rtn_template:
+            if '{ctype}'in body_template:
+                deft = ct
+            elif '{ctype_nopred}'in body_template:
+                deft = ct_nopred
+            elif '{cytype_nopred}'in body_template:
+                deft = cyt_nopred
+            else:
+                deft = cyt
+            decl = "cdef {0} {1}".format(deft, proxy_name)
+            body = body_filled
+            rtn = rtn_template.format(**template_kw)
+            decl += '\n'+"\n".join([l for l in body.splitlines() \
+                                            if l.startswith('cdef')])
+            body = "\n".join([l for l in body.splitlines() \
+                                      if not l.startswith('cdef')])
+        else:
+            decl = body = None
+            rtn = body_filled
+        if nested:
+            decl = '' if decl is None else decl
+            vdecl = '' if vdecl is None else vdecl
+            decl = (vdecl + '\n' + decl).strip()
+            decl = None if 0 == len(decl) else decl
+            body = '' if body is None else body
+            vbody = '' if vbody is None else vbody
+            body = (vbody + '\n' + body).strip()
+            body = None if 0 == len(body) else body
+        return decl, body, rtn
+
 # Default type system instance
 type_system = TypeSystem()
 
 #################### Type System Above This Line ##########################
-
-_cython_py2c_conv = _LazyConverterDict({
-    # Has tuple form of (body or return,  return or False)
-    # base types
-    'char': ('{var}_bytes = {var}.encode()', '(<char *> {var}_bytes)[0]'),
-    ('char', '*'): ('{var}_bytes = {var}.encode()', '<char *> {var}_bytes'),
-    'uchar': ('{var}_bytes = {var}.encode()', '(<unsigned char *> {var}_bytes)[0]'),
-    ('uchar', '*'): ('{var}_bytes = {var}.encode()', '<unsigned char *> {var}_bytes'),
-    'str': ('{var}_bytes = {var}.encode()', 'std_string(<char *> {var}_bytes)'),
-    'int16': ('<short> {var}', False),
-    'int32': ('<int> {var}', False),
-    #('int32', '*'): ('&(<int> {var})', False),
-    ('int32', '*'): ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
-    'int64': ('<long long> {var}', False),
-    'uint16': ('<unsigned short> {var}', False),
-    'uint32': ('<{ctype}> long({var})', False),
-    #'uint32': ('<unsigned long> {var}', False),
-    #('uint32', '*'): ('cdef unsigned long {proxy_name}_ = {var}', '&{proxy_name}_'),
-    ('uint32', '*'): ('cdef unsigned int {proxy_name}_ = {var}', '&{proxy_name}_'),
-    'uint64': ('<unsigned long long> {var}', False),
-    'float32': ('<float> {var}', False),
-    'float64': ('<double> {var}', False),
-    'float128': ('<long double> {var}', False),
-    'complex128': ('{extra_types}py2c_complex({var})', False),
-    'bool': ('<bint> {var}', False),
-    'void': ('NULL', False),
-    ('void', '*'): ('NULL', False),
-    'file': ('{extra_types}PyFile_AsFile({var})[0]', False),
-    ('file', '*'): ('{extra_types}PyFile_AsFile({var})', False),
-    # template types
-    'map': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
-            '{proxy_name}.map_ptr[0]'),
-    'dict': ('dict({var})', False),
-    'pair': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
-             '{proxy_name}.pair_ptr[0]'),
-    'set': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
-            '{proxy_name}.set_ptr[0]'),
-    'vector': ((
-                '# {var} is a {type}\n'
-                'cdef int i{var}\n'
-                'cdef int {var}_size\n'
-                'cdef {npctypes[0]} * {var}_data\n'
-                '{var}_size = len({var})\n'
-                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
-                '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
-                '    for i{var} in range({var}_size):\n'
-                '        {proxy_name}[i{var}] = {var}_data[i{var}]\n'
-                'else:\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
-                '    for i{var} in range({var}_size):\n'
-                '        {proxy_name}[i{var}] = <{npctypes[0]}> {var}[i{var}]\n'),
-               '{proxy_name}'),     # FIXME There might be improvements here...
-    ('vector', 'char', 0): ((
-                '# {var} is a {type}\n'
-                'cdef int i{var}\n'
-                'cdef int {var}_size\n'
-                'cdef {npctypes[0]} * {var}_data\n'
-                '{var}_size = len({var})\n'
-                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == <int> {nptype}:\n'
-                '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
-                '    for i{var} in range({var}_size):\n'
-                '        {proxy_name}[i{var}] = {var}[i{var}]\n'
-                'else:\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
-                '    for i{var} in range({var}_size):\n'
-                '        _ = {var}[i{var}].encode()\n'
-                '        {proxy_name}[i{var}] = deref(<char *> _)\n'),
-               '{proxy_name}'),
-    TypeMatcher(('vector', MatchAny, '&')): ((
-                '# {var} is a {type}\n'
-                'cdef int i{var}\n'
-                'cdef int {var}_size\n'
-                'cdef {npctypes_nopred[0]} * {var}_data\n'
-                '{var}_size = len({var})\n'
-                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
-                '    {var}_data = <{npctypes_nopred[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
-                '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
-                '    for i{var} in range({var}_size):\n'
-                '        {proxy_name}[i{var}] = {var}_data[i{var}]\n'
-                'else:\n'
-                '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
-                '    for i{var} in range({var}_size):\n'
-                '        {proxy_name}[i{var}] = <{npctypes_nopred[0]}> {var}[i{var}]\n'),
-                '{proxy_name}'),     # FIXME There might be improvements here...
-    # refinement types
-    'nucid': ('nucname.zzaaam({var})', False),
-    'nucname': ('nucname.name({var})', False),
-    TypeMatcher((('enum', MatchAny, MatchAny), '*')): \
-        ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
-    TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): \
-        ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
-    })
-
-_cython_py2c_conv[TypeMatcher((('vector', MatchAny, '&'), 'const'))] = \
-    _cython_py2c_conv[TypeMatcher((('vector', MatchAny, 'const'), '&'))] = \
-    _cython_py2c_conv[TypeMatcher(((('vector', MatchAny, 0), 'const'), '&'))] = \
-    _cython_py2c_conv[TypeMatcher(((('vector', MatchAny, 0), '&'), 'const'))] = \
-    _cython_py2c_conv[TypeMatcher((('vector', MatchAny, 0), '&'))] = \
-    _cython_py2c_conv[TypeMatcher((('vector', MatchAny, '&'), 0))] = \
-    _cython_py2c_conv[TypeMatcher(('vector', MatchAny, '&'))]
-
-
-def _cython_py2c_conv_function_pointer(t):
-    t = t[1]
-    argnames = []
-    argcts = []
-    argdecls = []
-    argbodys = []
-    argrtns = []
-    for n, argt in t[1][2]:
-        argnames.append(n)
-        decl, body, rtn, _ = cython_c2py(n, argt, proxy_name="c_" + n, cached=False)
-        argdecls.append(decl)
-        #argdecls.append("cdef {0} {1}".format(cython_pytype(argt), "c_" + n))
-        argbodys.append(body)
-        argrtns.append(rtn)
-        argct = cython_ctype(argt)
-        argcts.append(argct)
-    rtnname = 'rtn'
-    rtnprox = 'c_' + rtnname
-    rtncall = 'call_' + rtnname
-    while rtnname in argnames or rtnprox in argnames:
-        rtnname += '_'
-        rtnprox += '_'
-    rtnct = cython_ctype(t[2][2])
-    argdecls = _indent4(argdecls)
-    argbodys = _indent4(argbodys)
-    #rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtnprox)
-    #rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtncall)
-    rtndecl, rtnbody, rtnrtn = cython_py2c(rtncall, t[2][2], proxy_name=rtnprox)
-    if rtndecl is None and rtnbody is None:
-        rtnprox = rtnname
-    rtndecl = _indent4([rtndecl])
-    rtnbody = _indent4([rtnbody])
-    s = """cdef {rtnct} {{proxy_name}}({arglist}):
-{argdecls}
-{rtndecl}
-    global {{var}}
-{argbodys}
-    {rtncall} = {{var}}({pyarglist})
-{rtnbody}
-    return {rtnrtn}
-"""
-    arglist = ", ".join(["{0} {1}".format(*x) for x in zip(argcts, argnames)])
-    pyarglist=", ".join(argrtns)
-    s = s.format(rtnct=rtnct, arglist=arglist, argdecls=argdecls, rtndecl=rtndecl,
-                 argbodys=argbodys, rtnprox=rtnprox, pyarglist=pyarglist,
-                 rtnbody=rtnbody, rtnrtn=rtnrtn, rtncall=rtncall)
-    return s, False
-
-_cython_py2c_conv['function_pointer'] = _cython_py2c_conv_function_pointer
-
-
-@_memoize
-def cython_py2c(name, t, inst_name=None, proxy_name=None):
-    """Given a varibale name and type, returns cython code (declaration, body,
-    and return statement) to convert the variable from Python to C/C++."""
-    t = canon(t)
-    if isinstance(t, basestring) or 0 == t[-1] or isrefinement(t[-1]):
-        last = ''
-    elif isinstance(t[-1], int):
-        last = ' [{0}]'.format(t[-1])
-    else:
-        last = ' ' + t[-1]
-    tkey = t
-    tinst = None
-    while tkey not in _cython_py2c_conv and not isinstance(tkey, basestring):
-        tinst = tkey
-        tkey = tkey[1] if (0 < len(tkey) and isrefinement(tkey[1])) else tkey[0]
-    if tkey not in _cython_py2c_conv:
-        tkey = t
-        while tkey not in _cython_py2c_conv and not isinstance(tkey, basestring):
-            tkey = tkey[0]
-    py2ct = _cython_py2c_conv[tkey]
-    if callable(py2ct):
-        _cython_py2c_conv[t] = py2ct(t)
-        py2ct = _cython_py2c_conv[t]
-    if py2ct is NotImplemented or py2ct is None:
-        raise NotImplementedError('conversion from Python to C/C++ for ' + \
-                                  str(t) + ' has not been implemented.')
-    body_template, rtn_template = py2ct
-    ct = cython_ctype(t)
-    cyt = cython_cytype(t)
-    pyt = cython_pytype(t)
-    npt = cython_nptype(t)
-    npct = cython_ctype(npt)
-    npcyt = cython_cytype(npt)
-    nppyt = cython_pytype(npt)
-    npts = cython_nptype(t, depth=1)
-    if isinstance(npts, basestring):
-        npcts = [npct] 
-        npcyts = [npcyt] 
-        nppyts = [nppyt] 
-    else:
-        npcts = _maprecurse(cython_ctype, npts)
-        npcyts = _maprecurse(cython_cytype, npts)
-        nppyts = _maprecurse(cython_pytype, npts)
-    t_nopred = strip_predicates(t)
-    ct_nopred = cython_ctype(t_nopred)
-    cyt_nopred = cython_cytype(t_nopred)
-    pyt_nopred = cython_pytype(t_nopred)
-    npt_nopred =  cython_nptype(t_nopred)
-    npct_nopred = cython_ctype(npt_nopred)
-    npcyt_nopred = cython_cytype(npt_nopred)
-    nppyt_nopred = cython_pytype(npt_nopred)
-    npts_nopred = cython_nptype(t_nopred, depth=1)
-    if isinstance(npts_nopred, basestring):
-        npcts_nopred = [npct_nopred] 
-        npcyts_nopred = [npcyt_nopred] 
-        nppyts_nopred = [nppyt_nopred] 
-    else:
-        npcts_nopred = _maprecurse(cython_ctype, npts_nopred)
-        npcyts_nopred = _maprecurse(cython_cytype, npts_nopred)
-        nppyts_nopred = _maprecurse(cython_pytype, npts_nopred)
-    var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
-    proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
-    template_kw = dict(var=var, type=t, proxy_name=proxy_name, pytype=pyt, 
-                       cytype=cyt, ctype=ct, last=last, nptype=npt, npctype=npct,
-                       npcytype=npcyt,  nppytype=nppyt,
-                       nptypes=npts, npctypes=npcts,  npcytypes=npcyts, 
-                       nppytypes=nppyts, ctype_nopred=ct_nopred,
-                       cytype_nopred=cyt_nopred, pytype_nopred=pyt_nopred, 
-                       nptype_nopred=npt_nopred, npctype_nopred=npct_nopred, 
-                       npcytype_nopred=npcyt_nopred, nppytype_nopred=nppyt_nopred, 
-                       nptypes_nopred=npts_nopred, npctypes_nopred=npcts_nopred, 
-                       npcytypes_nopred=npcyts_nopred, nppytypes_nopred=nppyts_nopred,)
-    nested = False
-    if isdependent(tkey):
-        tsig = [ts for ts in refined_types if ts[0] == tkey][0]
-        for ts, ti in zip(tsig[1:], tinst[1:]):
-            if isinstance(ts, basestring):
-                template_kw[ts] = cython_ctype(ti)
-            else:
-                template_kw[ti[0]] = ti[2]
-        vartype = refined_types[tsig]
-        if vartype in tsig[1:]:
-            vartype = tinst[tsig.index(vartype)][1]
-        if isrefinement(vartype):
-            nested = True
-            vdecl, vbody, vrtn = cython_py2c(var, vartype)
-            template_kw['var'] = vrtn
-    body_filled = body_template.format(**template_kw)
-    if rtn_template:
-        if '{ctype}'in body_template:
-            deft = ct
-        elif '{ctype_nopred}'in body_template:
-            deft = ct_nopred
-        elif '{cytype_nopred}'in body_template:
-            deft = cyt_nopred
-        else:
-            deft = cyt
-        decl = "cdef {0} {1}".format(deft, proxy_name)
-        body = body_filled
-        rtn = rtn_template.format(**template_kw)
-        decl += '\n'+"\n".join([l for l in body.splitlines() if l.startswith('cdef')])
-        body = "\n".join([l for l in body.splitlines() if not l.startswith('cdef')])
-    else:
-        decl = body = None
-        rtn = body_filled
-    if nested:
-        decl = '' if decl is None else decl
-        vdecl = '' if vdecl is None else vdecl
-        decl = (vdecl + '\n' + decl).strip()
-        decl = None if 0 == len(decl) else decl
-        body = '' if body is None else body
-        vbody = '' if vbody is None else vbody
-        body = (vbody + '\n' + body).strip()
-        body = None if 0 == len(body) else body
-    return decl, body, rtn
-
-
 
 ######################  Some utility functions for the typesystem #############
 
