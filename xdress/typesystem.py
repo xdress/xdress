@@ -287,7 +287,8 @@ class TypeSystem(object):
     def __init__(self, base_types=None, template_types=None, refined_types=None, 
                  humannames=None, extra_types='xdress_extra_types', 
                  stlcontainers='stlcontainers', type_aliases=None, cpp_types=None, 
-                 cython_ctypes=None, cython_cimports=None):
+                 cython_ctypes=None, cython_cimports=None, cython_cyimports=None, 
+                 cython_pyimports=None):
         """Parameters
         ----------
         base_types : set of str, optional
@@ -312,8 +313,14 @@ class TypeSystem(object):
         cython_ctypes : dict, optional
             Cython's C/C++ representation of the types.
         cython_cimports : dict, optional
-            A sequence of tuples representing imports that are needed for Cython
+            A sequence of tuples representing cimports that are needed for Cython
             to represent C/C++ types.
+        cython_cyimports : dict, optional
+            A sequence of tuples representing cimports that are needed for Cython
+            to represent Cython types.
+        cython_pyimports : dict, optional
+            A sequence of tuples representing imports that are needed for Cython
+            to represent Python types.
 
         """
         self.base_types = base_types or set(['char', 'uchar', 'str', 'int16', 
@@ -551,6 +558,75 @@ class TypeSystem(object):
                         ('libcpp.string', 'string', 'std_string')),
             'function': cython_cimports_functionish,
             'function_pointer': cython_cimports_functionish,
+            }, self)
+
+        def cython_cyimports_functionish(t, ts, seen):
+            for n, argt in t[1][2]:
+                ts.cython_cimport_tuples(argt, seen=seen, inc=('cy',))
+            ts.cython_cimport_tuples(t[2][2], seen=seen, inc=('cy',))
+
+        self.cython_cyimports = _LazyImportDict(cython_cyimports or {
+            'char': (None,),
+            'uchar': (None,),
+            'str': (None,),
+            'int16': (None,),
+            'int32': (None,),
+            'int64': (None,),
+            'uint16': (None,),
+            'uint32': (None,),
+            'uint64': (None,),
+            'float32': (None,),
+            'float64': (None,),
+            'float128': (None,),
+            'complex128': (('{extra_types}',),),  # for py2c_complex()
+            'bool': (None,),
+            'void': (None,),
+            'file': (('{extra_types}',),),
+            'exception': (('{extra_types}',),),
+            'map': (('{stlcontainers}',),),
+            'dict': (None,),
+            'pair': (('{stlcontainers}',),),
+            'set': (('{stlcontainers}',),),
+            'vector': (('numpy', 'as', 'np'), ('{stlcontainers}',)),
+            'nucid': (('pyne', 'nucname'),),
+            'nucname': (('pyne', 'nucname'),),
+            'function': cython_cyimports_functionish,
+            'function_pointer': cython_cyimports_functionish,
+            }, self)
+
+        def cython_pyimports_functionish(t, ts, seen):
+            seen.add(('warnings',))
+            for n, argt in t[1][2]:
+                ts.cython_import_tuples(argt, seen=seen)
+            ts.cython_import_tuples(t[2][2], seen=seen)
+
+        self.cython_pyimports = _LazyImportDict(cython_pyimports or {
+            'char': (None,),
+            'uchar': (None,),
+            'str': (None,),
+            'int16': (None,),
+            'int32': (None,),
+            'int64': (None,),
+            'uint16': (None,),
+            'uint32': (None,),
+            'uint64': (None,),
+            'float32': (None,),
+            'float64': (None,),
+            'float128': (None,),
+            'complex128': (None,),
+            'bool': (None,),
+            'void': (None,),
+            'file': (None,),
+            'exception': (None,),
+            'map': (('{stlcontainers}',),),
+            'dict': (None,),
+            'pair': (('{stlcontainers}',),),
+            'set': (('{stlcontainers}',),),
+            'vector': (('numpy', 'as', 'np'),),
+            'nucid': (('pyne', 'nucname'),),
+            'nucname': (('pyne', 'nucname'),),
+            'function': cython_pyimports_functionish,
+            'function_pointer': cython_pyimports_functionish,
             }, self)
 
     @_memoize
@@ -848,223 +924,146 @@ class TypeSystem(object):
                 cyct = self._cython_ctype_add_predicate(cyct, last)
             return cyct
 
+    @_memoize
+    def cython_cimport_tuples(self, t, seen=None, inc=frozenset(['c', 'cy'])):
+        """Given a type t, and possibly previously seen cimport tuples (set),
+        return the set of all seen cimport tuples.  These tuple have four possible
+        interpretations based on the length and values:
+
+        * ``(module-name,)`` becomes ``cimport {module-name}``
+        * ``(module-name, var-or-mod)`` becomes
+          ``from {module-name} cimport {var-or-mod}``
+        * ``(module-name, var-or-mod, alias)`` becomes
+          ``from {module-name} cimport {var-or-mod} as {alias}``
+        * ``(module-name, 'as', alias)`` becomes ``cimport {module-name} as {alias}``
+
+        """
+        t = self.canon(t)
+        if seen is None:
+            seen = set()
+        if isinstance(t, basestring):
+            if t in self.base_types:
+                if 'c' in inc:
+                    seen.update(self.cython_cimports[t])
+                if 'cy' in inc:
+                    seen.update(self.cython_cyimports[t])
+                seen -= set((None, (None,)))
+                return seen
+        # must be tuple below this line
+        tlen = len(t)
+        if 2 == tlen:
+            if 'c' in inc:
+                if self.isrefinement(t[1]) and t[1][0] in self.cython_cimports:
+                    f = self.cython_cimports[t[1][0]]
+                    if callable(f):
+                        f(t[1], self, seen)
+                seen.update(self.cython_cimports.get(t[0], (None,)))
+                seen.update(self.cython_cimports.get(t[1], (None,)))
+            if 'cy' in inc:
+                if self.isrefinement(t[1]) and t[1][0] in self.cython_cyimports:
+                    f = self.cython_cyimports[t[1][0]]
+                    if callable(f):
+                        f(t[1], self, seen)
+                seen.update(self.cython_cyimports.get(t[0], (None,)))
+                seen.update(self.cython_cyimports.get(t[1], (None,)))
+            seen -= set((None, (None,)))
+            return self.cython_cimport_tuples(t[0], seen, inc)
+        elif 3 <= tlen:
+            assert t[0] in self.template_types
+            if 'c' in inc:
+                seen.update(self.cython_cimports[t[0]])
+            if 'cy' in inc:
+                seen.update(self.cython_cyimports[t[0]])
+            for x in t[1:-1]:
+                if isinstance(x, Number):
+                    continue
+                elif isinstance(x, basestring) and x not in self.cython_cimports:
+                    continue
+                self.cython_cimport_tuples(x, seen, inc)
+            seen -= set((None, (None,)))
+            return seen
+
+    _cython_cimport_cases = {
+        1: lambda tup: "cimport {0}".format(*tup),
+        2: lambda tup: "from {0} cimport {1}".format(*tup),
+        3: lambda tup: ("cimport {0} as {2}".format(*tup) if tup[1] == 'as' else \
+                        "from {0} cimport {1} as {2}".format(*tup)),
+        }
+
+    @_memoize
+    def cython_cimports(self, x, inc=frozenset(['c', 'cy'])):
+        """Returns the cimport lines associated with a type or a set of seen tuples.
+        """
+        if not isinstance(x, Set):
+            x = self.cython_cimport_tuples(x, inc=inc)
+        return set([self._cython_cimport_cases[len(tup)](tup) for tup in x \
+                                                              if 0 != len(tup)])
+
+    @_memoize
+    def cython_import_tuples(self, t, seen=None):
+        """Given a type t, and possibly previously seen import tuples (set),
+        return the set of all seen import tuples.  These tuple have four possible
+        interpretations based on the length and values:
+
+        * ``(module-name,)`` becomes ``import {module-name}``
+        * ``(module-name, var-or-mod)`` becomes
+          ``from {module-name} import {var-or-mod}``
+        * ``(module-name, var-or-mod, alias)`` becomes
+          ``from {module-name} import {var-or-mod} as {alias}``
+        * ``(module-name, 'as', alias)`` becomes ``import {module-name} as {alias}``
+
+        """
+        t = self.canon(t)
+        if seen is None:
+            seen = set()
+        if isinstance(t, basestring):
+            if t in self.base_types:
+                seen.update(self.cython_pyimports[t])
+                seen -= set((None, (None,)))
+                return seen
+        # must be tuple below this line
+        tlen = len(t)
+        if 2 == tlen:
+            if self.isrefinement(t[1]) and t[1][0] in self.cython_pyimports:
+                f = self.cython_pyimports[t[1][0]]
+                if callable(f):
+                    f(t[1], self, seen)
+            seen.update(self.cython_pyimports.get(t[0], (None,)))
+            seen.update(self.cython_pyimports.get(t[1], (None,)))
+            seen -= set((None, (None,)))
+            return self.cython_import_tuples(t[0], seen)
+        elif 3 <= tlen:
+            assert t[0] in sefl.template_types
+            seen.update(self.cython_pyimports[t[0]])
+            for x in t[1:-1]:
+                if isinstance(x, Number):
+                    continue
+                elif isinstance(x, basestring) and x not in self.cython_cimports:
+                    continue
+                self.cython_import_tuples(x, seen)
+            seen -= set((None, (None,)))
+            return seen
+
+    _cython_import_cases = {
+        1: lambda tup: "import {0}".format(*tup),
+        2: lambda tup: "from {0} import {1}".format(*tup),
+        3: lambda tup: ("import {0} as {2}".format(*tup) if tup[1] == 'as' else \
+                        "from {0} import {1} as {2}".format(*tup)),
+        }
+
+    @_memoize
+    def cython_imports(self, x):
+        """Returns the import lines associated with a type or a set of seen tuples.
+        """
+        if not isinstance(x, Set):
+            x = self.cython_import_tuples(x)
+        x = [tup for tup in x if 0 < len(tup)]
+        return set([self._cython_import_cases[len(tup)](tup) for tup in x])
+
 # Default type system instance
 type_system = TypeSystem()
 
 #################### Type System Above This Line ##########################
-
-
-_cython_cyimports = _LazyImportDict({
-    'char': (None,),
-    'uchar': (None,),
-    'str': (None,),
-    'int16': (None,),
-    'int32': (None,),
-    'int64': (None,),
-    'uint16': (None,),
-    'uint32': (None,),
-    'uint64': (None,),
-    'float32': (None,),
-    'float64': (None,),
-    'float128': (None,),
-    'complex128': (('{extra_types}',),),  # for py2c_complex()
-    'bool': (None,),
-    'void': (None,),
-    'file': (('{extra_types}',),),
-    'exception': (('{extra_types}',),),
-    'map': (('{stlcontainers}',),),
-    'dict': (None,),
-    'pair': (('{stlcontainers}',),),
-    'set': (('{stlcontainers}',),),
-    'vector': (('numpy', 'as', 'np'), ('{stlcontainers}',)),
-    'nucid': (('pyne', 'nucname'),),
-    'nucname': (('pyne', 'nucname'),),
-    })
-
-
-def _cython_cyimports_functionish(t, seen):
-    for n, argt in t[1][2]:
-        cython_cimport_tuples(argt, seen=seen, inc=('cy',))
-    cython_cimport_tuples(t[2][2], seen=seen, inc=('cy',))
-_cython_cyimports['function'] = _cython_cyimports_functionish
-_cython_cyimports['function_pointer'] = _cython_cyimports_functionish
-
-
-@_memoize
-def cython_cimport_tuples(t, seen=None, inc=frozenset(['c', 'cy'])):
-    """Given a type t, and possibly previously seen cimport tuples (set),
-    return the set of all seen cimport tuples.  These tuple have four possible
-    interpretations based on the length and values:
-
-    * ``(module-name,)`` becomes ``cimport {module-name}``
-    * ``(module-name, var-or-mod)`` becomes
-      ``from {module-name} cimport {var-or-mod}``
-    * ``(module-name, var-or-mod, alias)`` becomes
-      ``from {module-name} cimport {var-or-mod} as {alias}``
-    * ``(module-name, 'as', alias)`` becomes ``cimport {module-name} as {alias}``
-
-    """
-    t = canon(t)
-    if seen is None:
-        seen = set()
-    if isinstance(t, basestring):
-        if t in base_types:
-            if 'c' in inc:
-                seen.update(_cython_cimports[t])
-            if 'cy' in inc:
-                seen.update(_cython_cyimports[t])
-            seen -= set((None, (None,)))
-            return seen
-    # must be tuple below this line
-    tlen = len(t)
-    if 2 == tlen:
-        if 'c' in inc:
-            if isrefinement(t[1]) and t[1][0] in _cython_cimports:
-                f = _cython_cimports[t[1][0]]
-                if callable(f):
-                    f(t[1], seen)
-            seen.update(_cython_cimports.get(t[0], (None,)))
-            seen.update(_cython_cimports.get(t[1], (None,)))
-        if 'cy' in inc:
-            if isrefinement(t[1]) and t[1][0] in _cython_cyimports:
-                f = _cython_cyimports[t[1][0]]
-                if callable(f):
-                    f(t[1], seen)
-            seen.update(_cython_cyimports.get(t[0], (None,)))
-            seen.update(_cython_cyimports.get(t[1], (None,)))
-        seen -= set((None, (None,)))
-        return cython_cimport_tuples(t[0], seen, inc)
-    elif 3 <= tlen:
-        assert t[0] in template_types
-        if 'c' in inc:
-            seen.update(_cython_cimports[t[0]])
-        if 'cy' in inc:
-            seen.update(_cython_cyimports[t[0]])
-        for x in t[1:-1]:
-            if isinstance(x, Number):
-                continue
-            elif isinstance(x, basestring) and x not in _cython_cimports:
-                continue
-            cython_cimport_tuples(x, seen, inc)
-        seen -= set((None, (None,)))
-        return seen
-
-_cython_cimport_cases = {
-    1: lambda tup: "cimport {0}".format(*tup),
-    2: lambda tup: "from {0} cimport {1}".format(*tup),
-    3: lambda tup: ("cimport {0} as {2}".format(*tup) if tup[1] == 'as' else \
-                    "from {0} cimport {1} as {2}".format(*tup)),
-    }
-
-
-@_memoize
-def cython_cimports(x, inc=frozenset(['c', 'cy'])):
-    """Returns the cimport lines associated with a type or a set of seen tuples.
-    """
-    if not isinstance(x, Set):
-        x = cython_cimport_tuples(x, inc=inc)
-    return set([_cython_cimport_cases[len(tup)](tup) for tup in x if 0 != len(tup)])
-
-
-_cython_pyimports = _LazyImportDict({
-    'char': (None,),
-    'uchar': (None,),
-    'str': (None,),
-    'int16': (None,),
-    'int32': (None,),
-    'int64': (None,),
-    'uint16': (None,),
-    'uint32': (None,),
-    'uint64': (None,),
-    'float32': (None,),
-    'float64': (None,),
-    'float128': (None,),
-    'complex128': (None,),
-    'bool': (None,),
-    'void': (None,),
-    'file': (None,),
-    'exception': (None,),
-    'map': (('{stlcontainers}',),),
-    'dict': (None,),
-    'pair': (('{stlcontainers}',),),
-    'set': (('{stlcontainers}',),),
-    'vector': (('numpy', 'as', 'np'),),
-    'nucid': (('pyne', 'nucname'),),
-    'nucname': (('pyne', 'nucname'),),
-    })
-
-
-def _cython_pyimports_functionish(t, seen):
-    seen.add(('warnings',))
-    for n, argt in t[1][2]:
-        cython_import_tuples(argt, seen=seen)
-    cython_import_tuples(t[2][2], seen=seen)
-_cython_pyimports['function'] = _cython_pyimports_functionish
-_cython_pyimports['function_pointer'] = _cython_pyimports_functionish
-
-
-@_memoize
-def cython_import_tuples(t, seen=None):
-    """Given a type t, and possibly previously seen import tuples (set),
-    return the set of all seen import tuples.  These tuple have four possible
-    interpretations based on the length and values:
-
-    * ``(module-name,)`` becomes ``import {module-name}``
-    * ``(module-name, var-or-mod)`` becomes
-      ``from {module-name} import {var-or-mod}``
-    * ``(module-name, var-or-mod, alias)`` becomes
-      ``from {module-name} import {var-or-mod} as {alias}``
-    * ``(module-name, 'as', alias)`` becomes ``import {module-name} as {alias}``
-
-    """
-    t = canon(t)
-    if seen is None:
-        seen = set()
-    if isinstance(t, basestring):
-        if t in base_types:
-            seen.update(_cython_pyimports[t])
-            seen -= set((None, (None,)))
-            return seen
-    # must be tuple below this line
-    tlen = len(t)
-    if 2 == tlen:
-        if isrefinement(t[1]) and t[1][0] in _cython_pyimports:
-            f = _cython_pyimports[t[1][0]]
-            if callable(f):
-                f(t[1], seen)
-        seen.update(_cython_pyimports.get(t[0], (None,)))
-        seen.update(_cython_pyimports.get(t[1], (None,)))
-        seen -= set((None, (None,)))
-        return cython_import_tuples(t[0], seen)
-    elif 3 <= tlen:
-        assert t[0] in template_types
-        seen.update(_cython_pyimports[t[0]])
-        for x in t[1:-1]:
-            if isinstance(x, Number):
-                continue
-            elif isinstance(x, basestring) and x not in _cython_cimports:
-                continue
-            cython_import_tuples(x, seen)
-        seen -= set((None, (None,)))
-        return seen
-
-_cython_import_cases = {
-    1: lambda tup: "import {0}".format(*tup),
-    2: lambda tup: "from {0} import {1}".format(*tup),
-    3: lambda tup: ("import {0} as {2}".format(*tup) if tup[1] == 'as' else \
-                    "from {0} import {1} as {2}".format(*tup)),
-    }
-
-
-@_memoize
-def cython_imports(x):
-    """Returns the import lines associated with a type or a set of seen tuples.
-    """
-    if not isinstance(x, Set):
-        x = cython_import_tuples(x)
-    x = [tup for tup in x if 0 < len(tup)]
-    return set([_cython_import_cases[len(tup)](tup) for tup in x])
-
 
 _cython_cytypes = _LazyConfigDict({
     'char': 'char',
