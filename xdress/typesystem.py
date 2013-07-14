@@ -287,10 +287,11 @@ class TypeSystem(object):
     def __init__(self, base_types=None, template_types=None, refined_types=None, 
                  humannames=None, extra_types='xdress_extra_types', 
                  stlcontainers='stlcontainers', type_aliases=None, cpp_types=None, 
-                 numpy_types=None, cython_ctypes=None, cython_cytypes=None, 
-                 cython_pytypes=None, cython_cimports=None, cython_cyimports=None, 
-                 cython_pyimports=None, cython_functionnames=None, 
-                 cython_classnames=None):
+                 numpy_types=None, from_pytypes=None, cython_ctypes=None, 
+                 cython_cytypes=None, cython_pytypes=None, cython_cimports=None, 
+                 cython_cyimports=None, cython_pyimports=None, 
+                 cython_functionnames=None, cython_classnames=None, 
+                 cython_c2py_conv=None):
         """Parameters
         ----------
         base_types : set of str, optional
@@ -314,6 +315,8 @@ class TypeSystem(object):
             The C/C++ representation of the types.
         numpy_types : dict, optional
             NumPy's Cython representation of the types.
+        from_pytypes : dict, optional
+            List of Python types which match may be converted to these types.
         cython_ctypes : dict, optional
             Cython's C/C++ representation of the types.
         cython_cytypes : dict, optional
@@ -339,6 +342,8 @@ class TypeSystem(object):
             These should try to adhere to a CapCase convention.  These may contain 
             template argument namess as part of a format string, 
             ie ``{'map': 'Map{key_type}{value_type}'}``.
+        cython_c2py_conv : dict, optional
+            Cython convertors from C/C++ types to the representative Python types.
 
         """
         self.base_types = base_types or set(['char', 'uchar', 'str', 'int16', 
@@ -517,6 +522,25 @@ class TypeSystem(object):
             'bool': 'np.NPY_BOOL',
             'void': 'np.NPY_VOID',
             }, self)
+
+        from_pytypes = from_pytypes or {
+            'str': ['basestring'],
+            'char': ['basestring'],
+            'uchar': ['basestring'],
+            'int16': ['int'],
+            'int32': ['int'],
+            'int64': ['int'],
+            'uint16': ['int'],
+            'uint32': ['int'],
+            'uint64': ['int'],
+            'float32': ['float', 'int'],
+            'float64': ['float', 'int'],
+            'complex128': ['complex', 'float'],
+            'file': ['file'],
+            ('file', '*'): ['file'],
+            'set': ['set', 'list', 'basestring', 'tuple'],
+            'vector': ['list', 'tuple', 'np.ndarray'],
+            }
 
         def cython_ctypes_function(t, ts):
             rtnct = ts.cython_ctype(t[2][2])
@@ -749,7 +773,7 @@ class TypeSystem(object):
             'function_pointer': 'functionpointer',
             }, self)
 
-        cython_classnames = _LazyConfigDict(cython_classnames or {
+        self.cython_classnames = _LazyConfigDict(cython_classnames or {
             # base types
             'char': 'Char',
             'uchar': 'UChar',
@@ -776,6 +800,176 @@ class TypeSystem(object):
             'vector': 'Vector{value_type}',
             'nucid': 'Nucid',
             'nucname': 'Nucname',
+            }, self)
+
+        def cython_c2py_conv_function_pointer(t_, ts):
+            """Wrap function pointers in C/C++ to Python functions."""
+            t = t_[1]
+            argnames = []
+            argdecls = []
+            argbodys = []
+            argrtns = []
+            for n, argt in t[1][2]:
+                argnames.append(n)
+                decl, body, rtn = ts.cython_py2c(n, argt, proxy_name="c_" + n)
+                argdecls.append(decl)
+                argbodys.append(body)
+                argrtns.append(rtn)
+            rtnname = 'rtn'
+            rtnprox = 'c_' + rtnname
+            rtncall = 'c_call_' + rtnname
+            while rtnname in argnames or rtnprox in argnames:
+                rtnname += '_'
+                rtnprox += '_'
+            argdecls = _indent4(argdecls)
+            argbodys = _indent4(argbodys)
+            rtndecl, rtnbody, rtnrtn, _ = ts.cython_c2py(rtncall, t[2][2], 
+                cached=False, proxy_name=rtnprox, existing_name=rtncall)
+            if rtndecl is None and rtnbody is None:
+                rtnprox = rtnname
+            rtndecl = _indent4([rtndecl, 
+                                "cdef {0} {1}".format(ts.cython_ctype(t[2][2]), 
+                                rtncall)])
+            rtnbody = _indent4([rtnbody])
+            s = """def {{proxy_name}}({arglist}):
+{argdecls}
+{rtndecl}
+    if {{var}} == NULL:
+        raise RuntimeError("{{var}} is NULL and may not be safely called!")
+{argbodys}
+    {rtncall} = {{var}}({carglist})
+{rtnbody}
+"""
+            s = s.format(arglist=", ".join(argnames), argdecls=argdecls,
+                         cvartypeptr=ts.cython_ctype(t_).format(type_name='cvartype'),
+                         argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
+                         rtncall=rtncall, carglist=", ".join(argrtns), rtnbody=rtnbody)
+            caches = 'if {cache_name} is None:\n' + _indent4([s])
+            if t[2][2] != 'void':
+                caches += "\n        return {rtnrtn}".format(rtnrtn=rtnrtn)
+                caches += '\n    {cache_name} = {proxy_name}\n'
+            return s, s, caches
+
+        self.cython_c2py_conv = _LazyConverterDict(cython_c2py_conv or {
+            # Has tuple form of (copy, [view, [cached_view]])
+            # base types
+            'char': ('chr(<int> {var})',),
+            'uchar': ('chr(<unsigned int> {var})',),
+            'str': ('bytes(<char *> {var}.c_str()).decode()',),
+            ('str', '*'): ('bytes(<char *> {var}[0].c_str()).decode()',),
+            'int16': ('int({var})',),
+            ('int16', '*'): ('int({var}[0])',),
+            'int32': ('int({var})',),
+            ('int32', '*'): ('int({var}[0])',),
+            'int64': ('int({var})',),
+            ('int64', '*'): ('int({var}[0])',),
+            'uint16': ('int({var})',),
+            ('uint16', '*'): ('int({var}[0])',),
+            'uint32': ('int({var})',),
+            ('uint32', '*'): ('int({var}[0])',),
+            'uint64': ('int({var})',),
+            'float32': ('float({var})',),
+            ('float32', '*'): ('float({var}[0])',),
+            'float64': ('float({var})',),
+            ('float64', '*'): ('float({var}[0])',),
+            'float128': ('np.array({var}, dtype=np.float128)',),
+            ('float128', '*'): ('np.array({var}[0], dtype=np.float128)',),
+            'complex128': ('complex(float({var}.re), float({var}.im))',),
+            ('complex128', '*'): ('complex(float({var}[0].re), float({var}[0].im))',),
+            'bool': ('bool({var})',),
+            ('bool', '*'): ('bool({var}[0])',),
+            'void': ('None',),
+            'file': ('{extra_types}PyFile_FromFile(&{var}, "{var}", "r+", NULL)',),
+            ('file', '*'): (
+                '{extra_types}PyFile_FromFile({var}, "{var}", "r+", NULL)',),
+            # template types
+            'map': ('{pytype}({var})',
+                   ('{proxy_name} = {pytype}(False, False)\n'
+                    '{proxy_name}.map_ptr = &{var}\n'),
+                   ('if {cache_name} is None:\n'
+                    '    {proxy_name} = {pytype}(False, False)\n'
+                    '    {proxy_name}.map_ptr = &{var}\n'
+                    '    {cache_name} = {proxy_name}\n'
+                    )),
+            'dict': ('dict({var})',),
+            'pair': ('{pytype}({var})',
+                     ('{proxy_name} = {pytype}(False, False)\n'
+                      '{proxy_name}.pair_ptr = &{var}\n'),
+                     ('if {cache_name} is None:\n'
+                      '    {proxy_name} = {pytype}(False, False)\n'
+                      '    {proxy_name}.pair_ptr = &{var}\n'
+                      '    {cache_name} = {proxy_name}\n'
+                      )),
+            'set': ('{pytype}({var})',
+                   ('{proxy_name} = {pytype}(False, False)\n'
+                    '{proxy_name}.set_ptr = &{var}\n'),
+                   ('if {cache_name} is None:\n'
+                    '    {proxy_name} = {pytype}(False, False)\n'
+                    '    {proxy_name}.set_ptr = &{var}\n'
+                    '    {cache_name} = {proxy_name}\n'
+                    )),
+            'vector': (
+                ('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                 '{proxy_name} = np.PyArray_SimpleNewFromData(1, {var}_shape, {nptypes[0]}, &{var}[0])\n'
+                 '{proxy_name} = np.PyArray_Copy({proxy_name})\n'),
+                ('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                 '{proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptypes[0]}, &{var}[0])\n'),
+                ('if {cache_name} is None:\n'
+                 '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                 '    {proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptypes[0]}, &{var}[0])\n'
+                 '    {cache_name} = {proxy_name}\n'
+                )),
+            ('vector', 'bool', 0): (  # C++ standard is silly here
+                ('cdef int i\n'
+                 '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                 '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptypes[0]})\n'
+                 'for i in range({proxy_name}_shape[0]):\n'
+                 '    {proxy_name}[i] = {var}[i]\n'),
+                ('cdef int i\n'
+                 '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                 '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptypes[0]})\n'
+                 'for i in range({proxy_name}_shape[0]):\n'
+                 '    {proxy_name}[i] = {var}[i]\n'),
+                ('cdef int i\n'
+                 'if {cache_name} is None:\n'
+                 '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                 '    {proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptype[0]})\n'
+                 '    for i in range({proxy_name}_shape[0]):\n'
+                 '        {proxy_name}[i] = {var}[i]\n'
+                 '    {cache_name} = {proxy_name}\n'
+                 )),
+            # C/C++ chars are ints while Python Chars are length-1 strings
+            ('vector', 'char', 0): (
+                ('cdef int i\n'
+                 '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                 '{proxy_name} = np.empty({proxy_name}_shape[0], "U1")\n'
+                 'for i in range({proxy_name}_shape[0]):\n'
+                 '    {proxy_name}[i] = chr(<int> {var}[i])\n'),
+                ('cdef int i\n'
+                 '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                 '{proxy_name} = np.empty({proxy_name}_shape[0], "U1")\n'
+                 'for i in range({proxy_name}_shape[0]):\n'
+                 '    {proxy_name}[i] = chr(<int> {var}[i])\n'),
+                ('cdef int i\n'
+                 'if {cache_name} is None:\n'
+                 '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
+                 '    for i in range({proxy_name}_shape[0]):\n'
+                 '        {proxy_name}[i] = chr(<int> {var}[i])\n'
+                 '    {cache_name} = {proxy_name}\n'
+                 )),
+            'nucid': ('nucname.zzaaam({var})',),
+            'nucname': ('nucname.name({var})',),
+            TypeMatcher((('enum', MatchAny, MatchAny), '*')): ('int({var}[0])',),
+            TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): \
+                                                                ('int({var}[0])',),
+            # Strip const when going c -> py 
+            TypeMatcher((MatchAny, 'const')): (
+                lambda t, ts: ts.cython_c2py_getitem(t[0])),
+            TypeMatcher(((MatchAny, 'const'), '&')) : (
+                lambda t, ts: ts.cython_c2py_getitem((t[0][0], '&'))),
+            TypeMatcher(((MatchAny, 'const'), '*')): (
+                lambda t, ts: ts.cython_c2py_getitem((t[0][0], '*'))),
+            'function_pointer': cython_c2py_conv_function_pointer,
             }, self)
 
     @_memoize
@@ -1408,280 +1602,98 @@ class TypeSystem(object):
             d[key] = val
         return t, cycyt.format(**d)
 
+    @_memoize
+    def cython_c2py_getitem(self, t):
+        """Helps find the approriate c2py value for a given concrete type key."""
+        tkey = t = self.canon(t)
+        while tkey not in self.cython_c2py_conv and not isinstance(tkey, basestring):
+            #tkey = tkey[0]
+            tkey = tkey[1] if (0 < len(tkey) and self.isrefinement(tkey[1])) else \
+                                                                             tkey[0]
+        if tkey not in self.cython_c2py_conv:
+            tkey = t
+            while tkey not in self.cython_c2py_conv and \
+                       not isinstance(tkey, basestring):
+                tkey = tkey[0]
+        c2pyt = self.cython_c2py_conv[tkey]
+        if callable(c2pyt):
+            self.cython_c2py_conv[t] = c2pyt(t, self)
+            c2pyt = self.cython_c2py_conv[t]
+        return c2pyt
+
+    @_memoize
+    def cython_c2py(self, name, t, view=True, cached=True, inst_name=None, 
+                    proxy_name=None, cache_name=None, cache_prefix='self', 
+                    existing_name=None):
+        """Given a varibale name and type, returns cython code (declaration, body,
+        and return statements) to convert the variable from C/C++ to Python."""
+        t = self.canon(t)
+        c2pyt = self.cython_c2py_getitem(t)
+        ind = int(view) + int(cached)
+        if cached and not view:
+            raise ValueError('cached views require view=True.')
+        if c2pyt is NotImplemented:
+            raise NotImplementedError('conversion from C/C++ to Python for ' + \
+                                      t + 'has not been implemented for when ' + \
+                                      'view={0}, cached={1}'.format(view, cached))
+        ct = self.cython_ctype(t)
+        cyt = self.cython_cytype(t)
+        pyt = self.cython_pytype(t)
+        npt = self.cython_nptype(t)
+        npts = self.cython_nptype(t, depth=1)
+        npts = [npts] if isinstance(npts, basestring) else npts
+        t_nopred = self.strip_predicates(t)
+        ct_nopred = self.cython_ctype(t_nopred)
+        cyt_nopred = self.cython_cytype(t_nopred)
+        var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
+        var = existing_name or var
+        cache_name = "_{0}".format(name) if cache_name is None else cache_name
+        cache_name = cache_name if cache_prefix is None else "{0}.{1}".format(
+                                                            cache_prefix, cache_name)
+        proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
+        iscached = False
+        template_kw = dict(var=var, cache_name=cache_name, ctype=ct, cytype=cyt,
+                           pytype=pyt, proxy_name=proxy_name, nptype=npt,
+                           nptypes=npts, ctype_nopred=ct_nopred,
+                           cytype_nopred=cyt_nopred,)
+#        if callable(c2pyt):
+#            import pdb; pdb.set_trace()
+        if 1 == len(c2pyt) or ind == 0:
+            decl = body = None
+            rtn = c2pyt[0].format(**template_kw)
+        elif ind == 1:
+            decl = "cdef {0} {1}".format(cyt, proxy_name)
+            body = c2pyt[1].format(**template_kw)
+            rtn = proxy_name
+        elif ind == 2:
+            decl = "cdef {0} {1}".format(cyt, proxy_name)
+            body = c2pyt[2].format(**template_kw)
+            rtn = cache_name
+            iscached = True
+        if body is not None and 'np.npy_intp' in body:
+            decl = decl or ''
+            decl += "\ncdef np.npy_intp {proxy_name}_shape[1]".format(
+                                                                proxy_name=proxy_name)
+        if decl is not None and body is not None:
+            newdecl = '\n'+"\n".join([l for l in body.splitlines() \
+                                              if l.startswith('cdef')])
+            body = "\n".join([l for l in body.splitlines() \
+                                              if not l.startswith('cdef')])
+            proxy_in_newdecl = proxy_name in [l.split()[-1] for l in \
+                                              newdecl.splitlines() if 0 < len(l)]
+            if proxy_in_newdecl:
+                for d in decl.splitlines():
+                    if d.split()[-1] != proxy_name:
+                        newdecl += '\n' + d
+                decl = newdecl
+            else:
+                decl += newdecl
+        return decl, body, rtn, iscached
 
 # Default type system instance
 type_system = TypeSystem()
 
 #################### Type System Above This Line ##########################
-
-_cython_c2py_conv = _LazyConverterDict({
-    # Has tuple form of (copy, [view, [cached_view]])
-    # base types
-    'char': ('chr(<int> {var})',),
-    'uchar': ('chr(<unsigned int> {var})',),
-    'str': ('bytes(<char *> {var}.c_str()).decode()',),
-    ('str', '*'): ('bytes(<char *> {var}[0].c_str()).decode()',),
-    'int16': ('int({var})',),
-    ('int16', '*'): ('int({var}[0])',),
-    'int32': ('int({var})',),
-    ('int32', '*'): ('int({var}[0])',),
-    'int64': ('int({var})',),
-    ('int64', '*'): ('int({var}[0])',),
-    'uint16': ('int({var})',),
-    ('uint16', '*'): ('int({var}[0])',),
-    'uint32': ('int({var})',),
-    ('uint32', '*'): ('int({var}[0])',),
-    'uint64': ('int({var})',),
-    'float32': ('float({var})',),
-    ('float32', '*'): ('float({var}[0])',),
-    'float64': ('float({var})',),
-    ('float64', '*'): ('float({var}[0])',),
-    'float128': ('np.array({var}, dtype=np.float128)',),
-    ('float128', '*'): ('np.array({var}[0], dtype=np.float128)',),
-    'complex128': ('complex(float({var}.re), float({var}.im))',),
-    ('complex128', '*'): ('complex(float({var}[0].re), float({var}[0].im))',),
-    'bool': ('bool({var})',),
-    ('bool', '*'): ('bool({var}[0])',),
-    'void': ('None',),
-    'file': ('{extra_types}PyFile_FromFile(&{var}, "{var}", "r+", NULL)',),
-    ('file', '*'): ('{extra_types}PyFile_FromFile({var}, "{var}", "r+", NULL)',),
-    # template types
-    'map': ('{pytype}({var})',
-           ('{proxy_name} = {pytype}(False, False)\n'
-            '{proxy_name}.map_ptr = &{var}\n'),
-           ('if {cache_name} is None:\n'
-            '    {proxy_name} = {pytype}(False, False)\n'
-            '    {proxy_name}.map_ptr = &{var}\n'
-            '    {cache_name} = {proxy_name}\n'
-            )),
-    'dict': ('dict({var})',),
-    'pair': ('{pytype}({var})',
-             ('{proxy_name} = {pytype}(False, False)\n'
-              '{proxy_name}.pair_ptr = &{var}\n'),
-             ('if {cache_name} is None:\n'
-              '    {proxy_name} = {pytype}(False, False)\n'
-              '    {proxy_name}.pair_ptr = &{var}\n'
-              '    {cache_name} = {proxy_name}\n'
-              )),
-    'set': ('{pytype}({var})',
-           ('{proxy_name} = {pytype}(False, False)\n'
-            '{proxy_name}.set_ptr = &{var}\n'),
-           ('if {cache_name} is None:\n'
-            '    {proxy_name} = {pytype}(False, False)\n'
-            '    {proxy_name}.set_ptr = &{var}\n'
-            '    {cache_name} = {proxy_name}\n'
-            )),
-    'vector': (('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.PyArray_SimpleNewFromData(1, {var}_shape, {nptypes[0]}, &{var}[0])\n'
-                '{proxy_name} = np.PyArray_Copy({proxy_name})\n'),
-               ('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptypes[0]}, &{var}[0])\n'),
-               ('if {cache_name} is None:\n'
-                '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '    {proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptypes[0]}, &{var}[0])\n'
-                '    {cache_name} = {proxy_name}\n'
-                )),
-    ('vector', 'bool', 0): (  # C++ standard is silly here
-               ('cdef int i\n'
-                '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptypes[0]})\n'
-                'for i in range({proxy_name}_shape[0]):\n'
-                '    {proxy_name}[i] = {var}[i]\n'),
-               ('cdef int i\n'
-                '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptypes[0]})\n'
-                'for i in range({proxy_name}_shape[0]):\n'
-                '    {proxy_name}[i] = {var}[i]\n'),
-               ('cdef int i\n'
-                'if {cache_name} is None:\n'
-                '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '    {proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptype[0]})\n'
-                '    for i in range({proxy_name}_shape[0]):\n'
-                '        {proxy_name}[i] = {var}[i]\n'
-                '    {cache_name} = {proxy_name}\n'
-                )),
-    ('vector', 'char', 0): (  # C/C++ chars are ints while Python Chars are length-1 strings
-               ('cdef int i\n'
-                '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.empty({proxy_name}_shape[0], "U1")\n'
-                'for i in range({proxy_name}_shape[0]):\n'
-                '    {proxy_name}[i] = chr(<int> {var}[i])\n'),
-               ('cdef int i\n'
-                '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '{proxy_name} = np.empty({proxy_name}_shape[0], "U1")\n'
-                'for i in range({proxy_name}_shape[0]):\n'
-                '    {proxy_name}[i] = chr(<int> {var}[i])\n'),
-               ('cdef int i\n'
-                'if {cache_name} is None:\n'
-                '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                '    for i in range({proxy_name}_shape[0]):\n'
-                '        {proxy_name}[i] = chr(<int> {var}[i])\n'
-                '    {cache_name} = {proxy_name}\n'
-                )),
-    'nucid': ('nucname.zzaaam({var})',),
-    'nucname': ('nucname.name({var})',),
-    TypeMatcher((('enum', MatchAny, MatchAny), '*')): ('int({var}[0])',),
-    TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): ('int({var}[0])',),
-    })
-
-@_memoize
-def _cython_c2py_getitem(t):
-    """Helps find the approriate c2py value for a given concrete type key."""
-    tkey = t = canon(t)
-    while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
-        #tkey = tkey[0]
-        tkey = tkey[1] if (0 < len(tkey) and isrefinement(tkey[1])) else tkey[0]
-    if tkey not in _cython_c2py_conv:
-        tkey = t
-        while tkey not in _cython_c2py_conv and not isinstance(tkey, basestring):
-            tkey = tkey[0]
-    c2pyt = _cython_c2py_conv[tkey]
-    if callable(c2pyt):
-        _cython_c2py_conv[t] = c2pyt(t)
-        c2pyt = _cython_c2py_conv[t]
-    return c2pyt
-
-# Strip const when going c -> py 
-_cython_c2py_conv[TypeMatcher((MatchAny, 'const'))] = \
-    lambda t: _cython_c2py_getitem(t[0])
-
-_cython_c2py_conv[TypeMatcher(((MatchAny, 'const'), '&'))] = \
-    lambda t: _cython_c2py_getitem((t[0][0], '&'))
-
-_cython_c2py_conv[TypeMatcher(((MatchAny, 'const'), '*'))] = \
-    lambda t: _cython_c2py_getitem((t[0][0], '*'))
-
-def _cython_c2py_conv_function_pointer(t_):
-    """Wrap function pointers in C/C++ to Python functions."""
-    t = t_[1]
-    argnames = []
-    argdecls = []
-    argbodys = []
-    argrtns = []
-    for n, argt in t[1][2]:
-        argnames.append(n)
-        decl, body, rtn = cython_py2c(n, argt, proxy_name="c_" + n)
-        argdecls.append(decl)
-        argbodys.append(body)
-        argrtns.append(rtn)
-    rtnname = 'rtn'
-    rtnprox = 'c_' + rtnname
-    rtncall = 'c_call_' + rtnname
-    while rtnname in argnames or rtnprox in argnames:
-        rtnname += '_'
-        rtnprox += '_'
-    argdecls = _indent4(argdecls)
-    argbodys = _indent4(argbodys)
-    rtndecl, rtnbody, rtnrtn, _ = cython_c2py(rtncall, t[2][2], cached=False,
-                                              proxy_name=rtnprox,
-                                              existing_name=rtncall)
-    if rtndecl is None and rtnbody is None:
-        rtnprox = rtnname
-    rtndecl = _indent4([rtndecl, "cdef {0} {1}".format(cython_ctype(t[2][2]), rtncall)])
-    rtnbody = _indent4([rtnbody])
-    s = """def {{proxy_name}}({arglist}):
-{argdecls}
-{rtndecl}
-    if {{var}} == NULL:
-        raise RuntimeError("{{var}} is NULL and may not be safely called!")
-{argbodys}
-    {rtncall} = {{var}}({carglist})
-{rtnbody}
-"""
-    s = s.format(arglist=", ".join(argnames), argdecls=argdecls,
-                 cvartypeptr=cython_ctype(t_).format(type_name='cvartype'),
-                 argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, rtncall=rtncall,
-                 carglist=", ".join(argrtns), rtnbody=rtnbody)
-    caches = 'if {cache_name} is None:\n' + _indent4([s])
-    if t[2][2] != 'void':
-        caches += "\n        return {rtnrtn}".format(rtnrtn=rtnrtn)
-    caches += '\n    {cache_name} = {proxy_name}\n'
-    return s, s, caches
-
-_cython_c2py_conv['function_pointer'] = _cython_c2py_conv_function_pointer
-
-from_pytypes = {
-    'str': ['basestring'],
-    'char': ['basestring'],
-    'uchar': ['basestring'],
-    'int16': ['int'],
-    'int32': ['int'],
-    'int64': ['int'],
-    'uint16': ['int'],
-    'uint32': ['int'],
-    'uint64': ['int'],
-    'float32': ['float', 'int'],
-    'float64': ['float', 'int'],
-    'complex128': ['complex', 'float'],
-    'file': ['file'],
-    ('file', '*'): ['file'],
-    'set': ['set', 'list', 'basestring', 'tuple'],
-    'vector': ['list', 'tuple', 'np.ndarray'],
-    }
-
-@_memoize
-def cython_c2py(name, t, view=True, cached=True, inst_name=None, proxy_name=None,
-                cache_name=None, cache_prefix='self', existing_name=None):
-    """Given a varibale name and type, returns cython code (declaration, body,
-    and return statements) to convert the variable from C/C++ to Python."""
-    t = canon(t)
-    c2pyt = _cython_c2py_getitem(t)
-    ind = int(view) + int(cached)
-    if cached and not view:
-        raise ValueError('cached views require view=True.')
-    if c2pyt is NotImplemented:
-        raise NotImplementedError('conversion from C/C++ to Python for ' + \
-                                  t + 'has not been implemented for when ' + \
-                                  'view={0}, cached={1}'.format(view, cached))
-    ct = cython_ctype(t)
-    cyt = cython_cytype(t)
-    pyt = cython_pytype(t)
-    npt = cython_nptype(t)
-    npts = cython_nptype(t, depth=1)
-    npts = [npts] if isinstance(npts, basestring) else npts
-    t_nopred = strip_predicates(t)
-    ct_nopred = cython_ctype(t_nopred)
-    cyt_nopred = cython_cytype(t_nopred)
-    var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
-    var = existing_name or var
-    cache_name = "_{0}".format(name) if cache_name is None else cache_name
-    cache_name = cache_name if cache_prefix is None else "{0}.{1}".format(cache_prefix, cache_name)
-    proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
-    iscached = False
-    template_kw = dict(var=var, cache_name=cache_name, ctype=ct, cytype=cyt,
-                       pytype=pyt, proxy_name=proxy_name, nptype=npt,
-                       nptypes=npts, ctype_nopred=ct_nopred,
-                       cytype_nopred=cyt_nopred,)
-#    if callable(c2pyt):
-#        import pdb; pdb.set_trace()
-    if 1 == len(c2pyt) or ind == 0:
-        decl = body = None
-        rtn = c2pyt[0].format(**template_kw)
-    elif ind == 1:
-        decl = "cdef {0} {1}".format(cyt, proxy_name)
-        body = c2pyt[1].format(**template_kw)
-        rtn = proxy_name
-    elif ind == 2:
-        decl = "cdef {0} {1}".format(cyt, proxy_name)
-        body = c2pyt[2].format(**template_kw)
-        rtn = cache_name
-        iscached = True
-    if body is not None and 'np.npy_intp' in body:
-        decl = decl or ''
-        decl += "\ncdef np.npy_intp {proxy_name}_shape[1]".format(proxy_name=proxy_name)
-    if decl is not None and body is not None:
-        newdecl = '\n'+"\n".join([l for l in body.splitlines() if l.startswith('cdef')])
-        body = "\n".join([l for l in body.splitlines() if not l.startswith('cdef')])
-        proxy_in_newdecl = proxy_name in [l.split()[-1] for l in newdecl.splitlines() if 0 < len(l)]
-        if proxy_in_newdecl:
-            for d in decl.splitlines():
-                if d.split()[-1] != proxy_name:
-                    newdecl += '\n' + d
-            decl = newdecl
-        else:
-            decl += newdecl
-    return decl, body, rtn, iscached
-
 
 _cython_py2c_conv = _LazyConverterDict({
     # Has tuple form of (body or return,  return or False)
