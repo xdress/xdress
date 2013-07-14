@@ -286,7 +286,8 @@ class TypeSystem(object):
 
     def __init__(self, base_types=None, template_types=None, refined_types=None, 
                  humannames=None, extra_types='xdress_extra_types', 
-                 stlcontainers='stlcontainers', type_aliases=None, cpp_types=None):
+                 stlcontainers='stlcontainers', type_aliases=None, cpp_types=None, 
+                 cython_ctypes=None, cython_cimports=None):
         """Parameters
         ----------
         base_types : set of str, optional
@@ -307,7 +308,12 @@ class TypeSystem(object):
         type_aliases : dict, optional
             Aliases that may be used to substitute one type name for another.
         cpp_types : dict, optional
-            The C/C++ representation of types.
+            The C/C++ representation of the types.
+        cython_ctypes : dict, optional
+            Cython's C/C++ representation of the types.
+        cython_cimports : dict, optional
+            A sequence of tuples representing imports that are needed for Cython
+            to represent C/C++ types.
 
         """
         self.base_types = base_types or set(['char', 'uchar', 'str', 'int16', 
@@ -422,16 +428,16 @@ class TypeSystem(object):
             'np.NPY_OBJECT': 'void',
             }, self)
 
-        def cpp_types_function(t):
-            rtnct = self.cpp_type(t[2][2])
-            argcts = [self.cpp_type(argt) for n, argt in t[1][2]]
+        def cpp_types_function(t, ts):
+            rtnct = ts.cpp_type(t[2][2])
+            argcts = [ts.cpp_type(argt) for n, argt in t[1][2]]
             if argcts == ['void']:
                 argcts = []
             return rtnct + " {type_name}(" + ", ".join(argcts) + ")"
 
-        def cpp_types_function_pointer(t):
-            rtnct = self.cpp_type(t[2][2])
-            argcts = [self.cpp_type(argt) for n, argt in t[1][2]]
+        def cpp_types_function_pointer(t, ts):
+            rtnct = ts.cpp_type(t[2][2])
+            argcts = [ts.cpp_type(argt) for n, argt in t[1][2]]
             if argcts == ['void']:
                 argcts = []
             return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
@@ -467,6 +473,84 @@ class TypeSystem(object):
             'False': 'false',
             'function': cpp_types_function,
             'function_pointer': cpp_types_function_pointer,
+            }, self)
+
+        def cython_ctypes_function(t, ts):
+            rtnct = ts.cython_ctype(t[2][2])
+            argcts = [ts.cython_ctype(argt) for n, argt in t[1][2]]
+            if argcts == ['void']:
+                argcts = []
+            return rtnct + " {type_name}(" + ", ".join(argcts) + ")"
+
+        def cython_ctypes_function_pointer(t, ts):
+            rtnct = ts.cython_ctype(t[2][2])
+            argcts = [ts.cython_ctype(argt) for n, argt in t[1][2]]
+            if argcts == ['void']:
+                argcts = []
+            return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
+
+        self.cython_ctypes = _LazyConfigDict(cython_ctypes or {
+            'char': 'char',
+            'uchar': '{extra_types}uchar',
+            'str': 'std_string',
+            'int16': 'short',
+            'int32': 'int',
+            'int64': '{extra_types}int64',
+            'uint16': '{extra_types}uint16',
+            'uint32': '{extra_types}uint32',
+            'uint64': '{extra_types}uint64',
+            'float32': 'float',
+            'float64': 'double',
+            'float128': '{extra_types}float128',
+            'complex128': '{extra_types}complex_t',
+            'bool': 'bint',
+            'void': 'void',
+            'file': 'c_file',
+            'exception': '{extra_types}exception',
+            'map': 'cpp_map',
+            'dict': 'dict',
+            'pair': 'cpp_pair',
+            'set': 'cpp_set',
+            'vector': 'cpp_vector',
+            'function': cython_ctypes_function,
+            'function_pointer': cython_ctypes_function_pointer,
+            }, self)
+
+        def cython_cimports_functionish(t, ts, seen):
+            seen.add(('cython.operator', 'dereference', 'deref'))
+            for n, argt in t[1][2]:
+                ts.cython_cimport_tuples(argt, seen=seen, inc=('c',))
+            ts.cython_cimport_tuples(t[2][2], seen=seen, inc=('c',))
+
+        self.cython_cimports = _LazyImportDict(cython_cimports or {
+            'char': (None,),
+            'uchar':  (('{extra_types}',),),
+            'str': (('libcpp.string', 'string', 'std_string'),),
+            'int16': (None,),
+            'int32': (None,),
+            ('int32', '*'): 'int *',
+            'int64':  (('{extra_types}',),),
+            'uint16':  (('{extra_types}',),),
+            'uint32': (('{extra_types}',),),
+            'uint64':  (('{extra_types}',),),
+            'float32': (None,),
+            'float64': (None,),
+            'float128':  (('{extra_types}',),),
+            'complex128': (('{extra_types}',),),
+            'bool': (None,),
+            'void': (None,),
+            'file': (('libc.stdio', 'FILE', 'c_file'),),
+            'exception': (('{extra_types}',),),
+            'map': (('libcpp.map', 'map', 'cpp_map'),),
+            'dict': (None,),
+            'pair': (('libcpp.utility', 'pair', 'cpp_pair'),),
+            'set': (('libcpp.set', 'set', 'cpp_set'),),
+            'vector': (('libcpp.vector', 'vector', 'cpp_vector'),),
+            'nucid': (('pyne', 'cpp_nucname'),),
+            'nucname': (('pyne', 'cpp_nucname'), 
+                        ('libcpp.string', 'string', 'std_string')),
+            'function': cython_cimports_functionish,
+            'function_pointer': cython_cimports_functionish,
             }, self)
 
     @_memoize
@@ -707,156 +791,68 @@ class TypeSystem(object):
                    replace('>>', '> >').replace(', ', ',')
         return gxt
 
+    #########################   Cython Functions   ############################
+
+    def _cython_ctype_add_predicate(t, last):
+        """Adds a predicate to a ctype"""
+        if last == 'const':
+            x, y = last, t
+        else:
+            x, y = t, last
+        return '{0} {1}'.format(x, y)
+
+    @_memoize
+    def cython_ctype(self, t):
+        """Given a type t, returns the corresponding Cython C/C++ type declaration.
+        """
+        t = self.canon(t)
+        if t in self.cython_ctypes:
+            return self.cython_ctypes[t]
+        if isinstance(t, basestring):
+            if t in self.base_types:
+                return self.cython_ctypes[t]
+        # must be tuple below this line
+        tlen = len(t)
+        if 2 == tlen:
+            if 0 == t[1]:
+                return self.cython_ctype(t[0])
+            elif self.isrefinement(t[1]):
+                if t[1][0] in self.cython_ctypes:
+                    subtype = self.cython_ctypes[t[1][0]]
+                    if callable(subtype):
+                        subtype = subtype(t[1], self)
+                    return subtype
+                else:
+                    return self.cython_ctype(t[0])
+            else:
+                last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+                return self._cython_ctype_add_predicate(self.cython_ctype(t[0]), last)
+        elif 3 <= tlen:
+            assert t[0] in self.template_types
+            assert len(t) == len(self.template_types[t[0]]) + 2
+            template_name = self.cython_ctypes[t[0]]
+            assert template_name is not NotImplemented
+            template_filling = []
+            for x in t[1:-1]:
+                #if isinstance(x, bool):
+                #    x = _cython_ctypes[x]
+                #elif isinstance(x, Number):
+                if isinstance(x, Number):
+                    x = str(x)
+                else:
+                    x = self.cython_ctype(x)
+                template_filling.append(x)
+            cyct = '{0}[{1}]'.format(template_name, ', '.join(template_filling))
+            if 0 != t[-1]:
+                last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+                cyct = self._cython_ctype_add_predicate(cyct, last)
+            return cyct
+
 # Default type system instance
 type_system = TypeSystem()
 
 #################### Type System Above This Line ##########################
 
-#########################   Cython Functions   ################################
-
-_cython_ctypes = _LazyConfigDict({
-    'char': 'char',
-    #'uchar': 'unsigned char',
-    'uchar': '{extra_types}uchar',
-    'str': 'std_string',
-    'int16': 'short',
-    #'int32': 'long',
-    'int32': 'int',
-    #'int64': 'long long',
-    'int64': '{extra_types}int64',
-    #'uint16': 'unsigned short',
-    'uint16': '{extra_types}uint16',
-    #'uint32': 'unsigned long',
-    'uint32': '{extra_types}uint32',
-    #'uint64': 'unsigned long long',
-    'uint64': '{extra_types}uint64',
-    'float32': 'float',
-    'float64': 'double',
-    #'float128': 'long double',
-    'float128': '{extra_types}float128',
-    'complex128': '{extra_types}complex_t',
-    'bool': 'bint',
-    'void': 'void',
-    'file': 'c_file',
-    'exception': '{extra_types}exception',
-    'map': 'cpp_map',
-    'dict': 'dict',
-    'pair': 'cpp_pair',
-    'set': 'cpp_set',
-    'vector': 'cpp_vector',
-    })
-
-
-def _cython_ctypes_function(t):
-    rtnct = cython_ctype(t[2][2])
-    argcts = [cython_ctype(argt) for n, argt in t[1][2]]
-    if argcts == ['void']:
-        argcts = []
-    return rtnct + " {type_name}(" + ", ".join(argcts) + ")"
-_cython_ctypes['function'] = _cython_ctypes_function
-
-
-def _cython_ctypes_function_pointer(t):
-    rtnct = cython_ctype(t[2][2])
-    argcts = [cython_ctype(argt) for n, argt in t[1][2]]
-    if argcts == ['void']:
-        argcts = []
-    return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
-_cython_ctypes['function_pointer'] = _cython_ctypes_function_pointer
-
-
-def _cython_ctype_add_predicate(t, last):
-    """Adds a predicate to a ctype"""
-    if last == 'const':
-        x, y = last, t
-    else:
-        x, y = t, last
-    return '{0} {1}'.format(x, y)
-
-
-@_memoize
-def cython_ctype(t):
-    """Given a type t, returns the corresponding Cython C type declaration."""
-    t = canon(t)
-    if t in _cython_ctypes:
-        return _cython_ctypes[t]
-    if isinstance(t, basestring):
-        if t in base_types:
-            return _cython_ctypes[t]
-    # must be tuple below this line
-    tlen = len(t)
-    if 2 == tlen:
-        if 0 == t[1]:
-            return cython_ctype(t[0])
-        elif isrefinement(t[1]):
-            if t[1][0] in _cython_ctypes:
-                subtype = _cython_ctypes[t[1][0]]
-                if callable(subtype):
-                    subtype = subtype(t[1])
-                return subtype
-            else:
-                return cython_ctype(t[0])
-        else:
-            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-            return _cython_ctype_add_predicate(cython_ctype(t[0]), last)
-    elif 3 <= tlen:
-        assert t[0] in template_types
-        assert len(t) == len(template_types[t[0]]) + 2
-        template_name = _cython_ctypes[t[0]]
-        assert template_name is not NotImplemented
-        template_filling = []
-        for x in t[1:-1]:
-            #if isinstance(x, bool):
-            #    x = _cython_ctypes[x]
-            #elif isinstance(x, Number):
-            if isinstance(x, Number):
-                x = str(x)
-            else:
-                x = cython_ctype(x)
-            template_filling.append(x)
-        cyct = '{0}[{1}]'.format(template_name, ', '.join(template_filling))
-        if 0 != t[-1]:
-            last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-            cyct = _cython_ctype_add_predicate(cyct, last)
-        return cyct
-
-
-_cython_cimports = _LazyImportDict({
-    'char': (None,),
-    'uchar':  (('{extra_types}',),),
-    'str': (('libcpp.string', 'string', 'std_string'),),
-    'int16': (None,),
-    'int32': (None,),
-    ('int32', '*'): 'int *',
-    'int64':  (('{extra_types}',),),
-    'uint16':  (('{extra_types}',),),
-    'uint32': (('{extra_types}',),),
-    'uint64':  (('{extra_types}',),),
-    'float32': (None,),
-    'float64': (None,),
-    'float128':  (('{extra_types}',),),
-    'complex128': (('{extra_types}',),),
-    'bool': (None,),
-    'void': (None,),
-    'file': (('libc.stdio', 'FILE', 'c_file'),),
-    'exception': (('{extra_types}',),),
-    'map': (('libcpp.map', 'map', 'cpp_map'),),
-    'dict': (None,),
-    'pair': (('libcpp.utility', 'pair', 'cpp_pair'),),
-    'set': (('libcpp.set', 'set', 'cpp_set'),),
-    'vector': (('libcpp.vector', 'vector', 'cpp_vector'),),
-    'nucid': (('pyne', 'cpp_nucname'),),
-    'nucname': (('pyne', 'cpp_nucname'), ('libcpp.string', 'string', 'std_string')),
-    })
-
-
-def _cython_cimports_functionish(t, seen):
-    seen.add(('cython.operator', 'dereference', 'deref'))
-    for n, argt in t[1][2]:
-        cython_cimport_tuples(argt, seen=seen, inc=('c',))
-    cython_cimport_tuples(t[2][2], seen=seen, inc=('c',))
-_cython_cimports['function'] = _cython_cimports_functionish
-_cython_cimports['function_pointer'] = _cython_cimports_functionish
 
 _cython_cyimports = _LazyImportDict({
     'char': (None,),
