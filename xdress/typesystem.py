@@ -280,597 +280,355 @@ def _memoize(obj):
     return memoizer
 
 
-base_types = set(['char', 'uchar', 'str', 'int16', 'int32', 'int64', 'int128',
-                  'uint16', 'uint32', 'uint64', 'uint128', 'float32', 'float64',
-                  'float128', 'complex128', 'void', 'bool', 'type', 'file', 
-                  'exception'])
-"""Base types in the type system."""
+class TypeSystem(object):
+    """A class representing a type system.
+    """
 
-template_types = {
-    'map': ('key_type', 'value_type'),
-    'dict': ('key_type', 'value_type'),
-    'pair': ('key_type', 'value_type'),
-    'set': ('value_type',),
-    'list': ('value_type',),
-    'tuple': ('value_type',),
-    'vector': ('value_type',),
-    'enum': ('name', 'aliases'),
-    'function': ('arguments', 'returns'),
-    'function_pointer': ('arguments', 'returns'),
-    }
-"""Template types are types whose instantiations are based on meta-types.
-this dict maps their names to meta-type names in order."""
-
-
-@_memoize
-def istemplate(t):
-    """Returns whether t is a template type or not."""
-    if isinstance(t, basestring):
-        return t in template_types
-    if isinstance(t, Sequence):
-        return istemplate(t[0])
-    return False
-
-refined_types = {
-    'nucid': 'int32',
-    'nucname': 'str',
-    ('enum', ('name', 'str'), ('aliases', ('dict', 'str', 'int32', 0))): 'int32',
-    ('function', ('arguments', ('list', ('pair', 'str', 'type'))),
-                 ('returns', 'type')): 'void',
-    ('function_pointer', ('arguments', ('list', ('pair', 'str', 'type'))),
-                         ('returns', 'type')): ('void', '*'),
-    }
-"""This is a mapping from refinement type names to the parent types.
-The parent types may either be base types, compound types, template
-types, or other refined types!"""
-
-
-@_memoize
-def isenum(t):
-    t = canon(t)
-    return isinstance(t, Sequence) and t[0] == 'int32' and \
-           isinstance(t[1], Sequence) and t[1][0] == 'enum'
-
-
-@_memoize
-def isfunctionpointer(t):
-    t = canon(t)
-    return isinstance(t, Sequence) and t[0] == ('void', '*') and \
-           isinstance(t[1], Sequence) and t[1][0] == 'function_pointer'
-
-_humannames = {
-    'char': 'character',
-    'uchar': 'unsigned character',
-    'str': 'string',
-    'bool': 'boolean',
-    'int16': 'short integer',
-    'int32': 'integer',
-    'int64': 'long integer',
-    'int128': 'very long integer',
-    'uint16': 'unsigned short integer',
-    'uint32': 'unsigned integer',
-    'uint64': 'unsigned long integer',
-    'uint128': 'unsigned very long integer',
-    'float32': 'float',
-    'float64': 'double',
-    'float128': 'long double',
-    'complex128': 'complex',
-    'file': 'file',
-    'exception': 'exception',
-    'dict': 'dict of ({key_type}, {value_type}) items',
-    'map': 'map of ({key_type}, {value_type}) items',
-    'pair': '({key_type}, {value_type}) pair',
-    'set': 'set of {value_type}',
-    'vector': 'vector [ndarray] of {value_type}',
-    }
-
-
-@_memoize
-def humanname(t, hnt=None):
-    """Computes human names for types."""
-    if hnt is None:
-        t = canon(t)
-        if isinstance(t, basestring):
-            return t, _humannames[t]
-        elif t[0] in base_types:
-            return t, _humannames[t[0]]
-        return humanname(t, _humannames[t[0]])
-    d = {}
-    for key, x in zip(template_types[t[0]], t[1:-1]):
-        if isinstance(x, basestring):
-            val = _humannames[x]
-        elif x[0] in base_types:
-            val = _humannames[x[0]]
-        else:
-            val, _ = humanname(x, _humannames[x[0]])
-        d[key] = val
-    return t, hnt.format(**d)
-
-
-@_memoize
-def isdependent(t):
-    """Returns whether t is a dependent type or not."""
-    deptypes = set([k[0] for k in refined_types if not isinstance(k, basestring)])
-    if isinstance(t, basestring):
-        return t in deptypes
-    if isinstance(t, Sequence):
-        return isdependent(t[0])
-    return False
-
-
-@_memoize
-def isrefinement(t):
-    """Returns whether t is a refined type."""
-    if isinstance(t, basestring):
-        return t in refined_types
-    return isdependent(t)
-
-
-def _raise_type_error(t):
-    raise TypeError("type of {0!r} could not be determined".format(t))
-
-
-@_memoize
-def _resolve_dependent_type(tname, tinst=None):
-    depkey = [k for k in refined_types if k[0] == tname][0]
-    depval = refined_types[depkey]
-    #istemplated = any([isinstance(x, basestring) for x in depkey[1:]])
-    istemplated = istemplate(depkey)
-    if tinst is None:
-        return depkey
-    elif istemplated:
-        assert len(tinst) == len(depkey)
-        typemap = dict([(k, tinst[i]) for i, k in enumerate(depkey[1:], 1) \
-                                                    if isinstance(k, basestring)])
-        for k in typemap:
-            if k in type_aliases:
-                raise TypeError('template type {0} already exists'.format(k))
-        type_aliases.update(typemap)
-        resotype = canon(depval), (tname,) + \
-                        tuple([canon(k) for k in depkey[1:] if k in typemap]) + \
-                        tuple([(k[0], canon(k[1]), instval) \
-                            for k, instval in zip(depkey[1:], tinst[1:])
-                            if k not in typemap])
-        for k in typemap:
-            del type_aliases[k]
-            canon.cache.pop((k,), None)
-        return resotype
-    else:
-        assert len(tinst) == len(depkey)
-        return canon(depval), (tname,) + tuple([(kname, canon(ktype), instval) \
-                        for (kname, ktype), instval in zip(depkey[1:], tinst[1:])])
-
-
-@_memoize
-def canon(t):
-    """Turns the type into its canonical form. See module docs for more information."""
-    if isinstance(t, basestring):
-        if t in base_types:
-            return t
-        elif t in type_aliases:
-            return canon(type_aliases[t])
-        elif t in refined_types:
-            return (canon(refined_types[t]), t)
-        elif isdependent(t):
-            return _resolve_dependent_type(t)
-        else:
-            _raise_type_error(t)
-            # BELOW this would be for complicated string representations,
-            # such as 'char *' or 'map<nucid, double>'.  Would need to write
-            # the parse_type() function and that might be a lot of work.
-            #parse_type(t)
-    elif isinstance(t, Sequence):
-        t0 = t[0]
-        tlen = len(t)
-        if 0 == tlen:
-            _raise_type_error(t)
-        last_val = 0 if tlen == 1 else t[-1]
-        if not isinstance(t0, basestring) and not isinstance(t0, Sequence):
-            _raise_type_error(t)
-        if isdependent(t0):
-            return _resolve_dependent_type(t0, t)
-        elif t0 in template_types:
-            templen = len(template_types[t0])
-            last_val = 0 if tlen == 1 + templen else t[-1]
-            filledt = [t0]
-            for tt in t[1:1+templen]:
-                if isinstance(tt, Number):  # includes bool!
-                    filledt.append(tt)
-                elif isinstance(tt, basestring):
-                    try:
-                        canontt = canon(tt)
-                    except TypeError:
-                        canontt = tt
-                    except:
-                        raise
-                    filledt.append(canontt)
-                elif isinstance(tt, Sequence):
-                    filledt.append(canon(tt))
-                else:
-                    _raise_type_error(tt)
-            filledt.append(last_val)
-            return tuple(filledt)
-        else:
-            #if 2 < tlen:
-            #    _raise_type_error(t)
-            return (canon(t0), last_val)
-    else:
-        _raise_type_error(t)
-
-
-@_memoize
-def strip_predicates(t):
-    """Removes all outer predicates from a type."""
-    t = canon(t)
-    if isinstance(t, basestring):
-        return t
-    elif isinstance(t, Sequence):
-        tlen = len(t)
-        if tlen == 2:
-            sp0 = strip_predicates(t[0])
-            return (sp0, 0) if t[1] == 0 else sp0
-        else:
-            return t[:-1] + (0,)
-    else:
-        _raise_type_error(t)
-
-@_memoize
-def basename(t):
-    """Retrieves basename from a type, e.g. 'map' in ('map', 'int', 'float')."""
-    t = canon(t)
-    if isinstance(t, basestring):
-        return t
-    elif isinstance(t, Sequence):
-        t0 = t
-        while not isinstance(t0, basestring):
-            t0 = t0[0]
-        return t0
-    else:
-        _raise_type_error(t)
-
-class MatchAny(object):
-    """A singleton helper class for matching any portion of a type."""
-    def __repr__(self):
-        return "MatchAny"
-
-    def __hash__(self):
-        # give consistent hash value across executions
-        return hash(repr(self))
-
-MatchAny = MatchAny()
-"""A singleton helper class for matching any portion of a type."""
-
-
-class TypeMatcher(object):
-    """A class that is used for checking whether a type matches a given pattern."""
-
-    def __init__(self, pattern):
+    def __init__(self, base_types=None, template_types=None, refined_types=None, 
+                 humannames=None, extra_types='xdress_extra_types', 
+                 stlcontainers='stlcontainers', type_aliases=None, cpp_types=None):
         """Parameters
         ----------
-        pattern : nested tuples, str, int
-            This is a type-like entity that may have certain elements replaced
-            by MatchAny, indicating that any value in a concrete type may match
-            this pattern.  For example ('float64', MatchAny) will match the
-            following::
-
-                ('float64', 0)
-                ('float64', '*')
-                ('float64', '&')
-                ('float64', 'const')
-
-            but will not match::
-
-                'float64'
-                (('float64', 'const'), '&')
+        base_types : set of str, optional
+            The base or primitive types in the type system.
+        template_types : dict, optional
+            Template types are types whose instantiations are based on meta-types.
+            this dict maps their names to meta-type names in order.
+        refined_types : dict, optional 
+            This is a mapping from refinement type names to the parent types.
+            The parent types may either be base types, compound types, template
+            types, or other refined types!
+        humannames : dict, optional
+            The human readable names for types.
+        extra_types : str, optional
+            The name of the xdress extra types module.
+        stlcontainers : str, optional
+            The name of the xdress C++ standard library containers wrapper module.
+        type_aliases : dict, optional
+            Aliases that may be used to substitute one type name for another.
+        cpp_types : dict, optional
+            The C/C++ representation of types.
 
         """
-        self._pattern = pattern
+        self.base_types = base_types or set(['char', 'uchar', 'str', 'int16', 
+            'int32', 'int64', 'int128', 'uint16', 'uint32', 'uint64', 'uint128', 
+            'float32', 'float64', 'float128', 'complex128', 'void', 'bool', 'type', 
+            'file', 'exception'])
+        self.template_types = template_types or {
+            'map': ('key_type', 'value_type'),
+            'dict': ('key_type', 'value_type'),
+            'pair': ('key_type', 'value_type'),
+            'set': ('value_type',),
+            'list': ('value_type',),
+            'tuple': ('value_type',),
+            'vector': ('value_type',),
+            'enum': ('name', 'aliases'),
+            'function': ('arguments', 'returns'),
+            'function_pointer': ('arguments', 'returns'),
+            }
+        self.refined_types = refined_types or {
+            'nucid': 'int32',
+            'nucname': 'str',
+            ('enum', ('name', 'str'), 
+                     ('aliases', ('dict', 'str', 'int32', 0))): 'int32',
+            ('function', ('arguments', ('list', ('pair', 'str', 'type'))),
+                         ('returns', 'type')): 'void',
+            ('function_pointer', ('arguments', ('list', ('pair', 'str', 'type'))),
+                                 ('returns', 'type')): ('void', '*'),
+            }
+        self.humannames = humannames or {
+            'char': 'character',
+            'uchar': 'unsigned character',
+            'str': 'string',
+            'bool': 'boolean',
+            'int16': 'short integer',
+            'int32': 'integer',
+            'int64': 'long integer',
+            'int128': 'very long integer',
+            'uint16': 'unsigned short integer',
+            'uint32': 'unsigned integer',
+            'uint64': 'unsigned long integer',
+            'uint128': 'unsigned very long integer',
+            'float32': 'float',
+            'float64': 'double',
+            'float128': 'long double',
+            'complex128': 'complex',
+            'file': 'file',
+            'exception': 'exception',
+            'dict': 'dict of ({key_type}, {value_type}) items',
+            'map': 'map of ({key_type}, {value_type}) items',
+            'pair': '({key_type}, {value_type}) pair',
+            'set': 'set of {value_type}',
+            'vector': 'vector [ndarray] of {value_type}',
+            }
+        self.extra_types = extra_types
+        self.stlcontainers = stlcontainers
+        self.type_aliases = _LazyConfigDict(type_aliases or {
+            'i': 'int32',
+            'i2': 'int16',
+            'i4': 'int32',
+            'i8': 'int64',
+            'i16': 'int128',
+            'int': 'int32',
+            'ui': 'uint32',
+            'ui2': 'uint16',
+            'ui4': 'uint32',
+            'ui8': 'uint64',
+            'ui16': 'uint128',
+            'uint': 'uint32',
+            'f': 'float64',
+            'f4': 'float32',
+            'f8': 'float64',
+            'f16': 'float128',
+            'float': 'float64',
+            'double': 'float64',
+            'complex': 'complex128',
+            'b': 'bool',
+            'v': 'void',
+            's': 'str',
+            'string': 'str',
+            'FILE': 'file',
+            '_IO_FILE': 'file',
+            # 'c' has char / complex ambiguity, not included
+            'NPY_BYTE': 'char',
+            'NPY_UBYTE': 'uchar',
+            'NPY_STRING': 'str',
+            'NPY_INT16': 'int16',
+            'NPY_INT32': 'int32',
+            'NPY_INT64': 'int64',
+            'NPY_UINT16': 'uint16',
+            'NPY_UINT32': 'uint32',
+            'NPY_UINT64': 'uint64',
+            'NPY_FLOAT32': 'float32',
+            'NPY_FLOAT64': 'float64',
+            'NPY_COMPLEX128': 'complex128',
+            'NPY_BOOL': 'bool',
+            'NPY_VOID': 'void',
+            'NPY_OBJECT': 'void',
+            'np.NPY_BYTE': 'char',
+            'np.NPY_UBYTE': 'uchar',
+            'np.NPY_STRING': 'str',
+            'np.NPY_INT16': 'int16',
+            'np.NPY_INT32': 'int32',
+            'np.NPY_INT64': 'int64',
+            'np.NPY_UINT16': 'uint16',
+            'np.NPY_UINT32': 'uint32',
+            'np.NPY_UINT64': 'uint64',
+            'np.NPY_FLOAT32': 'float32',
+            'np.NPY_FLOAT64': 'float64',
+            'np.NPY_COMPLEX128': 'complex128',
+            'np.NPY_BOOL': 'bool',
+            'np.NPY_VOID': 'void',
+            'np.NPY_OBJECT': 'void',
+            }, self)
+        self.cpp_types = _LazyConfigDict(cpp_types or {
+            'char': 'char',
+            'uchar': 'unsigned char',
+            'str': 'std::string',
+            'int16': 'short',
+            'int32': 'int',
+            'int64': 'long long',
+            'uint16': 'unsigned short',
+            'uint32': 'unsigned long',
+            'uint64': 'unsigned long long',
+            'float32': 'float',
+            'float64': 'double',
+            'float128': 'long double',
+            'complex128': '{extra_types}complex_t',
+            'bool': 'bool',
+            'void': 'void', 
+            'file': 'FILE',
+            'exception': '{extra_types}exception',
+            'map': 'std::map',
+            'dict': 'std::map',
+            'pair': 'std::pair',
+            'set': 'std::set',
+            'vector': 'std::vector',
+            True: 'true',
+            'true': 'true',
+            'True': 'true',
+            False: 'false',
+            'false': 'false',
+            'False': 'false',
+            }, self)
 
-    @property
-    def pattern(self):
-        """The pattern to match."""
-        # Make this field read-only to prevent hashing errors
-        return self._pattern
+    @_memoize
+    def istemplate(self, t):
+        """Returns whether t is a template type or not."""
+        if isinstance(t, basestring):
+            return t in self.template_types
+        if isinstance(t, Sequence):
+            return self.istemplate(t[0])
+        return False
 
-    def __hash__(self):
-        # needed so that class can be dict key
-        return hash(self.pattern)
+    @_memoize
+    def isenum(self, t):
+        t = self.canon(t)
+        return isinstance(t, Sequence) and t[0] == 'int32' and \
+           isinstance(t[1], Sequence) and t[1][0] == 'enum'
 
-    def matches(self, t):
-        """Tests that a type matches the pattern, returns True or False."""
-        pattern = self.pattern
-        if pattern is MatchAny:
-            return True
-        if t is pattern:
-            return True
-        if pattern is None:
-            return False
-        if t == pattern:
-            return True
-        if isinstance(pattern, basestring):
-            #return t == pattern if isinstance(t, basestring) else False
-            return False
-        if isinstance(t, basestring) or isinstance(t, bool) or \
-           isinstance(t, int) or isinstance(t, float):
-            return False
-        # now we know both pattern and t should be different non-string sequences,
-        # nominally tuples or lists
-        if len(t) != len(pattern):
-            return False
-        submatcher = TypeMatcher(None)
-        for subt, subpattern in zip(t, pattern):
-            submatcher._pattern = subpattern
-            if not submatcher.matches(subt):
-                return False
-        return True
+    @_memoize
+    def isfunctionpointer(self, t):
+        t = self.canon(t)
+        return isinstance(t, Sequence) and t[0] == ('void', '*') and \
+               isinstance(t[1], Sequence) and t[1][0] == 'function_pointer'
 
-    def flatmatches(self, t):
-        """Flattens t and then sees if any part of it matches self.pattern.
-        """
-        try:
-            # See if user gave entire type
-            if self.matches(t):
-                return True
-        except TypeError:
-            # This might fail, if it does just move on
-            pass
-
-        else:
+    @_memoize
+    def humanname(self, t, hnt=None):
+        """Computes human names for types."""
+        if hnt is None:
+            t = canon(t)
             if isinstance(t, basestring):
-                return self.matches(t)
-            elif isinstance(t, (tuple, list)):
-                return any([self.matches(i) for i in flatten(t)])
-
-    def __eq__(self, other):
-        if isinstance(other, TypeMatcher):
-            return self._pattern == other._pattern
-        else:
-            return self._pattern == other
-
-    def __str__(self):
-        return "{0}({1!s})".format(self.__class__.__name__, self._pattern)
-
-    def __repr__(self):
-        return "{0}({1!r})".format(self.__class__.__name__, self._pattern)
-
-
-def matches(pattern, t):
-    """Indicates whether a type t matches a pattern. See TypeMatcher for more details.
-    """
-    tm = TypeMatcher(pattern)
-    return tm.matches(t)
-
-
-#################### Type System Above This Line ##########################
-
-EXTRA_TYPES = 'xdress_extra_types'
-
-STLCONTAINERS = 'stlcontainers'
-
-_ensuremod = lambda x: x if x is not None and 0 < len(x) else ''
-_ensuremoddot = lambda x: x + '.' if x is not None and 0 < len(x) else ''
-
-
-def _recurse_replace(x, a, b):
-    if isinstance(x, basestring):
-        return x.replace(a, b)
-    elif isinstance(x, Sequence):
-        return tuple([_recurse_replace(y, a, b) for y in x])
-    else:
-        return x
-
-
-class _LazyConfigDict(MutableMapping):
-    def __init__(self, items):
-        self._d = dict(items)
-
-    def __len__(self):
-        return len(self._d)
-
-    def __contains__(self, key):
-        return key in self._d
-
-    def __iter__(self):
-        for k in self._d:
-            yield k
-
-    def __getitem__(self, key):
-        value = self._d[key]
-        kw = {'extra_types': _ensuremoddot(EXTRA_TYPES),
-              'stlcontainers': _ensuremoddot(STLCONTAINERS), }
-        for k, v in kw.items():
-            value = _recurse_replace(value, '{' + k + '}', v)
-        return value
-
-    def __setitem__(self, key, value):
-        self._d[key] = value
-
-    def __delitem__(self, key):
-        del self._d[key]
-
-
-class _LazyImportDict(MutableMapping):
-    def __init__(self, items):
-        self._d = dict(items)
-
-    def __len__(self):
-        return len(self._d)
-
-    def __contains__(self, key):
-        return key in self._d
-
-    def __iter__(self):
-        for k in self._d:
-            yield k
-
-    def __getitem__(self, key):
-        value = self._d[key]
-        if callable(value):
-            return value
-        kw = {'extra_types': _ensuremod(EXTRA_TYPES),
-              'stlcontainers': _ensuremod(STLCONTAINERS),}
-        newvalue = tuple(tuple(x.format(**kw) or None for x in imp if x is not None) \
-                            for imp in value if imp is not None) or (None,)
-        return newvalue
-
-    def __setitem__(self, key, value):
-        self._d[key] = value
-
-    def __delitem__(self, key):
-        del self._d[key]
-
-
-class _LazyConverterDict(MutableMapping):
-    def __init__(self, items):
-        self._d = dict(items)
-        self._tms = set([k for k in self._d if isinstance(k, TypeMatcher)])
-
-    def __len__(self):
-        return len(self._d)
-
-    def __contains__(self, key):
-        if key in self._d:
-            return True  # Check if key is present
-        else:
-            # check if any TypeMatcher keys actually match
-            for tm in self._tms:
-                if tm.matches(key):
-                    self[key] = self._d[tm]
-                    return True
+                return t, self.humannames[t]
+            elif t[0] in self.base_types:
+                return t, self.humannames[t[0]]
+            return self.humanname(t, self.humannames[t[0]])
+        d = {}
+        for key, x in zip(self.template_types[t[0]], t[1:-1]):
+            if isinstance(x, basestring):
+                val = self.humannames[x]
+            elif x[0] in self.base_types:
+                val = self.humannames[x[0]]
             else:
-                return False
+                val, _ = self.humanname(x, self.humannames[x[0]])
+            d[key] = val
+        return t, hnt.format(**d)
 
-    def __iter__(self):
-        for k in self._d:
-            yield k
+    @_memoize
+    def isdependent(self, t):
+        """Returns whether t is a dependent type or not."""
+        deptypes = set([k[0] for k in self.refined_types \
+                        if not isinstance(k, basestring)])
+        if isinstance(t, basestring):
+            return t in deptypes
+        if isinstance(t, Sequence):
+            return self.isdependent(t[0])
+        return False
 
-    def __getitem__(self, key):
-        if key in self._d:
-            value = self._d[key]  # Check if key is present
+    @_memoize
+    def isrefinement(self, t):
+        """Returns whether t is a refined type."""
+        if isinstance(t, basestring):
+            return t in self.refined_types
+        return self.isdependent(t)
+
+    @_memoize
+    def _resolve_dependent_type(self, tname, tinst=None):
+        depkey = [k for k in self.refined_types if k[0] == tname][0]
+        depval = self.refined_types[depkey]
+        istemplated = self.istemplate(depkey)
+        if tinst is None:
+            return depkey
+        elif istemplated:
+            assert len(tinst) == len(depkey)
+            typemap = dict([(k, tinst[i]) for i, k in enumerate(depkey[1:], 1) \
+                                                   if isinstance(k, basestring)])
+            for k in typemap:
+                if k in self.type_aliases:
+                    raise TypeError('template type {0} already exists'.format(k))
+            self.type_aliases.update(typemap)
+            resotype = self.canon(depval), (tname,) + \
+                        tuple([self.canon(k) for k in depkey[1:] if k in typemap]) + \
+                        tuple([(k[0], self.canon(k[1]), instval) \
+                            for k, instval in zip(depkey[1:], tinst[1:]) 
+                            if k not in typemap])
+            for k in typemap:
+                del self.type_aliases[k]
+                self.canon.cache.pop((k,), None)
+            return resotype
         else:
-            # check if any TypeMatcher keys actually match
-            for tm in self._tms:
-                if tm.matches(key):
-                    value = self._d[tm]
-                    self[key] = value
-                    break
+            assert len(tinst) == len(depkey)
+            return self.canon(depval), (tname,) + tuple([(kname, self.canon(ktype),
+                instval) for (kname, ktype), instval in zip(depkey[1:], tinst[1:])])
+
+    @_memoize
+    def canon(self, t):
+        """Turns the type into its canonical form. See module docs for more information."""
+        if isinstance(t, basestring):
+            if t in self.base_types:
+                return t
+            elif t in self.type_aliases:
+                return self.canon(self.type_aliases[t])
+            elif t in self.refined_types:
+                return (self.canon(self.refined_types[t]), t)
+            elif self.isdependent(t):
+                return self._resolve_dependent_type(t)
             else:
-                raise KeyError("{0} not found".format(key))
-        if value is None or value is NotImplemented or callable(value):
-            return value
-        kw = {'extra_types': _ensuremoddot(EXTRA_TYPES),
-              'stlcontainers': _ensuremoddot(STLCONTAINERS),}
-        newvalue = []
-        for x in value:
-            newx = x
-            if isinstance(newx, basestring):
-                for k, v in kw.items():
-                    newx = newx.replace('{' + k + '}', v)
-            newvalue.append(newx)
-        return tuple(newvalue)
+                _raise_type_error(t)
+                # BELOW this would be for complicated string representations,
+                # such as 'char *' or 'map<nucid, double>'.  Would need to write
+                # the parse_type() function and that might be a lot of work.
+                #parse_type(t)
+        elif isinstance(t, Sequence):
+            t0 = t[0]
+            tlen = len(t)
+            if 0 == tlen:
+                _raise_type_error(t)
+            last_val = 0 if tlen == 1 else t[-1]
+            if not isinstance(t0, basestring) and not isinstance(t0, Sequence):
+                _raise_type_error(t)
+            if self.isdependent(t0):
+                return self._resolve_dependent_type(t0, t)
+            elif t0 in template_types:
+                templen = len(self.template_types[t0])
+                last_val = 0 if tlen == 1 + templen else t[-1]
+                filledt = [t0]
+                for tt in t[1:1+templen]:
+                    if isinstance(tt, Number):  # includes bool!
+                        filledt.append(tt)
+                    elif isinstance(tt, basestring):
+                        try:
+                            canontt = self.canon(tt)
+                        except TypeError:
+                            canontt = tt
+                        except:
+                            raise
+                        filledt.append(canontt)
+                    elif isinstance(tt, Sequence):
+                        filledt.append(self.canon(tt))
+                    else:
+                        _raise_type_error(tt)
+                filledt.append(last_val)
+                return tuple(filledt)
+            else:
+                #if 2 < tlen:
+                #    _raise_type_error(t)
+                return (self.canon(t0), last_val)
+        else:
+            _raise_type_error(t)
 
-    def __setitem__(self, key, value):
-        self._d[key] = value
-        if isinstance(key, TypeMatcher):
-            self._tms.add(key)
+    @_memoize
+    def strip_predicates(self, t):
+        """Removes all outer predicates from a type."""
+        t = self.canon(t)
+        if isinstance(t, basestring):
+            return t
+        elif isinstance(t, Sequence):
+            tlen = len(t)
+            if tlen == 2:
+                sp0 = self.strip_predicates(t[0])
+                return (sp0, 0) if t[1] == 0 else sp0
+            else:
+                return t[:-1] + (0,)
+        else:
+            _raise_type_error(t)
 
-    def __delitem__(self, key):
-        del self._d[key]
-        if isinstance(key, TypeMatcher):
-            self._tms.remove(key)
+    @_memoize
+    def basename(self, t):
+        """Retrieves basename from a type, e.g. 'map' in ('map', 'int', 'float')."""
+        t = self.canon(t)
+        if isinstance(t, basestring):
+            return t
+        elif isinstance(t, Sequence):
+            t0 = t
+            while not isinstance(t0, basestring):
+                t0 = t0[0]
+            return t0
+        else:
+            _raise_type_error(t)
 
-type_aliases = _LazyConfigDict({
-    'i': 'int32',
-    'i2': 'int16',
-    'i4': 'int32',
-    'i8': 'int64',
-    'i16': 'int128',
-    'int': 'int32',
-    'ui': 'uint32',
-    'ui2': 'uint16',
-    'ui4': 'uint32',
-    'ui8': 'uint64',
-    'ui16': 'uint128',
-    'uint': 'uint32',
-    'f': 'float64',
-    'f4': 'float32',
-    'f8': 'float64',
-    'f16': 'float128',
-    'float': 'float64',
-    'double': 'float64',
-    'complex': 'complex128',
-    'b': 'bool',
-    'v': 'void',
-    's': 'str',
-    'string': 'str',
-    'FILE': 'file',
-    '_IO_FILE': 'file',
-    # 'c' has char / complex ambiguity, not included
-    'NPY_BYTE': 'char',
-    'NPY_UBYTE': 'uchar',
-    'NPY_STRING': 'str',
-    'NPY_INT16': 'int16',
-    'NPY_INT32': 'int32',
-    'NPY_INT64': 'int64',
-    'NPY_UINT16': 'uint16',
-    'NPY_UINT32': 'uint32',
-    'NPY_UINT64': 'uint64',
-    'NPY_FLOAT32': 'float32',
-    'NPY_FLOAT64': 'float64',
-    'NPY_COMPLEX128': 'complex128',
-    'NPY_BOOL': 'bool',
-    'NPY_VOID': 'void',
-    'NPY_OBJECT': 'void',
-    'np.NPY_BYTE': 'char',
-    'np.NPY_UBYTE': 'uchar',
-    'np.NPY_STRING': 'str',
-    'np.NPY_INT16': 'int16',
-    'np.NPY_INT32': 'int32',
-    'np.NPY_INT64': 'int64',
-    'np.NPY_UINT16': 'uint16',
-    'np.NPY_UINT32': 'uint32',
-    'np.NPY_UINT64': 'uint64',
-    'np.NPY_FLOAT32': 'float32',
-    'np.NPY_FLOAT64': 'float64',
-    'np.NPY_COMPLEX128': 'complex128',
-    'np.NPY_BOOL': 'bool',
-    'np.NPY_VOID': 'void',
-    'np.NPY_OBJECT': 'void',
-    })
-"""Aliases that may be used to substitute one type name for another."""
+    ###########################   C++ Methods   #############################
 
-###########################   C++ Functions   ##################################
-
-_cpp_types = _LazyConfigDict({
-    'char': 'char',
-    'uchar': 'unsigned char',
-    'str': 'std::string',
-    'int16': 'short',
-    'int32': 'int',
-    'int64': 'long long',
-    'uint16': 'unsigned short',
-    'uint32': 'unsigned long',
-    'uint64': 'unsigned long long',
-    'float32': 'float',
-    'float64': 'double',
-    'float128': 'long double',
-    'complex128': '{extra_types}complex_t',
-    'bool': 'bool',
-    'void': 'void', 
-    'file': 'FILE',
-    'exception': '{extra_types}exception',
-    'map': 'std::map',
-    'dict': 'std::map',
-    'pair': 'std::pair',
-    'set': 'std::set',
-    'vector': 'std::vector',
-    True: 'true',
-    'true': 'true',
-    'True': 'true',
-    False: 'false',
-    'false': 'false',
-    'False': 'false',
-    })
 
 def _cpp_types_function(t):
     rtnct = cpp_type(t[2][2])
@@ -949,6 +707,11 @@ def gccxml_type(t):
     gxt = cppt.replace('< ', '<').replace(' >', '>').\
                replace('>>', '> >').replace(', ', ',')
     return gxt
+
+# Default type system instance
+type_system = TypeSystem()
+
+#################### Type System Above This Line ##########################
 
 #########################   Cython Functions   ################################
 
@@ -2389,15 +2152,263 @@ def register_numpy_dtype(t, cython_cimport=None, cython_cyimport=None,
     x = x + _ensure_importable(cython_pyimport)
     _cython_pyimports[t] = x
 
+################### Type Matching #############################################
+
+class MatchAny(object):
+    """A singleton helper class for matching any portion of a type."""
+    def __repr__(self):
+        return "MatchAny"
+
+    def __hash__(self):
+        # give consistent hash value across executions
+        return hash(repr(self))
+
+MatchAny = MatchAny()
+"""A singleton helper class for matching any portion of a type."""
+
+
+class TypeMatcher(object):
+    """A class that is used for checking whether a type matches a given pattern."""
+
+    def __init__(self, pattern):
+        """Parameters
+        ----------
+        pattern : nested tuples, str, int
+            This is a type-like entity that may have certain elements replaced
+            by MatchAny, indicating that any value in a concrete type may match
+            this pattern.  For example ('float64', MatchAny) will match the
+            following::
+
+                ('float64', 0)
+                ('float64', '*')
+                ('float64', '&')
+                ('float64', 'const')
+
+            but will not match::
+
+                'float64'
+                (('float64', 'const'), '&')
+
+        """
+        self._pattern = pattern
+
+    @property
+    def pattern(self):
+        """The pattern to match."""
+        # Make this field read-only to prevent hashing errors
+        return self._pattern
+
+    def __hash__(self):
+        # needed so that class can be dict key
+        return hash(self.pattern)
+
+    def matches(self, t):
+        """Tests that a type matches the pattern, returns True or False."""
+        pattern = self.pattern
+        if pattern is MatchAny:
+            return True
+        if t is pattern:
+            return True
+        if pattern is None:
+            return False
+        if t == pattern:
+            return True
+        if isinstance(pattern, basestring):
+            #return t == pattern if isinstance(t, basestring) else False
+            return False
+        if isinstance(t, basestring) or isinstance(t, bool) or \
+           isinstance(t, int) or isinstance(t, float):
+            return False
+        # now we know both pattern and t should be different non-string sequences,
+        # nominally tuples or lists
+        if len(t) != len(pattern):
+            return False
+        submatcher = TypeMatcher(None)
+        for subt, subpattern in zip(t, pattern):
+            submatcher._pattern = subpattern
+            if not submatcher.matches(subt):
+                return False
+        return True
+
+    def flatmatches(self, t):
+        """Flattens t and then sees if any part of it matches self.pattern.
+        """
+        try:
+            # See if user gave entire type
+            if self.matches(t):
+                return True
+        except TypeError:
+            # This might fail, if it does just move on
+            pass
+
+        else:
+            if isinstance(t, basestring):
+                return self.matches(t)
+            elif isinstance(t, (tuple, list)):
+                return any([self.matches(i) for i in flatten(t)])
+
+    def __eq__(self, other):
+        if isinstance(other, TypeMatcher):
+            return self._pattern == other._pattern
+        else:
+            return self._pattern == other
+
+    def __str__(self):
+        return "{0}({1!s})".format(self.__class__.__name__, self._pattern)
+
+    def __repr__(self):
+        return "{0}({1!r})".format(self.__class__.__name__, self._pattern)
+
+
+def matches(pattern, t):
+    """Indicates whether a type t matches a pattern. See TypeMatcher for more details.
+    """
+    tm = TypeMatcher(pattern)
+    return tm.matches(t)
+
+#################### Lazy Configuration ###################################
+
+class _LazyConfigDict(MutableMapping):
+    def __init__(self, items, ts):
+        self._d = item if isinstance(items, MutableMapping) else dict(items)
+        self._ts = ts
+
+    def __len__(self):
+        return len(self._d)
+
+    def __contains__(self, key):
+        return key in self._d
+
+    def __iter__(self):
+        for k in self._d:
+            yield k
+
+    def __getitem__(self, key):
+        value = self._d[key]
+        kw = {'extra_types': _ensuremoddot(self._ts.extra_types),
+              'stlcontainers': _ensuremoddot(self._ts.stlcontainers), }
+        for k, v in kw.items():
+            value = _recurse_replace(value, '{' + k + '}', v)
+        return value
+
+    def __setitem__(self, key, value):
+        self._d[key] = value
+
+    def __delitem__(self, key):
+        del self._d[key]
+
+class _LazyImportDict(MutableMapping):
+    def __init__(self, items, ts):
+        self._d = item if isinstance(items, MutableMapping) else dict(items)
+        self._ts = ts
+
+    def __len__(self):
+        return len(self._d)
+
+    def __contains__(self, key):
+        return key in self._d
+
+    def __iter__(self):
+        for k in self._d:
+            yield k
+
+    def __getitem__(self, key):
+        value = self._d[key]
+        if callable(value):
+            return value
+        kw = {'extra_types': _ensuremod(self._ts.extra_types),
+              'stlcontainers': _ensuremod(self._ts.stlcontainers),}
+        newvalue = tuple(tuple(x.format(**kw) or None for x in imp if x is not None) \
+                            for imp in value if imp is not None) or (None,)
+        return newvalue
+
+    def __setitem__(self, key, value):
+        self._d[key] = value
+
+    def __delitem__(self, key):
+        del self._d[key]
+
+class _LazyConverterDict(MutableMapping):
+    def __init__(self, items, ts):
+        self._d = dict(items)
+        self._tms = set([k for k in self._d if isinstance(k, TypeMatcher)])
+        self._ts = ts
+
+    def __len__(self):
+        return len(self._d)
+
+    def __contains__(self, key):
+        if key in self._d:
+            return True  # Check if key is present
+        else:
+            # check if any TypeMatcher keys actually match
+            for tm in self._tms:
+                if tm.matches(key):
+                    self[key] = self._d[tm]
+                    return True
+            else:
+                return False
+
+    def __iter__(self):
+        for k in self._d:
+            yield k
+
+    def __getitem__(self, key):
+        if key in self._d:
+            value = self._d[key]  # Check if key is present
+        else:
+            # check if any TypeMatcher keys actually match
+            for tm in self._tms:
+                if tm.matches(key):
+                    value = self._d[tm]
+                    self[key] = value
+                    break
+            else:
+                raise KeyError("{0} not found".format(key))
+        if value is None or value is NotImplemented or callable(value):
+            return value
+        kw = {'extra_types': _ensuremoddot(self._ts.extra_types),
+              'stlcontainers': _ensuremoddot(self._ts.stlcontainers),}
+        newvalue = []
+        for x in value:
+            newx = x
+            if isinstance(newx, basestring):
+                for k, v in kw.items():
+                    newx = newx.replace('{' + k + '}', v)
+            newvalue.append(newx)
+        return tuple(newvalue)
+
+    def __setitem__(self, key, value):
+        self._d[key] = value
+        if isinstance(key, TypeMatcher):
+            self._tms.add(key)
+
+    def __delitem__(self, key):
+        del self._d[key]
+        if isinstance(key, TypeMatcher):
+            self._tms.remove(key)
 
 #################### Type system helpers #######################################
+
+def _raise_type_error(t):
+    raise TypeError("type of {0!r} could not be determined".format(t))
+
+_ensuremod = lambda x: x if x is not None and 0 < len(x) else ''
+_ensuremoddot = lambda x: x + '.' if x is not None and 0 < len(x) else ''
+
+def _recurse_replace(x, a, b):
+    if isinstance(x, basestring):
+        return x.replace(a, b)
+    elif isinstance(x, Sequence):
+        return tuple([_recurse_replace(y, a, b) for y in x])
+    else:
+        return x
 
 def clearmemo():
     """Clears all function memoizations in this module."""
     for x in globals().values():
         if callable(x) and hasattr(x, 'cache'):
             x.cache.clear()
-
 
 @contextmanager
 def swap_stlcontainers(s):
@@ -2410,7 +2421,6 @@ def swap_stlcontainers(s):
     yield
     clearmemo()
     STLCONTAINERS = old
-
 
 def _undot_class_name(name, d):
     value = d[name]
