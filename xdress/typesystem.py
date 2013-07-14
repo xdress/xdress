@@ -287,8 +287,9 @@ class TypeSystem(object):
     def __init__(self, base_types=None, template_types=None, refined_types=None, 
                  humannames=None, extra_types='xdress_extra_types', 
                  stlcontainers='stlcontainers', type_aliases=None, cpp_types=None, 
-                 cython_ctypes=None, cython_cimports=None, cython_cyimports=None, 
-                 cython_pyimports=None):
+                 cython_ctypes=None, cython_cytypes=None, cython_pytypes=None, 
+                 cython_cimports=None, cython_cyimports=None, cython_pyimports=None, 
+                 cython_functionnames=None, cython_classnames=None):
         """Parameters
         ----------
         base_types : set of str, optional
@@ -312,6 +313,10 @@ class TypeSystem(object):
             The C/C++ representation of the types.
         cython_ctypes : dict, optional
             Cython's C/C++ representation of the types.
+        cython_cytypes : dict, optional
+            Cython's Cython representation of the types.
+        cython_pytypes : dict, optional
+            Cython's Python representation of the types.
         cython_cimports : dict, optional
             A sequence of tuples representing cimports that are needed for Cython
             to represent C/C++ types.
@@ -321,6 +326,16 @@ class TypeSystem(object):
         cython_pyimports : dict, optional
             A sequence of tuples representing imports that are needed for Cython
             to represent Python types.
+        cython_functionnames : dict, optional
+            Cython alternate name fragments used for mangling function and 
+            variable names.  These should try to adhere to a lowercase_and_underscore
+            convention.  These may contain template argument namess as part of a 
+            format string, ie ``{'map': 'map_{key_type}_{value_type}'}``.
+        cython_classnames : dict, optional
+            Cython alternate name fragments used for mangling class names.  
+            These should try to adhere to a CapCase convention.  These may contain 
+            template argument namess as part of a format string, 
+            ie ``{'map': 'Map{key_type}{value_type}'}``.
 
         """
         self.base_types = base_types or set(['char', 'uchar', 'str', 'int16', 
@@ -523,6 +538,59 @@ class TypeSystem(object):
             'function_pointer': cython_ctypes_function_pointer,
             }, self)
 
+        self.cython_cytypes = _LazyConfigDict(cython_cytypes or {
+            'char': 'char',
+            'uchar': 'unsigned char',
+            'str': 'char *',
+            'int16': 'short',
+            'int32': 'int',
+            ('int32', '*'): 'int *',
+            'int64': 'long long',
+            'uint16': 'unsigned short',
+            'uint32': 'unsigned long',  # 'unsigned int'
+            'uint64': 'unsigned long long',
+            'float32': 'float',
+            'float64': 'float',
+            'float128': 'long double',
+            'complex128': 'object',
+            'bool': 'bint',
+            'void': 'void',
+            'file': 'c_file',
+            'exception': '{extra_types}exception',
+            'map': '{stlcontainers}_Map{key_type}{value_type}',
+            'dict': 'dict',
+            'pair': '{stlcontainers}_Pair{value_type}',
+            'set': '{stlcontainers}_Set{value_type}',
+            'vector': 'np.ndarray',
+            'function': 'object',
+            'function_pointer': 'object',
+            }, self)
+
+        self.cython_pytypes = _LazyConfigDict(cython_pytypes or {
+            'char': 'str',
+            'uchar': 'str',
+            'str': 'str',
+            'int16': 'int',
+            'int32': 'int',
+            'int64': 'int',
+            'uint16': 'int',  # 'unsigned int'
+            'uint32': 'int',  # 'unsigned int'
+            'uint64': 'int',  # 'unsigned int'
+            'float32': 'float',
+            'float64': 'float',
+            'float128': 'np.float128',
+            'complex128': 'object',
+            'file': 'file',
+            'exception': 'Exception',
+            'bool': 'bool',
+            'void': 'object',
+            'map': '{stlcontainers}Map{key_type}{value_type}',
+            'dict': 'dict',
+            'pair': '{stlcontainers}Pair{value_type}',
+            'set': '{stlcontainers}Set{value_type}',
+            'vector': 'np.ndarray',
+            }, self)
+
         def cython_cimports_functionish(t, ts, seen):
             seen.add(('cython.operator', 'dereference', 'deref'))
             for n, argt in t[1][2]:
@@ -627,6 +695,66 @@ class TypeSystem(object):
             'nucname': (('pyne', 'nucname'),),
             'function': cython_pyimports_functionish,
             'function_pointer': cython_pyimports_functionish,
+            }, self)
+
+        self.cython_functionnames = _LazyConfigDict(cython_functionnames or {
+            # base types
+            'char': 'char',
+            'uchar': 'uchar',
+            'str': 'str',
+            'int16': 'short',
+            'int32': 'int',
+            'int64': 'long',
+            'uint16': 'ushort',
+            'uint32': 'uint',
+            'uint64': 'ulong',
+            'float32': 'float',
+            'float64': 'double',
+            'float128': 'longdouble',
+            'complex128': 'complex',
+            'bool': 'bool',
+            'void': 'void',
+            'file': 'file',
+            'exception': 'exception',
+            # template types
+            'map': 'map_{key_type}_{value_type}',
+            'dict': 'dict',
+            'pair': 'pair_{key_type}_{value_type}',
+            'set': 'set_{value_type}',
+            'vector': 'vector_{value_type}',
+            'nucid': 'nucid',
+            'nucname': 'nucname',
+            'function': 'function',
+            'function_pointer': 'functionpointer',
+            }, self)
+
+        cython_classnames = _LazyConfigDict(cython_classnames or {
+            # base types
+            'char': 'Char',
+            'uchar': 'UChar',
+            'str': 'Str',
+            'int32': 'Short',
+            'int32': 'Int',
+            'int64': 'Long',
+            'uint16': 'UShort',
+            'uint32': 'UInt',
+            'uint64': 'ULong',
+            'float32': 'Float',
+            'float64': 'Double',
+            'float128': 'Longdouble',
+            'complex128': 'Complex',
+            'bool': 'Bool',
+            'void': 'Void',
+            'file': 'File',
+            'exception': 'Exception',
+            # template types
+            'map': 'Map{key_type}{value_type}',
+            'dict': 'Dict',
+            'pair': 'Pair{key_type}{value_type}',
+            'set': 'Set{value_type}',
+            'vector': 'Vector{value_type}',
+            'nucid': 'Nucid',
+            'nucname': 'Nucname',
             }, self)
 
     @_memoize
@@ -925,6 +1053,122 @@ class TypeSystem(object):
             return cyct
 
     @_memoize
+    def _fill_cycyt(self, cycyt, t):
+        """Helper for cython_cytype()."""
+        d = {}
+        for key, x in zip(self.template_types[t[0]], t[1:-1]):
+            if isinstance(x, basestring):
+                val = self.cython_classnames[x]
+            elif isinstance(x, Number):
+                val = str(x)
+            elif x[0] in self.base_types:
+                val = self.cython_classnames[x[0]]
+            else:
+                val, _ = self._fill_cycyt(self.cython_classnames[x[0]], x)
+            d[key] = val
+        return cycyt.format(**d), t
+
+    def _cython_cytype_add_predicate(self, t, last):
+        """Adds a predicate to a cytype"""
+        if last == '*':
+            return '{0} {1}'.format(t, last)
+        elif isinstance(last, int) and 0 < last:
+            return '{0} [{1}]'.format(t, last)
+        else:
+            return t
+
+    @_memoize
+    def cython_cytype(self, t):
+        """Given a type t, returns the corresponding Cython type."""
+        t = self.canon(t)
+#        if t in self.cython_cytypes:
+#            return self.cython_cytypes[t]
+        if isinstance(t, basestring):
+            if t in self.base_types or t in self.cython_cytypes:
+                return self.cython_cytypes[t]
+        # must be tuple below this line
+        tlen = len(t)
+        if 2 == tlen:
+            if 0 == t[1]:
+                return self.cython_cytype(t[0])
+            elif self.isrefinement(t[1]):
+                if t[1][0] in self.cython_cytypes:
+                    subtype = self.cython_cytypes[t[1][0]]
+                    if callable(subtype):
+                        subtype = subtype(t[1], self)
+                    return subtype
+                else:
+                    return self.cython_cytype(t[0])
+            else:
+                return self._cython_cytype_add_predicate(self.cython_cytype(t[0]), 
+                                                         t[-1])
+        elif 3 <= tlen:
+            if t in self.cython_cytypes:
+                return self.cython_cytypes[t]
+            assert t[0] in self.template_types
+            assert len(t) == len(self.template_types[t[0]]) + 2
+            template_name = self.cython_cytypes[t[0]]
+            assert template_name is not NotImplemented
+            cycyt = self.cython_cytypes[t[0]]
+            cycyt, t = self._fill_cycyt(cycyt, t)
+            cycyt = self._cython_cytype_add_predicate(cycyt, t[-1])
+            return cycyt
+
+    @_memoize
+    def _fill_cypyt(self, cypyt, t):
+        """Helper for cython_pytype()."""
+        d = {}
+        for key, x in zip(self.template_types[t[0]], t[1:-1]):
+            if isinstance(x, basestring):
+                val = self.cython_classnames[x]
+            elif isinstance(x, Number):
+                val = str(x)
+            elif x[0] in self.base_types:
+                val = self.cython_classnames[x[0]]
+            else:
+                val, _ = self._fill_cypyt(self.cython_classnames[x[0]], x)
+            d[key] = val
+        return cypyt.format(**d), t
+
+    @_memoize
+    def cython_pytype(self, t):
+        """Given a type t, returns the corresponding Python type."""
+        if isinstance(t, Number):
+            return str(t)
+        t = self.canon(t)
+        if t in self.cython_pytypes:
+            return self.cython_pytypes[t]
+        if isinstance(t, basestring):
+            if t in self.base_types:
+                return self.cython_pytypes[t]
+        # must be tuple below this line
+        tlen = len(t)
+        if 2 == tlen:
+            if 0 == t[1]:
+                return self.cython_pytype(t[0])
+            elif self.isrefinement(t[1]):
+                return self.cython_pytype(t[0])
+            else:
+                # FIXME last is ignored for strings, but what about other types?
+                #last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+                #return cython_pytype(t[0]) + ' {0}'.format(last)
+                return self.cython_pytype(t[0])
+        elif 3 <= tlen:
+            if t in self.cython_pytypes:
+                return self.cython_pytypes[t]
+            assert t[0] in self.template_types
+            assert len(t) == len(self.template_types[t[0]]) + 2
+            template_name = self.cython_pytypes[t[0]]
+            assert template_name is not NotImplemented
+            cypyt = self.cython_pytypes[t[0]]
+            cypyt, t = self._fill_cypyt(cypyt, t)
+            # FIXME last is ignored for strings, but what about other types?
+            #if 0 != t[-1]:
+            #    last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
+            #    cypyt += ' {0}'.format(last)
+            return cypyt
+
+    @_memoize
     def cython_cimport_tuples(self, t, seen=None, inc=frozenset(['c', 'cy'])):
         """Given a type t, and possibly previously seen cimport tuples (set),
         return the set of all seen cimport tuples.  These tuple have four possible
@@ -1060,293 +1304,61 @@ class TypeSystem(object):
         x = [tup for tup in x if 0 < len(tup)]
         return set([self._cython_import_cases[len(tup)](tup) for tup in x])
 
+    @_memoize
+    def cython_functionname(self, t, cycyt=None):
+        """Computes variable or function names for cython types."""
+        if cycyt is None:
+            t = self.canon(t)
+            if isinstance(t, basestring):
+                return t, self.cython_functionnames[t]
+            elif t[0] in self.base_types:
+                return t, self.cython_functionnames[t[0]]
+            return self.cython_functionname(t, self.cython_functionnames[t[0]])
+        d = {}
+        for key, x in zip(self.template_types[t[0]], t[1:-1]):
+            if isinstance(x, basestring):
+                val = self.cython_functionnames[x] if x in self.cython_functionnames \
+                                                   else x
+            elif isinstance(x, Number):
+                val = str(x).replace('-', 'Neg').replace('+', 'Pos')\
+                            .replace('.', 'point')
+            elif x[0] in self.base_types:
+                val = self.cython_functionnames[x[0]]
+            else:
+                _, val = self.cython_functionname(x, self.cython_functionnames[x[0]])
+            d[key] = val
+        return t, cycyt.format(**d)
+
+    cython_variablename = cython_functionname
+
+    @_memoize
+    def cython_classname(self, t, cycyt=None):
+        """Computes classnames for cython types."""
+        if cycyt is None:
+            t = self.canon(t)
+            if isinstance(t, basestring):
+                return t, self.cython_classnames[t]
+            elif t[0] in self.base_types:
+                return t, self.cython_classnames[t[0]]
+            return self.cython_classname(t, self.cython_classnames[t[0]])
+        d = {}
+        for key, x in zip(self.template_types[t[0]], t[1:-1]):
+            if isinstance(x, basestring):
+                val = self.cython_classnames[x] if x in self.cython_classnames else x
+            elif isinstance(x, Number):
+                val = str(x).replace('-', 'Neg').replace('+', 'Pos')\
+                            .replace('.', 'point')
+            elif x[0] in self.base_types:
+                val = self.cython_classnames[x[0]]
+            else:
+                _, val = self.cython_classname(x, self.cython_classnames[x[0]])
+            d[key] = val
+        return t, cycyt.format(**d)
+
 # Default type system instance
 type_system = TypeSystem()
 
 #################### Type System Above This Line ##########################
-
-_cython_cytypes = _LazyConfigDict({
-    'char': 'char',
-    'uchar': 'unsigned char',
-    'str': 'char *',
-    'int16': 'short',
-    #'int32': 'long',
-    'int32': 'int',
-    ('int32', '*'): 'int *',
-    'int64': 'long long',
-    'uint16': 'unsigned short',
-    'uint32': 'unsigned long',  # 'unsigned int'
-    'uint64': 'unsigned long long',
-    'float32': 'float',
-    'float64': 'float',
-    'float128': 'long double',
-    'complex128': 'object',
-    'bool': 'bint',
-    'void': 'void',
-    'file': 'c_file',
-    'exception': '{extra_types}exception',
-    'map': '{stlcontainers}_Map{key_type}{value_type}',
-    'dict': 'dict',
-    'pair': '{stlcontainers}_Pair{value_type}',
-    'set': '{stlcontainers}_Set{value_type}',
-    'vector': 'np.ndarray',
-    'function': 'object',
-    'function_pointer': 'object',
-    })
-
-_cython_functionnames = _LazyConfigDict({
-    # base types
-    'char': 'char',
-    'uchar': 'uchar',
-    'str': 'str',
-    'int16': 'short',
-    'int32': 'int',
-    'int64': 'long',
-    'uint16': 'ushort',
-    'uint32': 'uint',
-    'uint64': 'ulong',
-    'float32': 'float',
-    'float64': 'double',
-    'float128': 'longdouble',
-    'complex128': 'complex',
-    'bool': 'bool',
-    'void': 'void',
-    'file': 'file',
-    'exception': 'exception',
-    # template types
-    'map': 'map_{key_type}_{value_type}',
-    'dict': 'dict',
-    'pair': 'pair_{key_type}_{value_type}',
-    'set': 'set_{value_type}',
-    'vector': 'vector_{value_type}',
-    'nucid': 'nucid',
-    'nucname': 'nucname',
-    'function': 'function',
-    'function_pointer': 'functionpointer',
-    })
-
-
-@_memoize
-def cython_functionname(t, cycyt=None):
-    """Computes variable or function names for cython types."""
-    if cycyt is None:
-        t = canon(t)
-        if isinstance(t, basestring):
-            return t, _cython_functionnames[t]
-        elif t[0] in base_types:
-            return t, _cython_functionnames[t[0]]
-        return cython_functionname(t, _cython_functionnames[t[0]])
-    d = {}
-    for key, x in zip(template_types[t[0]], t[1:-1]):
-        if isinstance(x, basestring):
-            val = _cython_functionnames[x] if x in _cython_functionnames else x
-        elif isinstance(x, Number):
-            val = str(x).replace('-', 'Neg').replace('+', 'Pos').replace('.', 'point')
-        elif x[0] in base_types:
-            val = _cython_functionnames[x[0]]
-        else:
-            _, val = cython_functionname(x, _cython_functionnames[x[0]])
-        d[key] = val
-    return t, cycyt.format(**d)
-
-cython_variablename = cython_functionname
-
-_cython_classnames = _LazyConfigDict({
-    # base types
-    'char': 'Char',
-    'uchar': 'UChar',
-    'str': 'Str',
-    'int32': 'Short',
-    'int32': 'Int',
-    'int64': 'Long',
-    'uint16': 'UShort',
-    'uint32': 'UInt',
-    'uint64': 'ULong',
-    'float32': 'Float',
-    'float64': 'Double',
-    'float128': 'Longdouble',
-    'complex128': 'Complex',
-    'bool': 'Bool',
-    'void': 'Void',
-    'file': 'File',
-    'exception': 'Exception',
-    # template types
-    'map': 'Map{key_type}{value_type}',
-    'dict': 'Dict',
-    'pair': 'Pair{key_type}{value_type}',
-    'set': 'Set{value_type}',
-    'vector': 'Vector{value_type}',
-    'nucid': 'Nucid',
-    'nucname': 'Nucname',
-    })
-
-
-@_memoize
-def _fill_cycyt(cycyt, t):
-    """Helper for cython_cytype()."""
-    d = {}
-    for key, x in zip(template_types[t[0]], t[1:-1]):
-        if isinstance(x, basestring):
-            val = _cython_classnames[x]
-        elif isinstance(x, Number):
-            val = str(x)
-        elif x[0] in base_types:
-            val = _cython_classnames[x[0]]
-        else:
-            val, _ = _fill_cycyt(_cython_classnames[x[0]], x)
-        d[key] = val
-    return cycyt.format(**d), t
-
-@_memoize
-def cython_classname(t, cycyt=None):
-    """Computes classnames for cython types."""
-    if cycyt is None:
-        t = canon(t)
-        if isinstance(t, basestring):
-            return t, _cython_classnames[t]
-        elif t[0] in base_types:
-            return t, _cython_classnames[t[0]]
-        return cython_classname(t, _cython_classnames[t[0]])
-    d = {}
-    for key, x in zip(template_types[t[0]], t[1:-1]):
-        if isinstance(x, basestring):
-            val = _cython_classnames[x] if x in _cython_classnames else x
-        elif isinstance(x, Number):
-            val = str(x).replace('-', 'Neg').replace('+', 'Pos').replace('.', 'point')
-        elif x[0] in base_types:
-            val = _cython_classnames[x[0]]
-        else:
-            _, val = cython_classname(x, _cython_classnames[x[0]])
-        d[key] = val
-    return t, cycyt.format(**d)
-
-def _cython_cytype_add_predicate(t, last):
-    """Adds a predicate to a cytype"""
-    if last == '*':
-        return '{0} {1}'.format(t, last)
-    elif isinstance(last, int) and 0 < last:
-        return '{0} [{1}]'.format(t, last)
-    else:
-        return t
-
-
-@_memoize
-def cython_cytype(t):
-    """Given a type t, returns the corresponding Cython type."""
-    t = canon(t)
-#    if t in _cython_cytypes:
-#        return _cython_cytypes[t]
-    if isinstance(t, basestring):
-        if t in base_types or t in _cython_cytypes:
-            return _cython_cytypes[t]
-    # must be tuple below this line
-    tlen = len(t)
-    if 2 == tlen:
-        if 0 == t[1]:
-            return cython_cytype(t[0])
-        elif isrefinement(t[1]):
-            if t[1][0] in _cython_cytypes:
-                subtype = _cython_cytypes[t[1][0]]
-                if callable(subtype):
-                    subtype = subtype(t[1])
-                return subtype
-            else:
-                return cython_cytype(t[0])
-        else:
-            return _cython_cytype_add_predicate(cython_cytype(t[0]), t[-1])
-    elif 3 <= tlen:
-        if t in _cython_cytypes:
-            return _cython_cytypes[t]
-        assert t[0] in template_types
-        assert len(t) == len(template_types[t[0]]) + 2
-        template_name = _cython_cytypes[t[0]]
-        assert template_name is not NotImplemented
-        cycyt = _cython_cytypes[t[0]]
-        cycyt, t = _fill_cycyt(cycyt, t)
-        cycyt = _cython_cytype_add_predicate(cycyt, t[-1])
-        return cycyt
-
-
-_cython_pytypes = _LazyConfigDict({
-    'char': 'str',
-    'uchar': 'str',
-    'str': 'str',
-    'int16': 'int',
-    'int32': 'int',
-    'int64': 'int',
-    'uint16': 'int',  # 'unsigned int'
-    'uint32': 'int',  # 'unsigned int'
-    'uint64': 'int',  # 'unsigned int'
-    'float32': 'float',
-    'float64': 'float',
-    'float128': 'np.float128',
-    'complex128': 'object',
-    'file': 'file',
-    'exception': 'Exception',
-    'bool': 'bool',
-    'void': 'object',
-    'map': '{stlcontainers}Map{key_type}{value_type}',
-    'dict': 'dict',
-    'pair': '{stlcontainers}Pair{value_type}',
-    'set': '{stlcontainers}Set{value_type}',
-    'vector': 'np.ndarray',
-    })
-
-
-@_memoize
-def _fill_cypyt(cypyt, t):
-    """Helper for cython_pytype()."""
-    d = {}
-    for key, x in zip(template_types[t[0]], t[1:-1]):
-        if isinstance(x, basestring):
-            val = _cython_classnames[x]
-        elif isinstance(x, Number):
-            val = str(x)
-        elif x[0] in base_types:
-            val = _cython_classnames[x[0]]
-        else:
-            val, _ = _fill_cypyt(_cython_classnames[x[0]], x)
-        d[key] = val
-    return cypyt.format(**d), t
-
-
-@_memoize
-def cython_pytype(t):
-    """Given a type t, returns the corresponding Python type."""
-    if isinstance(t, Number):
-        return str(t)
-    t = canon(t)
-    if t in _cython_pytypes:
-        return _cython_pytypes[t]
-    if isinstance(t, basestring):
-        if t in base_types:
-            return _cython_pytypes[t]
-    # must be tuple below this line
-    tlen = len(t)
-    if 2 == tlen:
-        if 0 == t[1]:
-            return cython_pytype(t[0])
-        elif isrefinement(t[1]):
-            return cython_pytype(t[0])
-        else:
-            # FIXME last is ignored for strings, but what about other types?
-            #last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-            #return cython_pytype(t[0]) + ' {0}'.format(last)
-            return cython_pytype(t[0])
-    elif 3 <= tlen:
-        if t in _cython_pytypes:
-            return _cython_pytypes[t]
-        assert t[0] in template_types
-        assert len(t) == len(template_types[t[0]]) + 2
-        template_name = _cython_pytypes[t[0]]
-        assert template_name is not NotImplemented
-        cypyt = _cython_pytypes[t[0]]
-        cypyt, t = _fill_cypyt(cypyt, t)
-        # FIXME last is ignored for strings, but what about other types?
-        #if 0 != t[-1]:
-        #    last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-        #    cypyt += ' {0}'.format(last)
-        return cypyt
 
 _numpy_types = _LazyConfigDict({
     'char': 'np.NPY_BYTE',
