@@ -1126,10 +1126,8 @@ class TypeSystem(object):
                 ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
             TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): \
                 ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
+            'function_pointer': cython_py2c_conv_function_pointer,
             }, self)
-
-_cython_py2c_conv['function_pointer'] = _cython_py2c_conv_function_pointer
-
 
     @_memoize
     def istemplate(self, t):
@@ -1976,7 +1974,6 @@ type_system = TypeSystem()
 #################### Type System Above This Line ##########################
 
 ######################  Some utility functions for the typesystem #############
-
 
 @_memoize
 def _ensure_importable(x):
