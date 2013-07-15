@@ -567,7 +567,6 @@ class memoize_method(object):
         if hashable:
             if key not in cache:
                 cache[key] = self.meth(*args, **kwargs)
-            print(id(cache), cache)
             return cache[key]
         else:
             return self.meth(*args, **kwargs)
