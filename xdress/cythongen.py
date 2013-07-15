@@ -84,7 +84,7 @@ def _addotherclsnames(t, classes, name, others):
                 others[name].add(spsubt)
 
 def cpppxd_sorted_names(mod):
-    """Sorts the variable names in a cpp_*.pxd module so that C/C++ 
+    """Sorts the variable names in a cpp_*.pxd module so that C/C++
     declarations happen in the proper order.
     """
     classes = set([name for name, desc in  mod.items() if isclassdesc(desc)])
@@ -114,8 +114,8 @@ def cpppxd_sorted_names(mod):
                 break
         else:
             names.append(name)
-    names += sorted([name for name, desc in  mod.items() if isvardesc(desc)])    
-    names += sorted([name for name, desc in  mod.items() if isfuncdesc(desc)])    
+    names += sorted([name for name, desc in  mod.items() if isvardesc(desc)])
+    names += sorted([name for name, desc in  mod.items() if isfuncdesc(desc)])
     return names
 
 
@@ -406,7 +406,7 @@ def genpxd(env, classes=()):
         Environment dictonary mapping target module names to module description
         dictionaries.
     classes : sequence, optional
-        Listing of all class names that are handled by cythongen.  This may be 
+        Listing of all class names that are handled by cythongen.  This may be
         the same dictionary as in genpyx()
 
     Returns
@@ -432,7 +432,7 @@ def modpxd(mod, classes=()):
     mod : dict
         Module description dictonary.
     classes : sequence, optional
-        Listing of all class names that are handled by cythongen.  This may be 
+        Listing of all class names that are handled by cythongen.  This may be
         the same dictionary as in modpyx().
 
     Returns
@@ -470,7 +470,7 @@ _pxd_class_template = \
 
 cdef class {name}{parents}:
 {body}
-    pass    
+    pass
 
 {extra}
 """
@@ -485,7 +485,7 @@ def classpxd(desc, classes=()):
     desc : dict
         Class description dictonary.
     classes : sequence, optional
-        Listing of all class names that are handled by cythongen.  This may be 
+        Listing of all class names that are handled by cythongen.  This may be
         the same dictionary as in modpyx().
 
     Returns
@@ -702,7 +702,7 @@ def _gen_property_get(name, t, cached_names=None, inst_name="self._inst",
     lines += indent("return {0}".format(rtn), join=False)
     return lines
 
-def _gen_property_set(name, t, inst_name="self._inst", cached_name=None, 
+def _gen_property_set(name, t, inst_name="self._inst", cached_name=None,
                       classes=()):
     """This generates a Cython property setter for a variable of a given
     name and type."""
@@ -717,7 +717,7 @@ def _gen_property_set(name, t, inst_name="self._inst", cached_name=None,
         lines += indent("{0} = None".format(cached_name), join=False)
     return lines
 
-def _gen_property(name, t, doc=None, cached_names=None, inst_name="self._inst", 
+def _gen_property(name, t, doc=None, cached_names=None, inst_name="self._inst",
                   classes=()):
     """This generates a Cython property for a variable of a given name and type."""
     lines  = ['property {0}:'.format(name)]
@@ -929,8 +929,23 @@ def _gen_constructor(name, name_mangled, classname, args, doc=None,
     lines += ['', ""]
     return lines
 
-def _gen_dispatcher(name, name_mangled, doc=None, hasrtn=True):
-    argfill = ", ".join(['self', '*args', '**kwargs'])
+def _gen_dispatcher(name, name_mangled, doc=None, hasrtn=True, is_method=True):
+    if is_method is True:
+        # string to format for arg checking
+        arg_chk_str = "if types <= self.{0}_argtypes:"
+
+        # string to format for dispatching and returning
+        dispatch_str_ret = "return self.{0}(*args, **kwargs)"
+        dispatch_str_no_ret = "self.{0}(*args, **kwargs)"
+
+        # Make self a method argument or not
+        argfill = ", ".join(['self', '*args', '**kwargs'])
+    else:
+        arg_chk_str = "if types <= {0}_argtypes:"
+        dispatch_str_ret = "return {0}(*args, **kwargs)"
+        dispatch_str_no_ret = "{0}(*args, **kwargs)"
+        argfill = ", ".join(['*args', '**kwargs'])
+
     lines  = ['def {0}({1}):'.format(name, argfill)]
     lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
     types = ["types = set([(i, type(a)) for i, a in enumerate(args)])",
@@ -950,11 +965,11 @@ def _gen_dispatcher(name, name_mangled, doc=None, hasrtn=True):
             ['("{0}", {1})'.format(n, pyt) for n, pyt in zip(anames, pytypes)])
         mtups = '(' + mtypes + ')' if 0 < len(mtypes) else mtypes
         mtypeslines.append(mangled_name + "_argtypes = frozenset(" + mtups + ")")
-        cond = ["if types <= self.{0}_argtypes:".format(mangled_name),]
+        cond = [arg_chk_str.format(mangled_name),]
         if hasrtn:
-            rline = "return self.{0}(*args, **kwargs)".format(mangled_name)
+            rline = dispatch_str_ret.format(mangled_name)
         else:
-            rline = ["self.{0}(*args, **kwargs)".format(mangled_name), "return"]
+            rline = [dispatch_str_no_ret.format(mangled_name), "return"]
         cond += indent(rline, join=False)
         lines += indent(cond, join=False)
     lines = sorted(mtypeslines) + [''] +  lines
@@ -964,9 +979,9 @@ def _gen_dispatcher(name, name_mangled, doc=None, hasrtn=True):
     for key, mangled_name in mangitems:
         lines += indent('try:', join=False)
         if hasrtn:
-            rline = "return self.{0}(*args, **kwargs)".format(mangled_name)
+            rline = dispatch_str_ret.format(mangled_name)
         else:
-            rline = ["self.{0}(*args, **kwargs)".format(mangled_name), "return"]
+            rline = [dispatch_str_no_ret.format(mangled_name), "return"]
         lines += indent(indent(rline, join=False), join=False)
         lines += indent(["except (RuntimeError, TypeError, NameError):",
                          indent("pass", join=False)[0],], join=False)
@@ -1295,7 +1310,7 @@ def funcpyx(desc):
         if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
             # write dispatcher
             nm = dict([(k, v) for k, v in mangled_fnames.items() if k[0] == fname])
-            flines += _gen_dispatcher(fname, nm, doc=fdoc)
+            flines += _gen_dispatcher(fname, nm, doc=fdoc, is_method=False)
 
     flines.append(desc.get('extra', {}).get('pyx', ''))
     pyx = '\n'.join(flines)
@@ -1330,13 +1345,13 @@ class XDressPlugin(Plugin):
 
         # write out all files
         for key, cpppxd in cpppxds.items():
-            newoverwrite(cpppxd, os.path.join(rc.package, 
+            newoverwrite(cpppxd, os.path.join(rc.package,
                          env[key]['srcpxd_filename']), rc.verbose)
         for key, pxd in pxds.items():
-            newoverwrite(pxd, os.path.join(rc.package, 
+            newoverwrite(pxd, os.path.join(rc.package,
                          env[key]['pxd_filename']), rc.verbose)
         for key, pyx in pyxs.items():
-            newoverwrite(pyx, os.path.join(rc.package, 
+            newoverwrite(pyx, os.path.join(rc.package,
                          env[key]['pyx_filename']), rc.verbose)
 
 
@@ -1367,7 +1382,7 @@ def _mangle_function_pointer_name(name, classname):
     return pyref, cref
 
 def _isclassptr(t, classes):
-    return (not isinstance(t, basestring) and t[1] == '*' and 
+    return (not isinstance(t, basestring) and t[1] == '*' and
             isinstance(t[0], basestring) and t[0] in classes)
 
 def _isclassdblptr(t, classes):
@@ -1375,17 +1390,17 @@ def _isclassdblptr(t, classes):
         return False
     return _isclassptr(t[0], classes) and t[1] == '*'
 
-_exc_c_base = frozenset(['int16', 'int32', 'int64', 'int128', 
+_exc_c_base = frozenset(['int16', 'int32', 'int64', 'int128',
                          'float32', 'float64', 'float128'])
 
 _exc_ptr_matcher = ts.TypeMatcher((ts.MatchAny, '*'))
-    
+
 def _exception_str(exceptions, srcfile, rtntype):
     if not exceptions:
         return ""
     if isinstance(exceptions, basestring):
         return "except " + exceptions
-    lang = guess_language(srcfile)    
+    lang = guess_language(srcfile)
     if lang == 'c':
         rtntype = ts.canon(rtntype)
         if rtntype in _exc_c_base:
