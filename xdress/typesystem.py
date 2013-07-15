@@ -254,7 +254,6 @@ from .utils import flatten
 if sys.version_info[0] >= 3:
     basestring = str
 
-
 def _ishashable(x):
     try:
         hash(x)
@@ -834,15 +833,15 @@ class TypeSystem(object):
                                 "cdef {0} {1}".format(ts.cython_ctype(t[2][2]), 
                                 rtncall)])
             rtnbody = _indent4([rtnbody])
-            s = """def {{proxy_name}}({arglist}):
-{argdecls}
-{rtndecl}
-    if {{var}} == NULL:
-        raise RuntimeError("{{var}} is NULL and may not be safely called!")
-{argbodys}
-    {rtncall} = {{var}}({carglist})
-{rtnbody}
-"""
+            s = ('def {{proxy_name}}({arglist}):\n'
+                 '{argdecls}\n'
+                 '{rtndecl}\n'
+                 '    if {{var}} == NULL:\n'
+                 '        raise RuntimeError("{{var}} is NULL and may not be '
+                                             'safely called!")\n'
+                 '{argbodys}\n'
+                 '    {rtncall} = {{var}}({carglist})\n'
+                 '{rtnbody}\n')
             s = s.format(arglist=", ".join(argnames), argdecls=argdecls,
                          cvartypeptr=ts.cython_ctype(t_).format(type_name='cvartype'),
                          argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
@@ -1026,15 +1025,14 @@ class TypeSystem(object):
                 rtnprox = rtnname
             rtndecl = _indent4([rtndecl])
             rtnbody = _indent4([rtnbody])
-            s = """cdef {rtnct} {{proxy_name}}({arglist}):
-{argdecls}
-{rtndecl}
-    global {{var}}
-{argbodys}
-    {rtncall} = {{var}}({pyarglist})
-{rtnbody}
-    return {rtnrtn}
-"""
+            s = ('cdef {rtnct} {{proxy_name}}({arglist}):\n'
+                 '{argdecls}\n'
+                 '{rtndecl}\n'
+                 '    global {{var}}\n'
+                 '{argbodys}\n'
+                 '    {rtncall} = {{var}}({pyarglist})\n'
+                 '{rtnbody}\n'
+                 '    return {rtnrtn}\n')
             arglist = ", ".join(["{0} {1}".format(*x) for x in zip(argcts, argnames)])
             pyarglist=", ".join(argrtns)
             s = s.format(rtnct=rtnct, arglist=arglist, argdecls=argdecls, 
@@ -1968,214 +1966,197 @@ class TypeSystem(object):
             body = None if 0 == len(body) else body
         return decl, body, rtn
 
-# Default type system instance
-type_system = TypeSystem()
+    #################  Some utility functions for the typesystem #############
 
-#################### Type System Above This Line ##########################
+    def register_class(self, name=None, template_args=None, cython_c_type=None,
+                       cython_cimport=None, cython_cy_type=None, cython_py_type=None,
+                       cython_template_class_name=None, 
+                       cython_template_function_name=None, cython_cyimport=None, 
+                       cython_pyimport=None, cython_c2py=None, 
+                       cython_py2c=None, cpp_type=None):
+        """Classes are user specified types.  This function will add a class to 
+        the type system so that it may be used normally with the rest of the 
+        type system.
 
-######################  Some utility functions for the typesystem #############
+        """
+        # register the class name
+        isbase = True
+        if template_args is None:
+            self.base_types.add(name)  # normal class
+        elif isinstance(template_args, Sequence):
+            if 0 == len(template_args):
+                self.base_types.add(name)  # normal class
+            elif isinstance(template_args, basestring):
+                _raise_type_error(name)
+            else:
+                template_types[name] = tuple(template_args)  # templated class...
+                isbase = False
 
-@_memoize
-def _ensure_importable(x):
-    if isinstance(x, basestring) or x is None:
-        r = ((x,),)
-    elif isinstance(x, Iterable) and (isinstance(x[0], basestring) or x[0] is None):
-        r = (x,)
-    else:
-        r = x
-    return r
+        # Register with Cython C/C++ types
+        if (cython_c_type is not None):
+            self.cython_ctypes[name] = cython_c_type
+        if (cython_cy_type is not None):
+            self.cython_cytypes[name] = cython_cy_type
+        if (cython_py_type is not None):
+            self.cython_pytypes[name] = cython_py_type
+        if cpp_type is not None:
+            self.cpp_types[name] = cpp_type
 
+        if (cython_cimport is not None):
+            cython_cimport = _ensure_importable(cython_cimport)
+            self.cython_cimports[name] = cython_cimport
+        if (cython_cyimport is not None):
+            cython_cyimport = _ensure_importable(cython_cyimport)
+            self.cython_cyimports[name] = cython_cyimport
+        if (cython_pyimport is not None):
+            cython_pyimport = _ensure_importable(cython_pyimport)
+            self.cython_pyimports[name] = cython_pyimport
 
-def register_class(name=None, template_args=None, cython_c_type=None,
-                   cython_cimport=None, cython_cy_type=None, cython_py_type=None,
-                   cython_template_class_name=None, cython_template_function_name=None,
-                   cython_cyimport=None, cython_pyimport=None, cython_c2py=None, 
-                   cython_py2c=None, cpp_type=None):
-    """Classes are user specified types.  This function will add a class to 
-    the type system so that it may be used normally with the rest of the 
-    type system.
+        if (cython_c2py is not None):
+            if isinstance(cython_c2py, basestring):
+                cython_c2py = (cython_c2py,)
+            cython_c2py = None if cython_c2py is None else tuple(cython_c2py)
+            self.cython_c2py_conv[name] = cython_c2py
+        if (cython_py2c is not None):
+            if isinstance(cython_py2c, basestring):
+                cython_py2c = (cython_py2c, False)
+            self.cython_py2c_conv[name] = cython_py2c
+        if (cython_template_class_name is not None):
+            self.cython_classnames[name] = cython_template_class_name
+        if (cython_template_function_name is not None):
+            self.cython_functionnames[name] = cython_template_function_name
 
-    """
-    # register the class name
-    isbase = True
-    if template_args is None:
-        base_types.add(name)  # normal class
-    elif isinstance(template_args, Sequence):
-        if 0 == len(template_args):
-            base_types.add(name)  # normal class
-        elif isinstance(template_args, basestring):
+    def deregister_class(self, name):
+        """This function will remove a previously registered class from 
+        the type system.
+        """
+        isbase = name in base_types
+        if not isbase and name not in self.template_types:
             _raise_type_error(name)
+        if isbase:
+            self.base_types.remove(name)
         else:
-            template_types[name] = tuple(template_args)  # templated class...
-            isbase = False
+            self.template_types.pop(name, None)
 
-    # Register with Cython C/C++ types
-    if (cython_c_type is not None):
-        _cython_ctypes[name] = cython_c_type
-    if (cython_cy_type is not None):
-        _cython_cytypes[name] = cython_cy_type
-    if (cython_py_type is not None):
-        _cython_pytypes[name] = cython_py_type
-    if cpp_type is not None:
-        _cpp_types[name] = cpp_type
+        self.cython_ctypes.pop(name, None)
+        self.cython_cytypes.pop(name, None)
+        self.cython_pytypes.pop(name, None)
+        self.cpp_types.pop(name, None)
+        self.cython_cimports.pop(name, None)
+        self.cython_cyimports.pop(name, None)
+        self.cython_pyimports.pop(name, None)
 
-    if (cython_cimport is not None):
-        cython_cimport = _ensure_importable(cython_cimport)
-        _cython_cimports[name] = cython_cimport
-    if (cython_cyimport is not None):
-        cython_cyimport = _ensure_importable(cython_cyimport)
-        _cython_cyimports[name] = cython_cyimport
-    if (cython_pyimport is not None):
-        cython_pyimport = _ensure_importable(cython_pyimport)
-        _cython_pyimports[name] = cython_pyimport
+        self.cython_c2py_conv.pop(name, None)
+        self.cython_py2c_conv.pop(name, None)
+        self.cython_classnames.pop(name, None)
 
-    if (cython_c2py is not None):
+        # clear all caches
+        #funcs = [isdependent, isrefinement, _resolve_dependent_type, canon,
+        #         cython_ctype, cython_cimport_tuples, cython_cimports, _fill_cycyt,
+        #         cython_cytype, _fill_cypyt, cython_pytype, cython_c2py, cython_py2c]
+        #for f in funcs:
+        #    f.cache.clear()
+
+    def register_refinement(self, name, refinementof, cython_cimport=None, 
+                            cython_cyimport=None, cython_pyimport=None, 
+                            cython_c2py=None, cython_py2c=None):
+        """This function will add a refinement to the type system so that it 
+        may be used normally with the rest of the type system.
+        """
+        self.refined_types[name] = refinementof
+
+        cyci = _ensure_importable(cython_cimport)
+        self.cython_cimports[name] = cyci
+
+        cycyi = _ensure_importable(cython_cyimport)
+        self.cython_cyimports[name] = cycyi
+
+        cypyi = _ensure_importable(cython_pyimport)
+        self.cython_pyimports[name] = cypyi
+
         if isinstance(cython_c2py, basestring):
             cython_c2py = (cython_c2py,)
         cython_c2py = None if cython_c2py is None else tuple(cython_c2py)
-        _cython_c2py_conv[name] = cython_c2py
-    if (cython_py2c is not None):
+        if cython_c2py is not None:
+            self.cython_c2py_conv[name] = cython_c2py
+
         if isinstance(cython_py2c, basestring):
             cython_py2c = (cython_py2c, False)
-        _cython_py2c_conv[name] = cython_py2c
-    if (cython_template_class_name is not None):
-        _cython_classnames[name] = cython_template_class_name
-    if (cython_template_function_name is not None):
-        _cython_functionnames[name] = cython_template_function_name
+        if cython_py2c is not None:
+            self.cython_py2c_conv[name] = cython_py2c
 
-def deregister_class(name):
-    """This function will remove a previously registered class from the type system.
-    """
-    isbase = name in base_types
-    if not isbase and name not in template_types:
-        _raise_type_error(name)
+    def deregister_refinement(self, name):
+        """This function will remove a previously registered refinement from 
+        the type system.
+        """
+        self.refined_types.pop(name, None)
+        self.cython_c2py_conv.pop(name, None)
+        self.cython_py2c_conv.pop(name, None)
+        self.cython_cimports.pop(name, None)
+        self.cython_cyimports.pop(name, None)
+        self.cython_pyimports.pop(name, None)
 
-    if isbase:
-        base_types.remove(name)
-    else:
-        template_types.pop(name, None)
+    def register_specialization(self, t, cython_c_type=None, cython_cy_type=None,
+                                cython_py_type=None, cython_cimport=None,
+                                cython_cyimport=None, cython_pyimport=None):
+        """This function will add a template specialization so that it may be used
+        normally with the rest of the type system.
+        """
+        t = self.canon(t)
+        if cython_c_type is not None:
+            self.cython_ctypes[t] = cython_c_type
+        if cython_cy_type is not None:
+            self.cython_cytypes[t] = cython_cy_type
+        if cython_py_type is not None:
+            self.cython_pytypes[t] = cython_py_type
+        if cython_cimport is not None:
+            self.cython_cimports[t] = cython_cimport
+        if cython_cyimport is not None:
+            self.cython_cyimports[t] = cython_cyimport
+        if cython_pyimport is not None:
+            self.cython_pyimports[t] = cython_pyimport
 
-    _cython_ctypes.pop(name, None)
-    _cython_cytypes.pop(name, None)
-    _cython_pytypes.pop(name, None)
-    _cpp_types.pop(name, None)
-    _cython_cimports.pop(name, None)
-    _cython_cyimports.pop(name, None)
-    _cython_pyimports.pop(name, None)
+    def deregister_specialization(self, t):
+        """This function will remove previously registered template specialization."""
+        t = self.canon(t)
+        self.cython_ctypes.pop(t, None)
+        self.cython_cytypes.pop(t, None)
+        self.cython_pytypes.pop(t, None)
+        self.cython_cimports.pop(t, None)
+        self.cython_cyimports.pop(t, None)
+        self.cython_pyimports.pop(t, None)
 
-    _cython_c2py_conv.pop(name, None)
-    _cython_py2c_conv.pop(name, None)
-    _cython_classnames.pop(name, None)
+    def register_numpy_dtype(self, t, cython_cimport=None, cython_cyimport=None, 
+                             cython_pyimport=None):
+        """This function will add a type to the system as numpy dtype that lives in
+        the stlcontainers module.
+        """
+        t = self.canon(t)
+        if t in self.numpy_types:
+            return
+        varname = self.cython_variablename(t)[1]
+        self.numpy_types[t] = '{stlcontainers}xd_' + varname + '.num'
+        self.type_aliases[self.numpy_types[t]] = t
+        self.type_aliases['xd_' + varname] = t
+        self.type_aliases['xd_' + varname + '.num'] = t
+        self.type_aliases['{stlcontainers}xd_' + varname] = t
+        self.type_aliases['{stlcontainers}xd_' + varname + '.num'] = t
+        if cython_cimport is not None:
+            x = _ensure_importable(self.cython_cimports._d.get(t, None))
+            x = x + _ensure_importable(cython_cimport)
+            self.cython_cimports[t] = x
+        # cython imports
+        x = (('{stlcontainers}',),)
+        x = x + _ensure_importable(self.cython_cyimports._d.get(t, None))
+        x = x + _ensure_importable(cython_cyimport)
+        self.cython_cyimports[t] = x
+        # python imports
+        x = (('{stlcontainers}',),)
+        x = x + _ensure_importable(self.cython_pyimports._d.get(t, None))
+        x = x + _ensure_importable(cython_pyimport)
+        self.cython_pyimports[t] = x
 
-    # clear all caches
-    funcs = [isdependent, isrefinement, _resolve_dependent_type, canon,
-             cython_ctype, cython_cimport_tuples, cython_cimports, _fill_cycyt,
-             cython_cytype, _fill_cypyt, cython_pytype, cython_c2py, cython_py2c]
-    for f in funcs:
-        f.cache.clear()
-
-
-def register_refinement(name, refinementof, cython_cimport=None, cython_cyimport=None,
-                        cython_pyimport=None, cython_c2py=None, cython_py2c=None):
-    """This function will add a refinement to the type system so that it may be used
-    normally with the rest of the type system.
-    """
-    refined_types[name] = refinementof
-
-    cyci = _ensure_importable(cython_cimport)
-    _cython_cimports[name] = _cython_cimports[name] = cyci
-
-    cycyi = _ensure_importable(cython_cyimport)
-    _cython_cyimports[name] = _cython_cyimports[name] = cycyi
-
-    cypyi = _ensure_importable(cython_pyimport)
-    _cython_pyimports[name] = _cython_pyimports[name] = cypyi
-
-    if isinstance(cython_c2py, basestring):
-        cython_c2py = (cython_c2py,)
-    cython_c2py = None if cython_c2py is None else tuple(cython_c2py)
-    if cython_c2py is not None:
-        _cython_c2py_conv[name] = cython_c2py
-
-    if isinstance(cython_py2c, basestring):
-        cython_py2c = (cython_py2c, False)
-    if cython_py2c is not None:
-        _cython_py2c_conv[name] = cython_py2c
-
-
-def deregister_refinement(name):
-    """This function will remove a previously registered refinement from the type
-    system.
-    """
-    refined_types.pop(name, None)
-    _cython_c2py_conv.pop(name, None)
-    _cython_py2c_conv.pop(name, None)
-    _cython_cimports.pop(name, None)
-    _cython_cyimports.pop(name, None)
-    _cython_pyimports.pop(name, None)
-
-
-def register_specialization(t, cython_c_type=None, cython_cy_type=None,
-                            cython_py_type=None, cython_cimport=None,
-                            cython_cyimport=None, cython_pyimport=None):
-    """This function will add a template specialization so that it may be used
-    normally with the rest of the type system.
-    """
-    t = canon(t)
-    if cython_c_type is not None:
-        _cython_ctypes[t] = cython_c_type
-    if cython_cy_type is not None:
-        _cython_cytypes[t] = cython_cy_type
-    if cython_py_type is not None:
-        _cython_pytypes[t] = cython_py_type
-    if cython_cimport is not None:
-        _cython_cimports[t] = cython_cimport
-    if cython_cyimport is not None:
-        _cython_cyimports[t] = cython_cyimport
-    if cython_pyimport is not None:
-        _cython_pyimports[t] = cython_pyimport
-
-
-def deregister_specialization(t):
-    """This function will remove previously registered template specialization."""
-    t = canon(t)
-    _cython_ctypes.pop(t, None)
-    _cython_cytypes.pop(t, None)
-    _cython_pytypes.pop(t, None)
-    _cython_cimports.pop(t, None)
-    _cython_cyimports.pop(t, None)
-    _cython_pyimports.pop(t, None)
-
-
-def register_numpy_dtype(t, cython_cimport=None, cython_cyimport=None, 
-                         cython_pyimport=None):
-    """This function will add a type to the system as numpy dtype that lives in
-    the stlcontainers module.
-    """
-    t = canon(t)
-    if t in _numpy_types:
-        return
-    varname = cython_variablename(t)[1]
-    _numpy_types[t] = '{stlcontainers}xd_' + varname + '.num'
-    type_aliases[_numpy_types[t]] = t
-    type_aliases['xd_' + varname] = t
-    type_aliases['xd_' + varname + '.num'] = t
-    type_aliases['{stlcontainers}xd_' + varname] = t
-    type_aliases['{stlcontainers}xd_' + varname + '.num'] = t
-    if cython_cimport is not None:
-        x = _ensure_importable(_cython_cimports._d.get(t, None))
-        x = x + _ensure_importable(cython_cimport)
-        _cython_cimports[t] = x
-    # cython imports
-    x = (('{stlcontainers}',),)
-    x = x + _ensure_importable(_cython_cyimports._d.get(t, None))
-    x = x + _ensure_importable(cython_cyimport)
-    _cython_cyimports[t] = x
-    # python imports
-    x = (('{stlcontainers}',),)
-    x = x + _ensure_importable(_cython_pyimports._d.get(t, None))
-    x = x + _ensure_importable(cython_pyimport)
-    _cython_pyimports[t] = x
+#################### Type System Above This Line ##########################
 
 ################### Type Matching #############################################
 
@@ -2190,7 +2171,6 @@ class MatchAny(object):
 
 MatchAny = MatchAny()
 """A singleton helper class for matching any portion of a type."""
-
 
 class TypeMatcher(object):
     """A class that is used for checking whether a type matches a given pattern."""
@@ -2496,3 +2476,16 @@ def _maprecurse(f, x):
     for y in x:
         l += _maprecurse(f, y)
     return l
+
+def _ensure_importable(x):
+    if isinstance(x, basestring) or x is None:
+        r = ((x,),)
+    elif isinstance(x, Iterable) and (isinstance(x[0], basestring) or x[0] is None):
+        r = (x,)
+    else:
+        r = x
+    return r
+
+# Default type system instance
+type_system = TypeSystem()
+
