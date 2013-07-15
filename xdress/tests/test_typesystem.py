@@ -1,10 +1,12 @@
 from __future__ import print_function
 import pprint
 
-from xdress import typesystem as ts
-from xdress.typesystem import MatchAny
+from xdress.typesystem import MatchAny, TypeSystem, TypeMatcher, matches
 
 from nose.tools import assert_equal, with_setup
+
+# default typesystem
+ts = TypeSystem()
 
 # setup and teardown new refinement cases
 new_refined = {
@@ -32,10 +34,12 @@ new_py2c = {
     'nucrange': ('nucrange({var}, {low}, {high})', False),
     'range': ('<{vtype}> range({var}, {low}, {high})', False),
     }
-add_new_py2c = lambda: ts._cython_py2c_conv.update(new_py2c)
-del_new_py2c = lambda: [ts._cython_py2c_conv.pop(key) for key in new_py2c]
+add_new_py2c = lambda: ts.cython_py2c_conv.update(new_py2c)
+del_new_py2c = lambda: [ts.cython_py2c_conv.pop(key) for key in new_py2c]
 
-
+#
+# Actual tests follow
+#
 
 def check_canon(t, exp):
     obs = ts.canon(t)
@@ -217,11 +221,11 @@ def test_cython_cimport_tuples_with_cy():
         yield check_cython_cimport_tuples_with_cy, t, exp  # Check that the case works
 
 
-def check_cython_cimports(t, exp):
-    obs = ts.cython_cimports(t)
+def check_cython_cimport_lines(t, exp):
+    obs = ts.cython_cimport_lines(t)
     assert_equal(exp, obs)
 
-def test_cython_cimports():
+def test_cython_cimport_lines():
     cases = (
         # type checks
         ('str', set(['from libcpp.string cimport string as std_string',])),
@@ -235,7 +239,7 @@ def test_cython_cimports():
             set(['cimport orly', 'from orly cimport yarly'])),
     )
     for t, exp in cases:
-        yield check_cython_cimports, t, exp  # Check that the case works,
+        yield check_cython_cimport_lines, t, exp  # Check that the case works,
 
 def check_cython_import_tuples(t, exp):
     obs = ts.cython_import_tuples(t)
@@ -266,11 +270,11 @@ def test_cython_import_tuples():
         yield check_cython_import_tuples, t, exp  # Check that the case works
 
 
-def check_cython_imports(t, exp):
-    obs = ts.cython_imports(t)
+def check_cython_import_lines(t, exp):
+    obs = ts.cython_import_lines(t)
     assert_equal(exp, obs)
 
-def test_cython_imports():
+def test_cython_import_lines():
     cases = (
         # type checks
         ('str', set()),
@@ -284,7 +288,7 @@ def test_cython_imports():
             set(['import orly', 'from orly import yarly'])),
     )
     for t, exp in cases:
-        yield check_cython_imports, t, exp  # Check that the case works,
+        yield check_cython_import_lines, t, exp  # Check that the case works,
 
 def check_cython_cytype(t, exp):
     obs = ts.cython_cytype(t)
@@ -452,7 +456,7 @@ type_matcher_cases = [
     ]
 
 def check_typematcher(pattern, t, exp):
-    tm = ts.TypeMatcher(pattern)
+    tm = TypeMatcher(pattern)
     obs = tm.matches(t)
     assert_equal(exp, obs)
 
@@ -461,7 +465,7 @@ def test_typematcher():
         yield check_typematcher, pattern, t, exp
 
 def check_matches(pattern, t, exp):
-    obs = ts.matches(pattern, t)
+    obs = matches(pattern, t)
     assert_equal(exp, obs)
 
 def test_matches():
@@ -527,12 +531,12 @@ def test_gccxml_type():
         ('nucid', 'int'),
         (('nucid',), 'int'), 
         (('set', 'complex'), 'std::set<xdress_extra_types.complex_t>'),
-        (('map', 'nucid', 'float'), 'std::map<int, double>'),
-        ('comp_map', 'std::map<int, double>'),
+        (('map', 'nucid', 'float'), 'std::map<int,double>'),
+        ('comp_map', 'std::map<int,double>'),
         (('char', '*'), 'char *'),
         (('char', 42), 'char [42]'),
         (('map', 'nucid', ('set', 'nucname')), 
-            'std::map<int, std::set<std::string> >'),
+            'std::map<int,std::set<std::string> >'),
         (('intrange', 1, 2), 'int'), 
         (('nucrange', 92000, 93000), 'int'),
         (('range', 'int32', 1, 2), 'int'), 

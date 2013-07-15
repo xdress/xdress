@@ -1184,7 +1184,7 @@ class TypeSystem(object):
                             if k not in typemap])
             for k in typemap:
                 del self.type_aliases[k]
-                self.canon.cache.pop((k,), None)
+                self.delmemo('canon', k)
             return resotype
         else:
             assert len(tinst) == len(depkey)
@@ -1219,7 +1219,7 @@ class TypeSystem(object):
                 _raise_type_error(t)
             if self.isdependent(t0):
                 return self._resolve_dependent_type(t0, t)
-            elif t0 in template_types:
+            elif t0 in self.template_types:
                 templen = len(self.template_types[t0])
                 last_val = 0 if tlen == 1 + templen else t[-1]
                 filledt = [t0]
@@ -1292,7 +1292,7 @@ class TypeSystem(object):
         """Given a type t, returns the corresponding C++ type declaration."""
         if t in self.cpp_types:
             return self.cpp_types[t]
-        t = canon(t)
+        t = self.canon(t)
         if isinstance(t, basestring):
             if  t in self.base_types:
                 return self.cpp_types[t]
@@ -1301,17 +1301,17 @@ class TypeSystem(object):
         if 2 == tlen:
             if 0 == t[1]:
                 return self.cpp_type(t[0])
-            elif isrefinement(t[1]):
+            elif self.isrefinement(t[1]):
                 if t[1][0] in self.cpp_types:
                     subtype = self.cpp_types[t[1][0]]
                     if callable(subtype):
-                        subtype = subtype(t[1])
+                        subtype = subtype(t[1], self)
                     return subtype
                 else:
-                    return cpp_type(t[0])
+                    return self.cpp_type(t[0])
             else:
                 last = '[{0}]'.format(t[-1]) if isinstance(t[-1], int) else t[-1]
-                return self._cpp_type_add_predicate(cpp_type(t[0]), last)
+                return self._cpp_type_add_predicate(self.cpp_type(t[0]), last)
         elif 3 <= tlen:
             assert t[0] in self.template_types
             assert len(t) == len(self.template_types[t[0]]) + 2
@@ -1374,7 +1374,7 @@ class TypeSystem(object):
 
     #########################   Cython Functions   ############################
 
-    def _cython_ctype_add_predicate(t, last):
+    def _cython_ctype_add_predicate(self, t, last):
         """Adds a predicate to a ctype"""
         if last == 'const':
             x, y = last, t
@@ -1612,7 +1612,7 @@ class TypeSystem(object):
         }
 
     @memoize_method
-    def cython_cimports(self, x, inc=frozenset(['c', 'cy'])):
+    def cython_cimport_lines(self, x, inc=frozenset(['c', 'cy'])):
         """Returns the cimport lines associated with a type or a set of seen tuples.
         """
         if not isinstance(x, Set):
@@ -1654,7 +1654,7 @@ class TypeSystem(object):
             seen -= set((None, (None,)))
             return self.cython_import_tuples(t[0], seen)
         elif 3 <= tlen:
-            assert t[0] in sefl.template_types
+            assert t[0] in self.template_types
             seen.update(self.cython_pyimports[t[0]])
             for x in t[1:-1]:
                 if isinstance(x, Number):
@@ -1673,7 +1673,7 @@ class TypeSystem(object):
         }
 
     @memoize_method
-    def cython_imports(self, x):
+    def cython_import_lines(self, x):
         """Returns the import lines associated with a type or a set of seen tuples.
         """
         if not isinstance(x, Set):
@@ -1896,7 +1896,7 @@ class TypeSystem(object):
                            npcytypes_nopred=npcyts_nopred, 
                            nppytypes_nopred=nppyts_nopred,)
         nested = False
-        if isdependent(tkey):
+        if self.isdependent(tkey):
             tsig = [ts for ts in self.refined_types if ts[0] == tkey][0]
             for ts, ti in zip(tsig[1:], tinst[1:]):
                 if isinstance(ts, basestring):
@@ -2131,9 +2131,17 @@ class TypeSystem(object):
     #################### Type system helpers ###################################
 
     def clearmemo(self):
-        """Clears all function memoizations in this module."""
+        """Clears all method memoizations on this type system instance."""
         # see utils.memozie_method
-        self._cache.clear()
+        if hasattr(self, '_cache'):
+            self._cache.clear()
+
+    def delmemo(self, meth, *args, **kwargs):
+        """Deletes a single key from a method on this type system instance."""
+        # see utils.memozie_method
+        if hasattr(self, '_cache'):
+            meth = getattr(self, meth )if isinstance(meth, basestring) else meth
+            del self._cache[meth.func.meth, args, tuple(sorted(kwargs.items()))]
 
     @contextmanager
     def swap_stlcontainers(self, s):
@@ -2287,7 +2295,7 @@ def matches(pattern, t):
 
 class _LazyConfigDict(MutableMapping):
     def __init__(self, items, ts):
-        self._d = item if isinstance(items, MutableMapping) else dict(items)
+        self._d = items if isinstance(items, MutableMapping) else dict(items)
         self._ts = ts
 
     def __len__(self):
@@ -2316,7 +2324,7 @@ class _LazyConfigDict(MutableMapping):
 
 class _LazyImportDict(MutableMapping):
     def __init__(self, items, ts):
-        self._d = item if isinstance(items, MutableMapping) else dict(items)
+        self._d = items if isinstance(items, MutableMapping) else dict(items)
         self._ts = ts
 
     def __len__(self):
@@ -2347,7 +2355,7 @@ class _LazyImportDict(MutableMapping):
 
 class _LazyConverterDict(MutableMapping):
     def __init__(self, items, ts):
-        self._d = dict(items)
+        self._d = items if isinstance(items, MutableMapping) else dict(items)
         self._tms = set([k for k in self._d if isinstance(k, TypeMatcher)])
         self._ts = ts
 
