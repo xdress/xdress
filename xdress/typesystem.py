@@ -2025,12 +2025,7 @@ class TypeSystem(object):
         self.cython_py2c_conv.pop(name, None)
         self.cython_classnames.pop(name, None)
 
-        # clear all caches
-        #funcs = [isdependent, isrefinement, _resolve_dependent_type, canon,
-        #         cython_ctype, cython_cimport_tuples, cython_cimports, _fill_cycyt,
-        #         cython_cytype, _fill_cypyt, cython_pytype, cython_c2py, cython_py2c]
-        #for f in funcs:
-        #    f.cache.clear()
+        self.clearmemo()
 
     def register_refinement(self, name, refinementof, cython_cimport=None, 
                             cython_cyimport=None, cython_pyimport=None, 
@@ -2070,6 +2065,7 @@ class TypeSystem(object):
         self.cython_cimports.pop(name, None)
         self.cython_cyimports.pop(name, None)
         self.cython_pyimports.pop(name, None)
+        self.clearmemo()
 
     def register_specialization(self, t, cython_c_type=None, cython_cy_type=None,
                                 cython_py_type=None, cython_cimport=None,
@@ -2100,6 +2096,7 @@ class TypeSystem(object):
         self.cython_cimports.pop(t, None)
         self.cython_cyimports.pop(t, None)
         self.cython_pyimports.pop(t, None)
+        self.clearmemo()
 
     def register_numpy_dtype(self, t, cython_cimport=None, cython_cyimport=None, 
                              cython_pyimport=None):
@@ -2135,9 +2132,8 @@ class TypeSystem(object):
 
     def clearmemo(self):
         """Clears all function memoizations in this module."""
-        for x in globals().values():
-            if callable(x) and hasattr(x, 'cache'):
-                x.cache.clear()
+        # see utils.memozie_method
+        self._cache.clear()
 
     @contextmanager
     def swap_stlcontainers(self, s):
@@ -2145,9 +2141,9 @@ class TypeSystem(object):
         with a new value and replacing the original value before exiting."""
         old = self.stlcontainers
         self.stlcontainers = s
-        #self.clearmemo()
+        self.clearmemo()
         yield
-        #clearmemo()
+        clearmemo()
         self.stlcontainers = old
 
     @contextmanager
