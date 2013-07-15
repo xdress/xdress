@@ -517,8 +517,10 @@ def ishashable(x):
     if isinstance(x, Hashable):
         if isinstance(x, basestring):
             return True
-        else:
+        elif isinstance(x, Iterable):
             return all(map(ishashable, x))
+        else:
+         return True
     else:
         return False
 
@@ -530,7 +532,7 @@ def memoize(obj):
     cache = obj.cache = {}
     @functools.wraps(obj)
     def memoizer(*args, **kwargs):
-        key = (args, frozenset(kwargs.items()))
+        key = (args, tuple(sorted(kwargs.items())))
         hashable = ishashable(key)
         if hashable:
             if key not in cache:
@@ -552,19 +554,20 @@ class memoize_method(object):
     def __get__(self, obj, objtype=None):
         if obj is None:
             return self.meth
-        p = partial(self, obj)
-        p.__doc__ = self.func.__doc__
-        p.__name__ = self.func.__name__
+        p = functools.partial(self, obj)
+        p.__doc__ = self.meth.__doc__
+        p.__name__ = self.meth.__name__
         return p
 
     def __call__(self, *args, **kwargs):
         obj = args[0]
-        cache = obj.__cache = getattr(obj, '__cache', {})
-        key = (self.meth, args[1:], frozenset(kwargs.items()))
+        cache = obj._cache = getattr(obj, '_cache', {})
+        key = (self.meth, args[1:], tuple(sorted(kwargs.items())))
         hashable = ishashable(key)
         if hashable:
             if key not in cache:
                 cache[key] = self.meth(*args, **kwargs)
+            print(id(cache), cache)
             return cache[key]
         else:
             return self.meth(*args, **kwargs)
