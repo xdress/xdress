@@ -1004,11 +1004,6 @@ class XDressPlugin(Plugin):
             this_kls['file_name'] = prepend_fn + this_kls['file_name']
             parsed = parse_class(this_kls)
 
-            import shelve
-            x = shelve.open('/Users/sglyon/Desktop/parsed')
-            x['parsed'] = parsed
-            x.close()
-
             # Make docstrings dictionary if needed
             if 'docstrings' not in rc.env[kls_mod][kls].keys():
                 rc.env[kls_mod][kls]['docstrings'] = {}
