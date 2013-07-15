@@ -589,7 +589,8 @@ def parse_index_xml(index_path):
 
     for i in namespaces:
         ns_name = i.find('name').text
-        ns_file_name = 'namespace%s.xml' % (ns_name)
+        ns_file_name = os.path.join(*index_path.split(os.path.sep)[:-1])
+        ns_file_name += os.path.sep + 'namespace%s.xml' % (ns_name)
         ns_funcs = filter(lambda x: x.attrib['kind'] == 'function',
                           i.iter('member'))
 
@@ -1057,14 +1058,13 @@ class XDressPlugin(Plugin):
             # Pull out all parsed names that match the function name
             # This is necessary because overloaded funcs will have
             # multiple entries
-            matches = filter(lambda x: f in x, funcs.keys())
+            matches = filter(lambda x: f[0] in x, funcs.keys())
 
             if matches is not None:
                 if len(matches) == 1:
                     f_ds = func_docstr(parse_function(funcs[f]))
                 else:
                     # Overloaded function
-                    print('HERE OVERLOADING!')
                     ds_list = [func_docstr(parse_function(funcs[i]))
                                for i in matches]
                     f_ds = _overload_msg.format(f_type='function')
