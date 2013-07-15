@@ -245,39 +245,14 @@ Type System API
 """
 from __future__ import print_function
 import sys
-import functools
 from contextlib import contextmanager
 from collections import Sequence, Set, Iterable, MutableMapping
 from numbers import Number
-from .utils import flatten
+
+from .utils import flatten, indent, memoize_method
 
 if sys.version_info[0] >= 3:
     basestring = str
-
-def _ishashable(x):
-    try:
-        hash(x)
-        return True
-    except TypeError:
-        return False
-
-
-def _memoize(obj):
-    # based off code from http://wiki.python.org/moin/PythonDecoratorLibrary
-    cache = obj.cache = {}
-
-    @functools.wraps(obj)
-    def memoizer(*args, **kwargs):
-        key = args + tuple(sorted(kwargs.items()))
-        hashable = _ishashable(key)
-        if hashable:
-            if key not in cache:
-                cache[key] = obj(*args, **kwargs)
-            return cache[key]
-        else:
-            return obj(*args, **kwargs)
-    return memoizer
-
 
 class TypeSystem(object):
     """A class representing a type system.
@@ -823,16 +798,16 @@ class TypeSystem(object):
             while rtnname in argnames or rtnprox in argnames:
                 rtnname += '_'
                 rtnprox += '_'
-            argdecls = _indent4(argdecls)
-            argbodys = _indent4(argbodys)
+            argdecls = indent(argdecls)
+            argbodys = indent(argbodys)
             rtndecl, rtnbody, rtnrtn, _ = ts.cython_c2py(rtncall, t[2][2], 
                 cached=False, proxy_name=rtnprox, existing_name=rtncall)
             if rtndecl is None and rtnbody is None:
                 rtnprox = rtnname
-            rtndecl = _indent4([rtndecl, 
-                                "cdef {0} {1}".format(ts.cython_ctype(t[2][2]), 
-                                rtncall)])
-            rtnbody = _indent4([rtnbody])
+            rtndecl = indent([rtndecl, 
+                              "cdef {0} {1}".format(ts.cython_ctype(t[2][2]), 
+                              rtncall)])
+            rtnbody = indent([rtnbody])
             s = ('def {{proxy_name}}({arglist}):\n'
                  '{argdecls}\n'
                  '{rtndecl}\n'
@@ -846,7 +821,7 @@ class TypeSystem(object):
                          cvartypeptr=ts.cython_ctype(t_).format(type_name='cvartype'),
                          argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
                          rtncall=rtncall, carglist=", ".join(argrtns), rtnbody=rtnbody)
-            caches = 'if {cache_name} is None:\n' + _indent4([s])
+            caches = 'if {cache_name} is None:\n' + indent([s])
             if t[2][2] != 'void':
                 caches += "\n        return {rtnrtn}".format(rtnrtn=rtnrtn)
                 caches += '\n    {cache_name} = {proxy_name}\n'
@@ -1015,16 +990,16 @@ class TypeSystem(object):
                 rtnname += '_'
                 rtnprox += '_'
             rtnct = ts.cython_ctype(t[2][2])
-            argdecls = _indent4(argdecls)
-            argbodys = _indent4(argbodys)
+            argdecls = indent(argdecls)
+            argbodys = indent(argbodys)
             #rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtnprox)
             #rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtncall)
             rtndecl, rtnbody, rtnrtn = ts.cython_py2c(rtncall, t[2][2], 
                                                       proxy_name=rtnprox)
             if rtndecl is None and rtnbody is None:
                 rtnprox = rtnname
-            rtndecl = _indent4([rtndecl])
-            rtnbody = _indent4([rtnbody])
+            rtndecl = indent([rtndecl])
+            rtnbody = indent([rtnbody])
             s = ('cdef {rtnct} {{proxy_name}}({arglist}):\n'
                  '{argdecls}\n'
                  '{rtndecl}\n'
@@ -1127,7 +1102,7 @@ class TypeSystem(object):
             'function_pointer': cython_py2c_conv_function_pointer,
             }, self)
 
-    @_memoize
+    @memoize_method
     def istemplate(self, t):
         """Returns whether t is a template type or not."""
         if isinstance(t, basestring):
@@ -1136,19 +1111,19 @@ class TypeSystem(object):
             return self.istemplate(t[0])
         return False
 
-    @_memoize
+    @memoize_method
     def isenum(self, t):
         t = self.canon(t)
         return isinstance(t, Sequence) and t[0] == 'int32' and \
            isinstance(t[1], Sequence) and t[1][0] == 'enum'
 
-    @_memoize
+    @memoize_method
     def isfunctionpointer(self, t):
         t = self.canon(t)
         return isinstance(t, Sequence) and t[0] == ('void', '*') and \
                isinstance(t[1], Sequence) and t[1][0] == 'function_pointer'
 
-    @_memoize
+    @memoize_method
     def humanname(self, t, hnt=None):
         """Computes human names for types."""
         if hnt is None:
@@ -1169,7 +1144,7 @@ class TypeSystem(object):
             d[key] = val
         return t, hnt.format(**d)
 
-    @_memoize
+    @memoize_method
     def isdependent(self, t):
         """Returns whether t is a dependent type or not."""
         deptypes = set([k[0] for k in self.refined_types \
@@ -1180,14 +1155,14 @@ class TypeSystem(object):
             return self.isdependent(t[0])
         return False
 
-    @_memoize
+    @memoize_method
     def isrefinement(self, t):
         """Returns whether t is a refined type."""
         if isinstance(t, basestring):
             return t in self.refined_types
         return self.isdependent(t)
 
-    @_memoize
+    @memoize_method
     def _resolve_dependent_type(self, tname, tinst=None):
         depkey = [k for k in self.refined_types if k[0] == tname][0]
         depval = self.refined_types[depkey]
@@ -1216,7 +1191,7 @@ class TypeSystem(object):
             return self.canon(depval), (tname,) + tuple([(kname, self.canon(ktype),
                 instval) for (kname, ktype), instval in zip(depkey[1:], tinst[1:])])
 
-    @_memoize
+    @memoize_method
     def canon(self, t):
         """Turns the type into its canonical form. See module docs for more information."""
         if isinstance(t, basestring):
@@ -1272,7 +1247,7 @@ class TypeSystem(object):
         else:
             _raise_type_error(t)
 
-    @_memoize
+    @memoize_method
     def strip_predicates(self, t):
         """Removes all outer predicates from a type."""
         t = self.canon(t)
@@ -1288,7 +1263,7 @@ class TypeSystem(object):
         else:
             _raise_type_error(t)
 
-    @_memoize
+    @memoize_method
     def basename(self, t):
         """Retrieves basename from a type, e.g. 'map' in ('map', 'int', 'float')."""
         t = self.canon(t)
@@ -1312,7 +1287,7 @@ class TypeSystem(object):
             x, y = t, last
         return '{0} {1}'.format(x, y)
 
-    @_memoize
+    @memoize_method
     def cpp_type(self, t):
         """Given a type t, returns the corresponding C++ type declaration."""
         if t in self.cpp_types:
@@ -1357,7 +1332,7 @@ class TypeSystem(object):
                 cppt = self._cpp_type_add_predicate(cppt, last)
             return cppt
 
-    @_memoize
+    @memoize_method
     def gccxml_type(self, t):
         """Given a type t, returns the corresponding GCC-XML type name."""
         cppt = self.cpp_type(t)
@@ -1365,7 +1340,7 @@ class TypeSystem(object):
                    replace('>>', '> >').replace(', ', ',')
         return gxt
 
-    @_memoize
+    @memoize_method
     def cython_nptype(self, t, depth=0):
         """Given a type t, returns the corresponding numpy type.  If depth is
         greater than 0 then this returns of a list of numpy types for all internal
@@ -1407,7 +1382,7 @@ class TypeSystem(object):
             x, y = t, last
         return '{0} {1}'.format(x, y)
 
-    @_memoize
+    @memoize_method
     def cython_ctype(self, t):
         """Given a type t, returns the corresponding Cython C/C++ type declaration.
         """
@@ -1454,7 +1429,7 @@ class TypeSystem(object):
                 cyct = self._cython_ctype_add_predicate(cyct, last)
             return cyct
 
-    @_memoize
+    @memoize_method
     def _fill_cycyt(self, cycyt, t):
         """Helper for cython_cytype()."""
         d = {}
@@ -1479,7 +1454,7 @@ class TypeSystem(object):
         else:
             return t
 
-    @_memoize
+    @memoize_method
     def cython_cytype(self, t):
         """Given a type t, returns the corresponding Cython type."""
         t = self.canon(t)
@@ -1516,7 +1491,7 @@ class TypeSystem(object):
             cycyt = self._cython_cytype_add_predicate(cycyt, t[-1])
             return cycyt
 
-    @_memoize
+    @memoize_method
     def _fill_cypyt(self, cypyt, t):
         """Helper for cython_pytype()."""
         d = {}
@@ -1532,7 +1507,7 @@ class TypeSystem(object):
             d[key] = val
         return cypyt.format(**d), t
 
-    @_memoize
+    @memoize_method
     def cython_pytype(self, t):
         """Given a type t, returns the corresponding Python type."""
         if isinstance(t, Number):
@@ -1570,7 +1545,7 @@ class TypeSystem(object):
             #    cypyt += ' {0}'.format(last)
             return cypyt
 
-    @_memoize
+    @memoize_method
     def cython_cimport_tuples(self, t, seen=None, inc=frozenset(['c', 'cy'])):
         """Given a type t, and possibly previously seen cimport tuples (set),
         return the set of all seen cimport tuples.  These tuple have four possible
@@ -1636,7 +1611,7 @@ class TypeSystem(object):
                         "from {0} cimport {1} as {2}".format(*tup)),
         }
 
-    @_memoize
+    @memoize_method
     def cython_cimports(self, x, inc=frozenset(['c', 'cy'])):
         """Returns the cimport lines associated with a type or a set of seen tuples.
         """
@@ -1645,7 +1620,7 @@ class TypeSystem(object):
         return set([self._cython_cimport_cases[len(tup)](tup) for tup in x \
                                                               if 0 != len(tup)])
 
-    @_memoize
+    @memoize_method
     def cython_import_tuples(self, t, seen=None):
         """Given a type t, and possibly previously seen import tuples (set),
         return the set of all seen import tuples.  These tuple have four possible
@@ -1697,7 +1672,7 @@ class TypeSystem(object):
                         "from {0} import {1} as {2}".format(*tup)),
         }
 
-    @_memoize
+    @memoize_method
     def cython_imports(self, x):
         """Returns the import lines associated with a type or a set of seen tuples.
         """
@@ -1706,7 +1681,7 @@ class TypeSystem(object):
         x = [tup for tup in x if 0 < len(tup)]
         return set([self._cython_import_cases[len(tup)](tup) for tup in x])
 
-    @_memoize
+    @memoize_method
     def cython_functionname(self, t, cycyt=None):
         """Computes variable or function names for cython types."""
         if cycyt is None:
@@ -1733,7 +1708,7 @@ class TypeSystem(object):
 
     cython_variablename = cython_functionname
 
-    @_memoize
+    @memoize_method
     def cython_classname(self, t, cycyt=None):
         """Computes classnames for cython types."""
         if cycyt is None:
@@ -1757,7 +1732,7 @@ class TypeSystem(object):
             d[key] = val
         return t, cycyt.format(**d)
 
-    @_memoize
+    @memoize_method
     def cython_c2py_getitem(self, t):
         """Helps find the approriate c2py value for a given concrete type key."""
         tkey = t = self.canon(t)
@@ -1776,7 +1751,7 @@ class TypeSystem(object):
             c2pyt = self.cython_c2py_conv[t]
         return c2pyt
 
-    @_memoize
+    @memoize_method
     def cython_c2py(self, name, t, view=True, cached=True, inst_name=None, 
                     proxy_name=None, cache_name=None, cache_prefix='self', 
                     existing_name=None):
@@ -1845,7 +1820,7 @@ class TypeSystem(object):
                 decl += newdecl
         return decl, body, rtn, iscached
 
-    @_memoize
+    @memoize_method
     def cython_py2c(self, name, t, inst_name=None, proxy_name=None):
         """Given a varibale name and type, returns cython code (declaration, body,
         and return statement) to convert the variable from Python to C/C++."""
@@ -2156,9 +2131,50 @@ class TypeSystem(object):
         x = x + _ensure_importable(cython_pyimport)
         self.cython_pyimports[t] = x
 
-#################### Type System Above This Line ##########################
+    #################### Type system helpers ###################################
 
-################### Type Matching #############################################
+    def clearmemo(self):
+        """Clears all function memoizations in this module."""
+        for x in globals().values():
+            if callable(x) and hasattr(x, 'cache'):
+                x.cache.clear()
+
+    @contextmanager
+    def swap_stlcontainers(self, s):
+        """A context manager for temporarily swapping out the stlcontainer value
+        with a new value and replacing the original value before exiting."""
+        old = self.stlcontainers
+        self.stlcontainers = s
+        #self.clearmemo()
+        yield
+        #clearmemo()
+        self.stlcontainers = old
+
+    @contextmanager
+    def local_classes(self, classnames, typesets=frozenset(['cy', 'py'])):
+        """A context manager for making sure the given classes are local."""
+        saved = {}
+        for name in classnames:
+            if 'c' in typesets and name in self.cython_ctypes:
+                saved[name, 'c'] = _undot_class_name(name, self.cython_ctypes)
+            if 'cy' in typesets and name in self.cython_cytypes:
+                saved[name, 'cy'] = _undot_class_name(name, self.cython_cytypes)
+            if 'py' in typesets and name in self.cython_pytypes:
+                saved[name, 'py'] = _undot_class_name(name, self.cython_pytypes)
+        self.clearmemo()
+        yield
+        for name in classnames:
+            if 'c' in typesets and name in self.cython_ctypes:
+                _redot_class_name(name, self.cython_ctypes, saved[name, 'c'])
+            if 'cy' in typesets and name in self.cython_cytypes:
+                _redot_class_name(name, self.cython_cytypes, saved[name, 'cy'])
+            if 'py' in typesets and name in self.cython_pytypes:
+                _redot_class_name(name, self.cython_pytypes, saved[name, 'py'])
+        self.clearmemo()
+
+#################### Type System Above This Line ##############################
+
+################### Type Matching #############################################o
 
 class MatchAny(object):
     """A singleton helper class for matching any portion of a type."""
@@ -2409,24 +2425,6 @@ def _recurse_replace(x, a, b):
     else:
         return x
 
-def clearmemo():
-    """Clears all function memoizations in this module."""
-    for x in globals().values():
-        if callable(x) and hasattr(x, 'cache'):
-            x.cache.clear()
-
-@contextmanager
-def swap_stlcontainers(s):
-    """A context manager for temporarily swapping out the STLCONTAINERS value
-    with a new value and replacing the original value before exiting."""
-    global STLCONTAINERS
-    old = STLCONTAINERS
-    STLCONTAINERS = s
-    clearmemo()
-    yield
-    clearmemo()
-    STLCONTAINERS = old
-
 def _undot_class_name(name, d):
     value = d[name]
     if '.' not in value:
@@ -2435,38 +2433,10 @@ def _undot_class_name(name, d):
     d[name] = v2
     return v1
 
-
 def _redot_class_name(name, d, value):
     if 0 == len(value):
         return
     d[name] = value + '.' + d[name]
-
-
-@contextmanager
-def local_classes(classnames, typesets=frozenset(['cy', 'py'])):
-    """A context manager for making sure the given classes are local."""
-    saved = {}
-    for name in classnames:
-        if 'c' in typesets and name in _cython_ctypes:
-            saved[name, 'c'] = _undot_class_name(name, _cython_ctypes)
-        if 'cy' in typesets and name in _cython_cytypes:
-            saved[name, 'cy'] = _undot_class_name(name, _cython_cytypes)
-        if 'py' in typesets and name in _cython_pytypes:
-            saved[name, 'py'] = _undot_class_name(name, _cython_pytypes)
-    clearmemo()
-    yield
-    for name in classnames:
-        if 'c' in typesets and name in _cython_ctypes:
-            _redot_class_name(name, _cython_ctypes, saved[name, 'c'])
-        if 'cy' in typesets and name in _cython_cytypes:
-            _redot_class_name(name, _cython_cytypes, saved[name, 'cy'])
-        if 'py' in typesets and name in _cython_pytypes:
-            _redot_class_name(name, _cython_pytypes, saved[name, 'py'])
-    clearmemo()
-
-_indent4 = lambda x: '' if x is None else "\n".join(["    " + l for l in "\n".join(
-                     [xx for xx in x if xx is not None]).splitlines()])
-
 
 def _maprecurse(f, x):
     if not isinstance(x, list):

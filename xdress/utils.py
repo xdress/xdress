@@ -9,9 +9,10 @@ from __future__ import print_function
 import os
 import io
 import sys
+import functools
 from copy import deepcopy
 from pprint import pformat
-from collections import Mapping, Iterable
+from collections import Mapping, Iterable, Hashable, Sequence
 from hashlib import md5
 from warnings import warn
 try:
@@ -506,3 +507,64 @@ def parse_template(s, open_brace='<', close_brace='>', separator=','):
                                 close_brace=close_brace, separator=separator))
     t.append(0)
     return tuple(t)
+
+#
+# Memoization
+#
+
+def ishashable(x):
+    """Tests if a value is hashable."""
+    if isinstance(x, Hashable):
+        if isinstance(x, basestring):
+            return True
+        else:
+            return all(map(ishashable, x))
+    else:
+        return False
+
+def memoize(obj):
+    """Generic memoziation decorator based off of code from 
+    http://wiki.python.org/moin/PythonDecoratorLibrary .  
+    This is not suitabe for method caching.
+    """
+    cache = obj.cache = {}
+    @functools.wraps(obj)
+    def memoizer(*args, **kwargs):
+        key = (args, frozenset(kwargs.items()))
+        hashable = ishashable(key)
+        if hashable:
+            if key not in cache:
+                cache[key] = obj(*args, **kwargs)
+            return cache[key]
+        else:
+            return obj(*args, **kwargs)
+    return memoizer
+
+class memoize_method(object):
+    """Decorator suitable for memoizing methods, rather than functions
+    and classes.  This is based off of code that may be found at 
+    http://code.activestate.com/recipes/577452-a-memoize-decorator-for-instance-methods/
+    This code was originally released under the MIT license.
+    """
+    def __init__(self, meth):
+        self.meth = meth
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self.meth
+        p = partial(self, obj)
+        p.__doc__ = self.func.__doc__
+        p.__name__ = self.func.__name__
+        return p
+
+    def __call__(self, *args, **kwargs):
+        obj = args[0]
+        cache = obj.__cache = getattr(obj, '__cache', {})
+        key = (self.meth, args[1:], frozenset(kwargs.items()))
+        hashable = ishashable(key)
+        if hashable:
+            if key not in cache:
+                cache[key] = self.meth(*args, **kwargs)
+            return cache[key]
+        else:
+            return self.meth(*args, **kwargs)
