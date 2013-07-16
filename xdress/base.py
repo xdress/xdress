@@ -14,6 +14,7 @@ import sys
 from .utils import RunControl, NotSpecified, writenewonly, DescriptionCache, \
     DEFAULT_RC_FILE, DEFAULT_PLUGINS
 from .plugins import Plugin
+from .typesystem import TypeSystem
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -25,6 +26,7 @@ class XDressPlugin(Plugin):
         rc=DEFAULT_RC_FILE,
         plugins=DEFAULT_PLUGINS,
         debug=False,
+        ts=TypeSystem(),
         verbose=False,
         dumpdesc=False,
         package=NotSpecified,

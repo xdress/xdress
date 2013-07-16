@@ -107,8 +107,9 @@ mod = {'Reprocess': desc,
             },
        'docstring': "Python wrapper for Reprocess.",}
 
-from xdress import typesystem as ts
+from xdress.typesystem import TypeSystem
 
+ts = TypeSystem()
 ts.register_refinement('sepeff_t', ('map', 'int32', 'float64'),
     cython_cyimport='xdtest.typeconverters', cython_pyimport='xdtest.typeconverters',
     cython_py2c='xdtest.typeconverters.sepeff_py2c({var})',)

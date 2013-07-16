@@ -1933,6 +1933,10 @@ class XDressPlugin(astparsers.ParserPlugin):
                 pymod = eval('mod()', glbs, locs)
             else:
                 pymod = locs['mod']
+            if 'ts' in locs:
+                rc.ts.update(locs['ts'])
+            elif 'type_system' in locs:
+                rc.ts.update(locs['type_system'])
         else:
             pymod = {}
         self.pysrcenv[srcname] = pymod

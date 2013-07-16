@@ -16,7 +16,7 @@ import pprint
 from .utils import newoverwrite, newcopyover, ensuredirs, indent, indentstr, \
     RunControl, NotSpecified
 from .plugins import Plugin
-from . import typesystem as ts
+from .typesystem import TypeSystem
 
 if sys.version_info[0] >= 3: 
     basestring = str
@@ -171,7 +171,7 @@ class Set{clsname}(_Set{clsname}, collections.Set):
         return "set([" + ", ".join([repr(i) for i in self]) + "])"
 
 '''
-def genpyx_set(t):
+def genpyx_set(t, ts):
     """Returns the pyx snippet for a set of type t."""
     t = ts.canon(t)
     kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.humanname(t)[1], 
@@ -199,7 +199,7 @@ cdef class _Set{clsname}:
 
 
 """
-def genpxd_set(t):
+def genpxd_set(t, ts):
     """Returns the pxd snippet for a set of type t."""
     return _pxdset.format(clsname=ts.cython_classname(t)[1], ctype=ts.cython_ctype(t))
 
@@ -216,13 +216,13 @@ def test_set_{fncname}():
     assert_true({3} not in s)
 
 """
-def gentest_set(t):
+def gentest_set(t, ts):
     """Returns the test snippet for a set of type t."""
     t = ts.canon(t)
     return _testset.format(*[repr(i) for i in testvals[t]], 
                            clsname=ts.cython_classname(t)[1],
                            fncname=ts.cython_functionname(t)[1],
-                           stlcontainers=ts.STLCONTAINERS)
+                           stlcontainers=ts.stlcontainers)
 
 #
 # Maps
@@ -370,7 +370,7 @@ class Map{tclsname}{uclsname}(_Map{tclsname}{uclsname}, collections.MutableMappi
         return "{{" + ", ".join(["{{0}}: {{1}}".format(repr(key), repr(value)) for key, value in self.items()]) + "}}"
 
 '''
-def genpyx_map(t, u):
+def genpyx_map(t, u, ts):
     """Returns the pyx snippet for a map of type <t, u>."""
     t = ts.canon(t)
     u = ts.canon(u)
@@ -409,7 +409,7 @@ cdef class _Map{tclsname}{uclsname}:
 
 
 """
-def genpxd_map(t, u):
+def genpxd_map(t, u, ts):
     """Returns the pxd snippet for a set of type t."""
     t = ts.canon(t)
     u = ts.canon(u)
@@ -473,7 +473,7 @@ def test_map_{tfncname}_{ufncname}():
         assert{array}_equal(m[{1}], {5})
 
 """
-def gentest_map(t, u):
+def gentest_map(t, u, ts):
     """Returns the test snippet for a map of type t."""
     t = ts.canon(t)
     u = ts.canon(u)
@@ -492,7 +492,7 @@ def gentest_map(t, u):
                            uclsname=ts.cython_classname(u)[1],
                            tfncname=ts.cython_functionname(t)[1], 
                            ufncname=ts.cython_functionname(u)[1], 
-                           array=a, stlcontainers=ts.STLCONTAINERS)
+                           array=a, stlcontainers=ts.stlcontainers)
 
 
 #
@@ -739,14 +739,14 @@ dtypes[xd_{fncname}_num] = xd_{fncname}
 
 """
 
-def genpyx_vector(t):
+def genpyx_vector(t, ts):
     """Returns the pyx snippet for a vector of type t."""
     t = ts.canon(t)
     kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.humanname(t)[1], 
               fncname=ts.cython_functionname(t)[1], 
               ctype=ts.cython_ctype(t), pytype=ts.cython_pytype(t), 
-              cytype=ts.cython_cytype(t), stlcontainers=ts.STLCONTAINERS, 
-              extra_types=ts.EXTRA_TYPES)
+              cytype=ts.cython_cytype(t), stlcontainers=ts.stlcontainers, 
+              extra_types=ts.extra_types)
     t0 = t
     while not isinstance(t0, basestring):
         t0 = t[0]
@@ -777,7 +777,7 @@ cdef void pyxd_{fncname}_copyswap(void * dest, void * src, int swap, void * arr)
 cdef np.npy_bool pyxd_{fncname}_nonzero(void * data, void * arr)
 """
 
-def genpxd_vector(t):
+def genpxd_vector(t, ts):
     """Returns the pxd snippet for a vector of type t."""
     t = ts.canon(t)
     kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.humanname(t)[1], 
@@ -805,14 +805,14 @@ def test_vector_{fncname}():
     print(a)
 
 """
-def gentest_vector(t):
+def gentest_vector(t, ts):
     """Returns the test snippet for a set of type t."""
     t = ts.canon(t)
     if ('vector', t, 0) in testvals:
         s = _testvector.format(*[repr(i) for i in testvals['vector', t, 0]], 
                                clsname=ts.cython_classname(t)[1],
                                fncname=ts.cython_functionname(t)[1],
-                               stlcontainers=ts.STLCONTAINERS)
+                               stlcontainers=ts.stlcontainers)
     else:
         s = ""
     return s
@@ -869,15 +869,16 @@ cdef extern from *:
     cdef void emit_endif "#endif //" ()
 
 """
-def genpyx(template, header=None):
+def genpyx(template, header=None, ts=None):
+    ts = ts or TypeSystem()
     """Returns a string of a pyx file representing the given template."""
     pyxfuncs = dict([(k[7:], v) for k, v in globals().items() \
                     if k.startswith('genpyx_') and callable(v)])
     pyx = _pyxheader if header is None else header
-    pyx = pyx.format(extra_types=ts.EXTRA_TYPES)
+    pyx = pyx.format(extra_types=ts.extra_types)
     with ts.swap_stlcontainers(None):
         for t in template:
-            pyx += pyxfuncs[t[0]](*t[1:]) + "\n\n" 
+            pyx += pyxfuncs[t[0]](*t[1:], ts=ts) + "\n\n" 
     return pyx
 
 
@@ -1022,14 +1023,15 @@ cdef extern from "{extra_types}.h" namespace "{extra_types}":
         void deall(T *) nogil except +
 
 """
-def genpxd(template, header=None):
+def genpxd(template, header=None, ts=None):
     """Returns a string of a pxd file representing the given template."""
+    ts = ts or TypeSystem()
     pxdfuncs = dict([(k[7:], v) for k, v in globals().items() \
                     if k.startswith('genpxd_') and callable(v)])
     pxd = _pxdheader if header is None else header
-    pxd = pxd.format(extra_types=ts.EXTRA_TYPES)
+    pxd = pxd.format(extra_types=ts.extra_types)
     for t in template:
-        pxd += pxdfuncs[t[0]](*t[1:]) + "\n\n" 
+        pxd += pxdfuncs[t[0]](*t[1:], ts=ts) + "\n\n" 
     return pxd
 
 
@@ -1060,22 +1062,24 @@ _testfooter = '''if __name__ == '__main__':
     nose.run()
 '''
 
-def gentest(template, header=None, package='..'):
+def gentest(template, header=None, package='..', ts=None):
     """Returns a string of a test file representing the given template."""
+    ts = ts or TypeSystem()
     testfuncs = dict([(k[8:], v) for k, v in globals().items() \
                     if k.startswith('gentest_') and callable(v)])
     test = _testheader if header is None else header
-    test = test.format(stlcontainers=ts.STLCONTAINERS, package=package)
+    test = test.format(stlcontainers=ts.stlcontainers, package=package)
     for t in template:
-        test += testfuncs[t[0]](*t[1:]) + "\n\n" 
+        test += testfuncs[t[0]](*t[1:], ts=ts) + "\n\n" 
     test += _testfooter
     return test
 
 
 def genfiles(template, fname='temp', pxdname=None, testname=None, 
              pyxheader=None, pxdheader=None, testheader=None, package='..', 
-             verbose=False):
+             ts=None, verbose=False):
     """Generates all cython source files needed to create the wrapper."""
+    ts = ts or TypeSystem()
     # munge some filenames
     fname = fname[:-4] if fname.endswith('.pyx') else fname
     pxdname = fname if pxdname is None else pxdname
@@ -1123,7 +1127,8 @@ class XDressPlugin(Plugin):
 
     def setup(self, rc):
         print("stlwrap: registering C++ standard library types")
-        ts.STLCONTAINERS = rc.stlcontainers_module
+        ts = rc.ts
+        ts.stlcontainers = rc.stlcontainers_module
         # register dtypes
         for t in rc.stlcontainers:
             if t[0] == 'vector':
@@ -1140,7 +1145,7 @@ class XDressPlugin(Plugin):
         testname = os.path.join(rc.packagedir, 'tests', testname)
         ensuredirs(testname)
         genfiles(rc.stlcontainers, fname=fname, testname=testname, package=rc.package, 
-                 verbose=rc.verbose)
+                 ts=rc.ts, verbose=rc.verbose)
 
 
 #

@@ -246,7 +246,7 @@ Type System API
 from __future__ import print_function
 import sys
 from contextlib import contextmanager
-from collections import Sequence, Set, Iterable, MutableMapping
+from collections import Sequence, Set, Iterable, MutableMapping, Mapping
 from numbers import Number
 
 from .utils import flatten, indent, memoize_method
@@ -257,6 +257,13 @@ if sys.version_info[0] >= 3:
 class TypeSystem(object):
     """A class representing a type system.
     """
+
+    datafields = set(['base_types', 'template_types', 'refined_types', 'humannames', 
+        'extra_types', 'stlcontainers', 'type_aliases', 'cpp_types', 'numpy_types', 
+        'from_pytypes', 'cython_ctypes', 'cython_cytypes', 'cython_pytypes', 
+        'cython_cimports', 'cython_cyimports', 'cython_pyimports', 
+        'cython_functionnames', 'cython_classnames', 'cython_c2py_conv', 
+        'cython_py2c_conv'])
 
     def __init__(self, base_types=None, template_types=None, refined_types=None, 
                  humannames=None, extra_types='xdress_extra_types', 
@@ -500,7 +507,7 @@ class TypeSystem(object):
             'void': 'np.NPY_VOID',
             }, self)
 
-        from_pytypes = from_pytypes or {
+        self.from_pytypes = from_pytypes or {
             'str': ['basestring'],
             'char': ['basestring'],
             'uchar': ['basestring'],
@@ -1102,6 +1109,47 @@ class TypeSystem(object):
             'function_pointer': cython_py2c_conv_function_pointer,
             }, self)
 
+    def update(self, *args, **kwargs):
+        """Updates the type system in-place. Only updates the data attributes 
+        named in 'datafields'.  This may be called with any of the following 
+        signatures::
+
+            ts.update(<TypeSystem>)
+            ts.update(<dict-like>)
+            ts.update(key1=value1, key2=value2, ...)
+
+        Valid keyword arguments are the same here as for the type system 
+        constructor.  See this documentation for more detail.
+        """
+        datafields = self.datafields
+        # normalize arguments
+        if len(args) == 1 and len(kwargs) == 0:
+            toup = args[0]
+            if isinstance(toup, TypeSystem):
+                toup = dict([(k, getattr(toup, k)) for k in datafields])
+            elif not isinstance(toup, Mapping):
+                toup = dict(toup)
+        elif len(args) == 0:
+            toup = kwargs
+        else:
+            msg = "invalid siganture: args = {0!r}, kwargs={1!0}"
+            raise TypeError(msg.fomat(args, kwargs))
+        # verify keys
+        for k in toup:
+            if k not in datafields:
+                msg = "{0} is not a member of {1}"
+                raise AttributeError(msg.format(k, self.__class__.__name__))
+        # perform the update
+        for k, v in toup.items():
+            if isinstance(v, Mapping):
+                getattr(self, k).update(v)
+            elif isinstance(v, Set):
+                getattr(self, k).update(v)
+            else:
+                setattr(self, k, v)
+
+    #################### Importnat Methods below ###############################
+
     @memoize_method
     def istemplate(self, t):
         """Returns whether t is a template type or not."""
@@ -1127,7 +1175,7 @@ class TypeSystem(object):
     def humanname(self, t, hnt=None):
         """Computes human names for types."""
         if hnt is None:
-            t = canon(t)
+            t = self.canon(t)
             if isinstance(t, basestring):
                 return t, self.humannames[t]
             elif t[0] in self.base_types:
@@ -1964,7 +2012,7 @@ class TypeSystem(object):
             elif isinstance(template_args, basestring):
                 _raise_type_error(name)
             else:
-                template_types[name] = tuple(template_args)  # templated class...
+                self.template_types[name] = tuple(template_args)  # templated class...
                 isbase = False
 
         # Register with Cython C/C++ types
@@ -2151,7 +2199,7 @@ class TypeSystem(object):
         self.stlcontainers = s
         self.clearmemo()
         yield
-        clearmemo()
+        self.clearmemo()
         self.stlcontainers = old
 
     @contextmanager
