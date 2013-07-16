@@ -666,14 +666,14 @@ def modpyx(mod, classes=None, ts=None):
             cimport_tups |= ci_tup
             attrs.append(attr_str)
         template_classes = _template_classnames_in_mod(mod)
-        template_dispatcher = _gen_template_dispatcher(template_classes)
+        template_dispatcher = _gen_template_dispatcher(template_classes, ts)
         attrs.append(template_dispatcher)
     import_tups.discard((mod["name"],))
     #cimport_tups.discard((mod["name"],))  # remain commented for decls
     if mod.get('language', None) == 'c':
         import_tups.discard((ts.stlcontainers,))
         cimport_tups.discard((ts.stlcontainers,))
-    m['imports'] = "\n".join(sorted(cython_imports(import_tups)))
+    m['imports'] = "\n".join(sorted(ts.cython_import_lines(import_tups)))
     m['cimports'] = "\n".join(sorted(ts.cython_cimport_lines(cimport_tups)))
     if 'numpy' in m['cimports']:
         m['imports'] += "\n\nnp.import_array()"
@@ -682,7 +682,7 @@ def modpyx(mod, classes=None, ts=None):
     pyx = _pyx_mod_template.format(**m)
     return pyx
 
-def _gen_template_dispatcher(templates):
+def _gen_template_dispatcher(templates, ts):
     """Generates a dictionary-based dispacher for templates.
     """
     if 0 == len(templates):
@@ -928,7 +928,7 @@ def _gen_default_constructor(desc, attrs, ts, doc=None, srcpxd_filename=None):
     lines += ['', ""]
     return lines
 
-def _gen_constructor(name, name_mangled, classname, args, doc=None,
+def _gen_constructor(name, name_mangled, classname, args, ts, doc=None,
                      srcpxd_filename=None, inst_name="self._inst"):
     argfill = ", ".join(['self'] + [a[0] for a in args if 2 == len(a)] + \
                         ["{0}={1}".format(a[0], a[2]) for a in args if 3 == len(a)])
@@ -955,14 +955,15 @@ def _gen_constructor(name, name_mangled, classname, args, doc=None,
     lines += ['', ""]
     return lines
 
-def _gen_dispatcher(name, name_mangled, doc=None, hasrtn=True):
+def _gen_dispatcher(name, name_mangled, ts, doc=None, hasrtn=True):
     argfill = ", ".join(['self', '*args', '**kwargs'])
     lines  = ['def {0}({1}):'.format(name, argfill)]
     lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
     types = ["types = set([(i, type(a)) for i, a in enumerate(args)])",
              "types.update([(k, type(v)) for k, v in kwargs.items()])",]
     lines += indent(types, join=False)
-    refinenum = lambda x: (sum([int(isrefinement(a[1])) for a in x[0][1:]]), len(x[0]), x[1])
+    refinenum = lambda x: (sum([int(ts.isrefinement(a[1])) for a in x[0][1:]]), 
+                           len(x[0]), x[1])
     mangitems = sorted(name_mangled.items(), key=refinenum)
     mtypeslines = []
     lines += indent("# vtable-like dispatch for exactly matching types", join=False)
@@ -970,7 +971,7 @@ def _gen_dispatcher(name, name_mangled, doc=None, hasrtn=True):
         cargs = key[1:]
         arang = range(len(cargs))
         anames = [ca[0] for ca in cargs]
-        pytypes = [cython_pytype(ca[1]) for ca in cargs]
+        pytypes = [ts.cython_pytype(ca[1]) for ca in cargs]
         mtypes = ", ".join(
             ["({0}, {1})".format(i, pyt) for i, pyt in zip(arang, pytypes)] + \
             ['("{0}", {1})'.format(n, pyt) for n, pyt in zip(anames, pytypes)])
@@ -985,7 +986,7 @@ def _gen_dispatcher(name, name_mangled, doc=None, hasrtn=True):
         lines += indent(cond, join=False)
     lines = sorted(mtypeslines) + [''] +  lines
     lines += indent("# duck-typed dispatch based on whatever works!", join=False)
-    refineopp = lambda x: (-1*sum([int(isrefinement(a[1])) for a in x[0][1:]]), len(x[0]), x[1])
+    refineopp = lambda x: (-1*sum([int(ts.isrefinement(a[1])) for a in x[0][1:]]), len(x[0]), x[1])
     mangitems = sorted(name_mangled.items(), key=refineopp)
     for key, mangled_name in mangitems:
         lines += indent('try:', join=False)
@@ -1011,7 +1012,7 @@ def _class_heirarchy(cls, ch, classes):
         ch.insert(0, p)
         _class_heirarchy(p, ch, classes)
 
-def _method_instance_names(desc, classes, key, rtn):
+def _method_instance_names(desc, classes, key, rtn, ts):
     classnames = []
     _class_heirarchy(desc['name'], classnames, classes)
     for classname in classnames:
@@ -1022,7 +1023,7 @@ def _method_instance_names(desc, classes, key, rtn):
         class_ctype = ts.cython_ctype(classname)
         inst_name = "(<{0} *> self._inst)".format(class_ctype)
         return inst_name, classname
-    return "(<{0} *> self._inst)".format(cython_ctype(desc['name'])), desc['name']
+    return "(<{0} *> self._inst)".format(ts.cython_ctype(desc['name'])), desc['name']
 
 
 def _count0(x):
@@ -1168,7 +1169,7 @@ def classpyx(desc, classes=None, ts=None):
         for a in margs:
             ts.cython_import_tuples(a[1], import_tups)
             ts.cython_cimport_tuples(a[1], cimport_tups)
-        minst_name, mcname = _method_instance_names(desc, classes, mkey, mrtn)
+        minst_name, mcname = _method_instance_names(desc, classes, mkey, mrtn, ts)
         if mcname != desc['name']:
             ts.cython_import_tuples(mcname, import_tups)
             ts.cython_cimport_tuples(mcname, cimport_tups)
@@ -1182,13 +1183,13 @@ def classpyx(desc, classes=None, ts=None):
             mdoc = desc.get('docstrings', {}).get('methods', {}).get(mname, '')
             mdoc = _doc_add_sig(mdoc, mname, margs)
             clines += _gen_constructor(mname, mname_mangled,
-                                       desc['name'], margs, doc=mdoc,
+                                       desc['name'], margs, ts, doc=mdoc,
                                        srcpxd_filename=desc['srcpxd_filename'],
                                        inst_name=minst_name)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
                 nm = dict([(k, v) for k, v in mangled_mnames.items() if k[0] == mname])
-                clines += _gen_dispatcher('__init__', nm, doc=mdoc, hasrtn=False)
+                clines += _gen_dispatcher('__init__', nm, ts, doc=mdoc, hasrtn=False)
         else:
             # this is a normal method
             ts.cython_import_tuples(mrtn, import_tups)
@@ -1201,7 +1202,7 @@ def classpyx(desc, classes=None, ts=None):
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
                 nm = dict([(k, v) for k, v in mangled_mnames.items() if k[0] == mname])
-                mlines += _gen_dispatcher(mname, nm, doc=mdoc)
+                mlines += _gen_dispatcher(mname, nm, ts, doc=mdoc)
     if 0 == len(desc['methods']) or 0 == len(clines):
         # provide a default constructor
         mdocs = desc.get('docstrings', {}).get('methods', {})
@@ -1330,7 +1331,7 @@ def funcpyx(desc, ts=None):
         if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
             # write dispatcher
             nm = dict([(k, v) for k, v in mangled_fnames.items() if k[0] == fname])
-            flines += _gen_dispatcher(fname, nm, doc=fdoc)
+            flines += _gen_dispatcher(fname, nm, ts, doc=fdoc)
 
     flines.append(desc.get('extra', {}).get('pyx', ''))
     pyx = '\n'.join(flines)
