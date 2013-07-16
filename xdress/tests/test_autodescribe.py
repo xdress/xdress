@@ -139,8 +139,10 @@ def test_pycparser_describe_device_init():
 
 @dec.skipif(ad.pycparser is None)
 def test_pycparser_describe_device_descriptor_tag():
+    ts.register_class('DeviceDescriptorTag')
     obs = ad.pycparser_describe('device.c', 'DeviceDescriptorTag', 'class', ts=ts)
     exp = {'name': 'DeviceDescriptorTag', 
+           'type': 'DeviceDescriptorTag',
            'namespace': None,
            'construct': 'struct',
            'parents': None,
