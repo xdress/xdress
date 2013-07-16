@@ -42,6 +42,7 @@ class XDressPlugin(Plugin):
     def execute(self, rc):
         if not rc.make_extra_types:
             return
+        print("extratypes: generating extra type header & source files for xdress")
         d = os.path.split(__file__)[0]
         srcs = [os.path.join(d, 'xdress_extra_types.h'),
                 os.path.join(d, 'xdress_extra_types.pxd'),
