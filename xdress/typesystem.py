@@ -1110,6 +1110,20 @@ class TypeSystem(object):
             'function_pointer': cython_py2c_conv_function_pointer,
             }, self)
 
+    @classmethod
+    def empty(cls):
+        """This is a class method which returns an empty type system."""
+        x = cls(base_types=set(), template_types={}, refined_types={}, humannames={}, 
+                type_aliases={}, cpp_types={}, numpy_types={}, from_pytypes={}, 
+                cython_ctypes={}, cython_cytypes={}, cython_pytypes={}, 
+                cython_cimports={}, cython_cyimports={}, cython_pyimports={}, 
+                cython_functionnames={}, cython_classnames={}, cython_c2py_conv={}, 
+                cython_py2c_conv={})
+        del x.extra_types
+        del x.stlcontainers
+        return x
+
+
     def update(self, *args, **kwargs):
         """Updates the type system in-place. Only updates the data attributes 
         named in 'datafields'.  This may be called with any of the following 
@@ -1127,7 +1141,8 @@ class TypeSystem(object):
         if len(args) == 1 and len(kwargs) == 0:
             toup = args[0]
             if isinstance(toup, TypeSystem):
-                toup = dict([(k, getattr(toup, k)) for k in datafields])
+                toup = dict([(k, getattr(toup, k)) for k in datafields \
+                              if hasattr(toup, k)])
             elif not isinstance(toup, Mapping):
                 toup = dict(toup)
         elif len(args) == 0:

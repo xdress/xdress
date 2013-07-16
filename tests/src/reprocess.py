@@ -109,7 +109,7 @@ mod = {'Reprocess': desc,
 
 from xdress.typesystem import TypeSystem
 
-ts = TypeSystem()
+ts = TypeSystem.empty()
 ts.register_refinement('sepeff_t', ('map', 'int32', 'float64'),
     cython_cyimport='xdtest.typeconverters', cython_pyimport='xdtest.typeconverters',
     cython_py2c='xdtest.typeconverters.sepeff_py2c({var})',)
