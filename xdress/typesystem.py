@@ -248,6 +248,7 @@ import sys
 from contextlib import contextmanager
 from collections import Sequence, Set, Iterable, MutableMapping, Mapping
 from numbers import Number
+from pprint import pprint, pformat
 
 from .utils import flatten, indent, memoize_method
 
@@ -1141,12 +1142,24 @@ class TypeSystem(object):
                 raise AttributeError(msg.format(k, self.__class__.__name__))
         # perform the update
         for k, v in toup.items():
+            x = getattr(self, k)
             if isinstance(v, Mapping):
-                getattr(self, k).update(v)
+                x.update(v)
             elif isinstance(v, Set):
-                getattr(self, k).update(v)
+                x.update(v)
             else:
                 setattr(self, k, v)
+
+    def __str__(self):
+        s = pformat(dict([(k, getattr(self, k)) for k in sorted(self.datafields)]))
+        return s
+
+    def __repr__(self):
+        s = self.__class__.__name__ + "("
+        s += ", ".join(["{0}={1!r}".format(k, getattr(self, k)) \
+                        for k in sorted(self.datafields)])
+        s += ")"
+        return s
 
     #################### Importnat Methods below ###############################
 
@@ -2370,6 +2383,23 @@ class _LazyConfigDict(MutableMapping):
     def __delitem__(self, key):
         del self._d[key]
 
+    def update(self, *args, **kwargs):
+        if len(args) == 1 and len(kwargs) == 0:
+            toup = args[0]
+            if isinstance(toup, _LazyConfigDict):
+                toup = toup._d
+        elif len(args) == 0:
+            toup = kwargs
+        else:
+            raise TypeError("invalid update signature.")
+        self._d.update(toup)
+
+    def __str__(self):
+        return pformat(self._d)
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(" + repr(self._d) + ", TypeSystem())"
+
 class _LazyImportDict(MutableMapping):
     def __init__(self, items, ts):
         self._d = items if isinstance(items, MutableMapping) else dict(items)
@@ -2400,6 +2430,23 @@ class _LazyImportDict(MutableMapping):
 
     def __delitem__(self, key):
         del self._d[key]
+
+    def update(self, *args, **kwargs):
+        if len(args) == 1 and len(kwargs) == 0:
+            toup = args[0]
+            if isinstance(toup, _LazyImportDict):
+                toup = toup._d
+        elif len(args) == 0:
+            toup = kwargs
+        else:
+            raise TypeError("invalid update signature.")
+        self._d.update(toup)
+
+    def __str__(self):
+        return pformat(self._d)
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(" + repr(self._d) + ", TypeSystem())"
 
 class _LazyConverterDict(MutableMapping):
     def __init__(self, items, ts):
@@ -2460,6 +2507,24 @@ class _LazyConverterDict(MutableMapping):
         del self._d[key]
         if isinstance(key, TypeMatcher):
             self._tms.remove(key)
+
+    def update(self, *args, **kwargs):
+        if len(args) == 1 and len(kwargs) == 0:
+            toup = args[0]
+            if isinstance(toup, _LazyConverterDict):
+                toup = toup._d
+        elif len(args) == 0:
+            toup = kwargs
+        else:
+            raise TypeError("invalid update signature.")
+        self._d.update(toup)
+        self._tms.update([k for k in toup if isinstance(k, TypeMatcher)])
+
+    def __str__(self):
+        return pformat(self._d)
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(" + repr(self._d) + ", TypeSystem())"
 
 #################### Type system helpers #######################################
 

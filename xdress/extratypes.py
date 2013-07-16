@@ -14,7 +14,6 @@ import sys
 
 from .utils import RunControl, NotSpecified, newoverwrite
 from .plugins import Plugin
-from . import typesystem as ts
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -38,7 +37,7 @@ class XDressPlugin(Plugin):
                       dest='make_extra_types', help="don't make extra types wrapper")
 
     def setup(self, rc):
-        ts.EXTRA_TYPES = rc.extra_types
+        rc.ts.extra_types = rc.extra_types
 
     def execute(self, rc):
         if not rc.make_extra_types:

@@ -12,7 +12,7 @@ import os
 import sys
 
 from .utils import RunControl, NotSpecified, writenewonly, DescriptionCache, \
-    DEFAULT_RC_FILE, DEFAULT_PLUGINS
+    DEFAULT_RC_FILE, DEFAULT_PLUGINS, nyansep
 from .plugins import Plugin
 from .typesystem import TypeSystem
 
@@ -81,5 +81,7 @@ class XDressPlugin(Plugin):
     def report_debug(self, rc):
         msg = 'Current descripton cache contents:\n\n{0}\n\n'
         msg = msg.format(str(rc._cache))
+        msg += nyansep + "\n\n"
+        msg += "Current type system contents:\n\n" + str(rc.ts) + "\n\n"
         return msg
 
