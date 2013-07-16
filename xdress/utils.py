@@ -45,9 +45,9 @@ def indent(s, n=4, join=True):
     spaces = " " * n
     lines = s.splitlines() if isinstance(s, basestring) else s
     if join:
-        return '\n'.join([spaces + l for l in lines])
+        return '\n'.join([spaces + l for l in lines if l is not None])
     else:
-        return [spaces + l for l in lines]
+        return [spaces + l for l in lines if l is not None]
 
 
 class indentstr(str):

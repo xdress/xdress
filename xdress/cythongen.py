@@ -70,7 +70,7 @@ def gencpppxd(env, exceptions=True, ts=None):
         cpppxds[name] = modcpppxd(mod, exceptions, ts=ts)
     return cpppxds
 
-def _addotherclsnames(t, classes, name, others):
+def _addotherclsnames(t, classes, name, others, ts):
     if t is None or t == (None, '*'):
         return
     spt = ts.strip_predicates(t)
@@ -82,7 +82,7 @@ def _addotherclsnames(t, classes, name, others):
             if spsubt in classes:
                 others[name].add(spsubt)
 
-def cpppxd_sorted_names(mod):
+def cpppxd_sorted_names(mod, ts):
     """Sorts the variable names in a cpp_*.pxd module so that C/C++ 
     declarations happen in the proper order.
     """
@@ -93,12 +93,12 @@ def cpppxd_sorted_names(mod):
         desc = mod[name]
         othercls[name] = set()
         for aname, atype in desc['attrs'].items():
-            _addotherclsnames(atype, classes, name, othercls)
+            _addotherclsnames(atype, classes, name, othercls, ts)
         for mkey, mtype in desc['methods'].items():
             mname, margs = mkey[0], mkey[1:]
-            _addotherclsnames(mtype, classes, name, othercls)
+            _addotherclsnames(mtype, classes, name, othercls, ts)
             for marg in margs:
-                _addotherclsnames(marg[1], classes, name, othercls)
+                _addotherclsnames(marg[1], classes, name, othercls, ts)
     clssort.sort(key=lambda x: len(othercls[x]))
     names = clssort[:1]
     for name in clssort[1:]:
@@ -144,23 +144,23 @@ def modcpppxd(mod, exceptions=True, ts=None):
          "srcpxd_filename": mod.get("srcpxd_filename", "")}
     attrs = []
     cimport_tups = set()
-    classnames = _classnames_in_mod(mod)
+    classnames = _classnames_in_mod(mod, ts)
     with ts.local_classes(classnames, frozenset(['c'])):
-        for name in cpppxd_sorted_names(mod):
+        for name in cpppxd_sorted_names(mod, ts):
             desc = mod[name]
             if isvardesc(desc):
-                ci_tup, attr_str = varcpppxd(desc, exceptions)
+                ci_tup, attr_str = varcpppxd(desc, exceptions, ts)
             elif isfuncdesc(desc):
-                ci_tup, attr_str = funccpppxd(desc, exceptions)
+                ci_tup, attr_str = funccpppxd(desc, exceptions, ts)
             elif isclassdesc(desc):
-                ci_tup, attr_str = classcpppxd(desc, exceptions)
+                ci_tup, attr_str = classcpppxd(desc, exceptions, ts)
             else:
                 continue
             cimport_tups |= ci_tup
             attrs.append(attr_str)
     if mod.get('language', None) == 'c':
-        cimport_tups.discard((ts.STLCONTAINERS,))
-    m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
+        cimport_tups.discard((ts.stlcontainers,))
+    m['cimports'] = "\n".join(sorted(ts.cython_cimport_lines(cimport_tups)))
     m['attrs_block'] = "\n".join(attrs)
     t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
     cpppxd = t.format(**m)
@@ -208,7 +208,7 @@ def varcpppxd(desc, exceptions=True, ts=None):
 
     inc = set(['c'])
     cimport_tups = set()
-    cython_cimport_tuples(t, cimport_tups, inc)
+    ts.cython_cimport_tuples(t, cimport_tups, inc)
 
     vlines = []
     if ts.isenum(t):
@@ -216,7 +216,7 @@ def varcpppxd(desc, exceptions=True, ts=None):
         enames = [name for name, val in t[1][2][2]]
         vlines += indent(enames, 4, join=False)
     else:
-        ct = cython_ctype(t)
+        ct = ts.cython_ctype(t)
         vlines.append("{0} {1}".format(ct, d['name']))
     d['variables_block'] = indent(vlines, 4)
     if 0 == len(d['variables_block'].strip()):
@@ -277,13 +277,13 @@ def funccpppxd(desc, exceptions=True, ts=None):
             continue  # private
         if any([a[1] is None or a[1][0] is None for a in fargs + (frtn,)]):
             continue
-        argfill = ", ".join([cython_ctype(a[1]) for a in fargs])
+        argfill = ", ".join([ts.cython_ctype(a[1]) for a in fargs])
         for a in fargs:
-            cython_cimport_tuples(a[1], cimport_tups, inc)
-        estr = _exception_str(exceptions, desc['source_filename'], frtn)
+            ts.cython_cimport_tuples(a[1], cimport_tups, inc)
+        estr = _exception_str(exceptions, desc['source_filename'], frtn, ts)
         line = "{0}({1}) {2}".format(fname, argfill, estr)
-        rtype = cython_ctype(frtn)
-        cython_cimport_tuples(frtn, cimport_tups, inc)
+        rtype = ts.cython_ctype(frtn)
+        ts.cython_cimport_tuples(frtn, cimport_tups, inc)
         line = rtype + " " + line
         if line not in flines:
             flines.append(line)
@@ -339,7 +339,7 @@ def classcpppxd(desc, exceptions=True, ts=None):
 
     """
     ts = ts or TypeSystem()
-    pars = ', '.join([cython_ctype(p) for p in desc['parents'] or ()])
+    pars = ', '.join([ts.cython_ctype(p) for p in desc['parents'] or ()])
     d = {'parents': pars if 0 == len(pars) else '('+pars+')',
          'header_filename': desc['header_filename'],}
     d['namespace'] = _format_ns(desc)
@@ -349,27 +349,27 @@ def classcpppxd(desc, exceptions=True, ts=None):
         d['alias'] = ''
     else:
         d['name'] = ts.cython_classname(name)[1]
-        d['alias'] = ' ' + _format_alias(desc)
+        d['alias'] = ' ' + _format_alias(desc, ts)
     construct_kinds = {'struct': 'struct', 'class': 'cppclass'}
     d['construct_kind'] = construct_kinds[desc.get('construct', 'class')]
     inc = set(['c'])
 
     cimport_tups = set()
     for parent in desc['parents'] or ():
-        cython_cimport_tuples(parent, cimport_tups, inc)
+        ts.cython_cimport_tuples(parent, cimport_tups, inc)
 
     alines = []
     attritems = sorted(desc['attrs'].items())
     for aname, atype in attritems:
         if aname.startswith('_'):
             continue
-        actype = cython_ctype(atype)
+        actype = ts.cython_ctype(atype)
         if '{type_name}' in actype:
             aline = actype.format(type_name=aname)
         else:
             aline = "{0} {1}".format(actype, aname)
         alines.append(aline)
-        cython_cimport_tuples(atype, cimport_tups, inc)
+        ts.cython_cimport_tuples(atype, cimport_tups, inc)
     d['attrs_block'] = indent(alines, 8)
 
     mlines = []
@@ -379,10 +379,10 @@ def classcpppxd(desc, exceptions=True, ts=None):
         mname, margs = mkey[0], mkey[1:]
         if mname.startswith('_') or mname.startswith('~'):
             continue  # private or destructor
-        argfill = ", ".join([cython_ctype(a[1]) for a in margs])
+        argfill = ", ".join([ts.cython_ctype(a[1]) for a in margs])
         for a in margs:
-            cython_cimport_tuples(a[1], cimport_tups, inc)
-        estr = _exception_str(exceptions, desc['source_filename'], mrtn)
+            ts.cython_cimport_tuples(a[1], cimport_tups, inc)
+        estr = _exception_str(exceptions, desc['source_filename'], mrtn, ts)
         line = "{0}({1}) {2}".format(mname, argfill, estr)
         if mrtn is None:
             # this must be a constructor
@@ -393,8 +393,8 @@ def classcpppxd(desc, exceptions=True, ts=None):
             # this is a normal method
             if MATCH_REF.matches(mrtn):
                 mrtn = mrtn[0]
-            rtype = cython_ctype(mrtn)
-            cython_cimport_tuples(mrtn, cimport_tups, inc)
+            rtype = ts.cython_ctype(mrtn)
+            ts.cython_cimport_tuples(mrtn, cimport_tups, inc)
             line = rtype + " " + line
             if line not in mlines:
                 mlines.append(line)
@@ -462,11 +462,11 @@ def modpxd(mod, classes=(), ts=None):
          "pxd_filename": mod.get("pxd_filename", "")}
     attrs = []
     cimport_tups = set()
-    classnames = _classnames_in_mod(mod)
+    classnames = _classnames_in_mod(mod, ts)
     with ts.local_classes(classnames):
         for name, desc in mod.items():
             if isclassdesc(desc):
-                ci_tup, attr_str = classpxd(desc, classes)
+                ci_tup, attr_str = classpxd(desc, classes, ts=ts)
             # no need to wrap functions again
             else:
                 continue
@@ -474,8 +474,8 @@ def modpxd(mod, classes=(), ts=None):
             attrs.append(attr_str)
     cimport_tups.discard((mod["name"],))
     if mod.get('language', None) == 'c':
-        cimport_tups.discard((ts.STLCONTAINERS,))
-    m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
+        cimport_tups.discard((ts.stlcontainers,))
+    m['cimports'] = "\n".join(sorted(ts.cython_cimport_lines(cimport_tups)))
     m['attrs_block'] = "\n".join(attrs)
     t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
     pxd = t.format(**m)
@@ -518,7 +518,7 @@ def classpxd(desc, classes=(), ts=None):
     ts = ts or TypeSystem()
     if 'pxd_filename' not in desc:
         desc['pxd_filename'] = '{0}.pxd'.format(desc['name'].lower())
-    pars = ', '.join([cython_cytype(p) for p in desc['parents'] or ()])
+    pars = ', '.join([ts.cython_cytype(p) for p in desc['parents'] or ()])
     d = {'parents': pars if 0 == len(pars) else '('+pars+')'}
     name = desc['name']
     d['name'] = name if isinstance(name, basestring) else ts.cython_classname(name)[1]
@@ -527,11 +527,11 @@ def classpxd(desc, classes=(), ts=None):
 
     cimport_tups = set()
     for parent in desc['parents'] or ():
-        cython_cimport_tuples(parent, cimport_tups, set(['cy']))
+        ts.cython_cimport_tuples(parent, cimport_tups, set(['cy']))
 
     from_cpppxd = desc['srcpxd_filename'].rsplit('.', 1)[0]
-    d['name_type'] = cython_ctype(desc['name'])
-    cython_cimport_tuples(desc['name'], cimport_tups, set(['c']))
+    d['name_type'] = ts.cython_ctype(desc['name'])
+    ts.cython_cimport_tuples(desc['name'], cimport_tups, set(['c']))
 
     parentless_body = ['cdef void * _inst', 'cdef public bint _free_inst']
     body = parentless_body if desc['parents'] is None else []
@@ -540,21 +540,21 @@ def classpxd(desc, classes=(), ts=None):
     for aname, atype in attritems:
         if aname.startswith('_'):
             continue  # skip private
-        _, _, cachename, iscached = cython_c2py(aname, atype, cache_prefix=None)
+        _, _, cachename, iscached = ts.cython_c2py(aname, atype, cache_prefix=None)
         if iscached:
-            cython_cimport_tuples(atype, cimport_tups)
+            ts.cython_cimport_tuples(atype, cimport_tups)
             if _isclassptr(atype, classes):
                 atype_nopred = ts.strip_predicates(atype)
-                cyt = cython_cytype(atype_nopred)
+                cyt = ts.cython_cytype(atype_nopred)
             elif _isclassdblptr(atype, classes):
                 cyt = 'list'
             else:
-                cyt = cython_cytype(atype)
+                cyt = ts.cython_cytype(atype)
             decl = "cdef public {0} {1}".format(cyt, cachename)
             body.append(decl)
-        if isfunctionpointer(atype):
+        if ts.isfunctionpointer(atype):
             apyname, acname = _mangle_function_pointer_name(aname, desc['name'])
-            acdecl = "cdef public " + cython_ctype(('function',)+ atype[1:])
+            acdecl = "cdef public " + ts.cython_ctype(('function',)+ atype[1:])
             for i in range(max_callbacks):
                 suffix = "{0:0{1}}".format(i, mczeropad)
                 apyname_i, acname_i = apyname + suffix, acname + suffix
@@ -607,7 +607,7 @@ def genpyx(env, classes=None, ts=None):
     for name, mod in env.items():
         if mod['pyx_filename'] is None:
             continue
-        pyxs[name] = modpyx(mod, classes=classes)
+        pyxs[name] = modpyx(mod, classes=classes, ts=ts)
     return pyxs
 
 
@@ -651,15 +651,15 @@ def modpyx(mod, classes=None, ts=None):
     attrs = []
     import_tups = set()
     cimport_tups = set()
-    classnames = _classnames_in_mod(mod)
+    classnames = _classnames_in_mod(mod, ts)
     with ts.local_classes(classnames):
         for name, desc in mod.items():
             if isvardesc(desc):
-                i_tup, ci_tup, attr_str = varpyx(desc)
+                i_tup, ci_tup, attr_str = varpyx(desc, ts=ts)
             elif isfuncdesc(desc):
-                i_tup, ci_tup, attr_str = funcpyx(desc)
+                i_tup, ci_tup, attr_str = funcpyx(desc, ts=ts)
             elif isclassdesc(desc):
-                i_tup, ci_tup, attr_str = classpyx(desc, classes=classes)
+                i_tup, ci_tup, attr_str = classpyx(desc, classes=classes, ts=ts)
             else:
                 continue
             import_tups |= i_tup
@@ -671,10 +671,10 @@ def modpyx(mod, classes=None, ts=None):
     import_tups.discard((mod["name"],))
     #cimport_tups.discard((mod["name"],))  # remain commented for decls
     if mod.get('language', None) == 'c':
-        import_tups.discard((ts.STLCONTAINERS,))
-        cimport_tups.discard((ts.STLCONTAINERS,))
+        import_tups.discard((ts.stlcontainers,))
+        cimport_tups.discard((ts.stlcontainers,))
     m['imports'] = "\n".join(sorted(cython_imports(import_tups)))
-    m['cimports'] = "\n".join(sorted(cython_cimports(cimport_tups)))
+    m['cimports'] = "\n".join(sorted(ts.cython_cimport_lines(cimport_tups)))
     if 'numpy' in m['cimports']:
         m['imports'] += "\n\nnp.import_array()"
     m['attrs_block'] = "\n".join(attrs)
@@ -711,15 +711,15 @@ def _gen_template_dispatcher(templates):
             disp.append("{0}[{1}] = {2}".format(t[0], ", ".join(pyts), pytype))
     return "\n".join(disp)
 
-def _gen_property_get(name, t, cached_names=None, inst_name="self._inst",
+def _gen_property_get(name, t, ts, cached_names=None, inst_name="self._inst",
                       classes=()):
     """This generates a Cython property getter for a variable of a given
     name and type."""
     lines = ['def __get__(self):']
-    decl, body, rtn, iscached = cython_c2py(name, t, inst_name=inst_name)
+    decl, body, rtn, iscached = ts.cython_c2py(name, t, inst_name=inst_name)
     if decl is not None:
         if _isclassptr(t, classes):
-            decl, _, _, _ = cython_c2py(name, t[0], inst_name=inst_name)
+            decl, _, _, _ = ts.cython_c2py(name, t[0], inst_name=inst_name)
         lines += indent(decl, join=False)
     if body is not None:
         lines += indent(body, join=False)
@@ -728,12 +728,12 @@ def _gen_property_get(name, t, cached_names=None, inst_name="self._inst",
     lines += indent("return {0}".format(rtn), join=False)
     return lines
 
-def _gen_property_set(name, t, inst_name="self._inst", cached_name=None, 
+def _gen_property_set(name, t, ts, inst_name="self._inst", cached_name=None, 
                       classes=()):
     """This generates a Cython property setter for a variable of a given
     name and type."""
     lines = ['def __set__(self, value):']
-    decl, body, rtn = cython_py2c('value', t)
+    decl, body, rtn = ts.cython_py2c('value', t)
     if decl is not None:
         lines += indent(decl, join=False)
     if body is not None:
@@ -743,23 +743,23 @@ def _gen_property_set(name, t, inst_name="self._inst", cached_name=None,
         lines += indent("{0} = None".format(cached_name), join=False)
     return lines
 
-def _gen_property(name, t, doc=None, cached_names=None, inst_name="self._inst", 
+def _gen_property(name, t, ts, doc=None, cached_names=None, inst_name="self._inst", 
                   classes=()):
     """This generates a Cython property for a variable of a given name and type."""
     lines  = ['property {0}:'.format(name)]
     lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
     oldcnlen = 0 if cached_names is None else len(cached_names)
-    lines += indent(_gen_property_get(name, t, cached_names=cached_names,
+    lines += indent(_gen_property_get(name, t, ts, cached_names=cached_names,
                     inst_name=inst_name, classes=classes), join=False)
     lines += ['']
     newcnlen = 0 if cached_names is None else len(cached_names)
     cached_name = cached_names[-1] if newcnlen == 1 + oldcnlen else None
-    lines += indent(_gen_property_set(name, t, inst_name=inst_name,
+    lines += indent(_gen_property_set(name, t, ts, inst_name=inst_name,
                     cached_name=cached_name, classes=classes), join=False)
     lines += ['', ""]
     return lines
 
-def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
+def _gen_function_pointer_property(name, t, ts, doc=None, cached_names=None,
         inst_name="self._inst", classname='', max_callbacks=8):
     """This generates a Cython property for a function pointer variable."""
     lines  = ['property {0}:'.format(name)]
@@ -767,7 +767,7 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
     # get section
     lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
     oldcnlen = 0 if cached_names is None else len(cached_names)
-    lines += indent(_gen_property_get(name, t, cached_names=cached_names,
+    lines += indent(_gen_property_get(name, t, ts, cached_names=cached_names,
                                       inst_name=inst_name), join=False)
 
     # set section
@@ -775,7 +775,7 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
     lines += [""]
     newcnlen = 0 if cached_names is None else len(cached_names)
     cached_name = cached_names[-1] if newcnlen == 1 + oldcnlen else None
-    setlines = indent(_gen_property_set(name, ('void', '*'), inst_name=inst_name,
+    setlines = indent(_gen_property_set(name, ('void', '*'), ts, inst_name=inst_name,
                                         cached_name=cached_name), join=False)
 
     lines += setlines[:1]
@@ -846,7 +846,7 @@ def _gen_function_pointer_property(name, t, doc=None, cached_names=None,
     lines += ['', ""]
     return lines
 
-def _gen_function_pointer_wrapper(name, t, classname='', max_callbacks=8):
+def _gen_function_pointer_wrapper(name, t, ts, classname='', max_callbacks=8):
     """This generates a Cython wrapper for a function pointer variable."""
     pyname, cname = _mangle_function_pointer_name(name, classname)
     mczeropad = int(math.log10(max_callbacks)) + 1
@@ -855,14 +855,14 @@ def _gen_function_pointer_wrapper(name, t, classname='', max_callbacks=8):
     for i in range(max_callbacks):
         suffix = "{0:0{1}}".format(i, mczeropad)
         pyname_i, cname_i = pyname + suffix, cname + suffix
-        decl, body, rtn = cython_py2c(pyname_i, t, proxy_name=cname_i)
+        decl, body, rtn = ts.cython_py2c(pyname_i, t, proxy_name=cname_i)
         lines += [pyname_i + " = None", '']
         lines += rtn.splitlines()
         lines.append('')
     lines += ['', ""]
     return lines
 
-def _gen_function(name, name_mangled, args, rtn, doc=None, inst_name="self._inst",
+def _gen_function(name, name_mangled, args, rtn, ts, doc=None, inst_name="self._inst",
                   is_method=False):
     if is_method:
         argfill = ", ".join(['self'] + [a[0] for a in args if 2 == len(a)] + \
@@ -876,19 +876,19 @@ def _gen_function(name, name_mangled, args, rtn, doc=None, inst_name="self._inst
     argbodies = []
     argrtns = {}
     for a in args:
-        adecl, abody, artn = cython_py2c(a[0], a[1])
+        adecl, abody, artn = ts.cython_py2c(a[0], a[1])
         if adecl is not None:
             decls += indent(adecl, join=False)
         if abody is not None:
             argbodies += indent(abody, join=False)
         argrtns[a[0]] = artn
-    rtype_orig = cython_ctype(rtn)
+    rtype_orig = ts.cython_ctype(rtn)
     rtype = rtype_orig.replace('const ', "").replace(' &', '')
     hasrtn = rtype not in set(['None', None, 'NULL', 'void'])
     argvals = ', '.join([argrtns[a[0]] for a in args])
     fcall = '{0}.{1}({2})'.format(inst_name, name, argvals)
     if hasrtn:
-        fcdecl, fcbody, fcrtn, fccached = cython_c2py('rtnval', rtn, cached=False)
+        fcdecl, fcbody, fcrtn, fccached = ts.cython_c2py('rtnval', rtn, cached=False)
         decls += indent("cdef {0} {1}".format(rtype, 'rtnval'), join=False)
         if 'const ' in rtype_orig:
             func_call = indent('rtnval = <{0}> {1}'.format(rtype, fcall), join=False)
@@ -909,7 +909,7 @@ def _gen_function(name, name_mangled, args, rtn, doc=None, inst_name="self._inst
     lines += ['', ""]
     return lines
 
-def _gen_default_constructor(desc, attrs, doc=None, srcpxd_filename=None):
+def _gen_default_constructor(desc, attrs, ts, doc=None, srcpxd_filename=None):
     args = ['self'] + [a + "=None" for a, _ in attrs] + ['*args', '**kwargs']
     argfill = ", ".join(args)
     lines  = ['def __init__({0}):'.format(argfill)]
@@ -938,7 +938,7 @@ def _gen_constructor(name, name_mangled, classname, args, doc=None,
     argbodies = []
     argrtns = {}
     for a in args:
-        adecl, abody, artn = cython_py2c(a[0], a[1])
+        adecl, abody, artn = ts.cython_py2c(a[0], a[1])
         if adecl is not None:
             decls += indent(adecl, join=False)
         if abody is not None:
@@ -1018,8 +1018,8 @@ def _method_instance_names(desc, classes, key, rtn):
         classrtn = classes.get(classname, {}).get('methods', {}).get(key, NotImplemented)
         if rtn != classrtn:
             continue
-        #class_ctype = cython_ctype(desc['name'])
-        class_ctype = cython_ctype(classname)
+        #class_ctype = ts.cython_ctype(desc['name'])
+        class_ctype = ts.cython_ctype(classname)
         inst_name = "(<{0} *> self._inst)".format(class_ctype)
         return inst_name, classname
     return "(<{0} *> self._inst)".format(cython_ctype(desc['name'])), desc['name']
@@ -1095,7 +1095,7 @@ def classpyx(desc, classes=None, ts=None):
     if classes is None:
         classes = {desc['name']: desc}
     nodocmsg = "no docstring for {0}, please file a bug report!"
-    pars = ', '.join([cython_cytype(p) for p in desc['parents'] or ()])
+    pars = ', '.join([ts.cython_cytype(p) for p in desc['parents'] or ()])
     d = {'parents': pars if 0 == len(pars) else '('+pars+')',
          'namespace': desc['namespace'],
          'header_filename': desc['header_filename'],
@@ -1105,14 +1105,14 @@ def classpyx(desc, classes=None, ts=None):
     class_doc = desc.get('docstrings', {}).get('class', nodocmsg.format(desc['name']))
     d['class_docstring'] = indent('\"\"\"{0}\"\"\"'.format(class_doc))
 
-    class_ctype = cython_ctype(desc['name'])
+    class_ctype = ts.cython_ctype(desc['name'])
     inst_name = "(<{0} *> self._inst)".format(class_ctype)
 
     import_tups = set()
     cimport_tups = set()
     for parent in desc['parents'] or ():
-        cython_import_tuples(parent, import_tups)
-        cython_cimport_tuples(parent, cimport_tups)
+        ts.cython_import_tuples(parent, import_tups)
+        ts.cython_cimport_tuples(parent, cimport_tups)
 
     cdefattrs = []
     mc = desc.get('extra', {}).get('max_callbacks', 8)
@@ -1127,18 +1127,18 @@ def classpyx(desc, classes=None, ts=None):
             continue  # skip private
         adoc = desc.get('docstrings', {}).get('attrs', {})\
                                          .get(aname, nodocmsg.format(aname))
-        if isfunctionpointer(atype):
-            alines += _gen_function_pointer_property(aname, atype, adoc,
+        if ts.isfunctionpointer(atype):
+            alines += _gen_function_pointer_property(aname, atype, ts, adoc,
                         cached_names=cached_names, inst_name=inst_name,
                         classname=desc['name'], max_callbacks=mc)
-            fplines += _gen_function_pointer_wrapper(aname, atype,
+            fplines += _gen_function_pointer_wrapper(aname, atype, ts,
                         max_callbacks=mc, classname=desc['name'])
             pdlines.append("self._{0}_vtab_i = {1}".format(aname, mc+1))
         else:
-            alines += _gen_property(aname, atype, adoc, cached_names=cached_names,
+            alines += _gen_property(aname, atype, ts, adoc, cached_names=cached_names,
                                     inst_name=inst_name, classes=classes)
-        cython_import_tuples(atype, import_tups)
-        cython_cimport_tuples(atype, cimport_tups)
+        ts.cython_import_tuples(atype, import_tups)
+        ts.cython_cimport_tuples(atype, cimport_tups)
     if len(fplines) > 0:
         fplines.append("_MAX_CALLBACKS_{0} = {1}".format(desc['name'], mc))
     d['attrs_block'] = indent(alines)
@@ -1166,12 +1166,12 @@ def classpyx(desc, classes=None, ts=None):
         currcounts[mname] += 1
         mangled_mnames[mkey] = mname_mangled
         for a in margs:
-            cython_import_tuples(a[1], import_tups)
-            cython_cimport_tuples(a[1], cimport_tups)
+            ts.cython_import_tuples(a[1], import_tups)
+            ts.cython_cimport_tuples(a[1], cimport_tups)
         minst_name, mcname = _method_instance_names(desc, classes, mkey, mrtn)
         if mcname != desc['name']:
-            cython_import_tuples(mcname, import_tups)
-            cython_cimport_tuples(mcname, cimport_tups)
+            ts.cython_import_tuples(mcname, import_tups)
+            ts.cython_cimport_tuples(mcname, cimport_tups)
         if mrtn is None:
             # this must be a constructor
             if mname not in (desc['name'], '__init__'):
@@ -1191,12 +1191,12 @@ def classpyx(desc, classes=None, ts=None):
                 clines += _gen_dispatcher('__init__', nm, doc=mdoc, hasrtn=False)
         else:
             # this is a normal method
-            cython_import_tuples(mrtn, import_tups)
-            cython_cimport_tuples(mrtn, cimport_tups)
+            ts.cython_import_tuples(mrtn, import_tups)
+            ts.cython_cimport_tuples(mrtn, cimport_tups)
             mdoc = desc.get('docstrings', {}).get('methods', {})\
                                              .get(mname, nodocmsg.format(mname))
             mdoc = _doc_add_sig(mdoc, mname, margs)
-            mlines += _gen_function(mname, mname_mangled, margs, mrtn, mdoc,
+            mlines += _gen_function(mname, mname_mangled, margs, mrtn, ts, mdoc,
                                   inst_name=minst_name, is_method=True)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
@@ -1208,7 +1208,7 @@ def classpyx(desc, classes=None, ts=None):
         mdoc = mdocs.get(desc['name'], False) or mdocs.get('__init__', '')
         mdoc = _doc_add_sig(mdoc, '__init__',
                             [(_a, _t, "None") for _a, _t in attritems])
-        clines += _gen_default_constructor(desc, attritems, doc=mdoc)
+        clines += _gen_default_constructor(desc, attritems, ts, doc=mdoc)
         cimport_tups.add(('libc.stdlib', 'malloc'))
     if desc['parents'] is None:
         clines += ["def __dealloc__(self):"]
@@ -1259,7 +1259,7 @@ def varpyx(desc, ts=None):
             vlines.append(doc.format(ename, val, name))
             vlines.append("")
     else:
-        decl, body, rtn, iscached = cython_c2py(name, t, view=False, cached=False,
+        decl, body, rtn, iscached = ts.cython_c2py(name, t, view=False, cached=False,
                                                 inst_name=inst_name)
         vlines.append(decl)
         vlines.append(body)
@@ -1319,13 +1319,13 @@ def funcpyx(desc, ts=None):
         currcounts[fname] += 1
         mangled_fnames[fkey] = fname_mangled
         for a in fargs:
-            cython_import_tuples(a[1], import_tups)
-            cython_cimport_tuples(a[1], cimport_tups)
-        cython_import_tuples(frtn, import_tups)
-        cython_cimport_tuples(frtn, cimport_tups)
+            ts.cython_import_tuples(a[1], import_tups)
+            ts.cython_cimport_tuples(a[1], cimport_tups)
+        ts.cython_import_tuples(frtn, import_tups)
+        ts.cython_cimport_tuples(frtn, cimport_tups)
         fdoc = desc.get('docstring', nodocmsg.format(fname))
         fdoc = _doc_add_sig(fdoc, fname, fargs, ismethod=False)
-        flines += _gen_function(fname, fname_mangled, fargs, frtn, fdoc,
+        flines += _gen_function(fname, fname_mangled, fargs, frtn, ts, fdoc,
                               inst_name=inst_name, is_method=False)
         if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
             # write dispatcher
@@ -1388,7 +1388,7 @@ def _format_ns(desc):
     else:
         return 'namespace "{0}"'.format(ns)
 
-def _format_alias(desc):
+def _format_alias(desc, ts):
     ns = desc.get('namespace', None)
     cpp_name = ts.cpp_type(desc['name'])
     if ns is None or len(ns) == 0:
@@ -1415,7 +1415,7 @@ _exc_c_base = frozenset(['int16', 'int32', 'int64', 'int128',
 
 _exc_ptr_matcher = TypeMatcher((MatchAny, '*'))
     
-def _exception_str(exceptions, srcfile, rtntype):
+def _exception_str(exceptions, srcfile, rtntype, ts):
     if not exceptions:
         return ""
     if isinstance(exceptions, basestring):
@@ -1436,7 +1436,7 @@ def _exception_str(exceptions, srcfile, rtntype):
     else:
         return ""
 
-def _classnames_in_mod(mod):
+def _classnames_in_mod(mod, ts):
     classnames = set()
     for name, desc in mod.items():
         if not isclassdesc(desc):

@@ -1132,7 +1132,7 @@ class TypeSystem(object):
         elif len(args) == 0:
             toup = kwargs
         else:
-            msg = "invalid siganture: args = {0!r}, kwargs={1!0}"
+            msg = "invalid siganture: args={0!r}, kwargs={1!0}"
             raise TypeError(msg.fomat(args, kwargs))
         # verify keys
         for k in toup:
@@ -1891,7 +1891,7 @@ class TypeSystem(object):
                 tkey = tkey[0]
         py2ct = self.cython_py2c_conv[tkey]
         if callable(py2ct):
-            self.cython_py2c_conv[t] = py2ct(t, ts)
+            self.cython_py2c_conv[t] = py2ct(t, self)
             py2ct = self.cython_py2c_conv[t]
         if py2ct is NotImplemented or py2ct is None:
             raise NotImplementedError('conversion from Python to C/C++ for ' + \
