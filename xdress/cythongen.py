@@ -23,16 +23,12 @@ from pprint import pprint
 from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
     isvardesc, guess_language, newoverwrite
 from .plugins import Plugin
-from . import typesystem as ts
-from .typesystem import cython_ctype, cython_cimport_tuples, \
-    cython_cimports, register_class, cython_cytype, cython_pytype, cython_c2py, \
-    cython_py2c, cython_import_tuples, cython_imports, isrefinement, \
-    isfunctionpointer
+from .typesystem import TypeSystem, TypeMatcher, MatchAny
 
 if sys.version_info[0] >= 3:
     basestring = str
 
-MATCH_REF = ts.TypeMatcher((ts.MatchAny, '&'))
+MATCH_REF = TypeMatcher((MatchAny, '&'))
 
 AUTOGEN_WARNING = \
 """################################################
@@ -45,7 +41,7 @@ AUTOGEN_WARNING = \
 ################################################
 """
 
-def gencpppxd(env, exceptions=True):
+def gencpppxd(env, exceptions=True, ts=None):
     """Generates all cpp_*.pxd Cython header files for an environment of modules.
 
     Parameters
@@ -57,6 +53,8 @@ def gencpppxd(env, exceptions=True):
         Cython exception annotation.  Set to True to automatically detect exception
         types, False for when exceptions should not be included, and a str (such as
         '+' or '-1') to apply to everywhere.
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -64,11 +62,12 @@ def gencpppxd(env, exceptions=True):
         Maps environment target names to Cython cpp_*.pxd header files strings.
 
     """
+    ts = ts or TypeSystem()
     cpppxds = {}
     for name, mod in env.items():
         if mod['srcpxd_filename'] is None:
             continue
-        cpppxds[name] = modcpppxd(mod, exceptions)
+        cpppxds[name] = modcpppxd(mod, exceptions, ts=ts)
     return cpppxds
 
 def _addotherclsnames(t, classes, name, others):
@@ -119,7 +118,7 @@ def cpppxd_sorted_names(mod):
     return names
 
 
-def modcpppxd(mod, exceptions=True):
+def modcpppxd(mod, exceptions=True, ts=None):
     """Generates a cpp_*.pxd Cython header file for exposing a C/C++ module to
     other Cython wrappers based off of a dictionary description of the module.
 
@@ -131,6 +130,8 @@ def modcpppxd(mod, exceptions=True):
         Cython exception annotation.  Set to True to automatically detect exception
         types, False for when exceptions should not be included, and a str (such as
         '+' or '-1') to apply to everywhere.
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -138,6 +139,7 @@ def modcpppxd(mod, exceptions=True):
         Cython cpp_*.pxd header file as in-memory string.
 
     """
+    ts = ts or TypeSystem()
     m = {'extra': mod.get('extra', ''),
          "srcpxd_filename": mod.get("srcpxd_filename", "")}
     attrs = []
@@ -173,7 +175,7 @@ cdef extern from "{header_filename}" {namespace}:
 {extra}
 """
 
-def varcpppxd(desc, exceptions=True):
+def varcpppxd(desc, exceptions=True, ts=None):
     """Generates a cpp_*.pxd Cython header snippet for exposing a C/C++ variable
     to other Cython wrappers based off of a dictionary description.
 
@@ -185,6 +187,8 @@ def varcpppxd(desc, exceptions=True):
         Cython exception annotation.  Set to True to automatically detect exception
         types, False for when exceptions should not be included, and a str (such as
         '+' or '-1') to apply to everywhere.
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -194,6 +198,7 @@ def varcpppxd(desc, exceptions=True):
         Cython cpp_*.pxd header file as in-memory string.
 
     """
+    ts = ts or TypeSystem()
     d = {}
     t = ts.canon(desc['type'])
     copy_from_desc = ['name', 'header_filename']
@@ -232,7 +237,7 @@ cdef extern from "{header_filename}" {namespace}:
 {extra}
 """
 
-def funccpppxd(desc, exceptions=True):
+def funccpppxd(desc, exceptions=True, ts=None):
     """Generates a cpp_*.pxd Cython header snippet for exposing a C/C++ function
     to other Cython wrappers based off of a dictionary description.
 
@@ -244,6 +249,8 @@ def funccpppxd(desc, exceptions=True):
         Cython exception annotation.  Set to True to automatically detect exception
         types, False for when exceptions should not be included, and a str (such as
         '+' or '-1') to apply to everywhere.
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -253,6 +260,7 @@ def funccpppxd(desc, exceptions=True):
         Cython cpp_*.pxd header file as in-memory string.
 
     """
+    ts = ts or TypeSystem()
     d = {}
     copy_from_desc = ['name', 'header_filename']
     for key in copy_from_desc:
@@ -306,7 +314,7 @@ _cpppxd_class_template = \
 {extra}
 """
 
-def classcpppxd(desc, exceptions=True):
+def classcpppxd(desc, exceptions=True, ts=None):
     """Generates a cpp_*.pxd Cython header snippet for exposing a C/C++ class or
     struct to other Cython wrappers based off of a dictionary description of the
     class or struct.
@@ -319,6 +327,8 @@ def classcpppxd(desc, exceptions=True):
         Cython exception annotation.  Set to True to automatically detect exception
         types, False for when exceptions should not be included, and a str (such as
         '+' or '-1') to apply to everywhere.
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -328,6 +338,7 @@ def classcpppxd(desc, exceptions=True):
         Cython cpp_*.pxd header file as in-memory string.
 
     """
+    ts = ts or TypeSystem()
     pars = ', '.join([cython_ctype(p) for p in desc['parents'] or ()])
     d = {'parents': pars if 0 == len(pars) else '('+pars+')',
          'header_filename': desc['header_filename'],}
@@ -397,7 +408,7 @@ def classcpppxd(desc, exceptions=True):
     return cimport_tups, cpppxd
 
 
-def genpxd(env, classes=()):
+def genpxd(env, classes=(), ts=None):
     """Generates all pxd Cython header files for an environment of modules.
 
     Parameters
@@ -408,6 +419,8 @@ def genpxd(env, classes=()):
     classes : sequence, optional
         Listing of all class names that are handled by cythongen.  This may be 
         the same dictionary as in genpyx()
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -415,15 +428,16 @@ def genpxd(env, classes=()):
         Maps environment target names to Cython pxd header files strings.
 
     """
+    ts = ts or TypeSystem()
     pxds = {}
     for name, mod in env.items():
         if mod['pxd_filename'] is None:
             continue
-        pxds[name] = modpxd(mod, classes)
+        pxds[name] = modpxd(mod, classes, ts=ts)
     return pxds
 
 
-def modpxd(mod, classes=()):
+def modpxd(mod, classes=(), ts=None):
     """Generates a pxd Cython header file for exposing C/C++ data to
     other Cython wrappers based off of a dictionary description.
 
@@ -434,6 +448,8 @@ def modpxd(mod, classes=()):
     classes : sequence, optional
         Listing of all class names that are handled by cythongen.  This may be 
         the same dictionary as in modpyx().
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -441,6 +457,7 @@ def modpxd(mod, classes=()):
         Cython .pxd header file as in-memory string.
 
     """
+    ts = ts or TypeSystem()
     m = {'extra': mod.get('extra', ''),
          "pxd_filename": mod.get("pxd_filename", "")}
     attrs = []
@@ -476,7 +493,7 @@ cdef class {name}{parents}:
 """
 
 
-def classpxd(desc, classes=()):
+def classpxd(desc, classes=(), ts=None):
     """Generates a ``*pxd`` Cython header snippet for exposing a C/C++ class to
     other Cython wrappers based off of a dictionary description.
 
@@ -487,6 +504,8 @@ def classpxd(desc, classes=()):
     classes : sequence, optional
         Listing of all class names that are handled by cythongen.  This may be 
         the same dictionary as in modpyx().
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -496,6 +515,7 @@ def classpxd(desc, classes=()):
         Cython ``*.pxd`` header snippet for class.
 
     """
+    ts = ts or TypeSystem()
     if 'pxd_filename' not in desc:
         desc['pxd_filename'] = '{0}.pxd'.format(desc['name'].lower())
     pars = ', '.join([cython_cytype(p) for p in desc['parents'] or ()])
@@ -553,7 +573,7 @@ def classpxd(desc, classes=()):
     return cimport_tups, pxd
 
 
-def genpyx(env, classes=None):
+def genpyx(env, classes=None, ts=None):
     """Generates all pyx Cython implementation files for an environment of modules.
 
     Parameters
@@ -565,6 +585,8 @@ def genpyx(env, classes=None):
         Dictionary which maps all class names that are required to
         their own descriptions.  This is required for resolving class heirarchy
         dependencies. If None, this will be computed here.
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -572,6 +594,7 @@ def genpyx(env, classes=None):
         Maps environment target names to Cython pxd header files strings.
 
     """
+    ts = ts or TypeSystem()
     if classes is None:
         # get flat namespace of class descriptions
         classes = {}
@@ -600,7 +623,7 @@ _pyx_mod_template = AUTOGEN_WARNING + \
 {extra}
 '''
 
-def modpyx(mod, classes=None):
+def modpyx(mod, classes=None, ts=None):
     """Generates a pyx Cython implementation file for exposing C/C++ data to
     other Cython wrappers based off of a dictionary description.
 
@@ -612,6 +635,8 @@ def modpyx(mod, classes=None):
         Dictionary which maps all class names that are required to
         their own descriptions.  This is required for resolving class heirarchy
         dependencies.
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -619,6 +644,7 @@ def modpyx(mod, classes=None):
         Cython pyx header file as in-memory string.
 
     """
+    ts = ts or TypeSystem()
     m = {'extra': mod.get('extra', ''),
          'docstring': mod.get('docstring', "no docstring, please file a bug report!"),
          "pyx_filename": mod.get("pyx_filename", "")}
@@ -1043,7 +1069,7 @@ cdef class {name}{parents}:
 {extra}
 '''
 
-def classpyx(desc, classes=None):
+def classpyx(desc, classes=None, ts=None):
     """Generates a ``*.pyx`` Cython wrapper implementation for exposing a C/C++
     class based off of a dictionary description.  The environment is a
     dictionary of all class names known to their descriptions.
@@ -1056,6 +1082,8 @@ def classpyx(desc, classes=None):
         Dictionary which maps all class names that are required to
         their own descriptions.  This is required for resolving class heirarchy
         dependencies.
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -1063,6 +1091,7 @@ def classpyx(desc, classes=None):
         Cython ``*.pyx`` implementation file as in-memory string.
 
     """
+    ts = ts or TypeSystem()
     if classes is None:
         classes = {desc['name']: desc}
     nodocmsg = "no docstring for {0}, please file a bug report!"
@@ -1197,7 +1226,7 @@ def classpyx(desc, classes=None):
         desc['pyx_filename'] = '{0}.pyx'.format(d['name'].lower())
     return import_tups, cimport_tups, pyx
 
-def varpyx(desc):
+def varpyx(desc, ts=None):
     """Generates a ``*.pyx`` Cython wrapper implementation for exposing a C/C++
     variable based off of a dictionary description.
 
@@ -1205,6 +1234,8 @@ def varpyx(desc):
     ----------
     desc : dict
         Variable description dictonary.
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -1212,6 +1243,7 @@ def varpyx(desc):
         Cython ``*.pyx`` implementation as in-memory string.
 
     """
+    ts = ts or TypeSystem()
     nodocmsg = "no docstring for {0}, please file a bug report!"
     inst_name = desc['srcpxd_filename'].rsplit('.', 1)[0]
     import_tups = set()
@@ -1244,7 +1276,7 @@ def varpyx(desc):
     return import_tups, cimport_tups, pyx
 
 
-def funcpyx(desc):
+def funcpyx(desc, ts=None):
     """Generates a ``*.pyx`` Cython wrapper implementation for exposing a C/C++
     function based off of a dictionary description.
 
@@ -1252,6 +1284,8 @@ def funcpyx(desc):
     ----------
     desc : dict
         function description dictonary.
+    ts : TypeSystem, optional
+        A type system instance.
 
     Returns
     -------
@@ -1259,6 +1293,7 @@ def funcpyx(desc):
         Cython ``*.pyx`` implementation as in-memory string.
 
     """
+    ts = ts or TypeSystem()
     nodocmsg = "no docstring for {0}, please file a bug report!"
     inst_name = desc['srcpxd_filename'].rsplit('.', 1)[0]
 
@@ -1324,9 +1359,9 @@ class XDressPlugin(Plugin):
                     classes[name] = desc
 
         # generate all files
-        cpppxds = gencpppxd(env)
-        pxds = genpxd(env, classes)
-        pyxs = genpyx(env, classes)
+        cpppxds = gencpppxd(env, ts=rc.ts)
+        pxds = genpxd(env, classes, ts=rc.ts)
+        pyxs = genpyx(env, classes, ts=rc.ts)
 
         # write out all files
         for key, cpppxd in cpppxds.items():
@@ -1378,7 +1413,7 @@ def _isclassdblptr(t, classes):
 _exc_c_base = frozenset(['int16', 'int32', 'int64', 'int128', 
                          'float32', 'float64', 'float128'])
 
-_exc_ptr_matcher = ts.TypeMatcher((ts.MatchAny, '*'))
+_exc_ptr_matcher = TypeMatcher((MatchAny, '*'))
     
 def _exception_str(exceptions, srcfile, rtntype):
     if not exceptions:

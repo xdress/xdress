@@ -1,7 +1,7 @@
 from __future__ import print_function
 import os
 
-from xdress import typesystem as ts
+from xdress.typesystem import TypeSystem
 from xdress import cythongen as cg
 from xdress import autodescribe as ad
 
@@ -11,6 +11,8 @@ from nose.tools import assert_equal
 from numpy.testing import dec
 
 import pprint
+
+ts = TypeSystem()
 
 if not os.path.isdir('build'):
     os.mkdir('build')
@@ -93,7 +95,7 @@ def test_merge_descriptions():
 
 @dec.skipif(ad.pycparser is None)
 def test_pycparser_describe_device_measure():
-    obs = ad.pycparser_describe('device.c', 'Device_measure', 'func')
+    obs = ad.pycparser_describe('device.c', 'Device_measure', 'func', ts=ts)
     exp = {'name': 'Device_measure', 
            'namespace': None,
            'signatures': {
@@ -119,7 +121,7 @@ def test_pycparser_describe_device_measure():
 
 @dec.skipif(ad.pycparser is None)
 def test_pycparser_describe_device_init():
-    obs = ad.pycparser_describe('device.c', 'Device_Init', 'func')
+    obs = ad.pycparser_describe('device.c', 'Device_Init', 'func', ts=ts)
     exp = {'name': 'Device_Init', 
            'namespace': None,
            'signatures': {
@@ -137,7 +139,7 @@ def test_pycparser_describe_device_init():
 
 @dec.skipif(ad.pycparser is None)
 def test_pycparser_describe_device_descriptor_tag():
-    obs = ad.pycparser_describe('device.c', 'DeviceDescriptorTag', 'class')
+    obs = ad.pycparser_describe('device.c', 'DeviceDescriptorTag', 'class', ts=ts)
     exp = {'name': 'DeviceDescriptorTag', 
            'namespace': None,
            'construct': 'struct',

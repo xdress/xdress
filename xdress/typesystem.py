@@ -2459,7 +2459,3 @@ def _ensure_importable(x):
     else:
         r = x
     return r
-
-# Default type system instance
-type_system = TypeSystem()
-

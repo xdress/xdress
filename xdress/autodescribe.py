@@ -177,8 +177,7 @@ from . import utils
 from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
     find_source, FORBIDDEN_NAMES, find_filenames, warn_forbidden_name
 from . import astparsers
-
-from . import typesystem as ts
+from .typesystem import TypeSystem
 
 if sys.version_info[0] >= 3: 
     basestring = str
@@ -197,7 +196,8 @@ def clearmemo():
 #
 
 def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',), 
-                    undefines=(), verbose=False, debug=False, builddir='build'):
+                    undefines=(), ts=None, verbose=False, debug=False, 
+                    builddir='build'):
     """Use GCC-XML to describe the class.
 
     Parameters
@@ -215,6 +215,8 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
+    ts : TypeSystem, optional 
+        A type system instance.
     verbose : bool, optional
         Flag to diplay extra information while describing the class.
     debug : bool, optional
@@ -239,7 +241,7 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                  [basename + '.' + h for h in utils._hdr_exts if h.startswith('h')])
     describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber, 
                   'var': GccxmlVarDescriber}
-    describer = describers[kind](name, root, onlyin=onlyin, verbose=verbose)
+    describer = describers[kind](name, root, onlyin=onlyin, ts=ts, verbose=verbose)
     describer.visit()
     return describer.desc
 
@@ -253,7 +255,7 @@ class GccxmlBaseDescriber(object):
     _describes = None
     _integer_types = frozenset(['int32', 'int64', 'uint32', 'uint64'])
 
-    def __init__(self, name, root=None, onlyin=None, verbose=False):
+    def __init__(self, name, root=None, onlyin=None, ts=None, verbose=False):
         """Parameters
         -------------
         name : str
@@ -263,12 +265,15 @@ class GccxmlBaseDescriber(object):
         onlyin :  str, optional
             Filename the class or struct described must live in.  Prevents 
             finding elements of the same name coming from other libraries.
+        ts : TypeSystem, optional 
+            A type system instance.
         verbose : bool, optional
             Flag to display extra information while visiting.
 
         """
         self.desc = {'name': name}
         self.name = name
+        self.ts = ts or TypeSystem()
         self.verbose = verbose
         self._root = root
         origonlyin = onlyin
@@ -383,7 +388,7 @@ class GccxmlBaseDescriber(object):
         self._pprint(node)
         name = node.attrib['name']
         self._currclass.append(name)
-        if self._describes == 'class' and (name == ts.gccxml_type(self.name) or 
+        if self._describes == 'class' and (name == self.ts.gccxml_type(self.name) or 
                                            name == self._name):
             if 'bases' not in node.attrib:
                 msg = ("The type {0!r} is used as part of an API element but no "
@@ -613,7 +618,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
     _describes = 'class'
     _constructvalue = 'class'
 
-    def __init__(self, name, root=None, onlyin=None, verbose=False):
+    def __init__(self, name, root=None, onlyin=None, ts=None, verbose=False):
         """Parameters
         -------------
         name : str
@@ -623,12 +628,14 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
         onlyin :  str, optional
             Filename the class or struct described must live in.  Prevents 
             finding classes of the same name coming from other libraries.
+        ts : TypeSystem, optional 
+            A type system instance.
         verbose : bool, optional
             Flag to display extra information while visiting the class.
 
         """
         super(GccxmlClassDescriber, self).__init__(name, root=root, onlyin=onlyin, 
-                                                   verbose=verbose)
+                                                   ts=ts, verbose=verbose)
         self.desc['attrs'] = {}
         self.desc[self._funckey] = {}
         self.desc['construct'] = self._constructvalue
@@ -651,10 +658,10 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
 
         """
         if node is None:
-            query = "Class[@name='{0}']".format(ts.gccxml_type(self.name))
+            query = "Class[@name='{0}']".format(self.ts.gccxml_type(self.name))
             node = self._root.find(query)
             if node is None:
-                query = "Struct[@name='{0}']".format(ts.gccxml_type(self.name))
+                query = "Struct[@name='{0}']".format(self.ts.gccxml_type(self.name))
                 node = self._root.find(query)
             if node is None and not isinstance(self, basestring):
                 # Must be a template with some wacky argument values
@@ -703,7 +710,7 @@ class GccxmlVarDescriber(GccxmlBaseDescriber):
 
     _describes = 'var'
 
-    def __init__(self, name, root=None, onlyin=None, verbose=False):
+    def __init__(self, name, root=None, onlyin=None, ts=None, verbose=False):
         """Parameters
         -------------
         name : str
@@ -713,12 +720,14 @@ class GccxmlVarDescriber(GccxmlBaseDescriber):
         onlyin :  str, optional
             Filename the function described must live in.  Prevents finding 
             functions of the same name coming from other libraries.
+        ts : TypeSystem, optional 
+            A type system instance.
         verbose : bool, optional
             Flag to display extra information while visiting the function.
 
         """
         super(GccxmlVarDescriber, self).__init__(name, root=root, onlyin=onlyin, 
-                                                 verbose=verbose)
+                                                 ts=ts, verbose=verbose)
 
     def visit(self, node=None):
         """Visits the variable node and all sub-nodes, generating the description
@@ -751,7 +760,7 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
     _funckey = 'signatures'
     _describes = 'func'
 
-    def __init__(self, name, root=None, onlyin=None, verbose=False):
+    def __init__(self, name, root=None, onlyin=None, ts=None, verbose=False):
         """Parameters
         -------------
         name : str
@@ -761,12 +770,14 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
         onlyin :  str, optional
             Filename the function described must live in.  Prevents finding 
             functions of the same name coming from other libraries.
+        ts : TypeSystem, optional 
+            A type system instance.
         verbose : bool, optional
             Flag to display extra information while visiting the function.
 
         """
         super(GccxmlFuncDescriber, self).__init__(name, root=root, onlyin=onlyin, 
-                                                   verbose=verbose)
+                                                  ts=ts, verbose=verbose)
         self.desc[self._funckey] = {}
 
     def visit(self, node=None):
@@ -795,13 +806,14 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 
 @astparsers.not_implemented
 def clang_describe(filename, name, includes=(), defines=('XDRESS',),
-                   undefines=(), verbose=False, debug=False, builddir='build'):
+                   undefines=(), ts=None, verbose=False, debug=False, 
+                   builddir='build'):
     "Use clang to describe the class."
     index = cindex.Index.create()
     tu = index.parse(filename, args=['-cc1', '-I' + pyne.includes, '-D', 'XDRESS'])
     #onlyin = set([filename, filename.replace('.cpp', '.h')])
     onlyin = set([filename.replace('.cpp', '.h')])
-    describer = ClangClassDescriber(name, onlyin=onlyin, verbose=verbose)
+    describer = ClangClassDescriber(name, onlyin=onlyin, ts=ts, verbose=verbose)
     describer.visit(tu.cursor)
     pprint(describer.desc)
     return describer.desc
@@ -846,9 +858,10 @@ class ClangClassDescriber(object):
 
     _funckinds = set(['function_decl', 'cxx_method', 'constructor', 'destructor'])
 
-    def __init__(self, name, root=None, onlyin=None, verbose=False):
+    def __init__(self, name, root=None, onlyin=None, ts=None, verbose=False):
         self.desc = {'name': name, 'attrs': {}, 'methods': {}}
         self.name = name
+        self.ts = ts or TypeSystem()
         self.verbose = verbose
         onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
         self.onlyin = set() if onlyin is None else set(onlyin)
@@ -1191,7 +1204,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
 
     _funckey = None
 
-    def __init__(self, name, root, onlyin=None, verbose=False):
+    def __init__(self, name, root, onlyin=None, ts=None, verbose=False):
         """Parameters
         -------------
         name : str
@@ -1201,6 +1214,8 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         onlyin :  str, optional
             Filename the class or struct described must live in.  Prevents 
             finding classes of the same name coming from other libraries.
+        ts : TypeSystem, optional 
+            A type system instance.
         verbose : bool, optional
             Flag to display extra information while visiting the class.
 
@@ -1208,6 +1223,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         super(PycparserBaseDescriber, self).__init__()
         self.desc = {'name': name, 'namespace': None}
         self.name = name
+        self.ts = ts or TypeSystem()
         self.verbose = verbose
         self._root = root
         self._currfunc = []  # this must be a stack to handle nested functions
@@ -1431,7 +1447,7 @@ class PycparserVarDescriber(PycparserBaseDescriber):
 
     _type_error_msg = "{0} is a {1}, use {2} instead."
 
-    def __init__(self, name, root, onlyin=None, verbose=False):
+    def __init__(self, name, root, onlyin=None, ts=None, verbose=False):
         """Parameters
         -------------
         name : str
@@ -1441,12 +1457,14 @@ class PycparserVarDescriber(PycparserBaseDescriber):
         onlyin :  str, optional
             Filename the variable described must live in.  Prevents 
             finding variables of the same name coming from other libraries.
+        ts : TypeSystem, optional 
+            A type system instance.
         verbose : bool, optional
             Flag to display extra information while visiting the class.
 
         """
         super(PycparserVarDescriber, self).__init__(name, root, onlyin=onlyin, 
-                                                                verbose=verbose)
+                                                    ts=ts, verbose=verbose)
 
     def visit(self, node=None):
         """Visits the variable definition node and all sub-nodes, generating 
@@ -1478,7 +1496,7 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
 
     _funckey = 'signatures'
 
-    def __init__(self, name, root, onlyin=None, verbose=False):
+    def __init__(self, name, root, onlyin=None, ts=None, verbose=False):
         """Parameters
         -------------
         name : str
@@ -1488,12 +1506,14 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
         onlyin :  str, optional
             Filename the class or struct described must live in.  Prevents 
             finding classes of the same name coming from other libraries.
+        ts : TypeSystem, optional 
+            A type system instance.
         verbose : bool, optional
             Flag to display extra information while visiting the class.
 
         """
         super(PycparserFuncDescriber, self).__init__(name, root, onlyin=onlyin, 
-                                                                  verbose=verbose)
+                                                     ts=ts, verbose=verbose)
         self.desc[self._funckey] = {}
 
     def visit(self, node=None):
@@ -1524,7 +1544,7 @@ class PycparserClassDescriber(PycparserBaseDescriber):
     _funckey = 'methods'
     _constructvalue = 'struct'
 
-    def __init__(self, name, root, onlyin=None, verbose=False):
+    def __init__(self, name, root, onlyin=None, ts=None, verbose=False):
         """Parameters
         -------------
         name : str
@@ -1534,6 +1554,8 @@ class PycparserClassDescriber(PycparserBaseDescriber):
         onlyin :  str, optional
             Filename the class or struct described must live in.  Prevents 
             finding classes of the same name coming from other libraries.
+        ts : TypeSystem, optional 
+            A type system instance.
         verbose : bool, optional
             Flag to display extra information while visiting the class.
 
@@ -1544,7 +1566,7 @@ class PycparserClassDescriber(PycparserBaseDescriber):
 
         """
         super(PycparserClassDescriber, self).__init__(name, root, onlyin=onlyin, 
-                                                                  verbose=verbose)
+                                                      ts=ts, verbose=verbose)
         self.desc['attrs'] = {}
         self.desc[self._funckey] = {}
         self.desc['parents'] = None
@@ -1584,7 +1606,8 @@ _pycparser_describers = {
     }
 
 def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                       undefines=(), verbose=False, debug=False, builddir='build'):
+                       undefines=(), ts=None, verbose=False, debug=False, 
+                       builddir='build'):
     """Use pycparser to describe the fucntion or struct (class).
 
     Parameters
@@ -1602,6 +1625,8 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
+    ts : TypeSystem, optional 
+        A type system instance.
     verbose : bool, optional
         Flag to diplay extra information while describing the class.
     debug : bool, optional
@@ -1619,7 +1644,8 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                                       undefines=undefines, verbose=verbose, 
                                       debug=debug, builddir=builddir)
     onlyin = set([filename, filename.replace('.c', '.h')])
-    describer = _pycparser_describers[kind](name, root, onlyin=onlyin, verbose=verbose)
+    describer = _pycparser_describers[kind](name, root, onlyin=onlyin, ts=ts, 
+                                            verbose=verbose)
     describer.visit()
     return describer.desc
 
@@ -1635,7 +1661,7 @@ _describers = {
     }
 
 def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',),
-             undefines=(), parsers='gccxml', verbose=False, debug=False, 
+             undefines=(), parsers='gccxml', ts=None, verbose=False, debug=False, 
              builddir='build'):
     """Automatically describes an API element in a file.  This is the main entry point.
 
@@ -1661,6 +1687,8 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
         this specifies the parser order to use based on availability.  If this is
         a dictionary, it specifies the order to use parser based on language, i.e.
         ``{'c' ['pycparser', 'gccxml'], 'c++': ['gccxml', 'pycparser']}``.
+    ts : TypeSystem, optional 
+        A type system instance.
     verbose : bool, optional
         Flag to diplay extra information while describing the class.
     debug : bool, optional
@@ -1679,7 +1707,7 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     parser = astparsers.pick_parser(filename, parsers)
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, defines=defines,
-                     undefines=undefines, verbose=verbose, debug=debug, 
+                     undefines=undefines, ts=ts, verbose=verbose, debug=debug, 
                      builddir=builddir)
     return desc
 
@@ -1737,6 +1765,7 @@ class XDressPlugin(astparsers.ParserPlugin):
     def register_classes(self, rc):
         """Registers classes with the type system.  This can and should be done
         trying to describe the class."""
+        ts = rc.ts
         for i, (classname, srcname, tarname) in enumerate(rc.classes):
             print("autodescribe: registering {0}".format(classname))
             fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir)
@@ -1948,7 +1977,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         else:
             srcdesc = describe(filename, name=name, kind=kind, includes=rc.includes, 
                                defines=rc.defines, undefines=rc.undefines, 
-                               parsers=rc.parsers, verbose=rc.verbose, 
+                               parsers=rc.parsers, ts=rc.ts, verbose=rc.verbose, 
                                debug=rc.debug, builddir=rc.builddir)
             cache[name, filename, kind] = srcdesc
         pydesc = self.pysrcenv[srcname].get(name, {})  # python description
