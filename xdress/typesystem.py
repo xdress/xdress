@@ -2541,6 +2541,123 @@ class _LazyConverterDict(MutableMapping):
     def __repr__(self):
         return self.__class__.__name__ + "(" + repr(self._d) + ", TypeSystem())"
 
+#################### Type string for formatting ################################
+
+class typestr(object):
+    """This is class whose attributes are properties that expose various 
+    string representations of a type.  This is useful for the Python string
+    formatting mini-language where attributes of an object may be accessed.
+    For example:
+
+        "This is the Cython C/C++ type: {t.cython_ctype}".format(t=typestr(t, ts))
+
+    This mechanism is used for accessing type information in conversion strings.
+    """
+
+    def __init__(self, t, ts):
+        """Parameters
+        ----------
+        t : str or tuple
+            A valid repesentation of a type in the type systems
+        ts : TypeSystem
+            A type system to generate the string representations with.
+        """
+        self.t = t
+        self.ts = ts
+        self.t_nopred = ts.strip_predicates(t)
+
+    _type = None
+
+    @property
+    def type(self):
+        """This is a repr string of the raw type (self.t), mostly useful for 
+        comments."""
+        if self._type is None:
+            self._type = repr(self.t)
+        return self._type
+
+    _cython_ctype = None
+
+    @property
+    def cython_ctype(self):
+        """The Cython C/C++ representation of the type.
+        """
+        if self._cython_ctype is None:
+            self._cython_ctype = self.ts.cython_ctype(self.t)
+        return self._cython_ctype
+
+    _cython_cytype = None
+
+    @property
+    def cython_cytype(self):
+        """The Cython Cython representation of the type.
+        """
+        if self._cython_cytype is None:
+            self._cython_cytype = self.ts.cython_cytype(self.t)
+        return self._cython_cytype
+
+    _cython_pytype = None
+
+    @property
+    def cython_pytype(self):
+        """The Cython Python representation of the type.
+        """
+        if self._cython_pytype is None:
+            self._cython_pytype = self.ts.cython_pytype(self.t)
+        return self._cython_pytype
+
+    _cython_nptype = None
+
+    @property
+    def cython_nptype(self):
+        """The Cython NumPy representation of the type.
+        """
+        if self._cython_nptype is None:
+            self._cython_nptype = self.ts.cython_nptype(self.t)
+        return self._cython_nptype
+
+    _cython_nptypes = None
+
+    @property
+    def cython_nptypes(self):
+        """The expanded Cython NumPy representation of the type.
+        """
+        if self._cython_nptypes is None:
+            npts = self.ts.cython_nptype(self.t, depth=1)
+            npts = [npts] if isinstance(npts, basestring) else npts
+            self._cython_nptypes = npts
+        return self._cython_npytypes
+
+    _type_nopred = None
+
+    @property
+    def type_nopred(self):
+        """This is a repr string of the raw type (self.t) without predicates."""
+        if self._type_nopred is None:
+            self._type_nopred = repr(self.t_nopred)
+        return self._type_nopred
+
+    _cython_ctype_nopred = None
+
+    @property
+    def cython_ctype(self):
+        """The Cython C/C++ representation of the type without predicates.
+        """
+        if self._cython_ctype is None:
+            self._cython_ctype = self.ts.cython_ctype(self.t_nopred)
+        return self._cython_ctype
+
+    _cython_cytype_nopred = None
+
+    @property
+    def cython_cytype(self):
+        """The Cython Cython representation of the type without predicates.
+        """
+        if self._cython_cytype is None:
+            self._cython_cytype = self.ts.cython_cytype(self.t_nopred)
+        return self._cython_cytype
+
+
 #################### Type system helpers #######################################
 
 def _raise_type_error(t):
