@@ -797,9 +797,9 @@ class TypeSystem(object):
             for n, argt in t[1][2]:
                 argnames.append(n)
                 decl, body, rtn = ts.cython_py2c(n, argt, proxy_name="c_" + n)
-                argdecls.append(decl)
-                argbodys.append(body)
-                argrtns.append(rtn)
+                argdecls += decl.split('\n') if isinstance(decl,basestring) else [decl]
+                argbodys += body.split('\n') if isinstance(body,basestring) else [body]
+                argrtns += rtn.split('\n') if isinstance(rtn,basestring) else [rtn]
             rtnname = 'rtn'
             rtnprox = 'c_' + rtnname
             rtncall = 'c_call_' + rtnname
@@ -815,7 +815,7 @@ class TypeSystem(object):
             rtndecl = indent([rtndecl, 
                               "cdef {0} {1}".format(ts.cython_ctype(t[2][2]), 
                               rtncall)])
-            rtnbody = indent([rtnbody])
+            rtnbody = indent(rtnbody)
             s = ('def {{proxy_name}}({arglist}):\n'
                  '{argdecls}\n'
                  '{rtndecl}\n'
@@ -829,7 +829,7 @@ class TypeSystem(object):
                          cvartypeptr=ts.cython_ctype(t_).format(type_name='cvartype'),
                          argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
                          rtncall=rtncall, carglist=", ".join(argrtns), rtnbody=rtnbody)
-            caches = 'if {cache_name} is None:\n' + indent([s])
+            caches = 'if {cache_name} is None:\n' + indent(s)
             if t[2][2] != 'void':
                 caches += "\n        return {rtnrtn}".format(rtnrtn=rtnrtn)
                 caches += '\n    {cache_name} = {proxy_name}\n'

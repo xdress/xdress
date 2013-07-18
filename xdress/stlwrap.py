@@ -1093,9 +1093,9 @@ def genfiles(template, fname='temp', pxdname=None, testname=None,
         if t[0] == 'vector':
             ts.register_numpy_dtype(t[1])
 
-    pyx = genpyx(template, pyxheader)
-    pxd = genpxd(template, pxdheader)
-    test = gentest(template, testheader, package)
+    pyx = genpyx(template, pyxheader, ts=ts)
+    pxd = genpxd(template, pxdheader, ts=ts)
+    test = gentest(template, testheader, package, ts=ts)
 
     newoverwrite(pyx, fname, verbose)
     newoverwrite(pxd, pxdname, verbose)
