@@ -870,51 +870,51 @@ class TypeSystem(object):
             ('file', '*'): (
                 '{extra_types}PyFile_FromFile({var}, "{var}", "r+", NULL)',),
             # template types
-            'map': ('{pytype}({var})',
-                   ('{proxy_name} = {pytype}(False, False)\n'
+            'map': ('{t.cython_pytype}({var})',
+                   ('{proxy_name} = {t.cython_pytype}(False, False)\n'
                     '{proxy_name}.map_ptr = &{var}\n'),
                    ('if {cache_name} is None:\n'
-                    '    {proxy_name} = {pytype}(False, False)\n'
+                    '    {proxy_name} = {t.cython_pytype}(False, False)\n'
                     '    {proxy_name}.map_ptr = &{var}\n'
                     '    {cache_name} = {proxy_name}\n'
                     )),
             'dict': ('dict({var})',),
-            'pair': ('{pytype}({var})',
-                     ('{proxy_name} = {pytype}(False, False)\n'
+            'pair': ('{t.cython_pytype}({var})',
+                     ('{proxy_name} = {t.cython_pytype}(False, False)\n'
                       '{proxy_name}.pair_ptr = &{var}\n'),
                      ('if {cache_name} is None:\n'
-                      '    {proxy_name} = {pytype}(False, False)\n'
+                      '    {proxy_name} = {t.cython_pytype}(False, False)\n'
                       '    {proxy_name}.pair_ptr = &{var}\n'
                       '    {cache_name} = {proxy_name}\n'
                       )),
-            'set': ('{pytype}({var})',
-                   ('{proxy_name} = {pytype}(False, False)\n'
+            'set': ('{t.cython_pytype}({var})',
+                   ('{proxy_name} = {t.cython_pytype}(False, False)\n'
                     '{proxy_name}.set_ptr = &{var}\n'),
                    ('if {cache_name} is None:\n'
-                    '    {proxy_name} = {pytype}(False, False)\n'
+                    '    {proxy_name} = {t.cython_pytype}(False, False)\n'
                     '    {proxy_name}.set_ptr = &{var}\n'
                     '    {cache_name} = {proxy_name}\n'
                     )),
             'vector': (
                 ('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                 '{proxy_name} = np.PyArray_SimpleNewFromData(1, {var}_shape, {nptypes[0]}, &{var}[0])\n'
+                 '{proxy_name} = np.PyArray_SimpleNewFromData(1, {var}_shape, {t.cython_nptypes[0]}, &{var}[0])\n'
                  '{proxy_name} = np.PyArray_Copy({proxy_name})\n'),
                 ('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                 '{proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptypes[0]}, &{var}[0])\n'),
+                 '{proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {t.cython_nptypes[0]}, &{var}[0])\n'),
                 ('if {cache_name} is None:\n'
                  '    {proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                 '    {proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {nptypes[0]}, &{var}[0])\n'
+                 '    {proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {t.cython_nptypes[0]}, &{var}[0])\n'
                  '    {cache_name} = {proxy_name}\n'
                 )),
             ('vector', 'bool', 0): (  # C++ standard is silly here
                 ('cdef int i\n'
                  '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                 '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptypes[0]})\n'
+                 '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {t.cython_nptypes[0]})\n'
                  'for i in range({proxy_name}_shape[0]):\n'
                  '    {proxy_name}[i] = {var}[i]\n'),
                 ('cdef int i\n'
                  '{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                 '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {nptypes[0]})\n'
+                 '{proxy_name} = np.PyArray_SimpleNew(1, {proxy_name}_shape, {t.cython_nptypes[0]})\n'
                  'for i in range({proxy_name}_shape[0]):\n'
                  '    {proxy_name}[i] = {var}[i]\n'),
                 ('cdef int i\n'
@@ -963,17 +963,17 @@ class TypeSystem(object):
             '# {var} is a {type}\n'
             'cdef int i{var}\n'
             'cdef int {var}_size\n'
-            'cdef {npctypes_nopred[0]} * {var}_data\n'
+            'cdef {t.cython_npctypes_nopred[0]} * {var}_data\n'
             '{var}_size = len({var})\n'
             'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
-            '    {var}_data = <{npctypes_nopred[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
-            '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
+            '    {var}_data = <{t.cython_npctypes_nopred[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+            '    {proxy_name} = {t.cython_ctype_nopred}(<size_t> {var}_size)\n'
             '    for i{var} in range({var}_size):\n'
             '        {proxy_name}[i{var}] = {var}_data[i{var}]\n'
             'else:\n'
-            '    {proxy_name} = {ctype_nopred}(<size_t> {var}_size)\n'
+            '    {proxy_name} = {t.cython_ctype_nopred}(<size_t> {var}_size)\n'
             '    for i{var} in range({var}_size):\n'
-            '        {proxy_name}[i{var}] = <{npctypes_nopred[0]}> {var}[i{var}]\n'),
+            '        {proxy_name}[i{var}] = <{t.cython_npctypes_nopred[0]}> {var}[i{var}]\n'),
             '{proxy_name}')     # FIXME There might be improvements here...
 
         def cython_py2c_conv_function_pointer(t, ts):
@@ -1055,12 +1055,12 @@ class TypeSystem(object):
             'file': ('{extra_types}PyFile_AsFile({var})[0]', False),
             ('file', '*'): ('{extra_types}PyFile_AsFile({var})', False),
             # template types
-            'map': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
+            'map': ('{proxy_name} = {t.cython_pytype}({var}, not isinstance({var}, {cytype}))',
                     '{proxy_name}.map_ptr[0]'),
             'dict': ('dict({var})', False),
-            'pair': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
+            'pair': ('{proxy_name} = {t.cython_pytype}({var}, not isinstance({var}, {cytype}))',
                      '{proxy_name}.pair_ptr[0]'),
-            'set': ('{proxy_name} = {pytype}({var}, not isinstance({var}, {cytype}))',
+            'set': ('{proxy_name} = {t.cython_pytype}({var}, not isinstance({var}, {cytype}))',
                     '{proxy_name}.set_ptr[0]'),
             'vector': ((
                 '# {var} is a {type}\n'
@@ -1941,7 +1941,7 @@ class TypeSystem(object):
         if rtn_template:
             if '{ctype}'in body_template:
                 deft = ct
-            elif '{ctype_nopred}'in body_template:
+            elif '{t.cython_ctype_nopred}'in body_template:
                 deft = ct_nopred
             elif '{cytype_nopred}'in body_template:
                 deft = cyt_nopred
