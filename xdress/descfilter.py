@@ -190,7 +190,7 @@ class XDressPlugin(Plugin):
 
     def setup(self, rc):
         if rc.skiptypes is NotSpecified:
-            return 
+            return
         if isinstance(rc.skiptypes, collections.Mapping):
             # Update dict so everything is a TypeMatcher instance
             _skippers = {}
@@ -237,8 +237,15 @@ class XDressPlugin(Plugin):
                         m_nms = rc.env[m_key][k_key]['methods'].keys()
                         for m in skippers:
                             # Find method key
-                            del_key = filter(lambda x: x[0].startswith(m),
-                                             m_nms)[0]
+                            # import pdb; pdb.set_trace()
+                            try:
+                                del_key = filter(lambda x: x[0].startswith(m),
+                                                 m_nms)[0]
+                            except IndexError:
+                                msg = 'descfilter: Could not find method {0} '
+                                msg += 'in {1}. Moving on to next method'
+                                print(msg.format(m, k_key))
+                                continue
                             # Remove that method
                             del rc.env[m_key][k_key]['methods'][del_key]
 
