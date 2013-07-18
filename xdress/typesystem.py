@@ -273,7 +273,7 @@ class TypeSystem(object):
                  cython_cytypes=None, cython_pytypes=None, cython_cimports=None, 
                  cython_cyimports=None, cython_pyimports=None, 
                  cython_functionnames=None, cython_classnames=None, 
-                 cython_c2py_conv=None, cython_py2c_conv=None):
+                 cython_c2py_conv=None, cython_py2c_conv=None, typestring=None):
         """Parameters
         ----------
         base_types : set of str, optional
@@ -329,6 +329,8 @@ class TypeSystem(object):
         cython_py2c_conv : dict, optional
             Cython convertors from Python types to the representative C/C++ types.
             Valuse are tuples with the form of ``(body or return, return or False)``.
+        typestring : typestr or None, optional
+            An type that is used to format types to strings in conversion routines.
 
         """
         self.base_types = base_types or set(['char', 'uchar', 'str', 'int16', 
@@ -1110,6 +1112,8 @@ class TypeSystem(object):
             'function_pointer': cython_py2c_conv_function_pointer,
             }, self)
 
+        self.typestr = typestring or typestr
+
     @classmethod
     def empty(cls):
         """This is a class method which returns an empty type system."""
@@ -1842,15 +1846,6 @@ class TypeSystem(object):
             raise NotImplementedError('conversion from C/C++ to Python for ' + \
                                       t + 'has not been implemented for when ' + \
                                       'view={0}, cached={1}'.format(view, cached))
-        ct = self.cython_ctype(t)
-        cyt = self.cython_cytype(t)
-        pyt = self.cython_pytype(t)
-        npt = self.cython_nptype(t)
-        npts = self.cython_nptype(t, depth=1)
-        npts = [npts] if isinstance(npts, basestring) else npts
-        t_nopred = self.strip_predicates(t)
-        ct_nopred = self.cython_ctype(t_nopred)
-        cyt_nopred = self.cython_cytype(t_nopred)
         var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
         var = existing_name or var
         cache_name = "_{0}".format(name) if cache_name is None else cache_name
@@ -1858,10 +1853,8 @@ class TypeSystem(object):
                                                             cache_prefix, cache_name)
         proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
         iscached = False
-        template_kw = dict(var=var, cache_name=cache_name, ctype=ct, cytype=cyt,
-                           pytype=pyt, proxy_name=proxy_name, nptype=npt,
-                           nptypes=npts, ctype_nopred=ct_nopred,
-                           cytype_nopred=cyt_nopred,)
+        template_kw = dict(var=var, cache_name=cache_name, proxy_name=proxy_name, 
+                           t=self.typestr(t, self),)
 #        if callable(c2pyt):
 #            import pdb; pdb.set_trace()
         if 1 == len(c2pyt) or ind == 0:
@@ -1925,52 +1918,10 @@ class TypeSystem(object):
             raise NotImplementedError('conversion from Python to C/C++ for ' + \
                                   str(t) + ' has not been implemented.')
         body_template, rtn_template = py2ct
-        ct = self.cython_ctype(t)
-        cyt = self.cython_cytype(t)
-        pyt = self.cython_pytype(t)
-        npt = self.cython_nptype(t)
-        npct = self.cython_ctype(npt)
-        npcyt = self.cython_cytype(npt)
-        nppyt = self.cython_pytype(npt)
-        npts = self.cython_nptype(t, depth=1)
-        if isinstance(npts, basestring):
-            npcts = [npct] 
-            npcyts = [npcyt] 
-            nppyts = [nppyt] 
-        else:
-            npcts = _maprecurse(self.cython_ctype, npts)
-            npcyts = _maprecurse(self.cython_cytype, npts)
-            nppyts = _maprecurse(self.cython_pytype, npts)
-        t_nopred = self.strip_predicates(t)
-        ct_nopred = self.cython_ctype(t_nopred)
-        cyt_nopred = self.cython_cytype(t_nopred)
-        pyt_nopred = self.cython_pytype(t_nopred)
-        npt_nopred =  self.cython_nptype(t_nopred)
-        npct_nopred = self.cython_ctype(npt_nopred)
-        npcyt_nopred = self.cython_cytype(npt_nopred)
-        nppyt_nopred = self.cython_pytype(npt_nopred)
-        npts_nopred = self.cython_nptype(t_nopred, depth=1)
-        if isinstance(npts_nopred, basestring):
-            npcts_nopred = [npct_nopred] 
-            npcyts_nopred = [npcyt_nopred] 
-            nppyts_nopred = [nppyt_nopred] 
-        else:
-            npcts_nopred = _maprecurse(self.cython_ctype, npts_nopred)
-            npcyts_nopred = _maprecurse(self.cython_cytype, npts_nopred)
-            nppyts_nopred = _maprecurse(self.cython_pytype, npts_nopred)
         var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
         proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
-        template_kw = dict(var=var, type=t, proxy_name=proxy_name, pytype=pyt, 
-                           cytype=cyt, ctype=ct, last=last, nptype=npt, npctype=npct,
-                           npcytype=npcyt,  nppytype=nppyt,
-                           nptypes=npts, npctypes=npcts,  npcytypes=npcyts, 
-                           nppytypes=nppyts, ctype_nopred=ct_nopred,
-                           cytype_nopred=cyt_nopred, pytype_nopred=pyt_nopred, 
-                           nptype_nopred=npt_nopred, npctype_nopred=npct_nopred, 
-                           npcytype_nopred=npcyt_nopred, nppytype_nopred=nppyt_nopred, 
-                           nptypes_nopred=npts_nopred, npctypes_nopred=npcts_nopred, 
-                           npcytypes_nopred=npcyts_nopred, 
-                           nppytypes_nopred=nppyts_nopred,)
+        template_kw = dict(var=var, proxy_name=proxy_name, last=last, 
+                           t=self.typestr(t, self),)
         nested = False
         if self.isdependent(tkey):
             tsig = [ts for ts in self.refined_types if ts[0] == tkey][0]
@@ -2562,8 +2513,8 @@ class typestr(object):
         ts : TypeSystem
             A type system to generate the string representations with.
         """
-        self.t = t
         self.ts = ts
+        self.t = ts.canon(t)
         self.t_nopred = ts.strip_predicates(t)
 
     _type = None
@@ -2839,6 +2790,7 @@ class typestr(object):
             nppyts_nopred = _maprecurse(self.ts.cython_pytype, npts_nopred)
             self._cython_nppytypes_nopred = nppyts_nopred
         return self._cython_nppytypes_nopred
+
 
 #################### Type system helpers #######################################
 
