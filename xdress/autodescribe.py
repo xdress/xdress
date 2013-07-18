@@ -504,6 +504,13 @@ class GccxmlBaseDescriber(object):
         else:
             return self.type(node.attrib['type'])
 
+    def visit_enumeration(self, node):
+        self._pprint(node)
+        currenum = []
+        for child in node.iterfind('EnumValue'):
+            currenum.append((child.attrib['name'], child.attrib['init']))
+        return ('enum', node.attrib['name'], tuple(currenum))
+
     _fundemntal_to_base = {
         'char': 'char',
         'int16_t': 'int16',
@@ -744,6 +751,22 @@ class GccxmlVarDescriber(GccxmlBaseDescriber):
                        "expected it in {2!r}.")
                 msg = msg.format(self.name, node.attrib['file'], self.onlyin)
                 raise RuntimeError(msg)
+
+        # Variables can also be enums
+        for n in root.iterfind("Enumeration[@name='{0}']".format(self.name)):
+            if n.attrib['file'] in self.onlyin:
+                ns = self.context(n.attrib['context'])
+                if ns is not None:
+                    self.desc['namespace'] = ns
+                # Grab the type and put it in
+                self.desc['type'] = self.visit_enumeration(n)
+                break
+            else:
+                msg = ("{0} autodescribing failed: found variable in {1!r} but "
+                       "expected it in {2!r}.")
+                msg = msg.format(self.name, node.attrib['file'], self.onlyin)
+                raise RuntimeError(msg)
+
 
 class GccxmlFuncDescriber(GccxmlBaseDescriber):
     """Class used to generate function descriptions via GCC-XML output."""
