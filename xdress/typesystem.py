@@ -2616,6 +2616,42 @@ class typestr(object):
             self._cython_nptype = self.ts.cython_nptype(self.t)
         return self._cython_nptype
 
+    _cython_npctype = None
+
+    @property
+    def cython_npctype(self):
+        """The Cython C/C++ representation of NumPy type.
+        """
+        if self._cython_npctype is None:
+            npt = self.ts.cython_nptype(self.t)
+            npct = self.ts.cython_ctype(npt)
+            self._cython_npctype = npct
+        return self._cython_npctype
+
+    _cython_npcytype = None
+
+    @property
+    def cython_npcytype(self):
+        """The Cython Cython representation of NumPy type.
+        """
+        if self._cython_npcytype is None:
+            npt = self.ts.cython_nptype(self.t)
+            npcyt = self.ts.cython_cytype(npt)
+            self._cython_npcytype = npcyt
+        return self._cython_npcytype
+
+    _cython_nppytype = None
+
+    @property
+    def cython_nppytype(self):
+        """The Cython Python representation of NumPy type.
+        """
+        if self._cython_nppytype is None:
+            npt = self.ts.cython_nptype(self.t)
+            nppyt = self.ts.cython_pytype(npt)
+            self._cython_nppytype = nppyt
+        return self._cython_nppytype
+
     _cython_nptypes = None
 
     @property
@@ -2626,7 +2662,46 @@ class typestr(object):
             npts = self.ts.cython_nptype(self.t, depth=1)
             npts = [npts] if isinstance(npts, basestring) else npts
             self._cython_nptypes = npts
-        return self._cython_npytypes
+        return self._cython_nptypes
+
+    _cython_npctypes = None
+
+    @property
+    def cython_npctypes(self):
+        """The expanded Cython C/C++ representation of the NumPy types.
+        """
+        if self._cython_npctypes is None:
+            npts = self.ts.cython_nptype(self.t, depth=1)
+            npts = [npts] if isinstance(npts, basestring) else npts
+            npcts = _maprecurse(self.ts.cython_ctype, npts)
+            self._cython_npctypes = npcts
+        return self._cython_npctypes
+
+    _cython_npcytypes = None
+
+    @property
+    def cython_npcytypes(self):
+        """The expanded Cython Cython representation of the NumPy types.
+        """
+        if self._cython_npcytypes is None:
+            npts = self.ts.cython_nptype(self.t, depth=1)
+            npts = [npts] if isinstance(npts, basestring) else npts
+            npcyts = _maprecurse(self.ts.cython_cytype, npts)
+            self._cython_npcytypes = npcyts
+        return self._cython_npcytypes
+
+    _cython_nppytypes = None
+
+    @property
+    def cython_nppytypes(self):
+        """The expanded Cython Cython representation of the NumPy types.
+        """
+        if self._cython_nppytypes is None:
+            npts = self.ts.cython_nptype(self.t, depth=1)
+            npts = [npts] if isinstance(npts, basestring) else npts
+            nppyts = _maprecurse(self.ts.cython_pytype, npts)
+            self._cython_nppytypes = nppyts
+        return self._cython_nppytypes
 
     _type_nopred = None
 
@@ -2640,23 +2715,130 @@ class typestr(object):
     _cython_ctype_nopred = None
 
     @property
-    def cython_ctype(self):
+    def cython_ctype_nopred(self):
         """The Cython C/C++ representation of the type without predicates.
         """
-        if self._cython_ctype is None:
-            self._cython_ctype = self.ts.cython_ctype(self.t_nopred)
-        return self._cython_ctype
+        if self._cython_ctype_nopred is None:
+            self._cython_ctype_nopred = self.ts.cython_ctype(self.t_nopred)
+        return self._cython_ctype_nopred
 
     _cython_cytype_nopred = None
 
     @property
-    def cython_cytype(self):
+    def cython_cytype_nopred(self):
         """The Cython Cython representation of the type without predicates.
         """
-        if self._cython_cytype is None:
-            self._cython_cytype = self.ts.cython_cytype(self.t_nopred)
-        return self._cython_cytype
+        if self._cython_cytype_nopred is None:
+            self._cython_cytype_nopred = self.ts.cython_cytype(self.t_nopred)
+        return self._cython_cytype_nopred
 
+    _cython_pytype_nopred = None
+
+    @property
+    def cython_pytype_nopred(self):
+        """The Cython Python representation of the type without predicates.
+        """
+        if self._cython_pytype_nopred is None:
+            self._cython_pytype_nopred = self.ts.cython_pytype(self.t_nopred)
+        return self._cython_pytype_nopred
+
+    _cython_nptype_nopred = None
+
+    @property
+    def cython_nptype_nopred(self):
+        """The Cython NumPy representation of the type without predicates.
+        """
+        if self._cython_nptype_nopred is None:
+            self._cython_nptype_nopred = self.ts.cython_nptype(self.t_nopred)
+        return self._cython_nptype_nopred
+
+    _cython_npctype_nopred = None
+
+    @property
+    def cython_npctype_nopred(self):
+        """The Cython C/C++ representation of the NumPy type without predicates.
+        """
+        if self._cython_npctype_nopred is None:
+            npt_nopred = self.ts.cython_nptype(self.t_nopred)
+            npct_nopred = self.cython_ctype(npt_nopred)            
+            self._cython_npctype_nopred = npct_nopred
+        return self._cython_npctype_nopred
+
+    _cython_npcytype_nopred = None
+
+    @property
+    def cython_npcytype_nopred(self):
+        """The Cython Cython representation of the NumPy type without predicates.
+        """
+        if self._cython_npcytype_nopred is None:
+            npt_nopred = self.ts.cython_nptype(self.t_nopred)
+            npcyt_nopred = self.cython_cytype(npt_nopred)            
+            self._cython_npcytype_nopred = npcyt_nopred
+        return self._cython_npcytype_nopred
+
+    _cython_nppytype_nopred = None
+
+    @property
+    def cython_nppytype_nopred(self):
+        """The Cython Python representation of the NumPy type without predicates.
+        """
+        if self._cython_nppytype_nopred is None:
+            npt_nopred = self.ts.cython_nptype(self.t_nopred)
+            nppyt_nopred = self.cython_pytype(npt_nopred)            
+            self._cython_nppytype_nopred = nppyt_nopred
+        return self._cython_nppytype_nopred
+
+    _cython_nptypes_nopred = None
+
+    @property
+    def cython_nptypes_nopred(self):
+        """The Cython NumPy representation of the types without predicates.
+        """
+        if self._cython_nptypes_nopred is None:
+            self._cython_nptypes_nopred = self.ts.cython_nptype(self.t_nopred, depth=1)
+        return self._cython_nptypes_nopred
+
+    _cython_npctypes_nopred = None
+
+    @property
+    def cython_npctypes_nopred(self):
+        """The Cython C/C++ representation of the NumPy types without predicates.
+        """
+        if self._cython_npctypes_nopred is None:
+            npts_nopred self.ts.cython_nptype(self.t_nopred, depth=1)
+            npts_nopred = [npts_nopred] if isinstance(npts_nopred, basestring) \
+                                        else npts_nopred
+            npcts_nopred = _maprecurse(self.ts.cython_ctype, npts_nopred)
+            self._cython_npctypes_nopred = npcts_nopred
+        return self._cython_npctypes_nopred
+
+    _cython_npcytypes_nopred = None
+
+    @property
+    def cython_npcytypes_nopred(self):
+        """The Cython Cython representation of the NumPy types without predicates.
+        """
+        if self._cython_npcytypes_nopred is None:
+            npts_nopred self.ts.cython_nptype(self.t_nopred, depth=1)
+            npts_nopred = [npts_nopred] if isinstance(npts_nopred, basestring) \
+                                        else npts_nopred
+            npcyts_nopred = _maprecurse(self.ts.cython_cytype, npts_nopred)
+            self._cython_npcytypes_nopred = npcyts_nopred
+        return self._cython_npcytypes_nopred
+
+    _cython_nppytypes_nopred = None
+
+    @property
+    def cython_nppytypes_nopred(self):
+        """The Cython Python representation of the NumPy types without predicates.
+        """
+        if self._cython_nppytypes_nopred is None:
+            npts_nopred self.ts.cython_nptype(self.t_nopred, depth=1)
+            npts_nopred = [npts_nopred] if isinstance(npts_nopred, basestring) \
+                                        else npts_nopred
+            nppyts_nopred = _maprecurse(self.ts.cython_pytype, npts_nopred)
+            self._cython_nppytypes_nopred = nppyts_nopred
+        return self._cython_nppytypes_nopred
 
 #################### Type system helpers #######################################
 
