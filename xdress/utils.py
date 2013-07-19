@@ -380,6 +380,20 @@ def find_filenames(srcname, tarname=None, sourcedir='src'):
         desc['srcpxd_filename'] = '{0}_{1}.pxd'.format(ext, tarname)
     return desc
 
+def infer_format(filename, format):
+    """Tries to figure out a file format."""
+    if isinstance(format, basestring):
+        pass
+    elif filename.endswith('.pkl.gz'):
+        format = 'pkl.gz'
+    elif filename.endswith('.pkl'):
+        format = 'pkl'
+    else:
+        raise ValueError("file format could not be determined.")
+    return format
+
+
+
 nyansep = r'~\_/' * 17 + '~=[,,_,,]:3'
 """WAT?!"""
 

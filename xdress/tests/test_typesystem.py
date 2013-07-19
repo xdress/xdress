@@ -1,5 +1,6 @@
 from __future__ import print_function
 import pprint
+import os
 
 from xdress.typesystem import MatchAny, TypeSystem, TypeMatcher, matches
 
@@ -544,3 +545,11 @@ def test_gccxml_type():
     )
     for t, exp in cases:
         yield check_gccxml_type, t, exp  # Check that the case works,
+
+@with_setup(lambda: None, lambda: os.remove('hoover'))
+def test_io():
+    filename = 'hoover'
+    hoover = TypeSystem().empty()
+    hoover.extra_types = "excellent"
+    hoover.dump(filename, format='pkl.gz')
+    hoover = TypeSystem.load(filename, format='pkl.gz')

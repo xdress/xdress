@@ -244,13 +244,20 @@ Type System API
 
 """
 from __future__ import print_function
+import os
+import io
 import sys
 from contextlib import contextmanager
 from collections import Sequence, Set, Iterable, MutableMapping, Mapping
 from numbers import Number
 from pprint import pprint, pformat
+import gzip
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
-from .utils import flatten, indent, memoize_method
+from .utils import flatten, indent, memoize_method, infer_format
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -333,11 +340,11 @@ class TypeSystem(object):
             An type that is used to format types to strings in conversion routines.
 
         """
-        self.base_types = base_types or set(['char', 'uchar', 'str', 'int16', 
-            'int32', 'int64', 'int128', 'uint16', 'uint32', 'uint64', 'uint128', 
-            'float32', 'float64', 'float128', 'complex128', 'void', 'bool', 'type', 
-            'file', 'exception'])
-        self.template_types = template_types or {
+        self.base_types = base_types if base_types is not None else set(['char', 
+            'uchar', 'str', 'int16', 'int32', 'int64', 'int128', 'uint16', 'uint32', 
+            'uint64', 'uint128', 'float32', 'float64', 'float128', 'complex128', 
+            'void', 'bool', 'type', 'file', 'exception'])
+        self.template_types = template_types if template_types is not None else {
             'map': ('key_type', 'value_type'),
             'dict': ('key_type', 'value_type'),
             'pair': ('key_type', 'value_type'),
@@ -349,7 +356,7 @@ class TypeSystem(object):
             'function': ('arguments', 'returns'),
             'function_pointer': ('arguments', 'returns'),
             }
-        self.refined_types = refined_types or {
+        self.refined_types = refined_types if refined_types is not None else {
             'nucid': 'int32',
             'nucname': 'str',
             ('enum', ('name', 'str'), 
@@ -359,7 +366,7 @@ class TypeSystem(object):
             ('function_pointer', ('arguments', ('list', ('pair', 'str', 'type'))),
                                  ('returns', 'type')): ('void', '*'),
             }
-        self.humannames = humannames or {
+        self.humannames = humannames if humannames is not None else {
             'char': 'character',
             'uchar': 'unsigned character',
             'str': 'string',
@@ -386,7 +393,8 @@ class TypeSystem(object):
             }
         self.extra_types = extra_types
         self.stlcontainers = stlcontainers
-        self.type_aliases = _LazyConfigDict(type_aliases or {
+        self.type_aliases = _LazyConfigDict(type_aliases if type_aliases is not \
+                                                                      None else {
             'i': 'int32',
             'i2': 'int16',
             'i4': 'int32',
@@ -459,7 +467,7 @@ class TypeSystem(object):
                 argcts = []
             return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
 
-        self.cpp_types = _LazyConfigDict(cpp_types or {
+        self.cpp_types = _LazyConfigDict(cpp_types if cpp_types is not None else {
             'char': 'char',
             'uchar': 'unsigned char',
             'str': 'std::string',
@@ -492,7 +500,8 @@ class TypeSystem(object):
             'function_pointer': cpp_types_function_pointer,
             }, self)
 
-        self.numpy_types = _LazyConfigDict(numpy_types or {
+        self.numpy_types = _LazyConfigDict(numpy_types if numpy_types is not None \
+                                                                             else {
             'char': 'np.NPY_BYTE',
             'uchar': 'np.NPY_UBYTE',
             #'str': 'np.NPY_STRING',
@@ -510,7 +519,7 @@ class TypeSystem(object):
             'void': 'np.NPY_VOID',
             }, self)
 
-        self.from_pytypes = from_pytypes or {
+        self.from_pytypes = from_pytypes if from_pytypes is not None else {
             'str': ['basestring'],
             'char': ['basestring'],
             'uchar': ['basestring'],
@@ -543,7 +552,8 @@ class TypeSystem(object):
                 argcts = []
             return rtnct + " (*{type_name})(" + ", ".join(argcts) + ")"
 
-        self.cython_ctypes = _LazyConfigDict(cython_ctypes or {
+        self.cython_ctypes = _LazyConfigDict(cython_ctypes if cython_ctypes is not \
+                                                                         None else {
             'char': 'char',
             'uchar': '{extra_types}uchar',
             'str': 'std_string',
@@ -570,7 +580,8 @@ class TypeSystem(object):
             'function_pointer': cython_ctypes_function_pointer,
             }, self)
 
-        self.cython_cytypes = _LazyConfigDict(cython_cytypes or {
+        self.cython_cytypes = _LazyConfigDict(cython_cytypes if cython_cytypes \
+                                              is not None else {
             'char': 'char',
             'uchar': 'unsigned char',
             'str': 'char *',
@@ -598,7 +609,8 @@ class TypeSystem(object):
             'function_pointer': 'object',
             }, self)
 
-        self.cython_pytypes = _LazyConfigDict(cython_pytypes or {
+        self.cython_pytypes = _LazyConfigDict(cython_pytypes if cython_pytypes \
+                                              is not None else {
             'char': 'str',
             'uchar': 'str',
             'str': 'str',
@@ -629,7 +641,8 @@ class TypeSystem(object):
                 ts.cython_cimport_tuples(argt, seen=seen, inc=('c',))
             ts.cython_cimport_tuples(t[2][2], seen=seen, inc=('c',))
 
-        self.cython_cimports = _LazyImportDict(cython_cimports or {
+        self.cython_cimports = _LazyImportDict(cython_cimports if cython_cimports \
+                                               is not None else {
             'char': (None,),
             'uchar':  (('{extra_types}',),),
             'str': (('libcpp.string', 'string', 'std_string'),),
@@ -665,7 +678,8 @@ class TypeSystem(object):
                 ts.cython_cimport_tuples(argt, seen=seen, inc=('cy',))
             ts.cython_cimport_tuples(t[2][2], seen=seen, inc=('cy',))
 
-        self.cython_cyimports = _LazyImportDict(cython_cyimports or {
+        self.cython_cyimports = _LazyImportDict(cython_cyimports if \
+                                    cython_cyimports is not None else {
             'char': (None,),
             'uchar': (None,),
             'str': (None,),
@@ -700,7 +714,8 @@ class TypeSystem(object):
                 ts.cython_import_tuples(argt, seen=seen)
             ts.cython_import_tuples(t[2][2], seen=seen)
 
-        self.cython_pyimports = _LazyImportDict(cython_pyimports or {
+        self.cython_pyimports = _LazyImportDict(cython_pyimports if \
+                                    cython_pyimports is not None else {
             'char': (None,),
             'uchar': (None,),
             'str': (None,),
@@ -729,7 +744,8 @@ class TypeSystem(object):
             'function_pointer': cython_pyimports_functionish,
             }, self)
 
-        self.cython_functionnames = _LazyConfigDict(cython_functionnames or {
+        self.cython_functionnames = _LazyConfigDict(cython_functionnames if \
+                                        cython_functionnames is not None else {
             # base types
             'char': 'char',
             'uchar': 'uchar',
@@ -760,7 +776,8 @@ class TypeSystem(object):
             'function_pointer': 'functionpointer',
             }, self)
 
-        self.cython_classnames = _LazyConfigDict(cython_classnames or {
+        self.cython_classnames = _LazyConfigDict(cython_classnames if \
+                                                 cython_classnames is not None else {
             # base types
             'char': 'Char',
             'uchar': 'UChar',
@@ -837,7 +854,8 @@ class TypeSystem(object):
                 caches += '\n    {cache_name} = {proxy_name}\n'
             return s, s, caches
 
-        self.cython_c2py_conv = _LazyConverterDict(cython_c2py_conv or {
+        self.cython_c2py_conv = _LazyConverterDict(cython_c2py_conv if \
+                                     cython_c2py_conv is not None else {
             # Has tuple form of (copy, [view, [cached_view]])
             # base types
             'char': ('chr(<int> {var})',),
@@ -1026,7 +1044,8 @@ class TypeSystem(object):
                          rtncall=rtncall)
             return s, False
 
-        self.cython_py2c_conv = _LazyConverterDict(cython_py2c_conv or {
+        self.cython_py2c_conv = _LazyConverterDict(cython_py2c_conv if \
+                                    cython_py2c_conv is not None else {
             # Has tuple form of (body or return,  return or False)
             # base types
             'char': ('{var}_bytes = {var}.encode()', '(<char *> {var}_bytes)[0]'),
@@ -1127,6 +1146,64 @@ class TypeSystem(object):
         del x.stlcontainers
         return x
 
+    @classmethod
+    def load(cls, filename, format=None, mode='rb'):
+        """Loads a type system from disk into a new type system instance.
+        This is a class method.
+
+        Parameters
+        ----------
+        filename : str
+            Path to file.
+        format : str, optional
+            The file format to save the type system as.  If this is not provided, 
+            it is infered from the filenme.  Options are:
+
+            * pickle ('*.pkl')
+            * gzipped pickle ('*.pkl.gz')
+
+        mode : str, optional
+            The mode to open the file with.
+
+        """
+        format = infer_format(filename, format)
+        if not os.path.isfile(filename):
+            raise RuntimeError("{0!r} not found.".format(filename))
+        if format == 'pkl.gz':
+            with gzip.open(filename, 'rb') as f:
+                data = pickle.loads(f.read())
+        elif format == 'pkl':
+            with io.open(filename, 'rb') as f:
+                data = pickle.loads(f.read())
+        x = cls(**data)
+        return x
+
+    def dump(self, filename, format=None, mode='wb'):
+        """Saves a type system out to disk.
+
+        Parameters
+        ----------
+        filename : str
+            Path to file.
+        format : str, optional
+            The file format to save the type system as.  If this is not provided, 
+            it is infered from the filenme.  Options are:
+
+            * pickle ('*.pkl')
+            * gzipped pickle ('*.pkl.gz')
+
+        mode : str, optional
+            The mode to open the file with.
+
+        """
+        data = dict([(k, getattr(self, k, None)) for k in self.datafields])
+        format = infer_format(filename, format)
+        if format == 'pkl.gz':
+            with gzip.open(filename, mode) as f:
+                f.write(pickle.dumps(data, pickle.HIGHEST_PROTOCOL))
+        elif format == 'pkl':
+            with io.open(filename, mode) as f:
+                f.write(pickle.dumps(data, pickle.HIGHEST_PROTOCOL))
 
     def update(self, *args, **kwargs):
         """Updates the type system in-place. Only updates the data attributes 
@@ -1170,12 +1247,13 @@ class TypeSystem(object):
                 setattr(self, k, v)
 
     def __str__(self):
-        s = pformat(dict([(k, getattr(self, k)) for k in sorted(self.datafields)]))
+        s = pformat(dict([(k, getattr(self, k, None)) for k in \
+                                                      sorted(self.datafields)]))
         return s
 
     def __repr__(self):
         s = self.__class__.__name__ + "("
-        s += ", ".join(["{0}={1!r}".format(k, getattr(self, k)) \
+        s += ", ".join(["{0}={1!r}".format(k, getattr(self, k, None)) \
                         for k in sorted(self.datafields)])
         s += ")"
         return s
