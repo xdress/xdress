@@ -2054,6 +2054,164 @@ class TypeSystem(object):
 
         self.clearmemo()
 
+    def register_classname(self, classname, package, pxd_base, cpppxd_base):
+        """Registers a class with the type system from only its name, 
+        and relevant header file information.
+
+        Parameters
+        ----------
+        classname : str or tuple
+        package : str
+            Package name where headers live.
+        pxd_base : str
+            Base name of the pxd file to cimport.
+        cpppxd_base : str
+            Base name of the cpppxd file to cimport.
+        """
+        baseclassname = classname
+        if isinstance(classname, basestring):
+            template_args = None
+            templateclassname = baseclassname
+            templatefuncname = baseclassname.lower()
+        else:
+            template_args = ['T{0}'.format(i) for i in range(len(classname)-2)]
+            template_args = tuple(template_args)
+            while not isinstance(baseclassname, basestring):
+                baseclassname = baseclassname[0]  # hack version of ts.basename()
+            templateclassname = baseclassname
+            templateclassname = templateclassname + \
+                                ''.join(["{"+targ+"}" for targ in template_args])
+            templatefuncname = baseclassname.lower() + '_' + \
+                               '_'.join(["{"+targ+"}" for targ in template_args])
+        # register regular class
+        class_c2py = ('{t.cython_pytype}({var})',
+                      ('{proxy_name} = {t.cython_pytype}()\n'
+                       '(<{t.cython_ctype_nopred} *> {proxy_name}._inst)[0] = {var}'),
+                      ('if {cache_name} is None:\n'
+                       '    {proxy_name} = {t.cython_pytype}()\n'
+                       '    {proxy_name}._free_inst = False\n'
+                       '    {proxy_name}._inst = &{var}\n'
+                       '    {cache_name} = {proxy_name}\n')
+                     )
+        class_py2c = ('{proxy_name} = <{t.cython_cytype_nopred}> {var}',
+                      #'{proxy_name} = (<{ctype_nopred} *> (<{pytype_nopred}> {var})._inst)[0]',
+                      '(<{t.cython_ctype_nopred} *> {proxy_name}._inst)[0]')
+        class_cimport = ((rc.package, cpppxd_base),)
+        kwclass = dict(
+            name=baseclassname,                              # FCComp
+            template_args=template_args,
+            cython_c_type=cpppxd_base + '.' + baseclassname, # cpp_fccomp.FCComp
+            cython_cimport=class_cimport,
+            cython_cy_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
+            cython_py_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
+            cpp_type=baseclassname,
+            cython_template_class_name=templateclassname,
+            cython_template_function_name=templatefuncname,
+            cython_cyimport=((pxd_base,),),                       # fccomp
+            cython_pyimport=((pxd_base,),),                       # fccomp
+            cython_c2py=class_c2py,
+            cython_py2c=class_py2c,
+            )
+        self.register_class(**kwclass)
+        canonname = self.canon(classname)
+        if template_args is not None:
+            specname = self.cython_classname(classname)[1]
+            kwclassspec = dict(
+                name=classname,
+                cython_c_type=cpppxd_base + '.' + specname,
+                cython_cy_type=pxd_base + '.' + specname,
+                cython_py_type=pxd_base + '.' + specname,
+                )
+            self.register_class(**kwclassspec)
+            kwclassspec['name'] = canonname
+            self.register_class(**kwclassspec)
+        # register numpy type
+        self.register_numpy_dtype(classname,
+            cython_cimport=class_cimport,
+            cython_cyimport=pxd_base,
+            cython_pyimport=pxd_base,
+            )
+        # register vector
+        class_vector_py2c = ((
+            '# {var} is a {type}\n'
+            'cdef int i{var}\n'
+            'cdef int {var}_size\n'
+            'cdef {self.cython_npctypes[0]} * {var}_data\n'
+            '{var}_size = len({var})\n'
+            'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {self.cython_nptype}:\n'
+            '    {var}_data = <{t.cython_npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+            '    {proxy_name} = {t.cython_ctype_nopred}(<size_t> {var}_size)\n'
+            '    for i{var} in range({var}_size):\n'
+            '        {proxy_name}[i{var}] = {var}_data[i{var}]\n'
+            'else:\n'
+            '    {proxy_name} = {t.cython_ctype_nopred}(<size_t> {var}_size)\n'
+            '    for i{var} in range({var}_size):\n'
+            '        {proxy_name}[i{var}] = (<{t.cython_npctypes_nopred[0]} *> (<{t.cython_npcytypes_nopred[0]}> {var}[i{var}])._inst)[0]\n'),
+            '{proxy_name}')
+        self.register_class(('vector', canonname, 0), cython_py2c=class_vector_py2c)
+        self.register_class(('vector', classname, 0), cython_py2c=class_vector_py2c)
+        self.register_class((('vector', canonname, 0), '&'), cython_py2c=class_vector_py2c)
+        self.register_class((('vector', classname, 0), '&'), cython_py2c=class_vector_py2c)
+        self.register_class(((('vector', canonname, 0), 'const'), '&'), cython_py2c=class_vector_py2c)
+        self.register_class(((('vector', classname, 0), 'const'), '&'), cython_py2c=class_vector_py2c)
+        # register pointer to class
+        class_ptr_c2py = ('{t.cython_pytype}({var})',
+                         ('cdef {t.cython_pytype} {proxy_name} = {t.cython_pytype}()\n'
+                         #'(<{t.cython_ctype}> {proxy_name}._inst)[0] = {var}[0]'),
+                          'if {proxy_name}._free_inst:\n'
+                          '    free({proxy_name}._inst)\n'
+                          '(<{t.cython_ctype}> {proxy_name}._inst) = {var}'),
+                         ('if {cache_name} is None:\n'
+                          '    {proxy_name} = {t.cython_pytype}()\n'
+                          '    {proxy_name}._free_inst = False\n'
+                          '    {proxy_name}._inst = {var}\n'
+                          '    {cache_name} = {proxy_name}\n')
+                          )
+        class_ptr_py2c = ('{proxy_name} = <{t.cython_cytype_nopred}> {var}',
+                          '(<{t.cython_ctype_nopred} *> {proxy_name}._inst)')
+        kwclassptr = dict(
+            name=(classname, '*'),
+            template_args=template_args,
+            cython_py_type=pxd_base + '.' + baseclassname,
+            cython_cy_type=pxd_base + '.' + baseclassname,
+            cpp_type=baseclassname,
+            cython_c2py=class_ptr_c2py,
+            cython_py2c=class_ptr_py2c,
+            cython_cimport=kwclass['cython_cimport'] ,
+            cython_cyimport=kwclass['cython_cyimport'] + (('libc.stdlib','free'),),
+            cython_pyimport=kwclass['cython_pyimport'],
+            )
+        self.register_class(**kwclassptr)
+        kwclassref = dict(kwclassptr)
+        # Register reference to class
+        kwclassref['name'] = (classname, '&')
+        kwclassref['cython_c2py'] = class_c2py
+        kwclassref['cython_py2c'] = class_py2c
+        #ts.register_class(**kwclassref)
+        # register doublepointer to class
+        class_dblptr_c2py = ('{t.cython_pytype}({var})',
+                            ('{proxy_name} = {proxy_name}_obj._inst\n'
+                             '(<{t.cython_ctype} *> {proxy_name}._inst) = {var}'),
+                            ('if {cache_name} is None:\n'
+                             '    {proxy_name} = {t.cython_pytype}()\n'
+                             '    {proxy_name}._free_inst = False\n'
+                             '    {proxy_name}._inst = {var}\n'
+                             '    {proxy_name}_list = [{proxy_name}]\n'
+                             '    {cache_name} = {proxy_name}_list\n')
+                             )
+        class_dblptr_py2c = ('{proxy_name} = <{t.cython_cytype_nopred}> {var}[0]',
+                             '(<{t.cython_ctype_nopred} **> {proxy_name}._inst)')
+        kwclassdblptr = dict(
+            name=((classname, '*'), '*'),
+            template_args=template_args,
+            cython_c2py=class_dblptr_c2py,
+            cython_py2c=class_dblptr_py2c,
+            cython_cimport=kwclass['cython_cimport'],
+            cython_cyimport=kwclass['cython_cyimport'],
+            cython_pyimport=kwclass['cython_pyimport'],
+            )
+        self.register_class(**kwclassdblptr)
+
     def register_refinement(self, name, refinementof, cython_cimport=None, 
                             cython_cyimport=None, cython_pyimport=None, 
                             cython_c2py=None, cython_py2c=None):
@@ -2756,7 +2914,7 @@ class typestr(object):
         """The Cython C/C++ representation of the NumPy types without predicates.
         """
         if self._cython_npctypes_nopred is None:
-            npts_nopred self.ts.cython_nptype(self.t_nopred, depth=1)
+            npts_nopred = self.ts.cython_nptype(self.t_nopred, depth=1)
             npts_nopred = [npts_nopred] if isinstance(npts_nopred, basestring) \
                                         else npts_nopred
             npcts_nopred = _maprecurse(self.ts.cython_ctype, npts_nopred)
@@ -2770,7 +2928,7 @@ class typestr(object):
         """The Cython Cython representation of the NumPy types without predicates.
         """
         if self._cython_npcytypes_nopred is None:
-            npts_nopred self.ts.cython_nptype(self.t_nopred, depth=1)
+            npts_nopred = self.ts.cython_nptype(self.t_nopred, depth=1)
             npts_nopred = [npts_nopred] if isinstance(npts_nopred, basestring) \
                                         else npts_nopred
             npcyts_nopred = _maprecurse(self.ts.cython_cytype, npts_nopred)
@@ -2784,7 +2942,7 @@ class typestr(object):
         """The Cython Python representation of the NumPy types without predicates.
         """
         if self._cython_nppytypes_nopred is None:
-            npts_nopred self.ts.cython_nptype(self.t_nopred, depth=1)
+            npts_nopred = self.ts.cython_nptype(self.t_nopred, depth=1)
             npts_nopred = [npts_nopred] if isinstance(npts_nopred, basestring) \
                                         else npts_nopred
             nppyts_nopred = _maprecurse(self.ts.cython_pytype, npts_nopred)
