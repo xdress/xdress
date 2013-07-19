@@ -1,4 +1,4 @@
-"""This module creates descriptions of C/C++ classes, functions, and variables 
+"""This module creates descriptions of C/C++ classes, functions, and variables
 from source code, by using external parsers (GCC-XML, Clang AST) and the type system.
 
 This module is available as an xdress plugin by the name ``xdress.autodescribe``.
@@ -7,55 +7,55 @@ This module is available as an xdress plugin by the name ``xdress.autodescribe``
 
 Descriptions
 ============
-A key component of API wrapper generation is having a a top-level, abstract 
+A key component of API wrapper generation is having a a top-level, abstract
 representation of the software that is being wrapped.  In C++ there are three
-basic constructs which may be wrapped: variables, functions, and classes.  
+basic constructs which may be wrapped: variables, functions, and classes.
 
-The abstract representation of a C++ class is known as a **description** (abbr. 
+The abstract representation of a C++ class is known as a **description** (abbr.
 *desc*).  This description is simply a Python dictionary with a specific structure.
 This structure makes heavy use of the type system to declare the types of all needed
 parameters.
 
 Variable Description Top-Level Keys
 ------------------------------------
-The following are valid top-level keys in a variable description dictionary: 
+The following are valid top-level keys in a variable description dictionary:
 name, namespace, type, docstring, and extra.
 
 :name: str, the variable name
 :namespace: str or None, the namespace or module the variable lives in.
 :type: str or tuple, the type of the variable
-:docstring: str, optional, this is a documentation string for the variable.  
-:extra: dict, optional, this stores arbitrary metadata that may be used with 
+:docstring: str, optional, this is a documentation string for the variable.
+:extra: dict, optional, this stores arbitrary metadata that may be used with
     different backends. It is not added by any auto-describe routine but may be
     inserted later if needed.  One example use case is that the Cython generation
-    looks for the pyx, pxd, and cpppxd keys for strings of supplemental Cython 
+    looks for the pyx, pxd, and cpppxd keys for strings of supplemental Cython
     code to insert directly into the wrapper.
 
 Function Description Top-Level Keys
 ------------------------------------
-The following are valid top-level keys in a function description dictionary: 
+The following are valid top-level keys in a function description dictionary:
 name, namespace, signatures, docstring, and extra.
 
 :name: str, the function name
 :namespace: str or None, the namespace or module the function lives in.
-:signatures: dict or dict-like, the keys of this dictionary are function call 
+:signatures: dict or dict-like, the keys of this dictionary are function call
     signatures and the values are the function return types. The signatures
     themselves are tuples. The first element of these tuples is the function name.
-    The remaining elements (if any) are the function arguments.  Arguments are 
-    themselves length-2 or -3 tuples whose first elements are the argument names, 
+    The remaining elements (if any) are the function arguments.  Arguments are
+    themselves length-2 or -3 tuples whose first elements are the argument names,
     the second element is the argument type, and the third element (if present) is
-    the default value. Unlike class constuctors and destructors, the return type may 
+    the default value. Unlike class constuctors and destructors, the return type may
     not be None (only 'void' values are allowed).
-:docstring: str, optional, this is a documentation string for the function.  
-:extra: dict, optional, this stores arbitrary metadata that may be used with 
+:docstring: str, optional, this is a documentation string for the function.
+:extra: dict, optional, this stores arbitrary metadata that may be used with
     different backends. It is not added by any auto-describe routine but may be
     inserted later if needed.  One example use case is that the Cython generation
-    looks for the pyx, pxd, and cpppxd keys for strings of supplemental Cython 
+    looks for the pyx, pxd, and cpppxd keys for strings of supplemental Cython
     code to insert directly into the wrapper.
 
 Class Description Top-Level Keys
 ---------------------------------
-The following are valid top-level keys in a class description dictionary: 
+The following are valid top-level keys in a class description dictionary:
 name, parents, namespace, attrs, methods, docstrings, and extra.
 
 :name: str, the class name
@@ -67,28 +67,28 @@ name, parents, namespace, attrs, methods, docstrings, and extra.
 :methods: dict or dict-like, similar to the attrs except that the keys are now
     function signatures and the values are the method return types.  The signatures
     themselves are tuples. The first element of these tuples is the method name.
-    The remaining elements (if any) are the function arguments.  Arguments are 
-    themselves length-2 or -3 tuples whose first elements are the argument names, 
+    The remaining elements (if any) are the function arguments.  Arguments are
+    themselves length-2 or -3 tuples whose first elements are the argument names,
     the second element is the argument type, and the third element (if present) is
-    the default value.  If the return type is None (as opposed to 'void'), then 
+    the default value.  If the return type is None (as opposed to 'void'), then
     this method is assumed to be a constructor or destructor.
-:construct: str, optional, this is a flag for how the class is implemented. 
+:construct: str, optional, this is a flag for how the class is implemented.
     Accepted values are 'class' and 'struct'.  If this is not present, then 'class'
     is assumed.  This is most useful from wrapping C structs as Python classes.
-:docstrings: dict, optional, this dictionary is meant for storing documentation 
-    strings.  All values are thus either strings or dictionaries of strings.  
+:docstrings: dict, optional, this dictionary is meant for storing documentation
+    strings.  All values are thus either strings or dictionaries of strings.
     Valid keys include: class, attrs, and methods.  The attrs and methods
     keys are dictionaries which may include keys that mirror the top-level keys of
     the same name.
-:extra: dict, optional, this stores arbitrary metadata that may be used with 
+:extra: dict, optional, this stores arbitrary metadata that may be used with
     different backends. It is not added by any auto-describe routine but may be
     inserted later if needed.  One example use case is that the Cython generation
-    looks for the pyx, pxd, and cpppxd keys for strings of supplemental Cython 
+    looks for the pyx, pxd, and cpppxd keys for strings of supplemental Cython
     code to insert directly into the wrapper.
 
 Toaster Example
 ---------------
-Suppose we have a C++ class called Toaster that takes bread and makes delicious 
+Suppose we have a C++ class called Toaster that takes bread and makes delicious
 toast.  A valid description dictionary for this class would be as follows::
 
     class_desc = {
@@ -104,8 +104,8 @@ toast.  A valid description dictionary for this class would be as follows::
             ('Toaster',): None,
             ('Toaster', ('name', 'str', '""')): None,
             ('Toaster', ('paramtrack', ('set', 'str')), ('name', 'str', '""')): None,
-            ('~Toaster',): None, 
-            ('tostring',): 'str', 
+            ('~Toaster',): None,
+            ('tostring',): 'str',
             ('calc',): 'Material',
             ('calc', ('incomp', ('map', 'int32', 'float64'))): 'Material',
             ('calc', ('mat', 'Material')): 'Material',
@@ -135,7 +135,7 @@ toast.  A valid description dictionary for this class would be as follows::
 Automatic Description Generation
 --------------------------------
 The purpose of this module is to create description dictionaries like those
-above by automatically parsing C++ classes.  In theory this parsing step may 
+above by automatically parsing C++ classes.  In theory this parsing step may
 be handled by visiting any syntax tree of C++ code.  Two options were pursued here:
 GCC-XML and the Python bindings to the Clang AST.  Unfortunately, the Clang AST
 bindings lack exposure for template argument types.  These are needed to use any
@@ -179,7 +179,7 @@ from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
 from . import astparsers
 from .typesystem import TypeSystem
 
-if sys.version_info[0] >= 3: 
+if sys.version_info[0] >= 3:
     basestring = str
 
 # d = int64, u = uint64
@@ -205,7 +205,7 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     filename : str
         The path to the file.
     name : str or None, optional
-        The name, a 'None' value will attempt to infer this from the 
+        The name, a 'None' value will attempt to infer this from the
         filename.
     kind : str
         The kind of type to describe, valid flags are 'class', 'func', and 'var'.
@@ -232,14 +232,14 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     """
     if os.name == 'nt':
         # GCC-XML and/or Cygwin wants posix paths on Windows.
-        filename = posixpath.join(*ntpath.split(filename)) 
-    root = astparsers.gccxml_parse(filename, includes=includes, defines=defines, 
-                                   undefines=undefines, verbose=verbose, debug=debug, 
+        filename = posixpath.join(*ntpath.split(filename))
+    root = astparsers.gccxml_parse(filename, includes=includes, defines=defines,
+                                   undefines=undefines, verbose=verbose, debug=debug,
                                    builddir=builddir)
     basename = filename.rsplit('.', 1)[0]
     onlyin = set([filename] +
                  [basename + '.' + h for h in utils._hdr_exts if h.startswith('h')])
-    describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber, 
+    describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber,
                   'var': GccxmlVarDescriber}
     describer = describers[kind](name, root, onlyin=onlyin, ts=ts, verbose=verbose)
     describer.visit()
@@ -248,7 +248,7 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
 
 class GccxmlBaseDescriber(object):
     """Base class used to generate descriptions via GCC-XML output.
-    Sub-classes need only implement a visit() method and optionally a 
+    Sub-classes need only implement a visit() method and optionally a
     constructor.  The default visitor methods are valid for classes."""
 
     _funckey = None
@@ -261,9 +261,9 @@ class GccxmlBaseDescriber(object):
         name : str
             The name, this may not have a None value.
         root : element tree node, optional
-            The root element node.  
+            The root element node.
         onlyin :  str, optional
-            Filename the class or struct described must live in.  Prevents 
+            Filename the class or struct described must live in.  Prevents
             finding elements of the same name coming from other libraries.
         ts : TypeSystem, optional 
             A type system instance.
@@ -297,7 +297,7 @@ class GccxmlBaseDescriber(object):
             warn(msg, RuntimeWarning)
         self._currfunc = []  # this must be a stack to handle nested functions
         self._currfuncsig = None
-        self._currclass = []  # this must be a stack to handle nested classes  
+        self._currclass = []  # this must be a stack to handle nested classes
         self._level = -1
         #self._template_args.update(ts.template_types)
 
@@ -394,7 +394,7 @@ class GccxmlBaseDescriber(object):
                 msg = ("The type {0!r} is used as part of an API element but no "
                        "declarations were made with it.  Please declare a variable "
                        "of type {0!r} somewhere in the source or header.")
-                raise NotImplementedError(msg.format(name))            
+                raise NotImplementedError(msg.format(name))
             bases = node.attrib['bases'].split()
             bases = None if len(bases) == 0 else [self.type(b) for b in bases]
             self.desc['parents'] = bases
@@ -429,11 +429,11 @@ class GccxmlBaseDescriber(object):
         elif node.tag == 'Destructor':
             rtntype = None
             self._currfunc[-1] = '~' + self._currfunc[-1]
-        else: 
+        else:
             rtntype = self.type(node.attrib['returns'])
         funcname = self._currfunc.pop()
         if self._currfuncsig is None:
-            return 
+            return
         key = (funcname,) + tuple(self._currfuncsig)
         self.desc[self._funckey][key] = rtntype
         self._currfuncsig = None
@@ -465,9 +465,9 @@ class GccxmlBaseDescriber(object):
         """visits a constructor, destructor, or method argument."""
         self._pprint(node)
         name = node.attrib.get('name', None)
-        if name is None: 
+        if name is None:
             self._currfuncsig = None
-            return 
+            return
         if name in FORBIDDEN_NAMES:
             rename = name + '__'
             warn_forbidden_name(name, self.name, rename)
@@ -496,7 +496,7 @@ class GccxmlBaseDescriber(object):
             name = node.attrib['name']
             if name in FORBIDDEN_NAMES:
                 warn_forbidden_name(name, self.name)
-                return 
+                return
             t = self.type(node.attrib['type'])
             self.desc['attrs'][name] = t
 
@@ -509,22 +509,29 @@ class GccxmlBaseDescriber(object):
         else:
             return self.type(node.attrib['type'])
 
+    def visit_enumeration(self, node):
+        self._pprint(node)
+        currenum = []
+        for child in node.iterfind('EnumValue'):
+            currenum.append((child.attrib['name'], child.attrib['init']))
+        return ('enum', node.attrib['name'], tuple(currenum))
+
     _fundemntal_to_base = {
-        'char': 'char', 
+        'char': 'char',
         'int16_t': 'int16',
-        'int': 'int32', 
-        'long int': 'int64', 
+        'int': 'int32',
+        'long int': 'int64',
         'unsigned int': 'uint32',
         'long unsigned int': 'uint64',
         'float': 'float32',
         'double': 'float64',
-        'complex': 'complex128', 
-        'void': 'void', 
+        'complex': 'complex128',
+        'void': 'void',
         'bool': 'bool',
         }
 
     def visit_fundamentaltype(self, node):
-        """visits a base C++ type, mapping it to the approriate type in the 
+        """visits a base C++ type, mapping it to the approriate type in the
         type system."""
         self._pprint(node)
         tname = node.attrib['name']
@@ -546,7 +553,7 @@ class GccxmlBaseDescriber(object):
         """visits an array type and maps it to a '*' refinement type."""
         self._pprint(node)
         baset = self.type(node.attrib['type'])
-        # FIXME something involving the min, max, and/or size 
+        # FIXME something involving the min, max, and/or size
         # attribs needs to also go here.
         t = self._add_predicate(baset, '*')
         return t
@@ -566,7 +573,7 @@ class GccxmlBaseDescriber(object):
         return t
 
     def visit_cvqualifiedtype(self, node):
-        """visits constant, volatile, and restricted types and maps them to 
+        """visits constant, volatile, and restricted types and maps them to
         'const', 'volatile', and 'restrict' refinement types."""
         self._pprint(node)
         t = self.type(node.attrib['type'])
@@ -624,9 +631,9 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
         name : str
             The class name, this may not have a None value.
         root : element tree node, optional
-            The root element node of the class or struct to describe.  
+            The root element node of the class or struct to describe.
         onlyin :  str, optional
-            Filename the class or struct described must live in.  Prevents 
+            Filename the class or struct described must live in.  Prevents
             finding classes of the same name coming from other libraries.
         ts : TypeSystem, optional 
             A type system instance.
@@ -641,10 +648,10 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
         self.desc['construct'] = self._constructvalue
         self.desc['type'] = ts.canon(name)
         # Gross, but it solves the problem that for uint valued template parameters
-        # (ie MyClass<3>) gccxml names this MyClass<3u> or MyClass<3d> but 
+        # (ie MyClass<3>) gccxml names this MyClass<3u> or MyClass<3d> but
         # the type system has no way of dsitinguising this from MyClass<3> as an int.
         # maybe it should, but I think this will get us pretty far.
-        self._name = None  
+        self._name = None
 
     def visit(self, node=None):
         """Visits the class node and all sub-nodes, generating the description
@@ -653,7 +660,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
         Parameters
         ----------
         node : element tree node, optional
-            The element tree node to start from.  If this is None, then the 
+            The element tree node to start from.  If this is None, then the
             top-level class node is found and visited.
 
         """
@@ -679,7 +686,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
                     nodet = self._visit_template(node)
                     if nodet == namet:
                         self._name = nodename  # gross
-                        break 
+                        break
                 else:
                     node = None
             if node is None:
@@ -716,9 +723,9 @@ class GccxmlVarDescriber(GccxmlBaseDescriber):
         name : str
             The function name, this may not have a None value.
         root : element tree node, optional
-            The root element node of the function to describe.  
+            The root element node of the function to describe.
         onlyin :  str, optional
-            Filename the function described must live in.  Prevents finding 
+            Filename the function described must live in.  Prevents finding
             functions of the same name coming from other libraries.
         ts : TypeSystem, optional 
             A type system instance.
@@ -736,7 +743,7 @@ class GccxmlVarDescriber(GccxmlBaseDescriber):
         Parameters
         ----------
         node : element tree node, optional
-            The element tree node to start from.  If this is None, then the 
+            The element tree node to start from.  If this is None, then the
             top-level class node is found and visited.
 
         """
@@ -754,6 +761,22 @@ class GccxmlVarDescriber(GccxmlBaseDescriber):
                 msg = msg.format(self.name, node.attrib['file'], self.onlyin)
                 raise RuntimeError(msg)
 
+        # Variables can also be enums
+        for n in root.iterfind("Enumeration[@name='{0}']".format(self.name)):
+            if n.attrib['file'] in self.onlyin:
+                ns = self.context(n.attrib['context'])
+                if ns is not None:
+                    self.desc['namespace'] = ns
+                # Grab the type and put it in
+                self.desc['type'] = self.visit_enumeration(n)
+                break
+            else:
+                msg = ("{0} autodescribing failed: found variable in {1!r} but "
+                       "expected it in {2!r}.")
+                msg = msg.format(self.name, node.attrib['file'], self.onlyin)
+                raise RuntimeError(msg)
+
+
 class GccxmlFuncDescriber(GccxmlBaseDescriber):
     """Class used to generate function descriptions via GCC-XML output."""
 
@@ -766,9 +789,9 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
         name : str
             The function name, this may not have a None value.
         root : element tree node, optional
-            The root element node of the function to describe.  
+            The root element node of the function to describe.
         onlyin :  str, optional
-            Filename the function described must live in.  Prevents finding 
+            Filename the function described must live in.  Prevents finding
             functions of the same name coming from other libraries.
         ts : TypeSystem, optional 
             A type system instance.
@@ -787,7 +810,7 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
         Parameters
         ----------
         node : element tree node, optional
-            The element tree node to start from.  If this is None, then the 
+            The element tree node to start from.  If this is None, then the
             top-level class node is found and visited.
 
         """
@@ -846,11 +869,11 @@ def clang_range_str(source_range):
         msg = msg.format(filename, stop.file.name)
         raise ValueError(msg)
     lines = [linecache.getline(filename, n) for n in range(start.line, stop.line+1)]
-    lines[-1] = lines[-1][:stop.column-1]  # stop slice must come first for 
+    lines[-1] = lines[-1][:stop.column-1]  # stop slice must come first for
     lines[0] = lines[0][start.column-1:]   # len(lines) == 1
     s = "".join(lines)
     return s
-    
+
 
 
 @astparsers.not_implemented
@@ -868,7 +891,7 @@ class ClangClassDescriber(object):
         self._currfunc = []  # this must be a stack to handle nested functions
         self._currfuncsig = None
         self._currfuncarg = None
-        self._currclass = []  # this must be a stack to handle nested classes  
+        self._currclass = []  # this must be a stack to handle nested classes
 
     def __str__(self):
         return pformat(self.desc)
@@ -942,7 +965,7 @@ class ClangClassDescriber(object):
 
     def visit_unexposed_expr(self, node):
         self._pprint(node, "Default Parameter (Unexposed Expression)")
-        # a little hacky reading from the file, 
+        # a little hacky reading from the file,
         # but Clang doesn't expose this data...
         if self._currfuncsig is None:
             return
@@ -1013,7 +1036,7 @@ def clang_find_attributes(node):
 
 @astparsers.not_implemented
 class ClangTypeVisitor(object):
-    """For a Clang type located at a root node, compute the cooresponding 
+    """For a Clang type located at a root node, compute the cooresponding
     typesystem type.
     """
 
@@ -1117,7 +1140,7 @@ class ClangTypeVisitor(object):
         decl = typ.get_declaration()
         self._currtype.append(decl.spelling)
         print("   canon: ",  typ.get_canonical().get_declaration().displayname)
-        #import pdb; pdb.set_trace()        
+        #import pdb; pdb.set_trace()
         #self.visit(decl)
         #self.visit(typ.get_canonical().get_declaration())
         #self.visit(typ.get_canonical())
@@ -1212,7 +1235,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         root : pycparser AST
             The root of the abstract syntax tree.
         onlyin :  str, optional
-            Filename the class or struct described must live in.  Prevents 
+            Filename the class or struct described must live in.  Prevents
             finding classes of the same name coming from other libraries.
         ts : TypeSystem, optional 
             A type system instance.
@@ -1228,38 +1251,38 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         self._root = root
         self._currfunc = []  # this must be a stack to handle nested functions
         self._currfuncsig = None
-        self._currclass = []  # this must be a stack to handle nested classes  
+        self._currclass = []  # this must be a stack to handle nested classes
         self._level = -1
         self._currtype = None
         self._currenum = None
         self._loading_bases = False
         self._basetypes = {
-            'char': 'char', 
-            'signed char': 'char', 
+            'char': 'char',
+            'signed char': 'char',
             'unsigned char': 'uchar',
             'short': 'int16',
             'short int': 'int16',
             'signed short': 'int16',
             'signed short int': 'int16',
-            'int': 'int32', 
-            'signed int': 'int32', 
-            'long' : 'int32', 
-            'long int' : 'int32', 
-            'signed long' : 'int32', 
-            'signed long int' : 'int32', 
-            'long long' : 'int64', 
-            'long long int' : 'int64', 
-            'signed long long' : 'int64', 
-            'signed long long int' : 'int64', 
+            'int': 'int32',
+            'signed int': 'int32',
+            'long' : 'int32',
+            'long int' : 'int32',
+            'signed long' : 'int32',
+            'signed long int' : 'int32',
+            'long long' : 'int64',
+            'long long int' : 'int64',
+            'signed long long' : 'int64',
+            'signed long long int' : 'int64',
             'unsigned short': 'uint16',
             'unsigned short int': 'uint16',
-            'unsigned': 'uint32', 
-            'unsigned int': 'uint32', 
+            'unsigned': 'uint32',
+            'unsigned int': 'uint32',
             'unsigned long': 'uint32',
             'unsigned long int': 'uint32',
             'long unsigned int': 'uint32',
-            'unsigned long long' : 'uint64', 
-            'unsigned long long int' : 'uint64', 
+            'unsigned long long' : 'uint64',
+            'unsigned long long int' : 'uint64',
             'float': 'float32',
             'double': 'float64',
             'long double': 'float128',
@@ -1306,7 +1329,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         rtntype = self.type(ftype.type)
         funcname = self._currfunc.pop()
         if self._currfuncsig is None:
-            return 
+            return
         key = (funcname,) + tuple(self._currfuncsig)
         self.desc[self._funckey][key] = rtntype
         self._currfuncsig = None
@@ -1400,7 +1423,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         self._pprint(node)
         self._currtype = None
         if not hasattr(node.type, 'children'):
-            return 
+            return
         self.visit(node.type)
         name = self._currtype
         self._currtype = None
@@ -1442,7 +1465,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
                 print(msg.format(self.name, name))
                 continue
             self.desc['attrs'][name] = t
-        
+
 class PycparserVarDescriber(PycparserBaseDescriber):
 
     _type_error_msg = "{0} is a {1}, use {2} instead."
@@ -1455,7 +1478,7 @@ class PycparserVarDescriber(PycparserBaseDescriber):
         root : pycparser AST
             The root of the abstract syntax tree.
         onlyin :  str, optional
-            Filename the variable described must live in.  Prevents 
+            Filename the variable described must live in.  Prevents
             finding variables of the same name coming from other libraries.
         ts : TypeSystem, optional 
             A type system instance.
@@ -1467,13 +1490,13 @@ class PycparserVarDescriber(PycparserBaseDescriber):
                                                     ts=ts, verbose=verbose)
 
     def visit(self, node=None):
-        """Visits the variable definition node and all sub-nodes, generating 
+        """Visits the variable definition node and all sub-nodes, generating
         the description dictionary as it goes.
 
         Parameters
         ----------
         node : element tree node, optional
-            The element tree node to start from.  If this is None, then the 
+            The element tree node to start from.  If this is None, then the
             top-level variable node is found and visited.
 
         """
@@ -1482,10 +1505,10 @@ class PycparserVarDescriber(PycparserBaseDescriber):
             for child_name, child in self._root.children():
                 if getattr(child, 'name', None) == self.name:
                     if isinstance(child, pycparser.c_ast.FuncDef):
-                        raise TypeError(_type_error_msg.format(self.name, 'function', 
+                        raise TypeError(_type_error_msg.format(self.name, 'function',
                                                             'PycparserFuncDescriber'))
                     if isinstance(child, pycparser.c_ast.Struct):
-                        raise TypeError(_type_error_msg.format(self.name, 'struct', 
+                        raise TypeError(_type_error_msg.format(self.name, 'struct',
                                                             'PycparserClassDescriber'))
                     self.desc['type'] = self.type(child)
                     break
@@ -1504,7 +1527,7 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
         root : pycparser AST
             The root of the abstract syntax tree.
         onlyin :  str, optional
-            Filename the class or struct described must live in.  Prevents 
+            Filename the class or struct described must live in.  Prevents
             finding classes of the same name coming from other libraries.
         ts : TypeSystem, optional 
             A type system instance.
@@ -1523,7 +1546,7 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
         Parameters
         ----------
         node : element tree node, optional
-            The element tree node to start from.  If this is None, then the 
+            The element tree node to start from.  If this is None, then the
             top-level class node is found and visited.
 
         """
@@ -1552,7 +1575,7 @@ class PycparserClassDescriber(PycparserBaseDescriber):
         root : pycparser AST
             The root of the abstract syntax tree.
         onlyin :  str, optional
-            Filename the class or struct described must live in.  Prevents 
+            Filename the class or struct described must live in.  Prevents
             finding classes of the same name coming from other libraries.
         ts : TypeSystem, optional 
             A type system instance.
@@ -1561,7 +1584,7 @@ class PycparserClassDescriber(PycparserBaseDescriber):
 
         Notes
         -----
-        It is impossible for C structs to have true member functions, only 
+        It is impossible for C structs to have true member functions, only
         function pointers.
 
         """
@@ -1574,13 +1597,13 @@ class PycparserClassDescriber(PycparserBaseDescriber):
         self.desc['type'] = ts.canon(name)
 
     def visit(self, node=None):
-        """Visits the struct (class) node and all sub-nodes, generating the 
+        """Visits the struct (class) node and all sub-nodes, generating the
         description dictionary as it goes.
 
         Parameters
         ----------
         node : element tree node, optional
-            The element tree node to start from.  If this is None, then the 
+            The element tree node to start from.  If this is None, then the
             top-level struct (class) node is found and visited.
 
         """
@@ -1602,7 +1625,7 @@ class PycparserClassDescriber(PycparserBaseDescriber):
 _pycparser_describers = {
     'var': PycparserVarDescriber,
     'func': PycparserFuncDescriber,
-    'class': PycparserClassDescriber, 
+    'class': PycparserClassDescriber,
     }
 
 def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
@@ -1615,7 +1638,7 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     filename : str
         The path to the file.
     name : str or None, optional
-        The name, a 'None' value will attempt to infer this from the 
+        The name, a 'None' value will attempt to infer this from the
         filename.
     kind : str
         The kind of type to describe, valid flags are 'class', 'func', and 'var'.
@@ -1640,8 +1663,8 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         A dictionary describing the class which may be used to generate
         API bindings.
     """
-    root = astparsers.pycparser_parse(filename, includes=includes, defines=defines, 
-                                      undefines=undefines, verbose=verbose, 
+    root = astparsers.pycparser_parse(filename, includes=includes, defines=defines,
+                                      undefines=undefines, verbose=verbose,
                                       debug=debug, builddir=builddir)
     onlyin = set([filename, filename.replace('.c', '.h')])
     describer = _pycparser_describers[kind](name, root, onlyin=onlyin, ts=ts, 
@@ -1655,7 +1678,7 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
 #
 
 _describers = {
-    'clang': clang_describe, 
+    'clang': clang_describe,
     'gccxml': gccxml_describe,
     'pycparser': pycparser_describe,
     }
@@ -1670,7 +1693,7 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     filename : str
         The path to the file.
     name : str or None, optional
-        The name, a 'None' value will attempt to infer this from the 
+        The name, a 'None' value will attempt to infer this from the
         filename.
     kind : str, optional
         The kind of type to describe, valid flags are 'class', 'func', and 'var'.
@@ -1681,9 +1704,9 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
     parsers : str, list, or dict, optional
-        The parser / AST to use to use for the file.  Currently 'clang', 'gccxml', 
-        and 'pycparser' are supported, though others may be implemented in the 
-        future.  If this is a string, then this parser is used.  If this is a list, 
+        The parser / AST to use to use for the file.  Currently 'clang', 'gccxml',
+        and 'pycparser' are supported, though others may be implemented in the
+        future.  If this is a string, then this parser is used.  If this is a list,
         this specifies the parser order to use based on availability.  If this is
         a dictionary, it specifies the order to use parser based on language, i.e.
         ``{'c' ['pycparser', 'gccxml'], 'c++': ['gccxml', 'pycparser']}``.
@@ -1717,7 +1740,7 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
 #
 
 class XDressPlugin(astparsers.ParserPlugin):
-    """This plugin creates automatic description dictionaries of all souce and 
+    """This plugin creates automatic description dictionaries of all souce and
     target files."""
 
     def __init__(self):
@@ -1729,11 +1752,11 @@ class XDressPlugin(astparsers.ParserPlugin):
         rc = RunControl()
         rc._update(super(XDressPlugin, self).defaultrc)
         # target enviroment made up of module dicts made up of descriptions
-        rc.env = {} 
+        rc.env = {}
         return rc
 
     def setup(self, rc):
-        """Expands variables, functions, and classes in the rc based on 
+        """Expands variables, functions, and classes in the rc based on
         copying src filenames to tar filename."""
         super(XDressPlugin, self).setup(rc)
         for i, var in enumerate(rc.variables):
@@ -1817,9 +1840,9 @@ class XDressPlugin(astparsers.ParserPlugin):
         name : str
             Class or function name to describe.
         srcname : str
-            File basename of implementation.  
+            File basename of implementation.
         tarname : str
-            File basename where the bindings will be generated.  
+            File basename where the bindings will be generated.
         kind : str
             The kind of type to describe, valid flags are 'class', 'func', and 'var'.
         rc : xdress.utils.RunControl
@@ -1850,10 +1873,10 @@ class XDressPlugin(astparsers.ParserPlugin):
     def adddesc2env(self, desc, env, name, srcname, tarname):
         """Adds a description to environment"""
         # Add to target environment
-        # docstrings overwrite, extras accrete 
+        # docstrings overwrite, extras accrete
         mod = {name: desc, 'docstring': self.pysrcenv[srcname].get('docstring', ''),
                'srcpxd_filename': desc['srcpxd_filename'],
-               'pxd_filename': desc['pxd_filename'], 
+               'pxd_filename': desc['pxd_filename'],
                'pyx_filename': desc['pyx_filename'], 'language': desc['language'],
                'language_extension': desc['language_extension'],}
         if tarname not in env:
@@ -1867,7 +1890,7 @@ class XDressPlugin(astparsers.ParserPlugin):
 
     def compute_classes(self, rc):
         """Computes class descriptions and loads them into the environment."""
-        # compute all class descriptions first 
+        # compute all class descriptions first
         cache = rc._cache
         env = rc.env  # target environment, not source one
         for i, (classname, srcname, tarname) in enumerate(rc.classes):

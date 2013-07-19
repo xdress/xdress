@@ -113,8 +113,8 @@ def cpppxd_sorted_names(mod, ts):
                 break
         else:
             names.append(name)
-    names += sorted([name for name, desc in  mod.items() if isvardesc(desc)])    
-    names += sorted([name for name, desc in  mod.items() if isfuncdesc(desc)])    
+    names += sorted([name for name, desc in  mod.items() if isvardesc(desc)])
+    names += sorted([name for name, desc in  mod.items() if isfuncdesc(desc)])
     return names
 
 
@@ -417,7 +417,7 @@ def genpxd(env, classes=(), ts=None):
         Environment dictonary mapping target module names to module description
         dictionaries.
     classes : sequence, optional
-        Listing of all class names that are handled by cythongen.  This may be 
+        Listing of all class names that are handled by cythongen.  This may be
         the same dictionary as in genpyx()
     ts : TypeSystem, optional
         A type system instance.
@@ -446,7 +446,7 @@ def modpxd(mod, classes=(), ts=None):
     mod : dict
         Module description dictonary.
     classes : sequence, optional
-        Listing of all class names that are handled by cythongen.  This may be 
+        Listing of all class names that are handled by cythongen.  This may be
         the same dictionary as in modpyx().
     ts : TypeSystem, optional
         A type system instance.
@@ -487,7 +487,7 @@ _pxd_class_template = \
 
 cdef class {name}{parents}:
 {body}
-    pass    
+    pass
 
 {extra}
 """
@@ -502,7 +502,7 @@ def classpxd(desc, classes=(), ts=None):
     desc : dict
         Class description dictonary.
     classes : sequence, optional
-        Listing of all class names that are handled by cythongen.  This may be 
+        Listing of all class names that are handled by cythongen.  This may be
         the same dictionary as in modpyx().
     ts : TypeSystem, optional
         A type system instance.
@@ -955,8 +955,23 @@ def _gen_constructor(name, name_mangled, classname, args, ts, doc=None,
     lines += ['', ""]
     return lines
 
-def _gen_dispatcher(name, name_mangled, ts, doc=None, hasrtn=True):
+def _gen_dispatcher(name, name_mangled, ts, doc=None, hasrtn=True, is_method=True):
     argfill = ", ".join(['self', '*args', '**kwargs'])
+    if is_method is True:
+        # string to format for arg checking
+        arg_chk_str = "if types <= self.{0}_argtypes:"
+
+        # string to format for dispatching and returning
+        dispatch_str_ret = "return self.{0}(*args, **kwargs)"
+        dispatch_str_no_ret = "self.{0}(*args, **kwargs)"
+
+        # Make self a method argument or not
+        argfill = ", ".join(['self', '*args', '**kwargs'])
+    else:
+        arg_chk_str = "if types <= {0}_argtypes:"
+        dispatch_str_ret = "return {0}(*args, **kwargs)"
+        dispatch_str_no_ret = "{0}(*args, **kwargs)"
+        argfill = ", ".join(['*args', '**kwargs'])
     lines  = ['def {0}({1}):'.format(name, argfill)]
     lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
     types = ["types = set([(i, type(a)) for i, a in enumerate(args)])",
@@ -977,11 +992,11 @@ def _gen_dispatcher(name, name_mangled, ts, doc=None, hasrtn=True):
             ['("{0}", {1})'.format(n, pyt) for n, pyt in zip(anames, pytypes)])
         mtups = '(' + mtypes + ')' if 0 < len(mtypes) else mtypes
         mtypeslines.append(mangled_name + "_argtypes = frozenset(" + mtups + ")")
-        cond = ["if types <= self.{0}_argtypes:".format(mangled_name),]
+        cond = [arg_chk_str.format(mangled_name),]
         if hasrtn:
-            rline = "return self.{0}(*args, **kwargs)".format(mangled_name)
+            rline = dispatch_str_ret.format(mangled_name)
         else:
-            rline = ["self.{0}(*args, **kwargs)".format(mangled_name), "return"]
+            rline = [dispatch_str_no_ret.format(mangled_name), "return"]
         cond += indent(rline, join=False)
         lines += indent(cond, join=False)
     lines = sorted(mtypeslines) + [''] +  lines
@@ -991,9 +1006,9 @@ def _gen_dispatcher(name, name_mangled, ts, doc=None, hasrtn=True):
     for key, mangled_name in mangitems:
         lines += indent('try:', join=False)
         if hasrtn:
-            rline = "return self.{0}(*args, **kwargs)".format(mangled_name)
+            rline = dispatch_str_ret.format(mangled_name)
         else:
-            rline = ["self.{0}(*args, **kwargs)".format(mangled_name), "return"]
+            rline = [dispatch_str_no_ret.format(mangled_name), "return"]
         lines += indent(indent(rline, join=False), join=False)
         lines += indent(["except (RuntimeError, TypeError, NameError):",
                          indent("pass", join=False)[0],], join=False)
@@ -1331,8 +1346,7 @@ def funcpyx(desc, ts=None):
         if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
             # write dispatcher
             nm = dict([(k, v) for k, v in mangled_fnames.items() if k[0] == fname])
-            flines += _gen_dispatcher(fname, nm, ts, doc=fdoc)
-
+            flines += _gen_dispatcher(fname, nm, ts, doc=fdoc, is_method=False)
     flines.append(desc.get('extra', {}).get('pyx', ''))
     pyx = '\n'.join(flines)
     if 'pyx_filename' not in desc:
@@ -1366,13 +1380,13 @@ class XDressPlugin(Plugin):
 
         # write out all files
         for key, cpppxd in cpppxds.items():
-            newoverwrite(cpppxd, os.path.join(rc.package, 
+            newoverwrite(cpppxd, os.path.join(rc.package,
                          env[key]['srcpxd_filename']), rc.verbose)
         for key, pxd in pxds.items():
-            newoverwrite(pxd, os.path.join(rc.package, 
+            newoverwrite(pxd, os.path.join(rc.package,
                          env[key]['pxd_filename']), rc.verbose)
         for key, pyx in pyxs.items():
-            newoverwrite(pyx, os.path.join(rc.package, 
+            newoverwrite(pyx, os.path.join(rc.package,
                          env[key]['pyx_filename']), rc.verbose)
 
 
@@ -1403,7 +1417,7 @@ def _mangle_function_pointer_name(name, classname):
     return pyref, cref
 
 def _isclassptr(t, classes):
-    return (not isinstance(t, basestring) and t[1] == '*' and 
+    return (not isinstance(t, basestring) and t[1] == '*' and
             isinstance(t[0], basestring) and t[0] in classes)
 
 def _isclassdblptr(t, classes):
@@ -1411,7 +1425,7 @@ def _isclassdblptr(t, classes):
         return False
     return _isclassptr(t[0], classes) and t[1] == '*'
 
-_exc_c_base = frozenset(['int16', 'int32', 'int64', 'int128', 
+_exc_c_base = frozenset(['int16', 'int32', 'int64', 'int128',
                          'float32', 'float64', 'float128'])
 
 _exc_ptr_matcher = TypeMatcher((MatchAny, '*'))
@@ -1421,7 +1435,7 @@ def _exception_str(exceptions, srcfile, rtntype, ts):
         return ""
     if isinstance(exceptions, basestring):
         return "except " + exceptions
-    lang = guess_language(srcfile)    
+    lang = guess_language(srcfile)
     if lang == 'c':
         rtntype = ts.canon(rtntype)
         if rtntype in _exc_c_base:
