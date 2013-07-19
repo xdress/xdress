@@ -960,12 +960,12 @@ class TypeSystem(object):
             }, self)
 
         cython_py2c_conv_vector_ref = ((
-            '# {var} is a {type}\n'
+            '# {var} is a {t.type}\n'
             'cdef int i{var}\n'
             'cdef int {var}_size\n'
             'cdef {t.cython_npctypes_nopred[0]} * {var}_data\n'
             '{var}_size = len({var})\n'
-            'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
+            'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {t.cython_nptype}:\n'
             '    {var}_data = <{t.cython_npctypes_nopred[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
             '    {proxy_name} = {t.cython_ctype_nopred}(<size_t> {var}_size)\n'
             '    for i{var} in range({var}_size):\n'
@@ -1040,7 +1040,7 @@ class TypeSystem(object):
             ('int32', '*'): ('cdef int {proxy_name}_ = {var}', '&{proxy_name}_'),
             'int64': ('<long long> {var}', False),
             'uint16': ('<unsigned short> {var}', False),
-            'uint32': ('<{ctype}> long({var})', False),
+            'uint32': ('<{t.cython_ctype}> long({var})', False),
             #'uint32': ('<unsigned long> {var}', False),
             #('uint32', '*'): ('cdef unsigned long {proxy_name}_ = {var}', '&{proxy_name}_'),
             ('uint32', '*'): ('cdef unsigned int {proxy_name}_ = {var}', '&{proxy_name}_'),
@@ -1055,42 +1055,42 @@ class TypeSystem(object):
             'file': ('{extra_types}PyFile_AsFile({var})[0]', False),
             ('file', '*'): ('{extra_types}PyFile_AsFile({var})', False),
             # template types
-            'map': ('{proxy_name} = {t.cython_pytype}({var}, not isinstance({var}, {cytype}))',
+            'map': ('{proxy_name} = {t.cython_pytype}({var}, not isinstance({var}, {t.cython_cytype}))',
                     '{proxy_name}.map_ptr[0]'),
             'dict': ('dict({var})', False),
-            'pair': ('{proxy_name} = {t.cython_pytype}({var}, not isinstance({var}, {cytype}))',
+            'pair': ('{proxy_name} = {t.cython_pytype}({var}, not isinstance({var}, {t.cython_cytype}))',
                      '{proxy_name}.pair_ptr[0]'),
-            'set': ('{proxy_name} = {t.cython_pytype}({var}, not isinstance({var}, {cytype}))',
+            'set': ('{proxy_name} = {t.cython_pytype}({var}, not isinstance({var}, {t.cython_cytype}))',
                     '{proxy_name}.set_ptr[0]'),
             'vector': ((
-                '# {var} is a {type}\n'
+                '# {var} is a {t.type}\n'
                 'cdef int i{var}\n'
                 'cdef int {var}_size\n'
-                'cdef {npctypes[0]} * {var}_data\n'
+                'cdef {t.cython_npctypes[0]} * {var}_data\n'
                 '{var}_size = len({var})\n'
-                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {nptype}:\n'
-                '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
+                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == {t.cython_nptype}:\n'
+                '    {var}_data = <{t.cython_npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+                '    {proxy_name} = {t.cython_ctype}(<size_t> {var}_size)\n'
                 '    for i{var} in range({var}_size):\n'
                 '        {proxy_name}[i{var}] = {var}_data[i{var}]\n'
                 'else:\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
+                '    {proxy_name} = {t.cython_ctype}(<size_t> {var}_size)\n'
                 '    for i{var} in range({var}_size):\n'
-                '        {proxy_name}[i{var}] = <{npctypes[0]}> {var}[i{var}]\n'),
+                '        {proxy_name}[i{var}] = <{t.cython_npctypes[0]}> {var}[i{var}]\n'),
                 '{proxy_name}'),     # FIXME There might be improvements here...
             ('vector', 'char', 0): ((
-                '# {var} is a {type}\n'
+                '# {var} is a {t.type}\n'
                 'cdef int i{var}\n'
                 'cdef int {var}_size\n'
-                'cdef {npctypes[0]} * {var}_data\n'
+                'cdef {t.cython_npctypes[0]} * {var}_data\n'
                 '{var}_size = len({var})\n'
-                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == <int> {nptype}:\n'
-                '    {var}_data = <{npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
+                'if isinstance({var}, np.ndarray) and (<np.ndarray> {var}).descr.type_num == <int> {t.cython_nptype}:\n'
+                '    {var}_data = <{t.cython_npctypes[0]} *> np.PyArray_DATA(<np.ndarray> {var})\n'
+                '    {proxy_name} = {t.cython_ctype}(<size_t> {var}_size)\n'
                 '    for i{var} in range({var}_size):\n'
                 '        {proxy_name}[i{var}] = {var}[i{var}]\n'
                 'else:\n'
-                '    {proxy_name} = {ctype}(<size_t> {var}_size)\n'
+                '    {proxy_name} = {t.cython_ctype}(<size_t> {var}_size)\n'
                 '    for i{var} in range({var}_size):\n'
                 '        _ = {var}[i{var}].encode()\n'
                 '        {proxy_name}[i{var}] = deref(<char *> _)\n'),
@@ -1853,19 +1853,20 @@ class TypeSystem(object):
                                                             cache_prefix, cache_name)
         proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
         iscached = False
+        tstr = self.typestr(t, self)
         template_kw = dict(var=var, cache_name=cache_name, proxy_name=proxy_name, 
-                           t=self.typestr(t, self),)
+                           t=tstr)
 #        if callable(c2pyt):
 #            import pdb; pdb.set_trace()
         if 1 == len(c2pyt) or ind == 0:
             decl = body = None
             rtn = c2pyt[0].format(**template_kw)
         elif ind == 1:
-            decl = "cdef {0} {1}".format(cyt, proxy_name)
+            decl = "cdef {0} {1}".format(tstr.cython_cytype, proxy_name)
             body = c2pyt[1].format(**template_kw)
             rtn = proxy_name
         elif ind == 2:
-            decl = "cdef {0} {1}".format(cyt, proxy_name)
+            decl = "cdef {0} {1}".format(tstr.cython_cytype, proxy_name)
             body = c2pyt[2].format(**template_kw)
             rtn = cache_name
             iscached = True
@@ -1920,8 +1921,8 @@ class TypeSystem(object):
         body_template, rtn_template = py2ct
         var = name if inst_name is None else "{0}.{1}".format(inst_name, name)
         proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
-        template_kw = dict(var=var, proxy_name=proxy_name, last=last, 
-                           t=self.typestr(t, self),)
+        tstr = self.typestr(t, self)
+        template_kw = dict(var=var, proxy_name=proxy_name, last=last, t=tstr)
         nested = False
         if self.isdependent(tkey):
             tsig = [ts for ts in self.refined_types if ts[0] == tkey][0]
@@ -1939,14 +1940,14 @@ class TypeSystem(object):
                 template_kw['var'] = vrtn
         body_filled = body_template.format(**template_kw)
         if rtn_template:
-            if '{ctype}'in body_template:
-                deft = ct
+            if '{t.cython_ctype}'in body_template:
+                deft = tstr.cython_ctype
             elif '{t.cython_ctype_nopred}'in body_template:
-                deft = ct_nopred
-            elif '{cytype_nopred}'in body_template:
-                deft = cyt_nopred
+                deft = tstr.cython_ctype_nopred
+            elif '{t.cython_cytype_nopred}'in body_template:
+                deft = tstr.cython_cytype_nopred
             else:
-                deft = cyt
+                deft = tstr.cython_cytype
             decl = "cdef {0} {1}".format(deft, proxy_name)
             body = body_filled
             rtn = rtn_template.format(**template_kw)
@@ -2096,7 +2097,7 @@ class TypeSystem(object):
         class_py2c = ('{proxy_name} = <{t.cython_cytype_nopred}> {var}',
                       #'{proxy_name} = (<{ctype_nopred} *> (<{pytype_nopred}> {var})._inst)[0]',
                       '(<{t.cython_ctype_nopred} *> {proxy_name}._inst)[0]')
-        class_cimport = ((rc.package, cpppxd_base),)
+        class_cimport = ((package, cpppxd_base),)
         kwclass = dict(
             name=baseclassname,                              # FCComp
             template_args=template_args,
@@ -2133,7 +2134,7 @@ class TypeSystem(object):
             )
         # register vector
         class_vector_py2c = ((
-            '# {var} is a {type}\n'
+            '# {var} is a {t.type}\n'
             'cdef int i{var}\n'
             'cdef int {var}_size\n'
             'cdef {self.cython_npctypes[0]} * {var}_data\n'
