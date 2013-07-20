@@ -1502,7 +1502,9 @@ class TypeSystem(object):
     def cython_nptype(self, t, depth=0):
         """Given a type t, returns the corresponding numpy type.  If depth is
         greater than 0 then this returns of a list of numpy types for all internal
-        template types, ie the float in ('vector', 'float', 0)."""
+        template types, ie the float in ('vector', 'float', 0).
+
+        """
         if isinstance(t, Number):
             return 'np.NPY_OBJECT'
         t = self.canon(t)
@@ -1785,12 +1787,13 @@ class TypeSystem(object):
         interpretations based on the length and values:
 
         * ``(module-name,)`` becomes ``import {module-name}``
-        * ``(module-name, var-or-mod)`` becomes
+        * ``(module-name, var-or-mod)`` becomes 
           ``from {module-name} import {var-or-mod}``
-        * ``(module-name, var-or-mod, alias)`` becomes
+        * ``(module-name, var-or-mod, alias)`` becomes 
           ``from {module-name} import {var-or-mod} as {alias}``
         * ``(module-name, 'as', alias)`` becomes ``import {module-name} as {alias}``
 
+        Any of these may be used.
         """
         t = self.canon(t)
         if seen is None:

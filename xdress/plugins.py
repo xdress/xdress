@@ -156,7 +156,7 @@ class Plugin(object):
     represents the merger, e.g. ``lambda old, new: old + new``.  One useful example 
     is for paths.  Normally you want new paths to prepend old ones::
 
-        rcupdates = {'includes': lambda old, new: list(new) + list(old)}
+        rcupdaters = {'includes': lambda old, new: list(new) + list(old)}
 
     If a callable is not supplied for an rc parameter then the the default 
     behaviour is to simply override the old value with the new one.  

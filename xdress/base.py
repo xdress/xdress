@@ -36,6 +36,9 @@ class XDressPlugin(Plugin):
         bash_completion=True,
         )
 
+    # Sweet hack because ts.update() returns None
+    rcupdaters = {'ts': (lambda old, new: old.update(new) or old)}
+
     def update_argparser(self, parser):
         parser.add_argument('--rc', help="path to run control file")
         parser.add_argument('--plugins', nargs="+", help="plugins to include")
