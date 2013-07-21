@@ -766,7 +766,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
         self.desc['type'] = ts.canon(name)
         # Gross, but it solves the problem that for uint valued template parameters
         # (ie MyClass<3>) gccxml names this MyClass<3u> or MyClass<3d> but
-        # the type system has no way of dsitinguising this from MyClass<3> as an int.
+        # the type system has no way of distinguising this from MyClass<3> as an int.
         # maybe it should, but I think this will get us pretty far.
         self._name = None
 
