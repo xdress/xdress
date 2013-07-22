@@ -273,7 +273,8 @@ def funccpppxd(desc, exceptions=True, ts=None):
     funcitems = sorted(expand_default_args(desc['signatures'].items()))
     for fkey, frtn in funcitems:
         fname, fargs = fkey[0], fkey[1:]
-        if fname.startswith('_'):
+        fbasename = fname if isinstance(fname, basestring) else fname[0]
+        if fbasename.startswith('_'):
             continue  # private
         if any([a[1] is None or a[1][0] is None for a in fargs + (frtn,)]):
             continue
@@ -377,7 +378,8 @@ def classcpppxd(desc, exceptions=True, ts=None):
     methitems = sorted(expand_default_args(desc['methods'].items()))
     for mkey, mrtn in methitems:
         mname, margs = mkey[0], mkey[1:]
-        if mname.startswith('_') or mname.startswith('~'):
+        mbasename = mname if isinstance(mname, basestring) else mname[0]
+        if mbasename.startswith('_') or mbasename.startswith('~'):
             continue  # private or destructor
         argfill = ", ".join([ts.cython_ctype(a[1]) for a in margs])
         for a in margs:
@@ -1170,7 +1172,8 @@ def classpyx(desc, classes=None, ts=None):
     methitems = sorted(desc['methods'].items())
     for mkey, mrtn in methitems:
         mname, margs = mkey[0], mkey[1:]
-        if mname.startswith('_'):
+        mbasename = mname if isinstance(mname, basestring) else mname[0]
+        if mbasename.startswith('_'):
             continue  # skip private
         if any([a[1] is None or a[1][0] is None for a in margs]):
             continue
@@ -1323,7 +1326,8 @@ def funcpyx(desc, ts=None):
     funcitems = sorted(desc['signatures'].items())
     for fkey, frtn in funcitems:
         fname, fargs = fkey[0], fkey[1:]
-        if fname.startswith('_'):
+        fbasename = fname if isinstance(fname, basestring) else fname[0]
+        if fbasename.startswith('_'):
             continue  # skip private
         if any([a[1] is None or a[1][0] is None for a in fargs + (frtn,)]):
             continue
