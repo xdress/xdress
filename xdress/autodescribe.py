@@ -271,7 +271,7 @@ class GccxmlBaseDescriber(object):
             Flag to display extra information while visiting.
 
         """
-        self.desc = {'name': name}
+        self.desc = {'name': name, 'namespace': None}
         self.name = name
         self.ts = ts or TypeSystem()
         self.verbose = verbose
@@ -399,7 +399,7 @@ class GccxmlBaseDescriber(object):
             bases = None if len(bases) == 0 else [self.type(b) for b in bases]
             self.desc['parents'] = bases
             ns = self.context(node.attrib['context'])
-            if ns is not None:
+            if ns is not None and ns != "::":
                 self.desc['namespace'] = ns
         if '<' in name and name.endswith('>'):
             name = self._visit_template(node)
@@ -458,7 +458,7 @@ class GccxmlBaseDescriber(object):
         self._pprint(node)
         self._visit_func(node)
         ns = self.context(node.attrib['context'])
-        if ns is not None:
+        if ns is not None and ns != "::":
             self.desc['namespace'] = ns
 
     def visit_argument(self, node):
@@ -751,7 +751,7 @@ class GccxmlVarDescriber(GccxmlBaseDescriber):
         for n in root.iterfind("Variable[@name='{0}']".format(self.name)):
             if n.attrib['file'] in self.onlyin:
                 ns = self.context(n.attrib['context'])
-                if ns is not None:
+                if ns is not None and ns != "::":
                     self.desc['namespace'] = ns
                 self.desc['type'] = self.type(n.attrib['type'])
                 break
@@ -765,7 +765,7 @@ class GccxmlVarDescriber(GccxmlBaseDescriber):
         for n in root.iterfind("Enumeration[@name='{0}']".format(self.name)):
             if n.attrib['file'] in self.onlyin:
                 ns = self.context(n.attrib['context'])
-                if ns is not None:
+                if ns is not None and ns != "::":
                     self.desc['namespace'] = ns
                 # Grab the type and put it in
                 self.desc['type'] = self.visit_enumeration(n)
@@ -815,7 +815,8 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 
         """
         root = node or self._root
-        for n in root.iterfind("Function[@name='{0}']".format(self.name)):
+        basename = self.name if isinstance(self.name, basestring) else self.name[0]
+        for n in root.iterfind("Function[@name='{0}']".format(basename)):
             if n.attrib['file'] in self.onlyin:
                 self.visit_function(n)
             else:
@@ -1908,7 +1909,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         env = rc.env
         cache = rc._cache
         for i, (funcname, srcname, tarname) in enumerate(rc.functions):
-            print("autodescribe: describing " + funcname)
+            print("autodescribe: describing {0}".format(funcname))
             desc = self.compute_desc(funcname, srcname, tarname, 'func', rc)
             if rc.verbose:
                 pprint(desc)
@@ -1922,7 +1923,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         env = rc.env
         cache = rc._cache
         for i, (varname, srcname, tarname) in enumerate(rc.variables):
-            print("autodescribe: describing " + varname)
+            print("autodescribe: describing {0}".format(varname))
             desc = self.compute_desc(varname, srcname, tarname, 'var', rc)
             if rc.verbose:
                 pprint(desc)

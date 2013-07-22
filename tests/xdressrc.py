@@ -57,6 +57,7 @@ variables = [
     ]
 
 functions = [
+    (('findmin', 'float64', 'int32'), 'bright'), 
     ('func', 'reprocess'),
     #('afunc', 'device', 'pydevice'),
     ('fillUraniumEnrichmentDefaults', 'enrichment_parameters'),

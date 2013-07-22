@@ -743,4 +743,12 @@ SparseMatrix<double> spdubs;
 // End bright namespace
 };
 
+template <class T, class U> T findmin(T x, U y) {return (x < y ? x : y);};
+//template <typename T, typename U> T findmin(T x, U y) {return (x < y ? x : y);};
+template <class T, int U> bool lessthan(T x) {return (x < U ? true : false);};
+
+int fmif = findmin<int, float>(3, 6.0);
+double fmdi = findmin<double, float>(3.0, 6.0);
+bool lti3 = lessthan<int, 3>(6);
+
 #endif

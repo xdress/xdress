@@ -456,7 +456,3 @@ int bright::find_index_char(char * val, char ** arr, int arr_len)
   return -1;
 };
 
-
-
-
-
