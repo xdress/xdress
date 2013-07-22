@@ -478,8 +478,12 @@ def merge_descriptions(descriptions):
     name = desc['name']
     methods = desc.get('methods', {})
     for methkey, methval in methods.items():
-        if methval is None and not methkey[0].endswith(name):
-            del methods[methkey]  # constructor for parent
+        if methval is None: 
+            # constructor for parent
+            if isinstance(methkey, basestring) and not methkey[0].endswith(name):
+                del methods[methkey]  
+            elif isinstance(methkey[0],basestring) and not methkey[0][0].endswith(name):
+                del methods[methkey]
     return desc
 
 def flatten(iterable):

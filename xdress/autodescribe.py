@@ -340,7 +340,40 @@ class GccxmlBaseDescriber(object):
             return int(m.group(1))
         return targ
 
-    def _visit_template(self, node):
+    def _visit_template_function(self, node):
+        nodename = node.attrib['name']
+        demangled = node.attrib.get('demangled', None)
+        if demangled is None:
+            return (nodename,)
+        # we know we have a template now
+        demangled = demangled[demangled.index(nodename):]
+        template_args = utils.split_template_args(demangled)
+        inst = [nodename]
+        self._level += 1
+        targ_nodes = []
+        targ_islit = []
+        # gross but string parsing of node name is needed.
+        query = ".//*[@name='{0}']"
+        for targ in template_args:
+            targ_node = self._root.find(query.format(targ))
+            if targ_node is None:
+                targ_node = self._template_literal_arg(targ)
+                targ_islit.append(True)
+            else:
+                targ_islit.append(False)
+            targ_nodes.append(targ_node)
+        for targ_node, targ_lit in zip(targ_nodes, targ_islit):
+            if targ_lit:
+                targ_type = targ_node
+            else:
+                targ_type = self.type(targ_node.attrib['id'])
+            inst.append(targ_type)
+        self._level -= 1
+        #inst.append(0) This doesn't apply to top-level functions, only function types
+        return tuple(inst)
+
+
+    def _visit_template_class(self, node):
         name = node.attrib['name']
         members = node.attrib.get('members', '').strip().split()
         if 0 < len(members):
@@ -402,7 +435,7 @@ class GccxmlBaseDescriber(object):
             if ns is not None and ns != "::":
                 self.desc['namespace'] = ns
         if '<' in name and name.endswith('>'):
-            name = self._visit_template(node)
+            name = self._visit_template_class(node)
         self._currclass.pop()
         return name
 
@@ -418,7 +451,15 @@ class GccxmlBaseDescriber(object):
         if name.startswith('_') or name in FORBIDDEN_NAMES:
             warn_forbidden_name(name, self.name)
             return
-        self._currfunc.append(name)
+        demangled = node.attrib.get('demangled', None)
+        demangled = demangled if name + '<' in demangled \
+                                 and '>' in demangled else None
+        if demangled is None:
+            # normal function
+            self._currfunc.append(name)
+        else:
+            # template function
+            self._currfunc.append(self._visit_template_function(node))
         self._currfuncsig = []
         self._level += 1
         for child in node.iterfind('Argument'):
@@ -428,7 +469,11 @@ class GccxmlBaseDescriber(object):
             rtntype = None
         elif node.tag == 'Destructor':
             rtntype = None
-            self._currfunc[-1] = '~' + self._currfunc[-1]
+            if demangled is None:
+                self._currfunc[-1] = '~' + self._currfunc[-1]
+            else:
+                self._currfunc[-1] = ('~' + self._currfunc[-1][0],) + \
+                                            self._currfunc[-1][1:]
         else:
             rtntype = self.type(node.attrib['returns'])
         funcname = self._currfunc.pop()
@@ -683,7 +728,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
                         continue
                     if '<' not in nodename or not nodename.endswith('>'):
                         continue
-                    nodet = self._visit_template(node)
+                    nodet = self._visit_template_class(node)
                     if nodet == namet:
                         self._name = nodename  # gross
                         break
@@ -815,15 +860,35 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 
         """
         root = node or self._root
-        basename = self.name if isinstance(self.name, basestring) else self.name[0]
+        name = self.name
+        ts = self.ts
+        if isinstance(name, basestring):
+            basename = name
+            namet = (name,)
+        else: 
+            # Must be a template function
+            basename = name[0]
+            namet = (basename,) + tuple(ts.canon(x) for x in name[1:])
         for n in root.iterfind("Function[@name='{0}']".format(basename)):
-            if n.attrib['file'] in self.onlyin:
-                self.visit_function(n)
-            else:
+            if not isinstance(name, basestring):
+                # Must be a template function
+                if n.attrib['file'] not in self.onlyin:
+                    continue
+                nodename = n.attrib.get('demangled', '')
+                if " " + basename + "<" not in nodename:
+                    continue
+                if '<' not in nodename or '>' not in nodename:
+                    continue
+                nodet = self._visit_template_function(n)
+                if nodet != namet:
+                    continue
+            if n.attrib['file'] not in self.onlyin:
                 msg = ("{0} autodescribing failed: found function in {1!r} but "
                        "expected it in {2!r}.")
-                msg = msg.format(self.name, node.attrib['file'], self.onlyin)
+                msg = msg.format(name, node.attrib['file'], self.onlyin)
                 raise RuntimeError(msg)
+            self.visit_function(n)
+
 #
 # Clang Describers
 #
