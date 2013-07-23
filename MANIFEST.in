@@ -1,0 +1,2 @@
+include configure.py license
+include xdress/*.h xdress/*.cpp xdress/*.pxd xdress/*.pyx
