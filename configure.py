@@ -120,7 +120,7 @@ def setup():
             "Topic :: Software Development :: Compilers",
             "Topic :: Utilities",
         ],
-        "data_files": [("", ['license'])],
+        "data_files": [("", ['license', 'configure.py'])],
     }
     # changing dirs for virtualenv
     cwd = os.getcwd()
