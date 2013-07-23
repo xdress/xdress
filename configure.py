@@ -1,18 +1,13 @@
 #!/usr/bin/env python
-from __future__ import print_function 
+from __future__ import print_function
 import os
 import io
 import sys
-import glob
 import json
-from distutils.file_util import copy_file, move_file
-from distutils.dir_util import mkpath, remove_tree
-from copy import deepcopy
-
 
 INFO = {
     'version': '0.2',
-    }
+}
 
 
 def main():
@@ -21,7 +16,8 @@ def main():
         raise SystemExit("no command(s) specified")
     cmds = sys.argv[1:]
     if '-h' in cmds or '--help' in cmds:
-        raise SystemExit("usage: " + sys.argv[0] + " <func-name> [<func-name>]")
+        msg = "usage: " + sys.argv[0] + " <func-name> [<func-name>]"
+        raise SystemExit(msg)
     glbs = globals()
     for cmd in cmds:
         if cmd not in glbs:
@@ -66,23 +62,34 @@ def final_message(success=True):
         return
     print(msg)
 
-fname = os.path.join(os.path.split(__file__)[0], 'docs', 'index.rst')
+dir_name = os.path.dirname(__file__)
+fname = os.path.join(dir_name, 'docs', 'index.rst')
 with io.open(fname, 'r') as f:
     long_desc = f.read()
 
 long_desc = "\n".join([l for l in long_desc.splitlines() if ":ref:" not in l])
-long_desc = "\n".join([l for l in long_desc.splitlines() if ".. toctree::" not in l])
-long_desc = "\n".join([l for l in long_desc.splitlines() if ":maxdepth:" not in l])
+long_desc = "\n".join([l for l in long_desc.splitlines()
+                       if ".. toctree::" not in l])
+long_desc = "\n".join([l for l in long_desc.splitlines()
+                       if ":maxdepth:" not in l])
+
 
 def setup():
-    from distutils import core
+    try:
+        from setuptools import setup as setup_
+    except ImportError:
+        from distutils.core import setup as setup_
+
+    scripts_dir = os.path.join(dir_name, 'scripts')
     if os.name == 'nt':
-        scripts = [os.path.join('scripts', f) for f in os.listdir('scripts')]
+        scripts = [os.path.join(scripts_dir, f)
+                   for f in os.listdir(scripts_dir)]
     else:
-        scripts = [os.path.join('scripts', f) for f in os.listdir('scripts')
-                                                    if not f.endswith('.bat')]
-    packages = ['xdress', ]
-    pack_dir = {'xdress': 'xdress',}
+        scripts = [os.path.join(scripts_dir, f)
+                   for f in os.listdir(scripts_dir)
+                   if not f.endswith('.bat')]
+    packages = ['xdress',]
+    pack_dir = {'xdress': 'xdress', }
     pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp']}
     setup_kwargs = {
         "name": "xdress",
@@ -98,7 +105,8 @@ def setup():
         "description": "Goes all J. Edgar Hoover on your code.",
         "long_description": long_desc,
         "download_url": "https://github.com/scopatz/xdress/zipball/0.2",
-        "classifiers": ["License :: OSI Approved :: BSD License",
+        "classifiers": [
+            "License :: OSI Approved :: BSD License",
             "Intended Audience :: Developers",
             "Intended Audience :: Science/Research",
             "Programming Language :: C",
@@ -111,10 +119,14 @@ def setup():
             "Topic :: Software Development :: Code Generators",
             "Topic :: Software Development :: Compilers",
             "Topic :: Utilities",
-            ],
-        "data_files": [("", ['license'])],
-        }
-    rtn = core.setup(**setup_kwargs)
+        ],
+        "data_files": [("", ['license', 'configure.py']),],
+    }
+    # changing dirs for virtualenv
+    cwd = os.getcwd()
+    os.chdir(dir_name)
+    setup_(**setup_kwargs)
+    os.chdir(cwd)
 
 
 if __name__ == "__main__":
