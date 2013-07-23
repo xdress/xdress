@@ -1,3 +1,4 @@
 include configure.py license
 include xdress/*.h xdress/*.cpp xdress/*.pxd xdress/*.pyx
 include docs/index.rst
+include scripts/*
