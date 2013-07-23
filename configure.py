@@ -88,7 +88,7 @@ def setup():
         scripts = [os.path.join(scripts_dir, f)
                    for f in os.listdir(scripts_dir)
                    if not f.endswith('.bat')]
-    packages = ['xdress', ]
+    packages = ['xdress',]
     pack_dir = {'xdress': 'xdress', }
     pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp']}
     setup_kwargs = {
@@ -120,7 +120,7 @@ def setup():
             "Topic :: Software Development :: Compilers",
             "Topic :: Utilities",
         ],
-        "data_files": [("", ['license', 'configure.py'])],
+        "data_files": [("", ['license', 'configure.py']),],
     }
     # changing dirs for virtualenv
     cwd = os.getcwd()
