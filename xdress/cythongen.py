@@ -274,6 +274,8 @@ def funccpppxd(desc, exceptions=True, ts=None):
     for fkey, frtn in funcitems:
         fname, fargs = fkey[0], fkey[1:]
         fbasename = fname if isinstance(fname, basestring) else fname[0]
+        cppname = ts.cpp_funcname(fname)
+        cyname = ts.cython_funcname(fname)
         if fbasename.startswith('_'):
             continue  # private
         if any([a[1] is None or a[1][0] is None for a in fargs + (frtn,)]):
@@ -282,7 +284,10 @@ def funccpppxd(desc, exceptions=True, ts=None):
         for a in fargs:
             ts.cython_cimport_tuples(a[1], cimport_tups, inc)
         estr = _exception_str(exceptions, desc['source_filename'], frtn, ts)
-        line = "{0}({1}) {2}".format(fname, argfill, estr)
+        if fname == cppname == cyname:
+            line = "{0}({1}) {2}".format(fname, argfill, estr)
+        else:
+            line = '{0} "{1}" ({2}) {3}'.format(cyname, cppname, argfill, estr)
         rtype = ts.cython_ctype(frtn)
         ts.cython_cimport_tuples(frtn, cimport_tups, inc)
         line = rtype + " " + line
@@ -1327,15 +1332,17 @@ def funcpyx(desc, ts=None):
     for fkey, frtn in funcitems:
         fname, fargs = fkey[0], fkey[1:]
         fbasename = fname if isinstance(fname, basestring) else fname[0]
+        #fcppname = ts.cpp_funcname(fname)
+        fcyname = ts.cython_funcname(fname)
         if fbasename.startswith('_'):
             continue  # skip private
         if any([a[1] is None or a[1][0] is None for a in fargs + (frtn,)]):
             continue
         if 1 < funccounts[fname]:
-            fname_mangled = "_{0}_{1:0{2}}".format(fname, currcounts[fname],
+            fname_mangled = "_{0}_{1:0{2}}".format(fcyname, currcounts[fname],
                                         int(math.log(funccounts[fname], 10)+1)).lower()
         else:
-            fname_mangled = fname
+            fname_mangled = fcyname
         currcounts[fname] += 1
         mangled_fnames[fkey] = fname_mangled
         for a in fargs:
@@ -1345,7 +1352,7 @@ def funcpyx(desc, ts=None):
         ts.cython_cimport_tuples(frtn, cimport_tups)
         fdoc = desc.get('docstring', nodocmsg.format(fname))
         fdoc = _doc_add_sig(fdoc, fname, fargs, ismethod=False)
-        flines += _gen_function(fname, fname_mangled, fargs, frtn, ts, fdoc,
+        flines += _gen_function(fcyname, fname_mangled, fargs, frtn, ts, fdoc,
                               inst_name=inst_name, is_method=False)
         if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
             # write dispatcher
