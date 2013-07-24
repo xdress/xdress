@@ -148,6 +148,23 @@ def test_cython_ctype():
         yield check_cython_ctype, t, exp  # Check that the case works,
 
 
+def check_cython_funcname(name, exp):
+    obs = ts.cython_funcname(name)
+    assert_equal(exp, obs)
+
+@with_setup(add_new_refined, del_new_refined)
+def test_cython_funcname():
+    cases = (
+        ('joan', 'joan'),
+        (('hoover',), 'hoover'),
+        (('brienne', 'complex'), 'brienne_complex'),
+        (('mulan', 'int', 'float'), 'mulan_int_double'),
+        (('leslie', 3, True), 'leslie_3_True'),
+    )
+    for t, exp in cases:
+        yield check_cython_funcname, t, exp  # Check that the case works,
+
+
 def check_cython_cimport_tuples_no_cy(t, exp):
     obs = ts.cython_cimport_tuples(t, inc=set(['c']))
     assert_equal(obs, exp)
@@ -518,6 +535,22 @@ def test_cpp_type():
     )
     for t, exp in cases:
         yield check_cpp_type, t, exp  # Check that the case works,
+
+def check_cpp_funcname(name, exp):
+    obs = ts.cpp_funcname(name)
+    assert_equal(exp, obs)
+
+@with_setup(add_new_refined, del_new_refined)
+def test_cpp_funcname():
+    cases = (
+        ('joan', 'joan'),
+        (('hoover',), 'hoover'),
+        (('brienne', 'complex'), 'brienne< xdress_extra_types.complex_t >'),
+        (('mulan', 'int', 'float'), 'mulan< int, double >'),
+        (('leslie', 3, True), 'leslie< 3, true >'),
+    )
+    for t, exp in cases:
+        yield check_cpp_funcname, t, exp  # Check that the case works,
 
 def check_gccxml_type(t, exp):
     obs = ts.gccxml_type(t)

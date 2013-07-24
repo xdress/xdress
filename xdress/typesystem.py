@@ -1491,6 +1491,28 @@ class TypeSystem(object):
             return cppt
 
     @memoize_method
+    def cpp_funcname(self, name):
+        """This returns a name for a function based on its name, rather than
+        its type.  The name may be either a string or a tuple of the form 
+        ('name', template_arg_type1, template_arg_type2, ...).  This is not ment
+        to replace cpp_type(), but complement it.
+        """
+        if isinstance(name, basestring):
+            return name
+        fname = name[0]
+        cts = []
+        for x in name[1:]:
+            if isinstance(x, bool):
+                x = self.cpp_types[x]
+            elif isinstance(x, Number):
+                x = str(x)
+            else:
+                x = self.cpp_type(x)
+            cts.append(x)
+        fname += '' if 0 == len(cts) else "< " + ", ".join(cts) + " >"
+        return fname
+
+    @memoize_method
     def gccxml_type(self, t):
         """Given a type t, returns the corresponding GCC-XML type name."""
         cppt = self.cpp_type(t)
@@ -1841,6 +1863,27 @@ class TypeSystem(object):
             x = self.cython_import_tuples(x)
         x = [tup for tup in x if 0 < len(tup)]
         return set([self._cython_import_cases[len(tup)](tup) for tup in x])
+
+    @memoize_method
+    def cython_funcname(self, name):
+        """This returns a name for a function based on its name, rather than
+        its type.  The name may be either a string or a tuple of the form 
+        ('name', template_arg_type1, template_arg_type2, ...).  This is not ment
+        to replace cython_functionname(), but complement it.
+        """
+        if isinstance(name, basestring):
+            return name
+        fname = name[0] 
+        cfs = [] 
+        for x in name[1:]:
+            if isinstance(x, Number):
+                x = str(x).replace('-', 'Neg').replace('+', 'Pos')\
+                          .replace('.', 'point')
+            else:
+                x = self.cython_functionname(x)[1]
+            cfs.append(x) 
+        fname += '' if 0 == len(cfs) else "_" + "_".join(cfs)
+        return fname
 
     @memoize_method
     def cython_functionname(self, t, cycyt=None):
