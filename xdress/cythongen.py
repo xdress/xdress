@@ -672,8 +672,13 @@ def modpyx(mod, classes=None, ts=None):
             import_tups |= i_tup
             cimport_tups |= ci_tup
             attrs.append(attr_str)
+        # Add dispatcher for template functions
+        template_funcs = _template_funcnames_in_mod(mod)
+        template_dispatcher = _gen_template_func_dispatcher(template_funcs, ts)
+        attrs.append(template_dispatcher)
+        # Add dispatcher for template classes
         template_classes = _template_classnames_in_mod(mod)
-        template_dispatcher = _gen_template_dispatcher(template_classes, ts)
+        template_dispatcher = _gen_template_class_dispatcher(template_classes, ts)
         attrs.append(template_dispatcher)
     import_tups.discard((mod["name"],))
     #cimport_tups.discard((mod["name"],))  # remain commented for decls
@@ -689,13 +694,42 @@ def modpyx(mod, classes=None, ts=None):
     pyx = _pyx_mod_template.format(**m)
     return pyx
 
-def _gen_template_dispatcher(templates, ts):
-    """Generates a dictionary-based dispacher for templates.
+def _gen_template_func_dispatcher(templates, ts):
+    """Generates a dictionary-based dispacher for template functions.
     """
     if 0 == len(templates):
         return ""
     templates = sorted(templates)
-    disp = ['', "#", "# Dispatchers", "#",]
+    disp = ['', "#", "# Function Dispatchers", "#",]
+    alreadyinitd = set()
+    for t in templates:
+        initline = "{0} = {{}}".format(t[0])
+        if initline not in alreadyinitd:
+            disp.append("")
+            disp.append("# {0} dispatcher".format(t[0]))
+            disp.append(initline)
+            alreadyinitd.add(initline)
+        args = t[1:]
+        pytype = ts.cython_funcname(t)
+        if 0 == len(args):
+            raise ValueError("type {0!r} not a template".format(t))
+        elif 1 == len(args):
+            disp.append("{0}[{1!r}] = {2}".format(t[0], t[1], pytype))
+            disp.append("{0}[{1}] = {2}".format(t[0], ts.cython_pytype(t[1]), pytype))
+        else:
+            rs = [repr(_) for _ in t[1:]]
+            pyts = [ts.cython_pytype(x) for x in t[1:]]
+            disp.append("{0}[{1}] = {2}".format(t[0], ", ".join(rs), pytype))
+            disp.append("{0}[{1}] = {2}".format(t[0], ", ".join(pyts), pytype))
+    return "\n".join(disp)
+
+def _gen_template_class_dispatcher(templates, ts):
+    """Generates a dictionary-based dispacher for template classes.
+    """
+    if 0 == len(templates):
+        return ""
+    templates = sorted(templates)
+    disp = ['', "#", "# Class Dispatchers", "#",]
     alreadyinitd = set()
     for t in templates:
         initline = "{0} = {{}}".format(t[0])
@@ -1351,7 +1385,7 @@ def funcpyx(desc, ts=None):
         ts.cython_import_tuples(frtn, import_tups)
         ts.cython_cimport_tuples(frtn, cimport_tups)
         fdoc = desc.get('docstring', nodocmsg.format(fname))
-        fdoc = _doc_add_sig(fdoc, fname, fargs, ismethod=False)
+        fdoc = _doc_add_sig(fdoc, fcyname, fargs, ismethod=False)
         flines += _gen_function(fcyname, fname_mangled, fargs, frtn, ts, fdoc,
                               inst_name=inst_name, is_method=False)
         if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
@@ -1461,6 +1495,14 @@ def _exception_str(exceptions, srcfile, rtntype, ts):
         return "except +"
     else:
         return ""
+
+def _template_funcnames_in_mod(mod):
+    funcnames = set()
+    for name, desc in mod.items():
+        if isinstance(name, basestring) or not isfuncdesc(desc):
+            continue
+        funcnames.add(name)
+    return funcnames
 
 def _classnames_in_mod(mod, ts):
     classnames = set()
