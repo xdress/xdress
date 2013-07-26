@@ -158,6 +158,7 @@ import itertools
 import functools
 import pickle
 import collections
+from numbers import Number
 from pprint import pprint, pformat
 from warnings import warn
 
@@ -183,7 +184,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 # d = int64, u = uint64
-_GCCXML_LITERAL_INTS = re.compile('(\d+)([du])')
+_GCCXML_LITERAL_INTS = re.compile('(\d+)([du]?)')
 
 def clearmemo():
     """Clears all function memoizations for autodescribers."""
@@ -868,7 +869,14 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
         else: 
             # Must be a template function
             basename = name[0]
-            namet = (basename,) + tuple(ts.canon(x) for x in name[1:])
+            namet = [basename]
+            for x in name[1:]:
+                if isinstance(x, Number):
+                    pass
+                else:
+                    x = ts.canon(x)
+                namet.append(x)
+            namet = tuple(namet)
         for n in root.iterfind("Function[@name='{0}']".format(basename)):
             if not isinstance(name, basestring):
                 # Must be a template function

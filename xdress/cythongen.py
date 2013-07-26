@@ -1387,7 +1387,7 @@ def funcpyx(desc, ts=None):
         fdoc = desc.get('docstring', nodocmsg.format(fname))
         fdoc = _doc_add_sig(fdoc, fcyname, fargs, ismethod=False)
         flines += _gen_function(fcyname, fname_mangled, fargs, frtn, ts, fdoc,
-                              inst_name=inst_name, is_method=False)
+                                inst_name=inst_name, is_method=False)
         if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
             # write dispatcher
             nm = dict([(k, v) for k, v in mangled_fnames.items() if k[0] == fname])
