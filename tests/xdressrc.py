@@ -74,6 +74,7 @@ classes = [
     ('EnrichmentParameters', 'enrichment_parameters'), 
     ('Enrichment', 'bright_enrichment', 'enrichment'), 
     ('*', 'reprocess'), 
+    ('Untemplated', 'bright'), 
     (('SparseMatrix', 'int32'), 'bright'), 
     (('SparseMatrix', 'float64'), 'bright'), 
     (('sparse_matrix_entry', 'int32'), 'bright'), 

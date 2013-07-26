@@ -20,12 +20,12 @@ Frequently Asked Questions
 3. Why is xdress skipping my templated methods?
 
     If you are using GCC-XML, this parser is not able to find template member 
-    functions on templated classes.  Luckily, through the Power of XDRESS!,
-    you can still automatically expose this functionality by adding the templated
-    function API to a sidecar file.  If you are having problems with this process
-    please let us ask for help on the xdress mailing list (xdress@googlegrouops.com).
-    You can find more information about the GCC-XML deficiency on `this mailing 
-    list post. <http://public.kitware.com/pipermail/gccxml/2008-August/001178.html>`_
+    functions on either templated or normal classes.  Luckily, through the Power of 
+    XDRESS!, you can still automatically expose this functionality by adding the 
+    templated function API to a sidecar file.  If you are having problems with this 
+    process please let us ask for help on the xdress mailing list. You can find more 
+    information about the GCC-XML deficiency on `this mailing list post. 
+    <http://public.kitware.com/pipermail/gccxml/2008-August/001178.html>`_
 
 4. I run xdress and it creates these files, now what?!
 

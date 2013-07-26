@@ -756,4 +756,16 @@ int fmif = findmin<int, float>(3, 6.0);
 double fmdi = findmin<double, float>(3.0, 6.0);
 bool lti3 = lessthan<int, 3>(6);
 
+class Untemplated {
+public:
+  Untemplated() {};
+  ~Untemplated() {};
+  template <class T> int templated_method(T x){return 42;};
+  int untemplated_method(float x){return 42;};
+};
+
+Untemplated unt = Untemplated();
+// Also missed by GCC-XML
+int untrtn = unt.templated_method<float>(65.0);
+
 #endif
