@@ -384,13 +384,18 @@ def classcpppxd(desc, exceptions=True, ts=None):
     for mkey, mrtn in methitems:
         mname, margs = mkey[0], mkey[1:]
         mbasename = mname if isinstance(mname, basestring) else mname[0]
+        mcppname = ts.cpp_funcname(mname)
+        mcyname = ts.cython_funcname(mname)
         if mbasename.startswith('_') or mbasename.startswith('~'):
             continue  # private or destructor
         argfill = ", ".join([ts.cython_ctype(a[1]) for a in margs])
         for a in margs:
             ts.cython_cimport_tuples(a[1], cimport_tups, inc)
         estr = _exception_str(exceptions, desc['source_filename'], mrtn, ts)
-        line = "{0}({1}) {2}".format(mname, argfill, estr)
+        if mname == mcppname == mcyname:
+            line = "{0}({1}) {2}".format(mname, argfill, estr)
+        else:
+            line = '{0} "{1}" ({2}) {3}'.format(mcyname, mcppname, argfill, estr)
         if mrtn is None:
             # this must be a constructor
             line = "{0}({1}) {2}".format(d['name'], argfill, estr)
@@ -1212,15 +1217,16 @@ def classpyx(desc, classes=None, ts=None):
     for mkey, mrtn in methitems:
         mname, margs = mkey[0], mkey[1:]
         mbasename = mname if isinstance(mname, basestring) else mname[0]
+        mcyname = ts.cython_funcname(mname)
         if mbasename.startswith('_'):
             continue  # skip private
         if any([a[1] is None or a[1][0] is None for a in margs]):
             continue
         if 1 < methcounts[mname]:
-            mname_mangled = "_{0}_{1}_{2:0{3}}".format(desc['name'], mname,
+            mname_mangled = "_{0}_{1}_{2:0{3}}".format(desc['name'], mcyname,
                     currcounts[mname], int(math.log(methcounts[mname], 10)+1)).lower()
         else:
-            mname_mangled = mname
+            mname_mangled = mcyname
         currcounts[mname] += 1
         mangled_mnames[mkey] = mname_mangled
         for a in margs:
@@ -1238,14 +1244,15 @@ def classpyx(desc, classes=None, ts=None):
                 mname_mangled = '__init__'
                 mangled_mnames[mkey] = mname_mangled
             mdoc = desc.get('docstrings', {}).get('methods', {}).get(mname, '')
-            mdoc = _doc_add_sig(mdoc, mname, margs)
-            clines += _gen_constructor(mname, mname_mangled,
+            mdoc = _doc_add_sig(mdoc, mcyname, margs)
+            clines += _gen_constructor(mcyname, mname_mangled,
                                        desc['name'], margs, ts, doc=mdoc,
                                        srcpxd_filename=desc['srcpxd_filename'],
                                        inst_name=minst_name)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
-                nm = dict([(k, v) for k, v in mangled_mnames.items() if k[0] == mname])
+                nm = dict([(k, v) for k, v in mangled_mnames.items() \
+                           if k[0] == mbasename])
                 clines += _gen_dispatcher('__init__', nm, ts, doc=mdoc, hasrtn=False)
         else:
             # this is a normal method
@@ -1253,13 +1260,14 @@ def classpyx(desc, classes=None, ts=None):
             ts.cython_cimport_tuples(mrtn, cimport_tups)
             mdoc = desc.get('docstrings', {}).get('methods', {})\
                                              .get(mname, nodocmsg.format(mname))
-            mdoc = _doc_add_sig(mdoc, mname, margs)
-            mlines += _gen_function(mname, mname_mangled, margs, mrtn, ts, mdoc,
+            mdoc = _doc_add_sig(mdoc, mcyname, margs)
+            mlines += _gen_function(mcyname, mname_mangled, margs, mrtn, ts, mdoc,
                                   inst_name=minst_name, is_method=True)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
-                nm = dict([(k, v) for k, v in mangled_mnames.items() if k[0] == mname])
-                mlines += _gen_dispatcher(mname, nm, ts, doc=mdoc)
+                nm = dict([(k, v) for k, v in mangled_mnames.items() \
+                           if k[0] == mbasename])
+                mlines += _gen_dispatcher(mcyname, nm, ts, doc=mdoc)
     if 0 == len(desc['methods']) or 0 == len(clines):
         # provide a default constructor
         mdocs = desc.get('docstrings', {}).get('methods', {})
@@ -1273,6 +1281,11 @@ def classpyx(desc, classes=None, ts=None):
         clines += indent("if self._free_inst:", join=False)
         clines += indent(indent("free(self._inst)", join=False), join=False)
         cimport_tups.add(('libc.stdlib', 'free'))
+
+    # Add dispatcher for templated methods
+    template_meths = _template_method_names(desc['methods'])
+    template_dispatcher = _gen_template_func_dispatcher(template_meths, ts)
+    mlines.append(indent(template_dispatcher))
 
     d['methods_block'] = indent(mlines)
     d['constructor_block'] = indent(clines)
@@ -1384,7 +1397,7 @@ def funcpyx(desc, ts=None):
             ts.cython_cimport_tuples(a[1], cimport_tups)
         ts.cython_import_tuples(frtn, import_tups)
         ts.cython_cimport_tuples(frtn, cimport_tups)
-        fdoc = desc.get('docstring', nodocmsg.format(fname))
+        fdoc = desc.get('docstring', nodocmsg.format(fcyname))
         fdoc = _doc_add_sig(fdoc, fcyname, fargs, ismethod=False)
         flines += _gen_function(fcyname, fname_mangled, fargs, frtn, ts, fdoc,
                                 inst_name=inst_name, is_method=False)
@@ -1495,6 +1508,17 @@ def _exception_str(exceptions, srcfile, rtntype, ts):
         return "except +"
     else:
         return ""
+
+def _template_method_names(methods):
+    methnames = set()
+    for sig, rtn in methods.items():
+        name = sig[0]
+        if isinstance(name, basestring):
+            continue
+        elif rtn is None:  # ignore constructor / destructors
+            continue
+        methnames.add(name)
+    return methnames
 
 def _template_funcnames_in_mod(mod):
     funcnames = set()

@@ -233,6 +233,10 @@ namespace bright {
       col = j;
       val = v;
     };
+
+    // Takes life, the universe, and everything and returns 42
+    // This is not supported by GCC-XML
+    template <class U> int whatstheanswer(U u){return 42;};
   };
 
 
@@ -737,6 +741,8 @@ std::vector< std::vector<int> > vvi;
 sparse_matrix_entry<int> smeints;
 SparseMatrix<int> spints;
 
+int smeints42 = smeints.whatstheanswer<float>(65.0);
+
 sparse_matrix_entry<double> smedubs;
 SparseMatrix<double> spdubs;
 
@@ -744,7 +750,6 @@ SparseMatrix<double> spdubs;
 };
 
 template <class T, class U> T findmin(T x, U y) {return (x < y ? x : y);};
-//template <typename T, typename U> T findmin(T x, U y) {return (x < y ? x : y);};
 template <class T, int U> bool lessthan(T x) {return (x < U ? true : false);};
 
 int fmif = findmin<int, float>(3, 6.0);
