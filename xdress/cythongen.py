@@ -87,7 +87,8 @@ def cpppxd_sorted_names(mod, ts):
     declarations happen in the proper order.
     """
     classes = set([name for name, desc in  mod.items() if isclassdesc(desc)])
-    clssort = sorted(classes)
+    clssort = sorted(c for c in classes if isinstance(c, basestring))
+    clssort += sorted(c for c in classes if not isinstance(c, basestring))
     othercls = {}
     for name in clssort:
         desc = mod[name]
@@ -380,7 +381,9 @@ def classcpppxd(desc, exceptions=True, ts=None):
 
     mlines = []
     clines = []
-    methitems = sorted(expand_default_args(desc['methods'].items()))
+    dargs = expand_default_args(desc['methods'].items())
+    methitems = sorted(x for x in dargs if isinstance(x[0][0], basestring))
+    methitems += sorted(x for x in dargs if not isinstance(x[0][0], basestring))
     for mkey, mrtn in methitems:
         mname, margs = mkey[0], mkey[1:]
         mbasename = mname if isinstance(mname, basestring) else mname[0]
@@ -1213,7 +1216,9 @@ def classpyx(desc, classes=None, ts=None):
     methcounts = _count0(desc['methods'])
     currcounts = dict([(k, 0) for k in methcounts])
     mangled_mnames = {}
-    methitems = sorted(desc['methods'].items())
+    mitems = list(desc['methods'].items())
+    methitems = sorted(x for x in mitems if isinstance(x[0][0], basestring))
+    methitems += sorted(x for x in mitems if not isinstance(x[0][0], basestring))
     for mkey, mrtn in methitems:
         mname, margs = mkey[0], mkey[1:]
         mbasename = mname if isinstance(mname, basestring) else mname[0]

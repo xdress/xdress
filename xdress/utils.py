@@ -477,7 +477,7 @@ def merge_descriptions(descriptions):
     # now sanitize methods
     name = desc['name']
     methods = desc.get('methods', {})
-    for methkey, methval in methods.items():
+    for methkey, methval in list(methods.items()):
         if methval is None: 
             # constructor for parent
             if isinstance(methkey, basestring) and not methkey[0].endswith(name):
