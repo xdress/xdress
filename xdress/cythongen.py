@@ -1390,6 +1390,10 @@ def funcpyx(desc, ts=None):
     import_tups = set()
     cimport_tups = set(((inst_name,),))
 
+    # For renaming
+    ftopname = desc['name']
+    fcytopname = ts.cython_funcname(ftopname)
+
     flines = []
     funccounts = _count0(desc['signatures'])
     currcounts = dict([(k, 0) for k in funccounts])
@@ -1405,10 +1409,10 @@ def funcpyx(desc, ts=None):
         if any([a[1] is None or a[1][0] is None for a in fargs + (frtn,)]):
             continue
         if 1 < funccounts[fname]:
-            fname_mangled = "_{0}_{1:0{2}}".format(fcyname, currcounts[fname],
+            fname_mangled = "_{0}_{1:0{2}}".format(fcytopname, currcounts[fname],
                                         int(math.log(funccounts[fname], 10)+1)).lower()
         else:
-            fname_mangled = fcyname
+            fname_mangled = fcytopname
         currcounts[fname] += 1
         mangled_fnames[fkey] = fname_mangled
         for a in fargs:
@@ -1423,7 +1427,7 @@ def funcpyx(desc, ts=None):
         if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
             # write dispatcher
             nm = dict([(k, v) for k, v in mangled_fnames.items() if k[0] == fname])
-            flines += _gen_dispatcher(fname, nm, ts, doc=fdoc, is_method=False)
+            flines += _gen_dispatcher(fcytopname, nm, ts, doc=fdoc, is_method=False)
     flines.append(desc.get('extra', {}).get('pyx', ''))
     pyx = '\n'.join(flines)
     if 'pyx_filename' not in desc:
