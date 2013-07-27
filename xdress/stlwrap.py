@@ -726,7 +726,8 @@ c_xd_{fncname}_descr.type_num = 0    # type_num, assigned at registration
 c_xd_{fncname}_descr.elsize = sizeof({ctype})  # elsize, 
 c_xd_{fncname}_descr.alignment = 8  # alignment
 c_xd_{fncname}_descr.subarray = NULL  # subarray
-c_xd_{fncname}_descr.fields = <PyObject *> None  # fields
+c_xd_{fncname}_descr.fields = NULL  # fields
+c_xd_{fncname}_descr.names = NULL
 (<PyArray_Descr *> c_xd_{fncname}_descr).f = <PyArray_ArrFuncs *> &PyXD_{clsname}_ArrFuncs  # f == PyArray_ArrFuncs
 
 cdef object xd_{fncname}_descr = <object> (<void *> c_xd_{fncname}_descr)
@@ -1015,6 +1016,7 @@ cdef extern from "numpy/arrayobject.h":
         int alignment
         PyArray_ArrayDescr * subarray
         PyObject * fields
+        PyObject * names
         PyArray_ArrFuncs * f
 
     cdef int PyArray_RegisterDataType(PyArray_Descr *)
