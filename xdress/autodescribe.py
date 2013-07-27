@@ -604,6 +604,20 @@ class GccxmlBaseDescriber(object):
         t = self._add_predicate(baset, '*')
         return t
 
+    def visit_functiontype(self, node):
+        """visits an function type and returns a 'function' dependent 
+        refinement type."""
+        self._pprint(node)
+        t = ['function']
+        args = []
+        for i, child in enumerate(node.iterfind('Argument')):
+            argt = self.type(child.attrib['type'])
+            args.append(('_{0}'.format(i), argt))
+        t.append(tuple(args))
+        rtnt = self.type(node.attrib['returns'])
+        t.append(rtnt)
+        return tuple(t)
+
     def visit_referencetype(self, node):
         """visits a refernece and maps it to a '&' refinement type."""
         self._pprint(node)
@@ -615,7 +629,10 @@ class GccxmlBaseDescriber(object):
         """visits a pointer and maps it to a '*' refinement type."""
         self._pprint(node)
         baset = self.type(node.attrib['type'])
-        t = self._add_predicate(baset, '*')
+        if baset[0] == 'function':
+            t = ('function_pointer',) + baset[1:]
+        else:
+            t = self._add_predicate(baset, '*')
         return t
 
     def visit_cvqualifiedtype(self, node):

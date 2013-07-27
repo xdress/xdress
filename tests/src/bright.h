@@ -768,4 +768,13 @@ Untemplated unt = Untemplated();
 // Also missed by GCC-XML
 int untrtn = unt.templated_method<float>(65.0);
 
+typedef struct ThreeNums
+{
+  double a;
+  double b;
+  double c;
+  double (*op)(double, double, double);
+} ThreeNums;
+
+
 #endif

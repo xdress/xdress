@@ -35,6 +35,12 @@ set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/bright.pyx
 cython_add_module(bright bright.pyx)
 target_link_libraries(bright bright_bright)
 
+# bright
+set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/pybright.pyx
+                            PROPERTIES CYTHON_IS_CXX TRUE)
+cython_add_module(pybright pybright.pyx)
+target_link_libraries(pybright bright_bright)
+
 # fccomp
 set_source_files_properties(${PROJECT_SOURCE_DIR}/xdtest/fccomp.pyx
                             PROPERTIES CYTHON_IS_CXX TRUE)

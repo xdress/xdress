@@ -1,3 +1,3 @@
 #!/bin/bash
 rm -r build/ inst/ xdtest/xd* xdtest/cpp_* xdtest/enrichment* xdtest/fccomp* \
-      xdtest/reprocess* src/xdtest* xdtest/*device*
+      xdtest/reprocess* src/xdtest* xdtest/*device* xdtest/bright* xdtest/pybright*

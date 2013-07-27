@@ -75,6 +75,7 @@ classes = [
     ('Enrichment', 'bright_enrichment', 'enrichment'), 
     ('*', 'reprocess'), 
     ('Untemplated', 'bright'), 
+    ('ThreeNums', 'bright', 'pybright'),
     (('SparseMatrix', 'int32'), 'bright'), 
     (('SparseMatrix', 'float64'), 'bright'), 
     (('sparse_matrix_entry', 'int32'), 'bright'), 
