@@ -737,6 +737,8 @@ namespace bright {
     };
   };
 
+sparse_matrix_entry<bool> smebool;
+
 std::vector< std::vector<int> > vvi;
 sparse_matrix_entry<int> smeints;
 SparseMatrix<int> spints;
@@ -745,6 +747,11 @@ int smeints42 = smeints.whatstheanswer<float>(65.0);
 
 sparse_matrix_entry<double> smedubs;
 SparseMatrix<double> spdubs;
+
+std::vector<float> vf;
+std::vector< std::vector<float> > vvf;
+sparse_matrix_entry<float> smeflts;
+SparseMatrix<float> spflts;
 
 // End bright namespace
 };

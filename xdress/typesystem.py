@@ -2220,7 +2220,10 @@ class TypeSystem(object):
         if not isinstance(cpp_classname, basestring):
             while not isinstance(cpp_baseclassname, basestring):
                 cpp_baseclassname = cpp_baseclassname[0]
-    
+            if template_args is None:
+                template_args = ['T{0}'.format(i) for i in range(len(cpp_classname)-2)]
+                template_args = tuple(template_args)
+
         # register regular class
         class_c2py = ('{t.cython_pytype}({var})',
                       ('{proxy_name} = {t.cython_pytype}()\n'
@@ -2251,13 +2254,22 @@ class TypeSystem(object):
             cython_py2c=class_py2c,
             )
         self.register_class(**kwclass)
-        canonname = self.canon(classname)
+        #canonname = self.canon(classname)
+        canonname = classname if isinstance(classname, basestring) else self.canon(classname)
         if template_args is not None:
-            specname = self.cython_classname(classname)[1]
-            cpp_specname = self.cython_classname(cpp_classname)[1]
+            #specname = self.cython_classname(classname)[1]
+            #cpp_specname = self.cython_classname(cpp_classname)[1]
+            if isinstance(classname, basestring):
+                specname = classname
+            else:
+                specname = self.cython_classname(classname)[1]
+            print("CLASSNAME = ", classname)
+            #print("CPP_CLASSNAME = ", cpp_classname)
+            #print("CPP_SPECNAME = ", cpp_specname)
+            print("SPECNAME = ", specname)
             kwclassspec = dict(
                 name=classname,
-                cython_c_type=cpppxd_base + '.' + cpp_specname,
+                cython_c_type=cpppxd_base + '.' + specname,
                 cython_cy_type=pxd_base + '.' + specname,
                 cython_py_type=pxd_base + '.' + specname,
                 )

@@ -78,7 +78,13 @@ classes = [
     ('ThreeNums', 'bright', 'pybright'),
     (('SparseMatrix', 'int32'), 'bright'), 
     (('SparseMatrix', 'float64'), 'bright'), 
+    {'srcname': ('SparseMatrix', 'float32'), 
+     'tarname': 'SMFloater', 
+     'srcfile': 'bright'}, 
     (('sparse_matrix_entry', 'int32'), 'bright'), 
     (('sparse_matrix_entry', 'float64'), 'bright'), 
+    {'srcname': ('sparse_matrix_entry', 'bool'), 
+     'tarname': ('SparseMatrixEntry', 'bool'),
+     'srcfile': 'bright'}, 
 #    ('*', 'bright'),  # doesn't work yet due to *_t types
     ]
