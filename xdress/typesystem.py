@@ -2223,11 +2223,6 @@ class TypeSystem(object):
             if template_args is None:
                 template_args = ['T{0}'.format(i) for i in range(len(cpp_classname)-2)]
                 template_args = tuple(template_args)
-                #templateclassname = cpp_baseclassname
-                #templateclassname = templateclassname + \
-                #                ''.join(["{"+targ+"}" for targ in template_args])
-                #templatefuncname = cpp_baseclassname.lower() + '_' + \
-                #               '_'.join(["{"+targ+"}" for targ in template_args])
 
         # register regular class
         class_c2py = ('{t.cython_pytype}({var})',
@@ -2240,7 +2235,6 @@ class TypeSystem(object):
                        '    {cache_name} = {proxy_name}\n')
                      )
         class_py2c = ('{proxy_name} = <{t.cython_cytype_nopred}> {var}',
-                      #'{proxy_name} = (<{ctype_nopred} *> (<{pytype_nopred}> {var})._inst)[0]',
                       '(<{t.cython_ctype_nopred} *> {proxy_name}._inst)[0]')
         class_cimport = ((package, cpppxd_base),)
         kwclass = dict(
@@ -2262,12 +2256,8 @@ class TypeSystem(object):
         canonname = classname if isinstance(classname, basestring) \
                               else self.canon(classname)
         if template_args is not None:
-            #specname = self.cython_classname(classname)[1]
-            #cpp_specname = self.cython_classname(cpp_classname)[1]
-            if isinstance(classname, basestring):
-                specname = classname
-            else:
-                specname = self.cython_classname(classname)[1]
+            specname = classname if isinstance(classname, basestring) \
+                                 else self.cython_classname(classname)[1]
             kwclassspec = dict(
                 name=classname,
                 cython_c_type=cpppxd_base + '.' + specname,
@@ -2312,7 +2302,6 @@ class TypeSystem(object):
         # register pointer to class
         class_ptr_c2py = ('{t.cython_pytype}({var})',
                          ('cdef {t.cython_pytype} {proxy_name} = {t.cython_pytype}()\n'
-                         #'(<{t.cython_ctype}> {proxy_name}._inst)[0] = {var}[0]'),
                           'if {proxy_name}._free_inst:\n'
                           '    free({proxy_name}._inst)\n'
                           '(<{t.cython_ctype}> {proxy_name}._inst) = {var}'),
