@@ -1892,8 +1892,10 @@ class XDressPlugin(astparsers.ParserPlugin):
             else:
                 pxd_base = fnames['pxd_filename'].rsplit('.', 1)[0]  # eg, fccomp
                 cpppxd_base = fnames['srcpxd_filename'].rsplit('.', 1)[0]  # eg, cpp_fccomp
-            ts.register_classname(cls.tarname, rc.package, pxd_base, cpppxd_base, 
-                cpp_classname=cls.srcname)
+            ts.register_classname(cls.srcname, rc.package, pxd_base, cpppxd_base)
+            if cls.srcname != cls.tarname:
+                ts.register_classname(cls.tarname, rc.package, pxd_base, 
+                                      cpppxd_base, cpp_classname=cls.srcname)
 
     def load_pysrcmod(self, srcname, rc):
         """Loads a module dictionary from a src file intox the pysrcenv cache."""
@@ -1965,37 +1967,41 @@ class XDressPlugin(astparsers.ParserPlugin):
         desc = merge_descriptions([srcdesc, pydesc, fnames])
         return desc
 
-    def adddesc2env(self, desc, env, name, srcname, tarname):
-        """Adds a description to environment"""
+    def adddesc2env(self, desc, env, name):
+        """Adds a description to environment."""
         # Add to target environment
         # docstrings overwrite, extras accrete
-        mod = {name: desc, 'docstring': self.pysrcenv[srcname].get('docstring', ''),
+        mod = {name.tarname: desc, 
+               'docstring': self.pysrcenv[name.srcfile].get('docstring', ''),
                'srcpxd_filename': desc['srcpxd_filename'],
                'pxd_filename': desc['pxd_filename'],
-               'pyx_filename': desc['pyx_filename'], 'language': desc['language'],
+               'pyx_filename': desc['pyx_filename'], 
+               'language': desc['language'],
                'language_extension': desc['language_extension'],}
-        if tarname not in env:
-            env[tarname] = mod
-            env[tarname]["name"] = tarname
-            env[tarname]['extra'] = self.pysrcenv[srcname].get('extra', '')
+        srcfile = name.srcfile
+        tarfile = name.tarfile
+        if tarfile not in env:
+            env[tarfile] = mod
+            env[tarfile]["name"] = tarfile
+            env[tarfile]['extra'] = self.pysrcenv[srcfile].get('extra', '')
         else:
             #env[tarname].update(mod)
-            env[tarname][name] = desc
-            env[tarname]['extra'] += self.pysrcenv[srcname].get('extra', '')
+            env[tarfile][name.tarname] = desc
+            env[tarfile]['extra'] += self.pysrcenv[srcfile].get('extra', '')
 
-    def compute_classes(self, rc):
-        """Computes class descriptions and loads them into the environment."""
-        # compute all class descriptions first
+    def compute_variables(self, rc):
+        """Computes variables descriptions and loads them into the environment."""
+        env = rc.env
         cache = rc._cache
-        env = rc.env  # target environment, not source one
-        for i, cls in enumerate(rc.classes):
-            print("autodescribe: describing {0}".format(cls.srcname))
-            desc = self.compute_desc(cls.srcname, cls.srcfile, cls.tarfile, 
-                                     'class', rc)
+        for i, var in enumerate(rc.variables):
+            print("autodescribe: describing {0}".format(var.srcname))
+            desc = self.compute_desc(var.srcname, var.srcfile, var.tarfile, 'var', rc)
             if rc.verbose:
                 pprint(desc)
             cache.dump()
-            self.adddesc2env(desc, env, cls.srcname, cls.srcfile, cls.tarfile)
+            if var.srcname != var.tarname:
+                desc['name'] = var.tarname
+            self.adddesc2env(desc, env, var)
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 
@@ -2009,21 +2015,28 @@ class XDressPlugin(astparsers.ParserPlugin):
             if rc.verbose:
                 pprint(desc)
             cache.dump()
-            self.adddesc2env(desc, env, fnc.srcname, fnc.srcfile, fnc.tarfile)
+            if fnc.srcname != fnc.tarname:
+                desc['name'] = fnc.tarname
+            self.adddesc2env(desc, env, fnc)
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 
-    def compute_variables(self, rc):
-        """Computes variables descriptions and loads them into the environment."""
-        env = rc.env
+    def compute_classes(self, rc):
+        """Computes class descriptions and loads them into the environment."""
+        # compute all class descriptions first
         cache = rc._cache
-        for i, var in enumerate(rc.variables):
-            print("autodescribe: describing {0}".format(var.srcname))
-            desc = self.compute_desc(var.srcname, var.srcfile, var.tarfile, 'var', rc)
+        env = rc.env  # target environment, not source one
+        for i, cls in enumerate(rc.classes):
+            print("autodescribe: describing {0}".format(cls.srcname))
+            desc = self.compute_desc(cls.srcname, cls.srcfile, cls.tarfile, 
+                                     'class', rc)
             if rc.verbose:
                 pprint(desc)
             cache.dump()
-            self.adddesc2env(desc, env, var.srcname, var.srcfile, var.tarfile)
+            if cls.srcname != cls.tarname:
+                desc['name'] = cls.tarname
+                desc['type'] = rc.ts.canon(cls.tarname)
+            self.adddesc2env(desc, env, cls)
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 

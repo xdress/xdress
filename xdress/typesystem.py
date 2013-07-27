@@ -2242,7 +2242,7 @@ class TypeSystem(object):
             cython_cimport=class_cimport,
             cython_cy_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
             cython_py_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
-            cpp_type=baseclassname,
+            cpp_type=cpp_baseclassname,
             cython_template_class_name=templateclassname,
             cython_template_function_name=templatefuncname,
             cython_cyimport=((pxd_base,),),                       # fccomp

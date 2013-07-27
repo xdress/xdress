@@ -67,7 +67,7 @@ functions = [
     ]
 
 classes = [
-    ('TwoNums', 'device', 'pydevice'),
+    ('TwoNums', 'device', 'pydevice', 'MyTwoNums'),
     ('DeviceParamTag', 'device', 'pydevice'),
     ('DeviceDescriptorTag', 'device', 'pydevice'),
     ('FCComp', 'fccomp'), 

@@ -1,4 +1,4 @@
-mod = {'TwoNums': {
+mod = {'MyTwoNums': {
     'extra': {
         'max_callbacks': 2,
         'pyx': """
