@@ -48,7 +48,8 @@ except ImportError:
 from . import utils
 from . import astparsers
 
-from .utils import find_source, FORBIDDEN_NAMES, NotSpecified, RunControl
+from .utils import find_source, FORBIDDEN_NAMES, NotSpecified, RunControl, apiname, \
+    ensure_apiname
 
 if os.name == 'nt':
     import ntpath
@@ -507,25 +508,22 @@ class XDressPlugin(astparsers.ParserPlugin):
         allsrc = set()
         varhasstar = False
         for i, var in enumerate(rc.variables):
-            if var[0] == '*':
-                allsrc.add(var[1])
+            rc.variables[i] = var = ensure_apiname(var)
+            if var.srcname == '*':
+                allsrc.add(var.srcfile)
                 varhasstar = True
-            if len(var) == 2:
-                rc.variables[i] = (var[0], var[1], var[1])
         fnchasstar = False
         for i, fnc in enumerate(rc.functions):
-            if fnc[0] == '*':
-                allsrc.add(fnc[1])
+            rc.functions[i] = fnc = ensure_apiname(fnc)
+            if fnc.srcname == '*':
+                allsrc.add(fnc.srcfile)
                 fnchasstar = True
-            if len(fnc) == 2:
-                rc.functions[i] = (fnc[0], fnc[1], fnc[1])
         clshasstar = False
         for i, cls in enumerate(rc.classes):
-            if cls[0] == '*':
-                allsrc.add(cls[1])
+            rc.classes[i] = cls = ensure_apiname(cls)
+            if cls.srcname == '*':
+                allsrc.add(cls.srcfile)
                 clshasstar = True
-            if len(cls) == 2:
-                rc.classes[i] = (cls[0], cls[1], cls[1])
         self.allsrc = allsrc
         self.varhasstar = varhasstar
         self.fnchasstar = fnchasstar
@@ -574,27 +572,27 @@ class XDressPlugin(astparsers.ParserPlugin):
         if self.varhasstar:
             newvars = []
             for var in rc.variables:
-                if var[0] == '*':
-                    for x in allnames[var[1]][0]:
-                        newvars.append((x, var[1], var[2]))
+                if var.srcname == '*':
+                    for x in allnames[var.srcfile][0]:
+                        newvars.append(var._replace(srcname=x, tarname=x))
                 else:
                     newvars.append(var)
             rc.variables = newvars
         if self.fnchasstar:
             newfncs = []
             for fnc in rc.functions:
-                if fnc[0] == '*':
-                    for x in allnames[fnc[1]][1]:
-                        newfncs.append((x, fnc[1], fnc[2]))
+                if fnc.srcname == '*':
+                    for x in allnames[fnc.srcfile][1]:
+                        newfncs.append(fnc._replace(srcname=x, tarname=x))
                 else:
                     newfncs.append(fnc)
             rc.functions = newfncs
         if self.clshasstar:
             newclss = []
             for cls in rc.classes:
-                if cls[0] == '*':
-                    for x in allnames[cls[1]][2]:
-                        newclss.append((x, cls[1], cls[2]))
+                if cls.srcname == '*':
+                    for x in allnames[cls.srcfile][2]:
+                        newclss.append(cls._replace(srcname=x, tarname=x))
                 else:
                     newclss.append(cls)
             rc.classes = newclss
