@@ -2223,6 +2223,11 @@ class TypeSystem(object):
             if template_args is None:
                 template_args = ['T{0}'.format(i) for i in range(len(cpp_classname)-2)]
                 template_args = tuple(template_args)
+                #templateclassname = cpp_baseclassname
+                #templateclassname = templateclassname + \
+                #                ''.join(["{"+targ+"}" for targ in template_args])
+                #templatefuncname = cpp_baseclassname.lower() + '_' + \
+                #               '_'.join(["{"+targ+"}" for targ in template_args])
 
         # register regular class
         class_c2py = ('{t.cython_pytype}({var})',
@@ -2254,8 +2259,8 @@ class TypeSystem(object):
             cython_py2c=class_py2c,
             )
         self.register_class(**kwclass)
-        #canonname = self.canon(classname)
-        canonname = classname if isinstance(classname, basestring) else self.canon(classname)
+        canonname = classname if isinstance(classname, basestring) \
+                              else self.canon(classname)
         if template_args is not None:
             #specname = self.cython_classname(classname)[1]
             #cpp_specname = self.cython_classname(cpp_classname)[1]
@@ -2263,18 +2268,17 @@ class TypeSystem(object):
                 specname = classname
             else:
                 specname = self.cython_classname(classname)[1]
-            print("CLASSNAME = ", classname)
-            #print("CPP_CLASSNAME = ", cpp_classname)
-            #print("CPP_SPECNAME = ", cpp_specname)
-            print("SPECNAME = ", specname)
             kwclassspec = dict(
                 name=classname,
                 cython_c_type=cpppxd_base + '.' + specname,
                 cython_cy_type=pxd_base + '.' + specname,
                 cython_py_type=pxd_base + '.' + specname,
+                cpp_type=self.cpp_type(cpp_classname),
                 )
             self.register_class(**kwclassspec)
             kwclassspec['name'] = canonname
+            self.register_class(**kwclassspec)
+            kwclassspec['name'] = self.canon(cpp_classname)
             self.register_class(**kwclassspec)
         # register numpy type
         self.register_numpy_dtype(classname,

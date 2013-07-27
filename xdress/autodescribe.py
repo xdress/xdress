@@ -2030,12 +2030,11 @@ class XDressPlugin(astparsers.ParserPlugin):
             print("autodescribe: describing {0}".format(cls.srcname))
             desc = self.compute_desc(cls.srcname, cls.srcfile, cls.tarfile, 
                                      'class', rc)
-            if rc.verbose:
-                pprint(desc)
             cache.dump()
             if cls.srcname != cls.tarname:
                 desc['name'] = cls.tarname
-                desc['type'] = rc.ts.canon(cls.tarname)
+            if rc.verbose:
+                pprint(desc)
             self.adddesc2env(desc, env, cls)
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()

@@ -351,7 +351,7 @@ def classcpppxd(desc, exceptions=True, ts=None):
          'header_filename': desc['header_filename'],}
     d['namespace'] = _format_ns(desc)
     name = desc['name']
-    if isinstance(name, basestring):
+    if isinstance(desc['type'], basestring):
         d['name'] = ts.cython_ctype(name)
         d['alias'] = ''
     else:
