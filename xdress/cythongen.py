@@ -1467,13 +1467,13 @@ class XDressPlugin(Plugin):
 
         # write out all files
         for key, cpppxd in cpppxds.items():
-            newoverwrite(cpppxd, os.path.join(rc.package,
+            newoverwrite(cpppxd, os.path.join(rc.packagedir,
                          env[key]['srcpxd_filename']), rc.verbose)
         for key, pxd in pxds.items():
-            newoverwrite(pxd, os.path.join(rc.package,
+            newoverwrite(pxd, os.path.join(rc.packagedir,
                          env[key]['pxd_filename']), rc.verbose)
         for key, pyx in pyxs.items():
-            newoverwrite(pyx, os.path.join(rc.package,
+            newoverwrite(pyx, os.path.join(rc.packagedir,
                          env[key]['pyx_filename']), rc.verbose)
 
 
