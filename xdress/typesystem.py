@@ -2179,7 +2179,8 @@ class TypeSystem(object):
 
         self.clearmemo()
 
-    def register_classname(self, classname, package, pxd_base, cpppxd_base):
+    def register_classname(self, classname, package, pxd_base, cpppxd_base, 
+                           cpp_classname=None):
         """Registers a class with the type system from only its name, 
         and relevant header file information.
 
@@ -2192,7 +2193,10 @@ class TypeSystem(object):
             Base name of the pxd file to cimport.
         cpppxd_base : str
             Base name of the cpppxd file to cimport.
+        cpp_classname : str or tuple, optional
+            Name of class in C++, equiv. to apiname.srcname. Defaults to classname.
         """
+        # target classname
         baseclassname = classname
         if isinstance(classname, basestring):
             template_args = None
@@ -2208,6 +2212,15 @@ class TypeSystem(object):
                                 ''.join(["{"+targ+"}" for targ in template_args])
             templatefuncname = baseclassname.lower() + '_' + \
                                '_'.join(["{"+targ+"}" for targ in template_args])
+
+        # source classname
+        if cpp_classname is None:
+            cpp_classname = classname
+        cpp_baseclassname = cpp_classname
+        if not isinstance(cpp_classname, basestring):
+            while not isinstance(cpp_baseclassname, basestring):
+                cpp_baseclassname = cpp_baseclassname[0]
+    
         # register regular class
         class_c2py = ('{t.cython_pytype}({var})',
                       ('{proxy_name} = {t.cython_pytype}()\n'
@@ -2225,7 +2238,7 @@ class TypeSystem(object):
         kwclass = dict(
             name=baseclassname,                              # FCComp
             template_args=template_args,
-            cython_c_type=cpppxd_base + '.' + baseclassname, # cpp_fccomp.FCComp
+            cython_c_type=cpppxd_base + '.' + cpp_baseclassname, # cpp_fccomp.FCComp
             cython_cimport=class_cimport,
             cython_cy_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
             cython_py_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
@@ -2241,9 +2254,10 @@ class TypeSystem(object):
         canonname = self.canon(classname)
         if template_args is not None:
             specname = self.cython_classname(classname)[1]
+            cpp_specname = self.cython_classname(cpp_classname)[1]
             kwclassspec = dict(
                 name=classname,
-                cython_c_type=cpppxd_base + '.' + specname,
+                cython_c_type=cpppxd_base + '.' + cpp_specname,
                 cython_cy_type=pxd_base + '.' + specname,
                 cython_py_type=pxd_base + '.' + specname,
                 )
@@ -2299,7 +2313,7 @@ class TypeSystem(object):
             template_args=template_args,
             cython_py_type=pxd_base + '.' + baseclassname,
             cython_cy_type=pxd_base + '.' + baseclassname,
-            cpp_type=baseclassname,
+            cpp_type=cpp_baseclassname,
             cython_c2py=class_ptr_c2py,
             cython_py2c=class_ptr_py2c,
             cython_cimport=kwclass['cython_cimport'] ,
