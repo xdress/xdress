@@ -423,7 +423,7 @@ def classcpppxd(desc, exceptions=True, ts=None):
     return cimport_tups, cpppxd
 
 
-def genpxd(env, classes=(), ts=None):
+def genpxd(env, classes=(), ts=None, max_callbacks=8):
     """Generates all pxd Cython header files for an environment of modules.
 
     Parameters
@@ -436,6 +436,8 @@ def genpxd(env, classes=(), ts=None):
         the same dictionary as in genpyx()
     ts : TypeSystem, optional
         A type system instance.
+    max_callbacks : int, optional
+        The default maximum number of callbacks for function pointers.
 
     Returns
     -------
@@ -448,11 +450,11 @@ def genpxd(env, classes=(), ts=None):
     for name, mod in env.items():
         if mod['pxd_filename'] is None:
             continue
-        pxds[name] = modpxd(mod, classes, ts=ts)
+        pxds[name] = modpxd(mod, classes, ts=ts, max_callbacks=max_callbacks)
     return pxds
 
 
-def modpxd(mod, classes=(), ts=None):
+def modpxd(mod, classes=(), ts=None, max_callbacks=8):
     """Generates a pxd Cython header file for exposing C/C++ data to
     other Cython wrappers based off of a dictionary description.
 
@@ -465,6 +467,8 @@ def modpxd(mod, classes=(), ts=None):
         the same dictionary as in modpyx().
     ts : TypeSystem, optional
         A type system instance.
+    max_callbacks : int, optional
+        The default maximum number of callbacks for function pointers.
 
     Returns
     -------
@@ -481,7 +485,8 @@ def modpxd(mod, classes=(), ts=None):
     with ts.local_classes(classnames):
         for name, desc in mod.items():
             if isclassdesc(desc):
-                ci_tup, attr_str = classpxd(desc, classes, ts=ts)
+                ci_tup, attr_str = classpxd(desc, classes, ts=ts, 
+                                            max_callbacks=max_callbacks)
             # no need to wrap functions again
             else:
                 continue
@@ -508,7 +513,7 @@ cdef class {name}{parents}:
 """
 
 
-def classpxd(desc, classes=(), ts=None):
+def classpxd(desc, classes=(), ts=None, max_callbacks=8):
     """Generates a ``*pxd`` Cython header snippet for exposing a C/C++ class to
     other Cython wrappers based off of a dictionary description.
 
@@ -521,6 +526,8 @@ def classpxd(desc, classes=(), ts=None):
         the same dictionary as in modpyx().
     ts : TypeSystem, optional
         A type system instance.
+    max_callbacks : int, optional
+        The default maximum number of callbacks for function pointers.
 
     Returns
     -------
@@ -537,7 +544,7 @@ def classpxd(desc, classes=(), ts=None):
     d = {'parents': pars if 0 == len(pars) else '('+pars+')'}
     name = desc['name']
     d['name'] = name if isinstance(name, basestring) else ts.cython_classname(name)[1]
-    max_callbacks = desc.get('extra', {}).get('max_callbacks', 8)
+    max_callbacks = desc.get('extra', {}).get('max_callbacks', max_callbacks)
     mczeropad = int(math.log10(max_callbacks)) + 1
 
     cimport_tups = set()
@@ -588,7 +595,7 @@ def classpxd(desc, classes=(), ts=None):
     return cimport_tups, pxd
 
 
-def genpyx(env, classes=None, ts=None):
+def genpyx(env, classes=None, ts=None, max_callbacks=8):
     """Generates all pyx Cython implementation files for an environment of modules.
 
     Parameters
@@ -602,6 +609,8 @@ def genpyx(env, classes=None, ts=None):
         dependencies. If None, this will be computed here.
     ts : TypeSystem, optional
         A type system instance.
+    max_callbacks : int, optional
+        The default maximum number of callbacks for function pointers.
 
     Returns
     -------
@@ -622,7 +631,7 @@ def genpyx(env, classes=None, ts=None):
     for name, mod in env.items():
         if mod['pyx_filename'] is None:
             continue
-        pyxs[name] = modpyx(mod, classes=classes, ts=ts)
+        pyxs[name] = modpyx(mod, classes=classes, ts=ts, max_callbacks=max_callbacks)
     return pyxs
 
 
@@ -638,7 +647,7 @@ _pyx_mod_template = AUTOGEN_WARNING + \
 {extra}
 '''
 
-def modpyx(mod, classes=None, ts=None):
+def modpyx(mod, classes=None, ts=None, max_callbacks=8):
     """Generates a pyx Cython implementation file for exposing C/C++ data to
     other Cython wrappers based off of a dictionary description.
 
@@ -652,6 +661,8 @@ def modpyx(mod, classes=None, ts=None):
         dependencies.
     ts : TypeSystem, optional
         A type system instance.
+    max_callbacks : int, optional
+        The default maximum number of callbacks for function pointers.
 
     Returns
     -------
@@ -674,7 +685,8 @@ def modpyx(mod, classes=None, ts=None):
             elif isfuncdesc(desc):
                 i_tup, ci_tup, attr_str = funcpyx(desc, ts=ts)
             elif isclassdesc(desc):
-                i_tup, ci_tup, attr_str = classpyx(desc, classes=classes, ts=ts)
+                i_tup, ci_tup, attr_str = classpyx(desc, classes=classes, ts=ts, 
+                                                   max_callbacks=max_callbacks)
             else:
                 continue
             import_tups |= i_tup
@@ -1134,7 +1146,7 @@ cdef class {name}{parents}:
 {extra}
 '''
 
-def classpyx(desc, classes=None, ts=None):
+def classpyx(desc, classes=None, ts=None, max_callbacks=8):
     """Generates a ``*.pyx`` Cython wrapper implementation for exposing a C/C++
     class based off of a dictionary description.  The environment is a
     dictionary of all class names known to their descriptions.
@@ -1149,6 +1161,8 @@ def classpyx(desc, classes=None, ts=None):
         dependencies.
     ts : TypeSystem, optional
         A type system instance.
+    max_callbacks : int, optional
+        The default maximum number of callbacks for function pointers.
 
     Returns
     -------
@@ -1180,7 +1194,7 @@ def classpyx(desc, classes=None, ts=None):
         ts.cython_cimport_tuples(parent, cimport_tups)
 
     cdefattrs = []
-    mc = desc.get('extra', {}).get('max_callbacks', 8)
+    mc = desc.get('extra', {}).get('max_callbacks', max_callbacks)
 
     alines = []
     pdlines = []
@@ -1427,6 +1441,16 @@ class XDressPlugin(Plugin):
     requires = ('xdress.autodescribe',)
     """This plugin requires autodescribe."""
 
+    defaultrc = {'max_callbacks': 8}
+
+    def update_argparser(self, parser):
+        parser.add_argument('--max-callbacks', type=int, dest="max_callbacks",
+                    help="the maximum number of callbacks for function pointers")
+
+    def setup(self, rc):
+        if rc.max_callbacks < 1:
+            raise ValueError("max_callbacks must be greater than or equal to 1")
+
     def execute(self, rc):
         print("cythongen: creating C/C++ API wrappers")
         env = rc.env
@@ -1438,8 +1462,8 @@ class XDressPlugin(Plugin):
 
         # generate all files
         cpppxds = gencpppxd(env, ts=rc.ts)
-        pxds = genpxd(env, classes, ts=rc.ts)
-        pyxs = genpyx(env, classes, ts=rc.ts)
+        pxds = genpxd(env, classes, ts=rc.ts, max_callbacks=rc.max_callbacks)
+        pyxs = genpyx(env, classes, ts=rc.ts, max_callbacks=rc.max_callbacks)
 
         # write out all files
         for key, cpppxd in cpppxds.items():
