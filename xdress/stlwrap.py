@@ -684,7 +684,7 @@ cdef long pyxd_{fncname}_type_hash(object self):
     return id(self)
 
 cdef PyMemberDef pyxd_{fncname}_type_members[1]
-pyxd_{fncname}_type_members[0] = PyMemberDef(NULL)
+pyxd_{fncname}_type_members[0] = PyMemberDef(NULL, 0, 0, 0, NULL)
 
 cdef PyGetSetDef pyxd_{fncname}_type_getset[1]
 pyxd_{fncname}_type_getset[0] = PyGetSetDef(NULL)
@@ -919,9 +919,6 @@ cdef extern from "Python.h":
     cdef long Py_TPFLAGS_CHECKTYPES
     cdef long Py_TPFLAGS_HEAPTYPE
 
-    ctypedef struct PyMemberDef:
-        char * name
-
     ctypedef struct PyGetSetDef:
         char * name
 
@@ -945,6 +942,15 @@ cdef extern from "Python.h":
         # This is a dirty hack by declaring to Cython both the Python 2 & 3 APIs
         int (*tp_compare)(object, object)      # Python 2
         void * (*tp_reserved)(object, object)  # Python 3
+
+# structmember.h isn't included in Python.h for some reason
+cdef extern from "structmember.h":
+    ctypedef struct PyMemberDef:
+        char * name
+        int type
+        Py_ssize_t offset
+        int flags
+        char * doc
 
 cdef extern from "numpy/arrayobject.h":
 
