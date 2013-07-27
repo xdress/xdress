@@ -760,6 +760,8 @@ template <class T, class U> T findmin(T x, U y) {return (x < y ? x : y);};
 template <class T, int U> bool lessthan(T x) {return (x < U ? true : false);};
 
 int fmif = findmin<int, float>(3, 6.0);
+int fmii = findmin<int, int>(3, 4);
+bool fmbb = findmin<bool, bool>(true, false);
 double fmdi = findmin<double, float>(3.0, 6.0);
 bool lti3 = lessthan<int, 3>(6);
 

@@ -59,12 +59,13 @@ variables = [
 functions = [
     (('findmin', 'int32', 'float32',), 'bright'), 
     (('findmin', 'float64', 'float32',), 'bright'), 
+    {'srcname': ('findmin', 'int', 'int',), 
+     'tarname': ('regmin', 'int', 'int',), 
+     'srcfile': 'bright'}, 
     (('lessthan', 'int32', 3,), 'bright'),     
-    #('func', 'reprocess'),
     {'srcname': 'func', 
      'tarname': 'a_better_name',
      'srcfile': 'reprocess'},
-    #('afunc', 'device', 'pydevice'),
     ('fillUraniumEnrichmentDefaults', 'enrichment_parameters'),
     ('*', 'device', 'pydevice'),
     ]
