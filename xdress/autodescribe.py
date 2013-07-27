@@ -36,7 +36,7 @@ Function Description Top-Level Keys
 The following are valid top-level keys in a function description dictionary:
 name, namespace, signatures, docstring, and extra.
 
-:name: str, the function name
+:name: str or tuple, the function name
 :namespace: str or None, the namespace or module the function lives in.
 :signatures: dict or dict-like, the keys of this dictionary are function call
     signatures and the values are the function return types. The signatures
@@ -58,7 +58,7 @@ Class Description Top-Level Keys
 The following are valid top-level keys in a class description dictionary:
 name, parents, namespace, attrs, methods, docstrings, and extra.
 
-:name: str, the class name
+:name: str or tuple, the class name
 :parents: list of strings or None, the immediate parents of the class
     (not grandparents).
 :namespace: str or None, the namespace or module the class lives in.

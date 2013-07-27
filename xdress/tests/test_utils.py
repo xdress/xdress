@@ -1,6 +1,6 @@
 from __future__ import print_function
 from xdress.utils import NotSpecified, RunControl, flatten, split_template_args, \
-    ishashable, memoize, memoize_method
+    ishashable, memoize, memoize_method, apiname, ensure_apiname
 
 from nose.tools import assert_equal, with_setup, assert_true, assert_false, \
     assert_not_equal
@@ -108,3 +108,24 @@ def test_memoize_method():
     assert_equal(j.inc.__name__, "inc")
     assert_equal(j.inc.__doc__, "I am inc's docstr")
 
+def check_ensure_apiname(x, exp):
+    obs = ensure_apiname(x)
+    assert_equal(exp, obs)
+
+def test_ensure_apiname():
+    cases = [
+        (('Joan', 'joan'), apiname('Joan', 'joan', 'joan', 'Joan')), 
+        (('Joan', 'joan', 'pyjoan'), apiname('Joan', 'joan', 'pyjoan', 'Joan')), 
+        (('Joan', 'joan', 'pyjoan', 'PyJoan'), 
+            apiname('Joan', 'joan', 'pyjoan', 'PyJoan')), 
+        (['Joan', 'joan', 'pyjoan', 'PyJoan'], 
+            apiname('Joan', 'joan', 'pyjoan', 'PyJoan')), 
+        ({'srcname': 'Joan', 'srcfile': 'joan'}, 
+            apiname('Joan', 'joan', 'joan', 'Joan')), 
+        (apiname('Joan', 'joan', 'pyjoan', 'PyJoan'), 
+            apiname('Joan', 'joan', 'pyjoan', 'PyJoan')), 
+        (apiname('Joan', 'joan', 'pyjoan', NotSpecified), 
+            apiname('Joan', 'joan', 'pyjoan', 'Joan')), 
+        ]
+    for x, exp in cases:
+        yield check_ensure_apiname, x, exp

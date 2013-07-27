@@ -12,7 +12,7 @@ import sys
 import functools
 from copy import deepcopy
 from pprint import pformat
-from collections import Mapping, Iterable, Hashable, Sequence
+from collections import Mapping, Iterable, Hashable, Sequence, namedtuple
 from hashlib import md5
 from warnings import warn
 try:
@@ -172,6 +172,10 @@ def exec_file(filename, glb=None, loc=None):
     with io.open(filename, 'r') as f:
         src = f.read()
     exec(compile(src, filename, "exec"), glb, loc)
+
+#
+# Run Control 
+#
 
 class NotSpecified(object):
     """A helper class singleton for run control meaning that a 'real' value
@@ -526,6 +530,37 @@ def parse_template(s, open_brace='<', close_brace='>', separator=','):
                                 close_brace=close_brace, separator=separator))
     t.append(0)
     return tuple(t)
+
+#
+# API Name Tuples and Functions
+#
+
+apiname = namedtuple('apiname', ['srcname', 'srcfile', 'tarfile', 'tarname'])
+
+notspecified_apiname = apiname(*([NotSpecified]*len(apiname._fields)))
+
+def ensure_apiname(name):
+    """Takes user input and returns the corresponding apiname named tuple.
+    If the name is already an apiname instance with no NotSpecified fields, 
+    this does not make a copy.
+    """
+    # ensure is a valid apiname
+    if isinstance(name, apiname):
+        pass
+    elif isinstance(name, Sequence):
+        name = notspecified_apiname._replace(**dict(zip(apiname._fields, name)))
+    elif isinstance(name, Mapping):
+        name = notspecified_apiname._replace(**name)
+
+    # ensure fields are not NotSpecified
+    updates = {}
+    if name.tarfile is NotSpecified:
+        updates['tarfile'] = name.srcfile
+    if name.tarname is NotSpecified:
+        updates['tarname'] = name.srcname
+    if 0 < len(updates):
+        name = name._replace(**updates)
+    return name
 
 #
 # Memoization
