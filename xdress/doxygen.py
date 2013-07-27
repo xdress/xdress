@@ -990,8 +990,8 @@ class XDressPlugin(Plugin):
 
         # Go for the classes!
         for c in rc.classes:
-            kls = c[0]
-            kls_mod = c[2]
+            kls = c.srcname
+            kls_mod = c.tarfile
 
             # Parse the class
             try:
@@ -1052,8 +1052,8 @@ class XDressPlugin(Plugin):
 
         # And on to the functions.
         for f in rc.functions:
-            func = f[0]
-            func_mod = f[2]
+            func = f.srcname
+            func_mod = f.tarfile
 
             # Pull out all parsed names that match the function name
             # This is necessary because overloaded funcs will have
