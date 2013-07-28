@@ -2,6 +2,8 @@ package = 'xdtest'
 sourcedir = 'src'
 packagedir = 'xdtest'
 
+plugins = ('xdress.stlwrap', 'xdress.autoall', 'xdress.pep8names', 'xdress.cythongen')
+
 extra_types = 'xdtest_extra_types'  # non-default value
 
 stlcontainers = [
@@ -63,7 +65,7 @@ functions = [
      'tarname': ('regmin', 'int', 'int',), 
      'srcfile': 'bright'}, 
     {'srcname': ('findmin', 'bool', 'bool',), 
-     'tarname': 'sillyboolmin', 
+     'tarname': 'sillyBoolMin', 
      'srcfile': 'bright'}, 
     (('lessthan', 'int32', 3,), 'bright'),     
     {'srcname': 'func', 
@@ -74,7 +76,7 @@ functions = [
     ]
 
 classes = [
-    ('TwoNums', 'device', 'pydevice', 'MyTwoNums'),
+    ('TwoNums', 'device', 'pydevice', 'My_Two_Nums'),
     ('DeviceParamTag', 'device', 'pydevice'),
     ('DeviceDescriptorTag', 'device', 'pydevice'),
     ('FCComp', 'fccomp'), 
