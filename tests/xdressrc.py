@@ -2,7 +2,8 @@ package = 'xdtest'
 sourcedir = 'src'
 packagedir = 'xdtest'
 
-plugins = ('xdress.stlwrap', 'xdress.autoall', 'xdress.pep8names', 'xdress.cythongen')
+plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen', 'xdress.stlwrap', 
+    )
 
 extra_types = 'xdtest_extra_types'  # non-default value
 
@@ -14,6 +15,7 @@ stlcontainers = [
     ('vector', 'complex'),
     ('vector', ('vector', 'int32')),
     ('vector', ('vector', 'float64')),
+    ('vector', 'ThreeNums'),
     ('set', 'int'),
     ('set', 'str'),
     ('set', 'uint'),

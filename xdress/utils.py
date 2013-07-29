@@ -26,7 +26,7 @@ if sys.version_info[0] >= 3:
 DEFAULT_RC_FILE = "xdressrc.py"
 """Default run control file name."""
 
-DEFAULT_PLUGINS = ('xdress.stlwrap', 'xdress.autoall', 'xdress.cythongen')
+DEFAULT_PLUGINS = ('xdress.autoall', 'xdress.cythongen', 'xdress.stlwrap')
 """Default list of plugin module names."""
 
 FORBIDDEN_NAMES = frozenset(['del', 'global'])

@@ -2100,7 +2100,8 @@ class TypeSystem(object):
                        cython_template_class_name=None, 
                        cython_template_function_name=None, cython_cyimport=None, 
                        cython_pyimport=None, cython_c2py=None, 
-                       cython_py2c=None, cpp_type=None):
+                       cython_py2c=None, cpp_type=None, human_name=None, 
+                       from_pytype=None):
         """Classes are user specified types.  This function will add a class to 
         the type system so that it may be used normally with the rest of the 
         type system.
@@ -2126,8 +2127,12 @@ class TypeSystem(object):
             self.cython_cytypes[name] = cython_cy_type
         if (cython_py_type is not None):
             self.cython_pytypes[name] = cython_py_type
+        if (from_pytype is not None):
+            self.from_pytypes[name] = from_pytype
         if cpp_type is not None:
             self.cpp_types[name] = cpp_type
+        if human_name is not None:
+            self.humannames[name] = human_name
 
         if (cython_cimport is not None):
             cython_cimport = _ensure_importable(cython_cimport)
@@ -2168,7 +2173,9 @@ class TypeSystem(object):
         self.cython_ctypes.pop(name, None)
         self.cython_cytypes.pop(name, None)
         self.cython_pytypes.pop(name, None)
+        self.from_pytypes.pop(name, None)
         self.cpp_types.pop(name, None)
+        self.humannames.pop(name, None)
         self.cython_cimports.pop(name, None)
         self.cython_cyimports.pop(name, None)
         self.cython_pyimports.pop(name, None)
@@ -2244,7 +2251,9 @@ class TypeSystem(object):
             cython_cimport=class_cimport,
             cython_cy_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
             cython_py_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
+            from_pytype=[pxd_base + '.' + baseclassname],      # fccomp.FCComp   
             cpp_type=cpp_baseclassname,
+            human_name=templateclassname,
             cython_template_class_name=templateclassname,
             cython_template_function_name=templatefuncname,
             cython_cyimport=((pxd_base,),),                       # fccomp

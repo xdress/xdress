@@ -855,6 +855,12 @@ np.import_array()
 
 cimport {extra_types}
 
+# Cython Imports For Types
+{cimports}
+
+# Imports For Types
+{imports}
+
 dtypes = {{}}
 
 if PY_MAJOR_VERSION >= 3:
@@ -876,8 +882,17 @@ def genpyx(template, header=None, ts=None):
     pyxfuncs = dict([(k[7:], v) for k, v in globals().items() \
                     if k.startswith('genpyx_') and callable(v)])
     pyx = _pyxheader if header is None else header
-    pyx = pyx.format(extra_types=ts.extra_types)
     with ts.swap_stlcontainers(None):
+        import_tups = set()
+        cimport_tups = set()
+        for t in template:
+            for arg in t[1:]:
+                ts.cython_import_tuples(arg, import_tups)
+                ts.cython_cimport_tuples(arg, cimport_tups)
+        imports = "\n".join(ts.cython_import_lines(import_tups))
+        cimports = "\n".join(ts.cython_cimport_lines(cimport_tups))
+        pyx = pyx.format(extra_types=ts.extra_types, cimports=cimports, 
+                         imports=imports)
         for t in template:
             pyx += pyxfuncs[t[0]](*t[1:], ts=ts) + "\n\n" 
     return pyx
@@ -911,6 +926,10 @@ cimport numpy as np
 cimport {extra_types}
 
 cimport numpy as np
+
+
+# Cython Imports For Types
+{cimports}
 
 cdef extern from "Python.h":
     ctypedef Py_ssize_t Py_ssize_t
@@ -1037,7 +1056,13 @@ def genpxd(template, header=None, ts=None):
     pxdfuncs = dict([(k[7:], v) for k, v in globals().items() \
                     if k.startswith('genpxd_') and callable(v)])
     pxd = _pxdheader if header is None else header
-    pxd = pxd.format(extra_types=ts.extra_types)
+    with ts.swap_stlcontainers(None):
+        cimport_tups = set()
+        for t in template:
+            for arg in t[1:]:
+                ts.cython_cimport_tuples(arg, cimport_tups, set(['c']))
+        cimports = "\n".join(ts.cython_cimport_lines(cimport_tups))
+        pxd = pxd.format(extra_types=ts.extra_types, cimports=cimports)
     for t in template:
         pxd += pxdfuncs[t[0]](*t[1:], ts=ts) + "\n\n" 
     return pxd
