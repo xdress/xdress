@@ -19,6 +19,15 @@ dynamic type system.
     cythongen
     main
 
+**Useful Plugins:**
+
+.. toctree::
+    :maxdepth: 1
+
+    descfilter
+    doxygen
+    pep8names
+
 **Helpers:**
 
 .. toctree::
@@ -28,5 +37,3 @@ dynamic type system.
     plugins
     base
     extratypes
-    descfilter
-    doxygen
