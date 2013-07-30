@@ -1159,8 +1159,8 @@ class TypeSystem(object):
             The file format to save the type system as.  If this is not provided, 
             it is infered from the filenme.  Options are:
 
-            * pickle ('*.pkl')
-            * gzipped pickle ('*.pkl.gz')
+            * pickle ('.pkl')
+            * gzipped pickle ('.pkl.gz')
 
         mode : str, optional
             The mode to open the file with.
@@ -1189,8 +1189,8 @@ class TypeSystem(object):
             The file format to save the type system as.  If this is not provided, 
             it is infered from the filenme.  Options are:
 
-            * pickle ('*.pkl')
-            * gzipped pickle ('*.pkl.gz')
+            * pickle ('.pkl')
+            * gzipped pickle ('.pkl.gz')
 
         mode : str, optional
             The mode to open the file with.
