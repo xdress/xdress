@@ -1,6 +1,6 @@
 from __future__ import print_function
 from xdress.utils import NotSpecified, RunControl, flatten, split_template_args, \
-    ishashable, memoize, memoize_method, apiname, ensure_apiname
+    ishashable, memoize, memoize_method, apiname, ensure_apiname, sortedbytype
 
 from nose.tools import assert_equal, with_setup, assert_true, assert_false, \
     assert_not_equal
@@ -129,3 +129,15 @@ def test_ensure_apiname():
         ]
     for x, exp in cases:
         yield check_ensure_apiname, x, exp
+
+def check_sortedbytype(x, exp):
+    obs = sortedbytype(x)
+    assert_equal(exp, obs)
+
+def test_sortedbytype():
+    cases = [
+        (['a', (1, 2), 'b'], ['a', 'b', (1, 2)]),
+        (['a', 1, (1, 2), 10.0, 'b'], [10.0, 1, 'a', 'b', (1, 2)]),
+        ]
+    for x, exp in cases:
+        yield check_sortedbytype, x, exp

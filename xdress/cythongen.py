@@ -21,7 +21,7 @@ from copy import deepcopy
 from pprint import pprint
 
 from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
-    isvardesc, guess_language, newoverwrite
+    isvardesc, guess_language, newoverwrite, sortedbytype
 from .plugins import Plugin
 from .typesystem import TypeSystem, TypeMatcher, MatchAny
 
@@ -114,8 +114,8 @@ def cpppxd_sorted_names(mod, ts):
                 break
         else:
             names.append(name)
-    names += sorted([name for name, desc in  mod.items() if isvardesc(desc)])
-    names += sorted([name for name, desc in  mod.items() if isfuncdesc(desc)])
+    names += sortedbytype([name for name, desc in  mod.items() if isvardesc(desc)])
+    names += sortedbytype([name for name, desc in  mod.items() if isfuncdesc(desc)])
     return names
 
 

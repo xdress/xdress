@@ -396,7 +396,18 @@ def infer_format(filename, format):
         raise ValueError("file format could not be determined.")
     return format
 
-
+def sortedbytype(iterable):
+    """Sorts an iterable by types first, then value."""
+    items = {}
+    for x in iterable:
+        t = type(x).__name__
+        if t not in items:
+            items[t] = []
+        items[t].append(x)
+    rtn = []
+    for t in sorted(items.keys()):
+        rtn.extend(sorted(items[t]))
+    return rtn
 
 nyansep = r'~\_/' * 17 + '~=[,,_,,]:3'
 """WAT?!"""
