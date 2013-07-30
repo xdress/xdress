@@ -209,8 +209,11 @@ class RunControl(object):
             return self._dict[key]
         elif key in self.__dict__:
             return self.__dict__[key]
-        else:
+        elif key in self.__class__.__dict__:
             return self.__class__.__dict__[key]
+        else:
+            msg = "RunControl object has no attribute {0!r}.".format(key)
+            raise AttributeError(msg)
 
     def __setattr__(self, key, value):
         if key.startswith('_'):
@@ -225,8 +228,11 @@ class RunControl(object):
             del self._dict[key]
         elif key in self.__dict__:
             del self.__dict__[key]
-        else:
+        elif key in self.__class__.__dict__:
             del self.__class__.__dict__[key]
+        else:
+            msg = "RunControl object has no attribute {0!r}.".format(key)
+            raise AttributeError(msg)
 
     def __iter__(self):
         return iter(self._dict)
