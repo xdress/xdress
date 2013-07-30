@@ -501,7 +501,6 @@ def merge_descriptions(descriptions):
     for methkey, methval in list(methods.items()):
         if methval is None: 
             methname = methkey if isinstance(methkey, basestring) else methkey[0]
-            print(methname, methkey, name)
             if methname[0].endswith(name):
                 del methods[methkey]  
     return desc
