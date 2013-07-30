@@ -1,0 +1,153 @@
+========================
+XDress 0.3 Release Notes
+========================
+XDress is an automatic wrapper generator for C/C++ written in pure Python. Currently,
+xdress may generate Python bindings (via Cython) for C++ classes, functions, and 
+certain variable types. It also contains idiomatic wrappers for C++ standard library 
+containers (sets, vectors, maps). In the future, other tools and bindings will be 
+supported.
+
+The main enabling feature of xdress is a dynamic type system that was designed with
+the purpose of API generation in mind.
+
+Release highlights:
+
+  - C++ template class & function support
+  - Automatic docstring generation via dOxygen
+  - A complete type system implementation refactor
+  - Wrapped names may be different than source names, 
+    allowing automatic PEP-8-ification
+  - A plethora of useful bug fixes
+
+Please visit the website for more information: http://xdress.org/
+
+Ask questions on the mailing list: xdress@googlegroups.com
+
+Download the code from GitHub: http://github.com/xdress/xdress
+
+XDress is free & open source (BSD 2-clause license) and requires Python 2.7, 
+NumPy 1.5+, Cython 0.19+, and optionally GCC-XML, pycparser, dOxygen, and lxml.
+
+New Features
+============
+
+C++ Template Support
+---------------------
+The most requested feature following SciPy 2013 was full and complete support 
+for C++ templates.  It is here!  Template instantiations are now automatically 
+discovered, described, and wrapped.  The only exception to this is that 
+template member functions are *not* automatically discovered due to a defect in 
+GCC-XML.  Template methods must, therefore, be added by hand in a sidecar file.
+See the FAQ for more details.
+
+dOxygen Docstrings
+------------------
+A new plugin called ``xdress.doxygen`` has been added which automatically 
+scrapes the source code for documentation using dOxygen.  These are then 
+automatically inserted as docstrings into the wrappers that are generated. These
+docstrings follow the numpydoc convention. 
+
+Type System Refactor
+--------------------
+The type system has undergone a complete reactor to make it more user-friendly 
+and expose a lot of its internals.  Previously, the type system was a collection 
+of functions and module-level private containers.  All of this has been moved into 
+a new ``TypeSystem`` class whose attributes and methods are almost all public.
+This enables a number of potentially useful features.
+
+* Type systems may be customized in the xdressrc.py file.
+* Type systems may be customized in side car files.
+* Type systems can now persist and load themselves.  This enables saving 
+  a type system when wrapping one project and loading it in as a dependency 
+  in future projects.
+* Easier testing
+
+As a consequence, most other parts of xdress must now hold a reference to a type
+system object.  Before, it was sufficient to import the type system module.
+
+API Named Tuple
+---------------
+A new named tuple class ``apiname`` has been added.  This allows for a broader 
+selection of how users can choose to write names in the classes, functions, and
+variables list in the run control file.  Possible options now include::
+
+    from xdress.utils import apiname
+    classes = [
+        (srcname, srcfile,),
+        (srcname, srcfile, tarfile,),
+        (srcname, srcfile, tarfile, tarname),
+        [srcname, srcfile, tarfile, tarname],
+        {'srcname': a, 'srcfile': b, 'tarfile': c, 'tarname': d},
+        apiname(srcname, srcfile, tarfile, tarname),  
+        ]
+
+This allows the target name (ie the name in the wrapper) to be distinct from 
+the name that is in the C/C++ source code (ie the source name).  This is very 
+useful for customizing APIs because xdress takes care of the mapping for you!
+
+PEP-8 Compliance Plugin
+-----------------------
+A new plugin called ``xdress.pep8names`` has been added which ensures that 
+all target names for API elements are PEP-8 compliant for that type.  If the
+target name is not PEP-8 complaint then it converts it to a compliant version 
+for you.  Subversive?  That's the point!  Functions and variables are converted
+to lowercase_with_underscores while classes are converted to CapCase.
+
+Description Filtering Plugin
+----------------------------
+Sometimes autoall will expose too much.  To avoid certain API elements while
+still automatically finding other names, the ``xdress.descfilter`` plugin allows
+you to skip methods, attributes, and types that the you doesn't feel are appropriate
+to expose.  This is also a useful stop-gap for data types that have not yet been 
+implemented into the xdress type system.
+
+Tab Completion in BASH
+----------------------
+Through the power and magic of the argcomplete package, all arguments and options
+for all plugins now have tab-completion enabled in BASH.  Install argcomplete
+and then add the following lines to your ``~/.bashrc`` file::
+
+    # Enable completion for xdress
+    eval "$(register-python-argcomplete xdress)"
+
+Major Bug Fixes
+===============
+
+* Enums and functions pointers were noticeably absent from the GCC-XML describer.
+  This has been rectified.
+
+* Classes and structs are now registered into the type system earlier.  This allows
+  them to be used in other plugins.  This includes stlwrap.  It is now possible 
+  and easy to create custom numpy dtypes for any struct or C++ class.
+
+* Fixed segfaults with custom dtypes
+
+* Fixed build issue when only vectors were present in stlcontainers.
+
+* The global namespace is now correctly represented by None, rather than '::',
+  when using GCC-XML.
+
+Join in the Fun!
+================
+If you are interested in using xdress on your project (and need help), contributing 
+back to xdress, starting up a development team, or writing your own code generation
+plugin tool, please let us know. Participation is very welcome!
+
+Authors
+=======
+- `Anthony Scopatz <http://scopatz.com/>`_
+- Spencer Lyon
+- John Wiggins *
+- Matt McCormick * 
+- Brad Buran
+
+An * indicates a first time contributor.
+
+Links
+=====
+
+1. Homepage - http://xdress.org/
+2. Mailing List - xdress@googlegroups.com
+3. GitHub Organization - https://github.com/xdress
+4. numpydoc - https://pypi.python.org/pypi/numpydoc
+5. argcomplete - https://argcomplete.readthedocs.org/en/latest/
