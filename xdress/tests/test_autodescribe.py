@@ -1,5 +1,6 @@
 from __future__ import print_function
 import os
+from pprint import pprint
 
 from xdress.typesystem import TypeSystem
 from xdress import cythongen as cg
@@ -9,8 +10,6 @@ import nose
 from nose.tools import assert_equal
 
 from numpy.testing import dec
-
-import pprint
 
 ts = TypeSystem()
 
@@ -90,8 +89,9 @@ full_toaster_desc = {
 def test_merge_descriptions():
     obs = ad.merge_descriptions([exp_toaster_desc, meta_toaster_desc])
     exp = full_toaster_desc
+    pprint(exp)
+    pprint(obs)
     assert_equal(obs, exp)
-
 
 @dec.skipif(ad.pycparser is None)
 def test_pycparser_describe_device_measure():
@@ -115,8 +115,8 @@ def test_pycparser_describe_device_measure():
                                                        ('ERROR_FAILED_INIT', 1))),
             }
            }
-    pprint.pprint(obs)
-    pprint.pprint(exp)
+    #pprint(obs)
+    #pprint(exp)
     assert_equal(obs, exp)
 
 @dec.skipif(ad.pycparser is None)
@@ -133,8 +133,8 @@ def test_pycparser_describe_device_init():
                                                        ('ERROR_FAILED_INIT', 1))),
             }
            }
-    pprint.pprint(exp)
-    pprint.pprint(obs)
+    #pprint(exp)
+    #pprint(obs)
     assert_equal(exp, obs)
 
 @dec.skipif(ad.pycparser is None)
@@ -155,8 +155,8 @@ def test_pycparser_describe_device_descriptor_tag():
             },
            'methods': {},
            }
-    pprint.pprint(obs)
-    pprint.pprint(exp)
+    #pprint(obs)
+    #pprint(exp)
     assert_equal(obs, exp)
 
 if __name__ == '__main__':
