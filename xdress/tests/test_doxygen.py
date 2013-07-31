@@ -125,9 +125,9 @@ def test_funcdocstr():
 
 Parameters
 ----------
-where : str
-
 howFast : float32
+
+where : str
 
 when : Date
 
