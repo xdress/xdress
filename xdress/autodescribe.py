@@ -453,7 +453,7 @@ class GccxmlBaseDescriber(object):
         if name.startswith('_') or name in FORBIDDEN_NAMES:
             warn_forbidden_name(name, self.name)
             return
-        demangled = node.attrib.get('demangled', None)
+        demangled = node.attrib.get('demangled', "")
         demangled = demangled if name + '<' in demangled \
                                  and '>' in demangled else None
         if demangled is None:
