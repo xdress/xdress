@@ -58,9 +58,10 @@ car_dict = {'file_name': 'Cars.h',
                              'detaileddescription': '',
                              'ret_type': 'bool'},
                  'navigate': {'arg_string': '(str where, float32 howFast, Date when)',
-                              'args': OrderedDict({'howFast': {'type': 'float32'},
-                                       'when': {'type': 'Date'},
-                                       'where': {'type': 'str'}}),
+                              'args': OrderedDict([('where', {'type': 'str'}),
+                                                  ('howFast', {'type': 'float32'}),
+                                                  ('when', {'type': 'Date'}),
+                                                   ]),
                               'briefdescription': 'Has the car drive to a specified location',
                               'definition': 'std::vector< int32> util::Car::navigate',
                               'detaileddescription': '',
@@ -125,9 +126,9 @@ def test_funcdocstr():
 
 Parameters
 ----------
-howFast : float32
-
 where : str
+
+howFast : float32
 
 when : Date
 
