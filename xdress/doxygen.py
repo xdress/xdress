@@ -83,6 +83,7 @@ from __future__ import print_function
 import re
 import os
 import subprocess
+from collections import OrderedDict
 from textwrap import TextWrapper
 from .plugins import Plugin
 from .utils import newoverwrite
@@ -686,6 +687,7 @@ def _parse_func(f_xml):
     mem_dict['ret_type'] = f_xml.find('type').text
 
     # Get argument types and names
+    # args = OrderedDict()
     args = {}
     for param in f_xml.findall('param'):
         # add tuple of  arg type, arg name to arg_types list
