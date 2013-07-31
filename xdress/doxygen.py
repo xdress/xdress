@@ -282,6 +282,7 @@ def func_docstr(func_dict, is_method=False):
             if 'desc' in args[arg]:
                 arg_str += '\n%s' % (args[arg]['desc'])
             params.append(arg_str)
+        params = tuple(params)
 
     returning = func_dict['ret_type']
     if returning is None:
