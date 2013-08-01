@@ -1160,7 +1160,7 @@ class XDressPlugin(Plugin):
 
     def update_argparser(self, parser):
         parser.add_argument('--stlcontainers-module', action='store', 
-                        dest='stlcontainers_module', help="stlcontainers module name")
+                dest='stlcontainers_module', help=self.rcdocs["stlcontainers_module"])
         parser.add_argument('--make-stlcontainers', action='store_true',
                     dest='make_stlcontainers', help="make C++ STL container wrappers")
         parser.add_argument('--no-make-stlcontainers', action='store_false',
