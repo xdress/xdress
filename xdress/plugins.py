@@ -53,6 +53,20 @@ Interface
     ``RunControl`` class for more details.  Generally it is not advised for two
     plugins to share run control parameter names unless you *really* know what 
     you are doing.
+:rcupdaters: This may be a dict, another mapping, a function which returns a mapping.
+    The keys are the string names of the run control parameters.  The values
+    are callables which indicate how to update or merge two rc parameters with 
+    this key. The callable should take two instances and return a copy that 
+    represents the merger, e.g. ``lambda old, new: old + new``.  One useful example 
+    is for paths.  Normally you want new paths to prepend old ones::
+
+        rcupdaters = {'includes': lambda old, new: list(new) + list(old)}
+
+    If a callable is not supplied for an rc parameter then the the default 
+    behaviour is to simply override the old value with the new one.
+:rcdocs: This may be a dict, another mapping, a function which returns a mapping.
+    The keys are the string names of the run control parameters.  The values
+    are docstrings for the rc parameters.
 :update_argparser(parser):  This is method that takes an argparse.ArgumentParser() 
     instance and modifies it in-place.  This allows for run control parameters to be 
     exposed as command line arguments and options.  Default arguments in 
@@ -127,6 +141,7 @@ import io
 import sys
 import importlib
 import argparse
+import textwrap
 
 from .utils import RunControl, NotSpecified, nyansep
 
@@ -160,6 +175,12 @@ class Plugin(object):
 
     If a callable is not supplied for an rc parameter then the the default 
     behaviour is to simply override the old value with the new one.  
+    """
+
+    rcdocs = {}
+    """This may be a dict, another mapping, a function which returns a mapping.
+    The keys are the string names of the run control parameters.  The values
+    are docstrings for the rc parameters.
     """
 
     def __init__(self):
@@ -247,28 +268,33 @@ class Plugins(object):
        
     """
 
-    def __init__(self, modnames):
+    def __init__(self, modnames, loaddeps=True):
         """Parameters
         ----------
         modnames : list of str
             The module names where the plugins live.  Plugins must have the name
             'XDressPlugin' in the these modules.
+        loaddeps: bool, optional
+            Flag for automatically loading dependencies, should only be False in 
+            a limited set of circumstances.
 
         """
         self.plugins = []
         self.modnames = []
-        self._load(modnames)
+        self._load(modnames, loaddeps=loaddeps)
         self.parser = None
         self.rc = None
+        self.rcdocs = {}
 
-    def _load(self, modnames):
+    def _load(self, modnames, loaddeps=True):
         for modname in modnames:
             if modname in self.modnames:
                 continue
             mod = importlib.import_module(modname)
             plugin = mod.XDressPlugin()
             req = plugin.requires() if callable(plugin.requires) else plugin.requires
-            self._load(req)
+            req = req if loaddeps else ()
+            self._load(req, loaddeps=loaddeps)
             self.modnames.append(modname)
             self.plugins.append(plugin)
 
@@ -291,6 +317,7 @@ class Plugins(object):
         full default RunControl() instance.  This has also merged all of 
         the rc updaters in the process."""
         rc = RunControl()
+        rcdocs = self.rcdocs
         for plugin in self.plugins:
             drc = plugin.defaultrc
             if callable(drc):
@@ -300,6 +327,10 @@ class Plugins(object):
             if callable(uprc):
                 uprc = uprc()
             rc._updaters.update(uprc)
+            docs = plugin.rcdocs
+            if callable(docs):
+                docs = docs()
+            rcdocs.update(docs)
         self.rc = rc
         return rc
 
@@ -350,3 +381,28 @@ class Plugins(object):
             raise
         else:
             sys.exit(str(err))
+
+def summarize_rcdocs(modnames, headersep="=", maxdflt=2000):
+    """For a list of plugin module names, return a rST string that 
+    summarizes the docstrings for all run control parameters.
+    """
+    nods = "No docstring provided."
+    template = ":{0!s}: {1!s}, *default:* {2}."
+    docstrs = []
+    tw = textwrap.TextWrapper(width=80, subsequent_indent=" "*4)
+    for modname in modnames:
+        moddoc = str(modname)
+        moddoc += "\n"+ headersep * len(moddoc) + "\n"
+        plugins = Plugins([modname], loaddeps=False)  # get a lone plugin
+        plugins.merge_rcs()
+        rc = plugins.rc
+        rcdocs = plugins.rcdocs
+        for key in sorted(rc._dict.keys()):
+            dflt = getattr(rc, key)
+            rdflt = repr(dflt)
+            rdflt = rdflt if len(rdflt) <= maxdflt else "{0}.{1} instance".format(
+                    dflt.__class__.__module__, dflt.__class__.__name__)
+            rcdoc = template.format(key, rcdocs.get(key, nods), rdflt)
+            moddoc += "\n".join(tw.wrap(rcdoc)) + '\n'
+        docstrs.append(moddoc)
+    return "\n\n\n".join(docstrs)

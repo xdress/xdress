@@ -21,6 +21,7 @@ Contents
 
     tutorial
     libref/index
+    rcdocs
     previous/index
     other/index
     faq
