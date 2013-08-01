@@ -961,6 +961,11 @@ class XDressPlugin(Plugin):
 
     rcupdaters = {'doxygen_config': merge_configs}
 
+    rcdocs = {
+        "doxygen_config": "A dictionary representation of a dOxygen configuration",
+        "doxyfile_name": "The dOxygen configuration file name",
+        }
+
     def setup(self, rc):
         """Need setup method to get project, output_dir, and src_dir from
         rc and put them in the default_doxygen_config before running

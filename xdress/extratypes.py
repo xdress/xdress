@@ -28,9 +28,14 @@ class XDressPlugin(Plugin):
         make_extra_types=True,
         )
 
+    rcdocs = {
+        "extra_types": "Module and header file name for xdress extra types.",
+        "make_extra_types": "Flag to enable / disable making the extra types module",
+        }
+
     def update_argparser(self, parser):
         parser.add_argument('--extra-types', action='store', dest='extra_types', 
-                            help="extra types name")
+                            help=self.rcdocs["extra_types"])
         parser.add_argument('--make-extra-types', action='store_true',
                             dest='make_extra_types', help="make extra types wrapper")
         parser.add_argument('--no-make-extra-types', action='store_false',

@@ -61,3 +61,45 @@ xdress.autodescribe
 :undefines: Unset additional macro definitions, *default:* [].
 :variables: A list of variable names in sequence, mapping, or apiname format,
     *default:* ().
+
+
+
+xdress.cythongen
+================
+:max_callbacks: The maximum number of callbacks for function pointers,
+    *default:* 8.
+
+
+
+xdress.descfilter
+=================
+:skipmethods: Method names to filter out from being wrapped, *default:*
+    NotSpecified.
+:skiptypes: The types to filter out from being wrapped, *default:* NotSpecified.
+
+
+
+xdress.doxygen
+==============
+:doxyfile_name: The dOxygen configuration file name, *default:* 'doxyfile'.
+:doxygen_config: A dictionary representation of a dOxygen configuration,
+    *default:* __builtin__.dict instance.
+
+
+
+xdress.extratypes
+=================
+:extra_types: Module and header file name for xdress extra types., *default:*
+    'xdress_extra_types'.
+:make_extra_types: Flag to enable / disable making the extra types module,
+    *default:* True.
+
+
+
+xdress.stlwrap
+==============
+:make_stlcontainers: Flag for enabling / disabling creating the C++ standard
+    library container wrappers., *default:* True.
+:stlcontainers: List of C++ standard library containers to wrap., *default:* [].
+:stlcontainers_module: Module name for C++ standard library container wrappers.,
+    *default:* 'stlcontainers'.

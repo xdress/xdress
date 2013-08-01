@@ -1447,9 +1447,13 @@ class XDressPlugin(Plugin):
 
     defaultrc = {'max_callbacks': 8}
 
+    rcdocs = {
+        "max_callbacks": "The maximum number of callbacks for function pointers", 
+        }
+
     def update_argparser(self, parser):
         parser.add_argument('--max-callbacks', type=int, dest="max_callbacks",
-                    help="the maximum number of callbacks for function pointers")
+                    help=self.rcdocs["max_callbacks"])
 
     def setup(self, rc):
         if rc.max_callbacks < 1:

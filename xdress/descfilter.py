@@ -188,6 +188,11 @@ class XDressPlugin(Plugin):
     defaultrc = {'skiptypes': NotSpecified,
                  'skipmethods': NotSpecified}
 
+    rcdocs = {
+        'skiptypes': 'The types to filter out from being wrapped',
+        'skipmethods': 'Method names to filter out from being wrapped',
+        }
+
     def setup(self, rc):
         if rc.skiptypes is NotSpecified:
             return

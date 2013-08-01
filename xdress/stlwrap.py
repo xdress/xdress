@@ -1150,6 +1150,14 @@ class XDressPlugin(Plugin):
         make_stlcontainers=True,
         )
 
+    rcdocs = {
+        "stlcontainers": "List of C++ standard library containers to wrap.",
+        "stlcontainers_module": ("Module name for C++ standard library "
+                                 "container wrappers."),
+        "make_stlcontainers": ("Flag for enabling / disabling creating the "
+                               "C++ standard library container wrappers."),
+        }
+
     def update_argparser(self, parser):
         parser.add_argument('--stlcontainers-module', action='store', 
                         dest='stlcontainers_module', help="stlcontainers module name")
