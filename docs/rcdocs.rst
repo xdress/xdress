@@ -5,15 +5,59 @@ Run Control Parameters
 
 xdress.base
 ===========
-:bash_completion: No docstring provided., *default:* True.
-:builddir: No docstring provided., *default:* 'build'.
-:debug: No docstring provided., *default:* False.
-:dumpdesc: No docstring provided., *default:* False.
-:package: No docstring provided., *default:* NotSpecified.
-:packagedir: No docstring provided., *default:* NotSpecified.
-:plugins: No docstring provided., *default:* ('xdress.autoall',
-    'xdress.cythongen', 'xdress.stlwrap').
-:rc: No docstring provided., *default:* 'xdressrc.py'.
-:sourcedir: No docstring provided., *default:* 'src'.
-:ts: No docstring provided., *default:* xdress.typesystem.TypeSystem instance.
-:verbose: No docstring provided., *default:* False.
+:bash_completion: Flag for enabling / disabling BASH completion. This is only
+    relevant when using argcomplete., *default:* True.
+:builddir: Path to build directory, *default:* 'build'.
+:debug: Build in debugging mode, *default:* False.
+:dumpdesc: Print the description cache, *default:* False.
+:package: The Python package name for the generated wrappers, *default:*
+    NotSpecified.
+:packagedir: Path to package directory, same as 'package' if not specified,
+    *default:* NotSpecified.
+:plugins: Plugins to include, *default:* ('xdress.autoall', 'xdress.cythongen',
+    'xdress.stlwrap').
+:rc: Path to run control file, *default:* 'xdressrc.py'.
+:sourcedir: Path to source directory, *default:* 'src'.
+:ts: The xdress type system., *default:* xdress.typesystem.TypeSystem instance.
+:verbose: Print more output., *default:* False.
+
+
+
+xdress.autoall
+==============
+:classes: A list of class names in sequence, mapping, or apiname format,
+    *default:* ().
+:clear_parser_cache_period: Number of parser calls to perform before clearing
+    the internal cache.  This prevents nasty memory overflow issues., *default:*
+    50.
+:defines: Set additional macro definitions, *default:* ['XDRESS'].
+:dumpast: Prints the abstract syntax tree of a file., *default:* NotSpecified.
+:functions: A list of function names in sequence, mapping, or apiname format,
+    *default:* ().
+:includes: Additional include directories, *default:* [].
+:parsers: Parser(s) name, list, or dict, *default:* {'c': ['pycparser',
+    'gccxml', 'clang'], 'c++': ['gccxml', 'clang', 'pycparser']}.
+:undefines: Unset additional macro definitions, *default:* [].
+:variables: A list of variable names in sequence, mapping, or apiname format,
+    *default:* ().
+
+
+
+xdress.autodescribe
+===================
+:classes: A list of class names in sequence, mapping, or apiname format,
+    *default:* ().
+:clear_parser_cache_period: Number of parser calls to perform before clearing
+    the internal cache.  This prevents nasty memory overflow issues., *default:*
+    50.
+:defines: Set additional macro definitions, *default:* ['XDRESS'].
+:dumpast: Prints the abstract syntax tree of a file., *default:* NotSpecified.
+:env: The target environment computed by the autodescriber., *default:* {}.
+:functions: A list of function names in sequence, mapping, or apiname format,
+    *default:* ().
+:includes: Additional include directories, *default:* [].
+:parsers: Parser(s) name, list, or dict, *default:* {'c': ['pycparser',
+    'gccxml', 'clang'], 'c++': ['gccxml', 'clang', 'pycparser']}.
+:undefines: Unset additional macro definitions, *default:* [].
+:variables: A list of variable names in sequence, mapping, or apiname format,
+    *default:* ().

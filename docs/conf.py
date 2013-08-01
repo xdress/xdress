@@ -230,5 +230,7 @@ Run Control Parameters
 """
 rcdocs += summarize_rcdocs([
     'xdress.base',
+    'xdress.autoall',
+    'xdress.autodescribe',
     ])
 newoverwrite(rcdocs, 'rcdocs.rst')

@@ -39,23 +39,38 @@ class XDressPlugin(Plugin):
     # Sweet hack because ts.update() returns None
     rcupdaters = {'ts': (lambda old, new: old.update(new) or old)}
 
+    rcdocs = {
+        'rc': "Path to run control file",
+        'plugins': "Plugins to include",
+        'debug': 'Build in debugging mode', 
+        'ts': "The xdress type system.",
+        'verbose': "Print more output.",
+        'dumpdesc': "Print the description cache",
+        'package': "The Python package name for the generated wrappers", 
+        'packagedir': "Path to package directory, same as 'package' if not specified",
+        'sourcedir': "Path to source directory",
+        'builddir': "Path to build directory",
+        'bash_completion': ("Flag for enabling / disabling BASH completion. "
+                            "This is only relevant when using argcomplete."),
+        }
+
     def update_argparser(self, parser):
-        parser.add_argument('--rc', help="path to run control file")
-        parser.add_argument('--plugins', nargs="+", help="plugins to include")
+        parser.add_argument('--rc', help=self.rcdocs['rc'])
+        parser.add_argument('--plugins', nargs="+", help=self.rcdocs["plugins"])
         parser.add_argument('--debug', action='store_true', 
-                            help='build in debugging mode')
+                            help=self.rcdocs["debug"])
         parser.add_argument('-v', '--verbose', action='store_true', dest='verbose',
-                            help="print more output")
+                            help=self.rcdocs["verbose"])
         parser.add_argument('--dumpdesc', action='store_true', dest='dumpdesc',
-                            help="print description cache")
+                            help=self.rcdocs["dumpdesc"])
         parser.add_argument('--package', action='store', dest='package',
-                            help="package name")
+                            help=self.rcdocs["package"])
         parser.add_argument('--packagedir', action='store', dest='packagedir',
-                            help="path to package directory")
+                            help=self.rcdocs["packagedir"])
         parser.add_argument('--sourcedir', action='store', dest='sourcedir',
-                            help="path to source directory")
+                            help=self.rcdocs["sourcedir"])
         parser.add_argument('--builddir', action='store', dest='builddir',
-                            help="path to build directory")
+                            help=self.rcdocs["build"])
         parser.add_argument('--bash-completion', action='store_true',
                             help="enable bash completion", dest="bash_completion")
         parser.add_argument('--no-bash-completion', action='store_false',

@@ -1847,6 +1847,13 @@ class XDressPlugin(astparsers.ParserPlugin):
         rc.env = {}
         return rc
 
+    def rcdocs(self):
+        """This plugin adds the env dictionary to the rc."""
+        docs = {}
+        docs.update(super(XDressPlugin, self).rcdocs)
+        docs['env'] = "The target environment computed by the autodescriber."
+        return docs
+
     def setup(self, rc):
         """Expands variables, functions, and classes in the rc based on
         copying src filenames to tar filename."""

@@ -348,23 +348,38 @@ class ParserPlugin(Plugin):
 
     rcupdaters = {'includes': lambda old, new: list(new) + list(old)}
 
+    rcdocs = {
+        'includes': "Additional include directories", 
+        'defines': "Set additional macro definitions",
+        'undefines': "Unset additional macro definitions",
+        'variables': ("A list of variable names in sequence, mapping, "
+                      "or apiname format"),
+        'functions': ("A list of function names in sequence, mapping, "
+                      "or apiname format"),
+        'classes': ("A list of class names in sequence, mapping, "
+                    "or apiname format"),
+        'parsers': "Parser(s) name, list, or dict",
+        'clear_parser_cache_period': ("Number of parser calls to perform before "
+                                      "clearing the internal cache.  This prevents "
+                                      "nasty memory overflow issues."),
+        'dumpast': "Prints the abstract syntax tree of a file.", 
+        }
+
     def update_argparser(self, parser):
         parser.add_argument('-I', '--includes', action='store', dest='includes', 
-                            nargs="+", help="additional include dirs")
+                            nargs="+", help=self.rcdocs["includes"])
         parser.add_argument('-D', '--defines', action='append', dest='defines', 
-                            nargs="+", help="set additional macro definitions")
+                            nargs="+", help=self.rcdocs["defines"])
         parser.add_argument('-U', '--undefines', action='append', dest='undefines',
-                            nargs="+", type=str, 
-                            help="unset additional macro definitions")
+                            nargs="+", type=str, help=self.rcdocs["undefines"])
         parser.add_argument('-p', action='store', dest='parsers',
-                            help="parser(s) name, list, or dict")
+                            help=self.rcdocs["parsers"])
         parser.add_argument('--clear-parser-cache-period', action='store', 
                             dest='clear_parser_cache_period', type=int,
-                            help=("Number of parser calls to perform before clearing "
-                                  "the internal cache."))
+                            help=self.rcdocs["clear_parser_cache_period"])
         parser.add_argument('--dumpast', action='store', 
                             dest='dumpast', metavar="FILE",
-                            help="prints the abstract syntax tree of a file.")
+                            help=self.rcdocs["dumpast"])
 
     def setup(self, rc):
         """Remember to call super() on subclasses!"""
