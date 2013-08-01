@@ -366,20 +366,20 @@ class ParserPlugin(Plugin):
         }
 
     def update_argparser(self, parser):
+        rcdocs = self.rcdocs() if callable(self.rcdocs) else self.rcdocs
         parser.add_argument('-I', '--includes', action='store', dest='includes', 
-                            nargs="+", help=self.rcdocs["includes"])
+                            nargs="+", help=rcdocs["includes"])
         parser.add_argument('-D', '--defines', action='append', dest='defines', 
-                            nargs="+", help=self.rcdocs["defines"])
+                            nargs="+", help=rcdocs["defines"])
         parser.add_argument('-U', '--undefines', action='append', dest='undefines',
-                            nargs="+", type=str, help=self.rcdocs["undefines"])
-        parser.add_argument('-p', action='store', dest='parsers',
-                            help=self.rcdocs["parsers"])
+                            nargs="+", type=str, help=rcdocs["undefines"])
+        parser.add_argument('-p', action='store', dest='parsers', 
+                            help=rcdocs["parsers"])
         parser.add_argument('--clear-parser-cache-period', action='store', 
                             dest='clear_parser_cache_period', type=int,
-                            help=self.rcdocs["clear_parser_cache_period"])
-        parser.add_argument('--dumpast', action='store', 
-                            dest='dumpast', metavar="FILE",
-                            help=self.rcdocs["dumpast"])
+                            help=rcdocs["clear_parser_cache_period"])
+        parser.add_argument('--dumpast', action='store', dest='dumpast', 
+                            metavar="FILE", help=rcdocs["dumpast"])
 
     def setup(self, rc):
         """Remember to call super() on subclasses!"""

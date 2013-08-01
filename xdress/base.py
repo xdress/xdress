@@ -70,7 +70,7 @@ class XDressPlugin(Plugin):
         parser.add_argument('--sourcedir', action='store', dest='sourcedir',
                             help=self.rcdocs["sourcedir"])
         parser.add_argument('--builddir', action='store', dest='builddir',
-                            help=self.rcdocs["build"])
+                            help=self.rcdocs["builddir"])
         parser.add_argument('--bash-completion', action='store_true',
                             help="enable bash completion", dest="bash_completion")
         parser.add_argument('--no-bash-completion', action='store_false',
