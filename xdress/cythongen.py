@@ -979,10 +979,11 @@ def _gen_default_constructor(desc, attrs, ts, doc=None, srcpxd_filename=None):
     if desc['construct'] == 'class':
         fcall = 'self._inst = new {0}()'.format(ct)
     elif desc['construct'] == 'struct':
-        fcall = 'self._inst = malloc(sizeof({0}))'.format(ct)
+        fcall = ('self._inst = malloc(sizeof({0}))\n'
+                 '(<{0} *> self._inst)[0] = {0}()').format(ct)
     else:
         raise ValueError('construct must be either "class" or "struct".')
-    lines.append(indent(fcall))
+    lines.extend(indent(fcall, join=False))
     for a, _ in attrs:
         lines.append(indent("if {0} is not None:".format(a)))
         lines.append(indent("self.{0} = {0}".format(a), 8))
@@ -990,7 +991,7 @@ def _gen_default_constructor(desc, attrs, ts, doc=None, srcpxd_filename=None):
     return lines
 
 def _gen_constructor(name, name_mangled, classname, args, ts, doc=None,
-                     srcpxd_filename=None, inst_name="self._inst"):
+                     srcpxd_filename=None, inst_name="self._inst", construct="class"):
     argfill = ", ".join(['self'] + [a[0] for a in args if 2 == len(a)] + \
                         ["{0}={1}".format(a[0], a[2]) for a in args if 3 == len(a)])
     lines  = ['def {0}({1}):'.format(name_mangled, argfill)]
@@ -1008,7 +1009,13 @@ def _gen_constructor(name, name_mangled, classname, args, ts, doc=None,
     argvals = ', '.join([argrtns[a[0]] for a in args])
     classname = classname if srcpxd_filename is None else \
                     "{0}.{1}".format(srcpxd_filename.rsplit('.', 1)[0], classname)
-    fcall = 'self._inst = new {0}({1})'.format(classname, argvals)
+    if construct == 'class':
+        fcall = 'self._inst = new {0}({1})'.format(classname, argvals)
+    elif construct == 'struct':
+        fcall = ('self._inst = malloc(sizeof({0}))\n'
+                 '(<{0} *> self._inst)[0] = {0}({1})').format(classname, argvals)
+    else:
+        raise ValueError('construct must be either "class" or "struct".')
     func_call = indent(fcall, join=False)
     lines += decls
     lines += argbodies
@@ -1264,10 +1271,12 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
                 mangled_mnames[mkey] = mname_mangled
             mdoc = desc.get('docstrings', {}).get('methods', {}).get(mname, '')
             mdoc = _doc_add_sig(mdoc, mcyname, margs)
-            clines += _gen_constructor(mcyname, mname_mangled,
-                                       desc['name'], margs, ts, doc=mdoc,
-                                       srcpxd_filename=desc['srcpxd_filename'],
-                                       inst_name=minst_name)
+            construct = desc['construct']
+            if construct == 'struct':
+                cimport_tups.add(('libc.stdlib', 'malloc'))
+            clines += _gen_constructor(mcyname, mname_mangled, desc['name'], margs, 
+                        ts, doc=mdoc, srcpxd_filename=desc['srcpxd_filename'],
+                        inst_name=minst_name, construct=construct)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
                 nm = dict([(k, v) for k, v in mangled_mnames.items() \
