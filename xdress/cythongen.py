@@ -357,8 +357,11 @@ def classcpppxd(desc, exceptions=True, ts=None):
     else:
         d['name'] = ts.cython_classname(name)[1]
         d['alias'] = ' ' + _format_alias(desc, ts)
-    construct_kinds = {'struct': 'struct', 'class': 'cppclass'}
-    d['construct_kind'] = construct_kinds[desc.get('construct', 'class')]
+    #construct_kinds = {'struct': 'struct', 'class': 'cppclass'}
+    #d['construct_kind'] = construct_kinds[desc.get('construct', 'class')]
+    lang = guess_language(desc['source_filename'])
+    construct_kinds = {'c': 'struct', 'c++': 'cppclass'}
+    d['construct_kind'] = construct_kinds[lang]
     inc = set(['c'])
 
     cimport_tups = set()
