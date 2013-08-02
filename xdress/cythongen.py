@@ -1532,6 +1532,8 @@ def _exception_str(exceptions, srcfile, rtntype, ts):
         return "except " + exceptions
     lang = guess_language(srcfile)
     if lang == 'c':
+        if rtntype is None:
+            return "except -1"  # helpful when we accidentally mis-guessed C for C++
         rtntype = ts.canon(rtntype)
         if rtntype in _exc_c_base:
             return "except -1"

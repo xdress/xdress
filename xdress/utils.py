@@ -310,6 +310,7 @@ _head_exts = {
 _exts_lang = {
     'c': 'c',
     'h': 'c',
+    'cc': 'c++',
     'cpp': 'c++',
     'hpp': 'c++',
     'cxx': 'c++',

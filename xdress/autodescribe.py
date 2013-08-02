@@ -762,7 +762,8 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
                 ois = ", ".join(["{0!r} ({1!r})".format(self._filemap[v], v) \
                                                  for v in sorted(self.onlyin)])
                 msg = msg.format(self.name, self._filemap[fid], fid, ois)
-                raise RuntimeError(msg)
+                raise RuntimeError(msg)            
+            self.desc['construct'] = node.tag.lower()
             self.visit_class(node)
         members = node.attrib.get('members', '').strip().split()
         children = [self._root.find(".//*[@id='{0}']".format(m)) for m in members]
