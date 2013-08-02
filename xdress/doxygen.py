@@ -1005,8 +1005,8 @@ class XDressPlugin(Plugin):
             try:
                 this_kls = classes[kls]
             except KeyError:
-                print("Couldn't find class %s in xml. Skipping it - " % (str(kls))
-                      + "it will not appear in wrapper docstrings.")
+                print(("doxygen: Couldn't find class {0!s} in xml. Skipping it - " 
+                       "it will not appear in wrapper docstrings.").format(kls))
                 continue
 
             prepend_fn = build_dir + os.path.sep + 'xml' + os.path.sep
