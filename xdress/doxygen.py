@@ -1102,14 +1102,22 @@ class XDressPlugin(Plugin):
             func = f.srcname
             func_mod = f.tarfile
 
+            if not isinstance(func, basestring):
+                # It must be a tuple because it is a template function
+                # import pdb; pdb.set_trace()
+
+                func_name = func[0]
+            else:
+                func_name = func
+
             # Pull out all parsed names that match the function name
             # This is necessary because overloaded funcs will have
             # multiple entries
-            matches = filter(lambda x: f[0] in x, funcs.keys())
+            matches = filter(lambda x: x.startswith(func_name), funcs.keys())
 
             if matches is not None:
                 if len(matches) == 1:
-                    f_ds = func_docstr(parse_function(funcs[f]))
+                    f_ds = func_docstr(parse_function(funcs[func_name]))
                 else:
                     # Overloaded function
                     ds_list = [func_docstr(parse_function(funcs[i]))
