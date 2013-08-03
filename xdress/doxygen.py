@@ -26,9 +26,9 @@ Usage
 The usage of this plugin is very straightforward and comes in two steps:
 
 1. Add ``xdress.doxygen`` to the list of plugins in your xdressrc.py
-2. Define one or both of the (optional) rc variables given below. If
-   These are not defined in xdressrc, the plugin will provide some sane
-   initial values.
+2. Define zero, or more of the (optional) rc variables given below.
+   If These are not defined in xdressrc, the plugin will provide some
+   sane initial values.
 
    a. ``doxygen_config``: A python dictionary mapping doxygen keys to
       their desired values. See
@@ -41,6 +41,10 @@ The usage of this plugin is very straightforward and comes in two steps:
       variable. The path is assumed to be relative to the directory
       where ``xdress`` is run. The default value for this variable is
       ``'doxyfile'``.
+   c. ``dox_template_ids``: This is list of strings that contain the
+      template identifiers used in the C++ source. This is necessary
+      for docstrings to be inserted for templated functions or classes.
+      The default value is ``['T', 'S']``.
 
 .. note::
 
@@ -83,10 +87,12 @@ from __future__ import print_function
 import re
 import os
 import subprocess
+import sys
 from collections import OrderedDict
 from textwrap import TextWrapper
 from .plugins import Plugin
-from .utils import newoverwrite
+from .utils import newoverwrite, parse_template
+from .typesystem import TypeMatcher, MatchAny
 
 # XML conditional imports
 try:
@@ -109,6 +115,10 @@ except ImportError:
                   import elementtree.ElementTree as etree
                 except ImportError:
                     pass
+
+if sys.version_info[0] >= 3:
+    basestring = str
+
 ##############################################################################
 ##
 ## -- Tools used in parsing
@@ -957,7 +967,8 @@ class XDressPlugin(Plugin):
     requires = ('xdress.base', 'xdress.autodescribe')
 
     defaultrc = {"doxygen_config": default_doxygen_config,
-                 "doxyfile_name": 'doxyfile'}
+                 "doxyfile_name": 'doxyfile',
+                 "dox_template_ids": ['T', 'S']}
 
     rcupdaters = {'doxygen_config': merge_configs}
 
@@ -981,6 +992,8 @@ class XDressPlugin(Plugin):
         docstrings to the desc dictionary.
         """
         print("doxygen: Running dOxygen")
+        fail_msg = "doxygen: Couldn't find {tt} {name} in xml. Skipping it"
+        fail_msg += " - it will not appear in wrapper docstrings."
 
         build_dir = rc.builddir
 
@@ -995,6 +1008,26 @@ class XDressPlugin(Plugin):
         # Parse index.xml and obtain list of classes and functions
         print("doxygen: Adding dOxygen to docstrings")
         classes, funcs = parse_index_xml(xml_dir + os.path.sep + 'index.xml')
+        tm_classes = {}
+        for i in classes.keys():
+            parsed_class = parse_template(i)
+            if isinstance(parsed_class, basestring):
+                # This happens when it isn't a template type
+                tm_classes[i] = TypeMatcher(i)
+            else:  # It should now be a tuple
+                # Replace template identifiers with MatchAny
+                p_list = []
+                for item in parsed_class:
+                    if item in rc.dox_template_ids:
+                        p_list.append(MatchAny)
+                    elif item == 'true':
+                        p_list.append(True)
+                    elif item == 'false':
+                        p_list.append(False)
+                    else:
+                        p_list.append(item)
+
+                tm_classes[i] = TypeMatcher(tuple(p_list))
 
         # Go for the classes!
         for c in rc.classes:
@@ -1005,12 +1038,19 @@ class XDressPlugin(Plugin):
             try:
                 this_kls = classes[kls]
             except KeyError:
-                print(("doxygen: Couldn't find class {0!s} in xml. Skipping it - " 
-                       "it will not appear in wrapper docstrings.").format(kls))
+                # See if maybe this is a template type...
+                for key, val in tm_classes.items():
+                    if val.matches(kls):
+                        this_kls = classes[key]
+                        break
+                else:
+                    print(fail_msg.format(tt='class', name=kls))
                 continue
 
-            prepend_fn = build_dir + os.path.sep + 'xml' + os.path.sep
-            this_kls['file_name'] = prepend_fn + this_kls['file_name']
+            if not this_kls['file_name'].startswith(build_dir):
+                prepend_fn = build_dir + os.path.sep + 'xml' + os.path.sep
+                this_kls['file_name'] = prepend_fn + this_kls['file_name']
+
             parsed = parse_class(this_kls)
 
             # Make docstrings dictionary if needed
@@ -1054,8 +1094,7 @@ class XDressPlugin(Plugin):
 
                     rc.env[kls_mod][kls]['docstrings']['methods'][m] = m_ds
                 else:
-                    print("Couldn't find method %s in xml. Skipping it" % (m)
-                          + " - it will not appear in wrapper docstrings.")
+                    print(fail_msg.format(tt='method', name=m))
                     continue
 
         # And on to the functions.
@@ -1063,14 +1102,22 @@ class XDressPlugin(Plugin):
             func = f.srcname
             func_mod = f.tarfile
 
+            if not isinstance(func, basestring):
+                # It must be a tuple because it is a template function
+                # import pdb; pdb.set_trace()
+
+                func_name = func[0]
+            else:
+                func_name = func
+
             # Pull out all parsed names that match the function name
             # This is necessary because overloaded funcs will have
             # multiple entries
-            matches = filter(lambda x: f[0] in x, funcs.keys())
+            matches = filter(lambda x: x.startswith(func_name), funcs.keys())
 
             if matches is not None:
                 if len(matches) == 1:
-                    f_ds = func_docstr(parse_function(funcs[f]))
+                    f_ds = func_docstr(parse_function(funcs[func_name]))
                 else:
                     # Overloaded function
                     ds_list = [func_docstr(parse_function(funcs[i]))
@@ -1084,6 +1131,7 @@ class XDressPlugin(Plugin):
                 rc.env[func_mod][func]['docstring'] = f_ds
 
             else:
+                print(fail_msg.format(tt='function', name=func))
                 print("Couldn't find function %s in xml. Skipping it" % (func)
                       + " - it will not appear in wrapper docstrings.")
                 continue
