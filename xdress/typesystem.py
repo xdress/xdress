@@ -1295,6 +1295,8 @@ class TypeSystem(object):
         for key, x in zip(self.template_types[t[0]], t[1:-1]):
             if isinstance(x, basestring):
                 val = self.humannames[x]
+            elif isinstance(x, int):
+                val = x
             elif x[0] in self.base_types:
                 val = self.humannames[x[0]]
             else:
