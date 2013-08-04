@@ -525,18 +525,11 @@ def split_template_args(s, open_brace='<', close_brace='>', separator=','):
     count = 0
     targ_name = ''
     for n in ns:
-        if isinstance(n, int):
-            continue
         count += int(open_brace in n)
         count -= int(close_brace in n)
         targ_name += n
         if count == 0:
-            targ_name = targ_name.strip()
-            try:
-                i_val = int(targ_name)
-                targs.append(i_val)
-            except:
-                targs.append(targ_name.strip())
+            targs.append(targ_name.strip())
             targ_name = ''
     return targs
 
