@@ -886,7 +886,6 @@ def parse_class(class_dict):
             if m_kind == 'function':
                 # do special stuff for functions
                 mem_dict = _parse_func(mem)
-
             elif m_kind == 'variable':
                 mem_dict = _parse_variable(mem)
 
@@ -1040,9 +1039,9 @@ class XDressPlugin(Plugin):
             kls_mod = c.tarfile
 
             # Parse the class
-            try:
+            if kls in classes:
                 this_kls = classes[kls]
-            except KeyError:
+            else:
                 # See if maybe this is a template type...
                 for key, val in tm_classes.items():
                     if val.matches(kls):
