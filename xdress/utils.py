@@ -519,7 +519,7 @@ def flatten(iterable):
 
 def split_template_args(s, open_brace='<', close_brace='>', separator=','):
     """Takes a string with template specialization and returns a list
-    of the argument values."""
+    of the argument values as strings."""
     targs = []
     ns = s.split(open_brace, 1)[-1].rsplit(close_brace, 1)[0].split(separator)
     count = 0

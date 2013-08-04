@@ -119,6 +119,8 @@ except ImportError:
 if sys.version_info[0] >= 3:
     basestring = str
 
+_LITERAL_INTS = re.compile('^\d+$')
+
 ##############################################################################
 ##
 ## -- Tools used in parsing
@@ -1024,6 +1026,8 @@ class XDressPlugin(Plugin):
                         p_list.append(True)
                     elif item == 'false':
                         p_list.append(False)
+                    elif _LITERAL_INTS.match(item) is not None:
+                        p_list.append(int(item))
                     else:
                         p_list.append(item)
 
