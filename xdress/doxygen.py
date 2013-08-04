@@ -1026,7 +1026,8 @@ class XDressPlugin(Plugin):
                         p_list.append(True)
                     elif item == 'false':
                         p_list.append(False)
-                    elif _LITERAL_INTS.match(item) is not None:
+                    elif isinstance(item, basestring) and \
+                         _LITERAL_INTS.match(item) is not None:
                         p_list.append(int(item))
                     else:
                         p_list.append(item)
