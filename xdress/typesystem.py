@@ -1179,8 +1179,9 @@ class TypeSystem(object):
         if not os.path.isfile(filename):
             raise RuntimeError("{0!r} not found.".format(filename))
         if format == 'pkl.gz':
-            with gzip.open(filename, 'rb') as f:
-                data = pickle.loads(f.read())
+            f = gzip.open(filename, 'rb')
+            data = pickle.loads(f.read())
+            f.close()
         elif format == 'pkl':
             with io.open(filename, 'rb') as f:
                 data = pickle.loads(f.read())
@@ -1208,8 +1209,9 @@ class TypeSystem(object):
         data = dict([(k, getattr(self, k, None)) for k in self.datafields])
         format = infer_format(filename, format)
         if format == 'pkl.gz':
-            with gzip.open(filename, mode) as f:
-                f.write(pickle.dumps(data, pickle.HIGHEST_PROTOCOL))
+            f = gzip.open(filename, mode)
+            f.write(pickle.dumps(data, pickle.HIGHEST_PROTOCOL))
+            f.close()
         elif format == 'pkl':
             with io.open(filename, mode) as f:
                 f.write(pickle.dumps(data, pickle.HIGHEST_PROTOCOL))
