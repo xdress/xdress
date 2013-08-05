@@ -564,16 +564,25 @@ class GccxmlBaseDescriber(object):
         return ('enum', node.attrib['name'], tuple(currenum))
 
     _fundemntal_to_base = {
-        'char': 'char',
+        'char': 'char', 
+        'unsigned char': 'uchar',
         'int16_t': 'int16',
-        'int': 'int32',
-        'long int': 'int64',
+        'short': 'int16',
+        'short int': 'int16',
+        'short unsigned int': 'uint16',
+        'unsigned short': 'uint16',
+        'int32_t': 'int32',
+        'int': 'int32', 
+        'long long': 'int64',
+        'long int': 'int64', 
         'unsigned int': 'uint32',
         'long unsigned int': 'uint64',
+        'unsigned long long': 'uint64',
+        'short unsigned int': 'uint16',
         'float': 'float32',
         'double': 'float64',
-        'complex': 'complex128',
-        'void': 'void',
+        'complex': 'complex128', 
+        'void': 'void', 
         'bool': 'bool',
         }
 
