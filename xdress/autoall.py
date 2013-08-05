@@ -7,7 +7,7 @@ This module is available as an xdress plugin by the name ``xdress.autoall``.
 
 Including this plugin enables the ``classes``, ``functions``, and ``variables``  
 run control parameters to have an asterix ('*') in the name positon (index 0).
-For example, rather tha writing::
+For example, rather than writing::
 
     classes = [
         ('People', 'people'),

@@ -6,7 +6,7 @@ import sys
 import json
 
 INFO = {
-    'version': '0.3-dev',
+    'version': '0.3-rc1',
 }
 
 

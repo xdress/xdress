@@ -19,45 +19,60 @@ This has the following usage::
     usage: Generates XDress API [-h] [--rc RC] [--plugins PLUGINS [PLUGINS ...]]
                                 [--debug] [-v] [--dumpdesc] [--package PACKAGE]
                                 [--packagedir PACKAGEDIR] [--sourcedir SOURCEDIR]
-                                [--builddir BUILDDIR] [--extra-types EXTRA_TYPES]
-                                [--make-extra-types] [--no-make-extra-types]
-                                [--stlcontainers-module STLCONTAINERS_MODULE]
-                                [--make-stlcontainers] [--no-make-stlcontainers]
+                                [--builddir BUILDDIR] [--bash-completion]
+                                [--no-bash-completion]
                                 [-I INCLUDES [INCLUDES ...]]
                                 [-D DEFINES [DEFINES ...]]
                                 [-U UNDEFINES [UNDEFINES ...]] [-p PARSERS]
+                                [--clear-parser-cache-period CLEAR_PARSER_CACHE_PERIOD]
+                                [--dumpast FILE] [--max-callbacks MAX_CALLBACKS]
+                                [--extra-types EXTRA_TYPES] [--make-extra-types]
+                                [--no-make-extra-types]
+                                [--stlcontainers-module STLCONTAINERS_MODULE]
+                                [--make-stlcontainers] [--no-make-stlcontainers]
 
     optional arguments:
       -h, --help            show this help message and exit
-      --rc RC               path to run control file
+      --rc RC               Path to run control file
       --plugins PLUGINS [PLUGINS ...]
-                            plugins to include
-      --debug               build in debugging mode
-      -v, --verbose         print more output
-      --dumpdesc            print description cache
-      --package PACKAGE     package name
+                            Plugins to include
+      --debug               Build in debugging mode
+      -v, --verbose         Print more output.
+      --dumpdesc            Print the description cache
+      --package PACKAGE     The Python package name for the generated wrappers
       --packagedir PACKAGEDIR
-                            path to package directory
+                            Path to package directory, same as 'package' if not
+                            specified
       --sourcedir SOURCEDIR
-                            path to source directory
-      --builddir BUILDDIR   path to build directory
+                            Path to source directory
+      --builddir BUILDDIR   Path to build directory
+      --bash-completion     enable bash completion
+      --no-bash-completion  disable bash completion
+      -I INCLUDES [INCLUDES ...], --includes INCLUDES [INCLUDES ...]
+                            Additional include directories
+      -D DEFINES [DEFINES ...], --defines DEFINES [DEFINES ...]
+                            Set additional macro definitions
+      -U UNDEFINES [UNDEFINES ...], --undefines UNDEFINES [UNDEFINES ...]
+                            Unset additional macro definitions
+      -p PARSERS            Parser(s) name, list, or dict
+      --clear-parser-cache-period CLEAR_PARSER_CACHE_PERIOD
+                            Number of parser calls to perform before clearing the
+                            internal cache. This prevents nasty memory overflow
+                            issues.
+      --dumpast FILE        Prints the abstract syntax tree of a file.
+      --max-callbacks MAX_CALLBACKS
+                            The maximum number of callbacks for function pointers
       --extra-types EXTRA_TYPES
-                            extra types name
+                            Module and header file name for xdress extra types.
       --make-extra-types    make extra types wrapper
       --no-make-extra-types
                             don't make extra types wrapper
       --stlcontainers-module STLCONTAINERS_MODULE
-                            stlcontainers module name
+                            Module name for C++ standard library container
+                            wrappers.
       --make-stlcontainers  make C++ STL container wrappers
       --no-make-stlcontainers
                             don't make C++ STL container wrappers
-      -I INCLUDES [INCLUDES ...], --includes INCLUDES [INCLUDES ...]
-                            additional include dirs
-      -D DEFINES [DEFINES ...], --defines DEFINES [DEFINES ...]
-                            set additional macro definitions
-      -U UNDEFINES [UNDEFINES ...], --undefines UNDEFINES [UNDEFINES ...]
-                            unset additional macro definitions
-      -p PARSERS            parser(s) name, list, or dict
 
 
 Sidecar Description Files
@@ -75,7 +90,8 @@ following top-level keys:
 
 :<names>: str, names of function and classes that are present in this source file.
     The value for each name key is a partial or full description dictionary for 
-    this module variable.
+    this module variable.  See ``autodescribe.py`` for more details on description
+    dictionaries.
 :docstring: str, optional, this is a documentation string for the module.  
 :extra: dict, optional, this stores arbitrary metadata that may be used with 
     different backends. It is not added by any auto-describe routine but may be

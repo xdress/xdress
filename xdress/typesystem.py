@@ -239,6 +239,15 @@ Refined type definitions that come stock with xdress::
         ('function_pointer', ('arguments', ('list', ('pair', 'str', 'type'))), ('returns', 'type')): ('void', '*'),
         }
 
+Major Classes Overview
+----------------------
+Holistically, the following classes are important to type system:
+
+* ``TypeSystem``:  This *is* the type system.
+* ``TypeMatcher``: An imutable type for matching types against a pattern.
+* ``MatchAny``: A singleton used to denote patterns.
+* ``typestr``: Various string representations of a type as properties.
+
 Type System API
 ===============
 

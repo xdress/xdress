@@ -81,6 +81,8 @@ xdress.descfilter
 
 xdress.doxygen
 ==============
+:dox_template_ids: Template argument names to hint to doxygen., *default:* ['T',
+    'S'].
 :doxyfile_name: The dOxygen configuration file name, *default:* 'doxyfile'.
 :doxygen_config: A dictionary representation of a dOxygen configuration,
     *default:* __builtin__.dict instance.

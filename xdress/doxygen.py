@@ -976,6 +976,7 @@ class XDressPlugin(Plugin):
     rcdocs = {
         "doxygen_config": "A dictionary representation of a dOxygen configuration",
         "doxyfile_name": "The dOxygen configuration file name",
+        "dox_template_ids": "Template argument names to hint to doxygen."
         }
 
     def setup(self, rc):

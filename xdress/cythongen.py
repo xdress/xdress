@@ -5,8 +5,8 @@ auto-describer, it sure helps!  The functions in this module are conceptually
 easy to understand -- given class descriptions they generate strings of Cython
 code -- their implementations do a lot of heavy lifting.
 
-This module is available as an xdress plugin by the name ``xdress.cythongen``.
-
+This module is available as an xdress plugin by the name ``xdress.cythongen``. 
+Note that while the module does not rely on the autodescriber the plugin does.
 
 :author: Anthony Scopatz <scopatz@gmail.com>
 
