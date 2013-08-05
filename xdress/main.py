@@ -109,8 +109,11 @@ generated ones.
 Awesome abuses/hacks/side effects are possible since these sidecar files are 
 pure Python code. One major use case is to modify the type system from within a 
 sidecar.  This is useful for adding refinement types or type specializations that
-are pertinent to just that source code.  (The modifications will affect the type 
-system globally, but may not be relevant anywhere except for that source file.)
+are pertinent to just that source code.  This is done by creating a TypeSystem
+instance in the sidecar, naming it ``ts``, and adding any user-modifications.
+The sidecar's ``ts`` TypeSystem will automatically update the default run control
+TypeSystem (``rc.ts``).  For this reason, its often useful for the sidecar file's
+type system to be empty.
 
 Sidecar Example
 ---------------
@@ -121,7 +124,8 @@ used to declare additional attr and method APIs.
 .. code-block:: python
 
     # Start by adding refinement type hooks for 'sepeff_t', which is a type of map
-    import xdress.typesystem as ts
+    from xdress.typesystem import TypeSystem
+    ts = TypeSystem.empty()
     ts.register_refinement('sepeff_t', ('map', 'int32', 'float64'),
         cython_cyimport='bright.typeconverters', 
         cython_pyimport='bright.typeconverters',

@@ -110,6 +110,11 @@ Here is simple, if morbid, plugin example::
             'answer': 'Joan of Arc',
             }
 
+        rcupdaters = {'choices': lambda old, new: list(new) + list(old)}        
+
+        rcdocs = {'choices': "Possible answers.",
+                  'answer': "The correct answer"}
+
         def update_argparser(self, parser):
             # Note, no 'default=' keyword arguments are given
             parser.add_argument('-c', '--choices', action='store', dest='choices',

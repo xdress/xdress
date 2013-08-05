@@ -1,4 +1,4 @@
-"""Helper functions for bright API generation.
+"""Helper functions for xdress.
 
 :author: Anthony Scopatz <scopatz@gmail.com>
 

@@ -20,6 +20,7 @@ Contents
     :maxdepth: 1
 
     tutorial
+    advtut
     libref/index
     rcdocs
     previous/index
