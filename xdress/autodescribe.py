@@ -244,9 +244,8 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     ----------
     filename : str
         The path to the file.
-    name : str or None, optional
-        The name, a 'None' value will attempt to infer this from the
-        filename.
+    name : str
+        The name to describe.
     kind : str
         The kind of type to describe, valid flags are 'class', 'func', and 'var'.
     includes: list of str, optional
@@ -301,7 +300,7 @@ class GccxmlBaseDescriber(object):
         """Parameters
         -------------
         name : str
-            The name, this may not have a None value.
+            The name to describe.
         root : element tree node, optional
             The root element node.
         onlyin :  str, optional
@@ -1378,7 +1377,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         """Parameters
         -------------
         name : str
-            The name, this may not have a None value.
+            The name to describe.
         root : pycparser AST
             The root of the abstract syntax tree.
         onlyin :  str, optional
@@ -1721,7 +1720,7 @@ class PycparserClassDescriber(PycparserBaseDescriber):
         """Parameters
         -------------
         name : str
-            The name, this may not have a None value.
+            The name to describe.
         root : pycparser AST
             The root of the abstract syntax tree.
         onlyin :  str, optional
@@ -1787,9 +1786,8 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     ----------
     filename : str
         The path to the file.
-    name : str or None, optional
-        The name, a 'None' value will attempt to infer this from the
-        filename.
+    name : str
+        The name to describe.
     kind : str
         The kind of type to describe, valid flags are 'class', 'func', and 'var'.
     includes: list of str, optional
@@ -1861,9 +1859,8 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
         files, a temporary file will be created that #includes all of the files
         in this list in order.  This temporary file is the one which will be 
         parsed.
-    name : str or None, optional
-        The name, a 'None' value will attempt to infer this from the
-        filename.
+    name : str
+        The name to describe.
     kind : str, optional
         The kind of type to describe, valid flags are 'class', 'func', and 'var'.
     includes: list of str, optional
