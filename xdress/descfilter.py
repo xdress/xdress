@@ -27,6 +27,10 @@ two things in the xdressrc file for your project.
    b. ``skipmethods`` dictionary. The keys for this dictionary
       are the class names and the values are a list of method names that
       should be excluded from the wrapper.
+   c. ``includemethods`` dict. This is the complement of the
+      ``skipmethods`` dict. The keys are class names and the values are
+      list of methods that should be included in the wrapper. All
+      other methods are filtered out.
 
 .. warning::
 
@@ -186,11 +190,13 @@ class XDressPlugin(Plugin):
     requires = ('xdress.autodescribe',)
 
     defaultrc = {'skiptypes': NotSpecified,
-                 'skipmethods': NotSpecified}
+                 'skipmethods': NotSpecified,
+                 'includemethods': NotSpecified}
 
     rcdocs = {
         'skiptypes': 'The types to filter out from being wrapped',
         'skipmethods': 'Method names to filter out from being wrapped',
+        'includemethods': 'Method names to be wrapped (dict, keys are class names)'
         }
 
     def setup(self, rc):
@@ -232,7 +238,7 @@ class XDressPlugin(Plugin):
     def skip_methods(self, rc):
         if rc.skipmethods is NotSpecified:
             return
-        print("descfilter: removing unwanted methods from desc dictionary")
+        print("descfilter: removing 'skipmethods' from desc dictionary")
         skip_classes = rc.skipmethods.keys()
         for m_key, mod in rc.env.items():
             for k_key, kls_desc in mod.items():
@@ -242,7 +248,6 @@ class XDressPlugin(Plugin):
                         m_nms = rc.env[m_key][k_key]['methods'].keys()
                         for m in skippers:
                             # Find method key
-                            # import pdb; pdb.set_trace()
                             try:
                                 del_key = filter(lambda x: x[0].startswith(m),
                                                  m_nms)[0]
@@ -254,6 +259,24 @@ class XDressPlugin(Plugin):
                             # Remove that method
                             del rc.env[m_key][k_key]['methods'][del_key]
 
+    def include_methods(self, rc):
+        if rc.includemethods is NotSpecified:
+            return
+        print("descfilter: removing all but 'includemethods' from desc")
+        inc_classes = rc.includemethods.keys()
+        for m_key, mod in rc.env.items():
+            for k_key, kls_desc in mod.items():
+                if isclassdesc(kls_desc):
+                    if kls_desc['name'] in inc_classes:
+                        keeps = set(rc.includemethods[k_key])
+                        m_nms = rc.env[m_key][k_key]['methods'].keys()
+                        m_keep = filter(lambda x: x[0] in keeps, m_nms)
+                        new_meths = {}
+                        for mm in m_keep:
+                            new_meths[mm] = rc.env[m_key][k_key]['methods'][mm]
+                        rc.env[m_key][k_key]['methods'] = new_meths
+
     def execute(self, rc):
         self.skip_types(rc)
         self.skip_methods(rc)
+        self.include_methods(rc)
