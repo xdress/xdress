@@ -50,7 +50,7 @@ stlcontainers = [
     ('map', 'int', ('map', 'int', ('vector', 'bool'))),
     ('map', 'int', ('map', 'int', ('vector', 'char'))),
     ('map', 'int', ('map', 'int', ('vector', 'float'))),
-    # May be bug in Cython?
+    # May be bug in Cython?  issue #87
     #('map', 'int', ('vector', 'complex')),
     ]
 
@@ -97,5 +97,5 @@ classes = [
     {'srcname': ('sparse_matrix_entry', 'bool'), 
      'tarname': ('SparseMatrixEntry', 'bool'),
      'srcfile': 'bright'}, 
-#    ('*', 'bright'),  # doesn't work yet due to *_t types
+#    ('*', 'bright'),  # doesn't work yet due to *_t types, issue #29
     ]
