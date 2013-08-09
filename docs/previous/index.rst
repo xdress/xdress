@@ -20,8 +20,8 @@ Version Date       Documentation  Zip            Tar
 ======= ========== ============== ============== ==============
 
 .. _docs 0.3: http://xdress.org/v0.3/
-.. _zip 0.3: https://github.com/xdress/xdress/zipball/0.2
-.. _tar 0.3: https://github.com/xdress/xdress/tarball/0.2
+.. _zip 0.3: https://github.com/xdress/xdress/zipball/0.3
+.. _tar 0.3: https://github.com/xdress/xdress/tarball/0.3
 
 .. _docs 0.2: http://xdress.org/v0.2/
 .. _zip 0.2: https://github.com/xdress/xdress/zipball/0.2
