@@ -62,7 +62,7 @@ def final_message(success=True):
         return
     print(msg)
 
-dir_name = os.path.dirname(__file__)
+dir_name = os.path.dirname(os.path.abspath(__file__))
 fname = os.path.join(dir_name, 'docs', 'index.rst')
 with io.open(fname, 'r') as f:
     long_desc = f.read()
