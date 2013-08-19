@@ -232,10 +232,10 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         A dictionary describing the class which may be used to generate
         API bindings.
     """
-    if os.name == 'nt':
-        # GCC-XML and/or Cygwin wants posix paths on Windows.
-        filename = posixpath.join(*ntpath.split(filename))
-    root = astparsers.gccxml_parse(filename, includes=includes, defines=defines,
+    # GCC-XML and/or Cygwin wants posix paths on Windows.
+    posixfilename = posixpath.join(*ntpath.split(filename)) if os.name == 'nt' \
+                    else filename
+    root = astparsers.gccxml_parse(posixfilename, includes=includes, defines=defines,
                                    undefines=undefines, verbose=verbose, debug=debug,
                                    builddir=builddir)
     basename = filename.rsplit('.', 1)[0]
