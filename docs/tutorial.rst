@@ -186,11 +186,11 @@ the descriptions of classes and functions that are generated are stored in the
 ``build/desc.cache``.  This cache is simply a pickled dictionary that maps
 names, source files, and kinds to a hash of the source file and the description.
 Thus API elements are not re-described if the source file has not changed.
-You may view the contents of a description cache with the ``dump-desc`` option.
+You may view the contents of a description cache with the ``dumpdesc`` option.
 
 .. code-block:: bash
 
-    scopatz@ares ~/mypack $ xdress --dump-desc
+    scopatz@ares ~/mypack $ xdress --dumpdesc
     {('A', 'src/hoover.cpp', 'class'): ('54a508b1e10845f26d9888a6ad2a470e',
                                         {'attrs': {'y': ('map',
                                                          'int32',
