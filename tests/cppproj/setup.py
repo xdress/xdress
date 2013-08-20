@@ -4,14 +4,31 @@ import os
 import sys
 import subprocess
 
-import configure
+PKG = "pkg"
 
-# Thanks to http://patorjk.com/software/taag/  
-# and http://www.chris.com/ascii/index.php?art=creatures/dragons
-# for ASCII art inspiriation
-
-xdress_logo = """\
-"""
+def setup():
+    try:
+        from setuptools import setup as setup_
+    except ImportError:
+        from distutils.core import setup as setup_
+    scripts = []
+    packages = [PKG, PKG + '.lib']
+    pack_dir = {PKG: PKG, PKG + '.lib': os.path.join(PKG, 'lib')}
+    extpttn = ['*.dll', '*.so', '*.dylib', '*.pyd', '*.pyo']
+    pack_data = {PKG: ['*.pxd', '*.json',] + extpttn, PKG + '.lib': extpttn}
+    setup_kwargs = {
+        "name": PKG,
+        "version": INFO['version'],
+        "description": "The {0} package".format(PKG),
+        "author": 'Anthony Scopatz',
+        "author_email": 'scopatz@gmail.com',
+        "url": 'http://github.com/scopatz/xdress',
+        "packages": packages,
+        "package_dir": pack_dir,
+        "package_data": pack_data,
+        "scripts": scripts,
+        }
+    rtn = setup_(**setup_kwargs)
 
 def parse_args():
     distutils = []
@@ -29,7 +46,6 @@ def parse_args():
         os.environ['HDF5_ROOT'] = hdf5opt[0]  # Expose to CMake
         distutils = [o for o in distutils if not o.startswith('--hdf5=')]
     return distutils, cmake, make
-
 
 def main_body():
     if not os.path.exists('build'):
@@ -55,7 +71,7 @@ def main_body():
     rtn = subprocess.check_call(['make'] + make_args, cwd='build')
     cwd = os.getcwd()
     os.chdir('build')
-    configure.setup()
+    setup()
     os.chdir(cwd)
 
 def main():
@@ -64,7 +80,7 @@ def main():
         main_body()
         success = True
     finally:
-        configure.final_message(success)
+        print("success: {0}".format(success))
 
 if __name__ == "__main__":
     main()
