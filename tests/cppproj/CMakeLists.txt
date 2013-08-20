@@ -2,7 +2,7 @@
 cmake_minimum_required( VERSION 2.8.5 )
 
 # Set the project name
-project( xdtest )
+project( cppproj )
 
 # Make the scripts available in the 'cmake' directory available for the
 # 'include()' command, 'find_package()' command.
@@ -20,11 +20,7 @@ message("-- PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
 # Instruction for use can be found at the top of cmake/UseCython.cmake.
 include( UseCython )
 
-# Also, there are some custom pyne macros to make for less verbosity
-include( XdtestMacros )
-
-# Beware of dragons
-print_logo()
+include(CppprojMacros)
 
 # This makes all the libraries build as SHARED
 set(BUILD_SHARED_LIBS true)
@@ -56,9 +52,6 @@ include_directories(${NUMPY_INCLUDE_DIR})
 
 # Add some CI-dependent stuff
 message("-- Is CI: ${IS_CI}")
-if(${IS_CI})
-    include_directories("/home/slave/anaconda/include/python2.7")
-endif(${IS_CI})
 
 # With CMake, a clean separation can be made between the source tree and the
 # build tree.  When all source is compiled, as with pure C/C++, the source is
@@ -70,32 +63,16 @@ add_custom_target( ReplicatePythonSourceTree ALL ${CMAKE_COMMAND} -P
   ${CMAKE_CURRENT_BINARY_DIR}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} )
 
-# Add cython version info to source tree
-#message("-- Making Cython Version.")
-#execute_process(COMMAND ${PYTHON_EXECUTABLE} 
-#                        ${CMAKE_CURRENT_SOURCE_DIR}/configure.py cython_version)
-#file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/xdress/_includes/
-#     DESTINATION ${CMAKE_BINARY_DIR}/xdress/_includes/)
-
 add_subdirectory(src)
-add_subdirectory(xdtest)
+add_subdirectory(cppproj)
 
 # Print include dir
 get_property(inc_dirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
 message("-- C_INCLUDE_PATH for ${CMAKE_CURRENT_SOURCE_DIR}: ${inc_dirs}")
 
 message("-- Copying Cython header files.")
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/xdtest/ 
-    DESTINATION ${CMAKE_BINARY_DIR}/xdtest/
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/cppproj/ 
+    DESTINATION ${CMAKE_BINARY_DIR}/cppproj/
     FILES_MATCHING PATTERN "*.pxd"
                    PATTERN "lib" EXCLUDE
                    PATTERN "include" EXCLUDE)
-
-#message("-- Copying scripts.")
-#file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/scripts DESTINATION ${CMAKE_BINARY_DIR})
-
-# Add cython version info to source tree
-#message("-- Making Metadata.")
-#execute_process(COMMAND ${PYTHON_EXECUTABLE} 
-#                        ${CMAKE_CURRENT_SOURCE_DIR}/configure.py metadata)
-
