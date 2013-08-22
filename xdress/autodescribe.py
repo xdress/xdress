@@ -576,6 +576,7 @@ class GccxmlBaseDescriber(object):
         'long long': 'int64',
         'long int': 'int64', 
         'unsigned int': 'uint32',
+        'long long unsigned int': 'uint64',
         'long unsigned int': 'uint64',
         'unsigned long long': 'uint64',
         'short unsigned int': 'uint16',
