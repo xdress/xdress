@@ -1904,7 +1904,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         for i, cls in enumerate(rc.classes):
             print("autodescribe: registering {0}".format(cls.srcname))
             fnames = find_filenames(cls.srcfile, tarname=cls.tarfile,
-                                    sourcedir=rc.sourcedir, hdrname=cls.hdrfile)
+                                    sourcedir=rc.sourcedir, hdrname=cls.hdrfile, language=cls.language)
             if cls.tarfile is None:
                 pxd_base = cls.srcfile
                 lang_ext = fnames['language_extension']
@@ -1956,7 +1956,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         for x in srcnames:
             self.load_pysrcmod(x, rc)
 
-    def compute_desc(self, name, srcname, hdrname, tarname, kind, rc):
+    def compute_desc(self, thing, name, srcname, hdrname, tarname, kind, rc):
         """Returns a description dictionary for a class or function
         implemented in a source file and bound into a target file.
 
@@ -1980,7 +1980,7 @@ class XDressPlugin(astparsers.ParserPlugin):
 
         """
         #print("compute_desc %s %s %s %s" % ( name, srcname, tarname, kind))
-        fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir, hdrname=hdrname )
+        fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir, hdrname=hdrname, language=thing.language )
         srcfname = fnames['source_filename']
         hdrfname = fnames['header_filename']
         if os.path.isabs(srcfname):
@@ -2033,7 +2033,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         cache = rc._cache
         for i, var in enumerate(rc.variables):
             print("autodescribe: describing {0}".format(var.srcname))
-            desc = self.compute_desc(var.srcname, var.srcfile, var.hdrfile, var.tarfile, 'var', rc)
+            desc = self.compute_desc(var, var.srcname, var.srcfile, var.hdrfile, var.tarfile, 'var', rc)
             if rc.verbose:
                 pprint(desc)
             cache.dump()
@@ -2049,7 +2049,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         cache = rc._cache
         for i, fnc in enumerate(rc.functions):
             print("autodescribe: describing {0}".format(fnc.srcname))
-            desc = self.compute_desc(fnc.srcname, fnc.srcfile, fnc.hdrfile, fnc.tarfile, 'func', rc)
+            desc = self.compute_desc(fnc, fnc.srcname, fnc.srcfile, fnc.hdrfile, fnc.tarfile, 'func', rc)
             if rc.verbose:
                 pprint(desc)
             cache.dump()
@@ -2066,7 +2066,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         env = rc.env  # target environment, not source one
         for i, cls in enumerate(rc.classes):
             print("autodescribe: describing {0} - {1}".format(cls.srcname, cls.srcfile))
-            desc = self.compute_desc(cls.srcname, cls.srcfile, cls.hdrfile, cls.tarfile,
+            desc = self.compute_desc(cls, cls.srcname, cls.srcfile, cls.hdrfile, cls.tarfile,
                                      'class', rc)
             cache.dump()
             if cls.srcname != cls.tarname:

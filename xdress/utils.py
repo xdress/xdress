@@ -335,7 +335,7 @@ def guess_language(filename, default='c++'):
     lang = _exts_lang.get(ext, default)
     return lang
 
-def find_source(basename, sourcedir='.', hdrname=None):
+def find_source(basename, sourcedir='.', hdrname=None, language=None):
     """Finds a source filename, header filename, language name, and language
     source extension given a basename and source directory."""
     if isinstance(basename, list):
@@ -359,11 +359,13 @@ def find_source(basename, sourcedir='.', hdrname=None):
         src = hdr
         lang = langs[hdr]
         srcext = _lang_exts[lang]
-    if hdrname:
+    if hdrname is not None and hdrname is not NotSpecified:
         hdr = hdrname
+    if language is not None and language is not NotSpecified:
+        lang = language
     return src, hdr, lang, srcext
 
-def find_filenames(srcname, tarname=None, sourcedir='src', hdrname=None):
+def find_filenames(srcname, tarname=None, sourcedir='src', hdrname=None, language=None):
     """Returns a description dictionary for a class or function
     implemented in a source file and bound into a target file.
 
@@ -383,7 +385,7 @@ def find_filenames(srcname, tarname=None, sourcedir='src', hdrname=None):
 
     """
     desc = {}
-    srcfname, hdrfname, lang, ext = find_source(srcname, sourcedir=sourcedir, hdrname=hdrname)
+    srcfname, hdrfname, lang, ext = find_source(srcname, sourcedir=sourcedir, hdrname=hdrname, language=language)
     desc['source_filename'] = srcfname
     desc['header_filename'] = hdrfname
     desc['language'] = lang
@@ -560,7 +562,7 @@ def parse_template(s, open_brace='<', close_brace='>', separator=','):
 # API Name Tuples and Functions
 #
 
-apiname = namedtuple('apiname', ['srcname', 'srcfile', 'tarfile', 'tarname', 'hdrfile'])
+apiname = namedtuple('apiname', ['srcname', 'srcfile', 'tarfile', 'tarname', 'hdrfile', 'language'])
 
 notspecified_apiname = apiname(*([NotSpecified]*len(apiname._fields)))
 
@@ -583,8 +585,10 @@ def ensure_apiname(name):
         raise ValueError("apiname.srcname cannot be unspecified")
     if isinstance(name.srcfile, list):
         updates['srcfile'] = os.path.abspath(name.srcfile[0])
-        if len(name.srcfile) > 1:
+        if len(name.srcfile) > 1 and name.srcfile[1] is not None:
             updates['hdrfile'] = os.path.abspath(name.srcfile[1])
+        if len(name.srcfile) > 2:
+            updates['language'] = name.srcfile[2]
     if name.srcfile is NotSpecified:
         raise ValueError("apiname.srcfile cannot be unspecified")
     if name.tarfile is NotSpecified:
