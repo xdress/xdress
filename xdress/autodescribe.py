@@ -177,7 +177,7 @@ except ImportError:
 from . import utils
 from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
     find_source, FORBIDDEN_NAMES, find_filenames, warn_forbidden_name, \
-    apiname, ensure_apiname
+    apiname, ensure_apiname, cppint
 from . import astparsers
 from .typesystem import TypeSystem
 
@@ -526,7 +526,7 @@ class GccxmlBaseDescriber(object):
             arg = (name, t)
         else:
             if t in self._integer_types:
-                default = int(default)
+                default = cppint(default)
             elif default == 'true':
                 default = True
             elif default == 'false':
