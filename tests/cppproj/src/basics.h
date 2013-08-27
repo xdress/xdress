@@ -28,6 +28,13 @@ extern std::string GET_LUCKY;
 void voided ();
 extern int verbosity;
 
+typedef enum PersonID {
+  JOAN,
+  HOOVER,
+  MULAN=42,
+  LESLIE,
+} PersonID;
+
 // structs
 typedef struct struct0 {
   char nuc_name[6];
@@ -35,6 +42,33 @@ typedef struct struct0 {
   int8_t thermal_yield;
   double xs [63];
 } struct0;
+
+// normal classes 
+
+class A {
+ public:
+  A() {};
+  ~A() {};
+  int a;
+  void call() {a=1;};
+};
+
+class B : public A {
+ public:
+  B() {};
+  ~B() {};
+  int b;
+  void call() {b=1;};
+  void from_a(A x) {b = x.a;};
+};
+
+class C : public B {
+ public:
+  C() {};
+  ~C() {};
+  int c;
+  void call() {c=1;};
+};
 
 // templated classes
 template <class T>
@@ -130,7 +164,7 @@ std::vector<double> func0(double, std::vector<double>);
 bool func1(std::pair<int, double>, std::pair<int, double>);
 std::vector< std::vector<int> > func2(std::vector<int> a, std::vector<int> b);
 int func3(char *, char **, int = -1);
-
+int func4(PersonID id);
 
 // templated functions
 template <class T>

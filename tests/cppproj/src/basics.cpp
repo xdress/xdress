@@ -31,4 +31,9 @@ int func3(char * val, char ** arr, int arr_len)
   return -1;
 };
 
+int func4(PersonID id)
+{
+  return id;
+};
+
 } // namespace cppproj
