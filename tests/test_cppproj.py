@@ -3,6 +3,7 @@ from __future__ import print_function
 import os
 import sys
 import subprocess
+import tempfile
 
 from nose.tools import assert_true, assert_equal
 
@@ -16,8 +17,13 @@ PROJDIR = os.path.abspath("cppproj")
 def check_cmd(args):
     if not isinstance(args, basestring):
         args = " ".join(args)
-    print("TESTING: running command in {0}:\n\n{1}\n\n".format(PROJDIR, args))
-    rtn = subprocess.call(args, shell=True, cwd=PROJDIR, stderr=subprocess.STDOUT)
+    print("TESTING: running command in {0}:\n\n{1}\n".format(PROJDIR, args))
+    f = tempfile.NamedTemporaryFile()
+    rtn = subprocess.call(args, shell=True, cwd=PROJDIR, stdout=f, stderr=f)
+    if rtn != 0:
+        f.seek(0)
+        print("STDOUT + STDERR:\n\n" + f.read())
+    f.close()
     assert_equal(rtn, 0)
     return rtn
 
