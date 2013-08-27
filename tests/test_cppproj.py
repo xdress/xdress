@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import os
 import sys
+import shutil
 import subprocess
 import tempfile
 
@@ -13,6 +14,14 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 PROJDIR = os.path.abspath("cppproj")
+INSTDIR = os.path.join(PROJDIR, 'install')
+
+def cleanfs():
+    builddir = os.path.join(PROJDIR, 'build')
+    if os.path.isdir(builddir):
+        shutil.rmtree(builddir)
+    if os.path.isdir(INSTDIR):
+        shutil.rmtree(INSTDIR)
 
 def check_cmd(args):
     if not isinstance(args, basestring):
@@ -38,17 +47,17 @@ def test_all():
     base = os.path.dirname(cwd)
     pyexec = sys.executable
     xdexec = os.path.join(base, 'scripts', 'xdress')
-    instdir = os.path.join(PROJDIR, 'install')
 
     cmds = [
         ['PYTHONPATH="{0}"'.format(base), pyexec, xdexec, '--debug'],
-        [pyexec, 'setup.py', 'install', '--prefix="{0}"'.format(instdir), '--', '--'],
+        [pyexec, 'setup.py', 'install', '--prefix="{0}"'.format(INSTDIR), '--', '--'],
         ]
 
     for case in cases:
         parser = case['parsers']
         if not PARSERS_AVAILABLE[parser]:
             continue
+        cleanfs()
         rtn = 1
         for cmd in cmds:
             rtn = yield check_cmd, cmd

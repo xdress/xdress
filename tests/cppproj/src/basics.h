@@ -95,13 +95,14 @@ class TClass0 {
 template <class T>
 class TClass1 {
  public:
-  int nrows, ncols;
+  int N, nrows, ncols;
   std::vector< TClass0<T> > sm;
 
   TClass1(){};
   ~TClass1(){};
 
-  TClass1(int N, int nr=0, int nc=0) {
+  TClass1(int n, int nr=0, int nc=0) {
+    n = N;
     nrows = nr;
     ncols = nc;
     sm = std::vector< TClass0<T> >();
@@ -222,6 +223,10 @@ bool lti3 = lessthan<int, 3>(6);
 Untemplated unt = Untemplated();
 // Template member function also missed by GCC-XML
 int untrtn = unt.templated_method<float>(65.0);
+
+#ifdef XDRESS
+std::vector<double> _temp0;
+#endif
 
 
 #endif

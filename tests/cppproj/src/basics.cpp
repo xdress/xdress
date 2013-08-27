@@ -1,4 +1,4 @@
-#include "cppproj.h"
+#include "basics.h"
 
 namespace cppproj {
 
@@ -21,7 +21,7 @@ bool func1(std::pair<int, double> i, std::pair<int, double> j)
 
 std::vector< std::vector<int> > func2(std::vector<int> a, std::vector<int> b)
 {
-  std::vector< std::vector<int> > c (a.size(), std::vector<double>(b.size(), 0.0)); 
+  std::vector< std::vector<int> > c (a.size(), std::vector<int>(b.size(), 0.0)); 
   return c;
 };
 
