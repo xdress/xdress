@@ -8,6 +8,7 @@ Utilities API
 from __future__ import print_function
 import os
 import io
+import re
 import sys
 import functools
 from copy import deepcopy
@@ -81,6 +82,27 @@ def expand_default_args(methods):
     return methitems
 
 
+_CPP_LITERAL_INT = re.compile('[+-]?([1-9][0-9]*|0o?[0-7]+|0x[0-9a-f]+|'
+                              '0b[01]+|0)u?(l{1,2})?u?')
+
+def cppint(s):
+    """Converts a C++ literal integer string to a Python int.
+    """
+    s = s.lower()
+    m = _CPP_LITERAL_INT.match(s.lower())
+    g1 = m.group(1)
+    if g1.startswith('0x'):
+        base = 16
+    elif g1.startswith('0o'):
+        base = 8
+    elif g1.startswith('0b'):
+        base = 2
+    elif g1.startswith('0'):
+        base = 8
+    else:
+        base = 10
+    return int(s.replace('u', "").replace('l', ""), base)
+    
 def newoverwrite(s, filename, verbose=False):
     """Useful for not forcing re-compiles and thus playing nicely with the
     build system.  This is acomplished by not writing the file if the existsing
@@ -646,3 +668,5 @@ class memoize_method(object):
             return cache[key]
         else:
             return self.meth(*args, **kwargs)
+
+

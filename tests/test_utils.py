@@ -1,6 +1,7 @@
 from __future__ import print_function
 from xdress.utils import NotSpecified, RunControl, flatten, split_template_args, \
-    ishashable, memoize, memoize_method, apiname, ensure_apiname, sortedbytype
+    ishashable, memoize, memoize_method, apiname, ensure_apiname, sortedbytype, \
+    cppint
 
 from nose.tools import assert_equal, with_setup, assert_true, assert_false, \
     assert_not_equal
@@ -141,3 +142,20 @@ def test_sortedbytype():
         ]
     for x, exp in cases:
         yield check_sortedbytype, x, exp
+
+def check_cppint(s, exp):
+    obs = cppint(s)
+    assert_equal(exp, obs)
+
+def test_cppint():
+    cases = [
+        ('42', 42),
+        ('+42LLu', 42),
+        ('-0', 0),
+        ('0o52', 42),
+        ('-052', -42),
+        ('0B101010', 42),
+        ('-0x2A', -42),
+        ]
+    for s, x in cases:
+        yield check_cppint, s, x
