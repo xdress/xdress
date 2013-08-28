@@ -162,7 +162,7 @@ class TClass1 {
 
 // regular functions
 std::vector<double> func0(double, std::vector<double>);
-bool func1(std::pair<int, double>, std::pair<int, double>);
+bool func1(std::map<int, double>, std::map<int, double>);
 std::vector< std::vector<int> > func2(std::vector<int> a, std::vector<int> b);
 int func3(char *, char **, int = -1);
 int func4(PersonID id);

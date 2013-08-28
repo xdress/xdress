@@ -456,6 +456,28 @@ def genpxd(env, classes=(), ts=None, max_callbacks=8):
         pxds[name] = modpxd(mod, classes, ts=ts, max_callbacks=max_callbacks)
     return pxds
 
+def pxd_sorted_names(mod):
+    """Sorts the names in a module to make sure that pxd declarations happen in the
+    proper order."""
+    classnames = []
+    othernames = []
+    for name, desc in mod.items():
+        if isclassdesc(desc):
+            if name in classnames:
+                continue
+            parents = desc['parents']
+            if parents is None:
+                classnames.insert(0, name)
+                continue
+            for parent in parents:
+                if parent not in classnames:
+                    classnames.append(parent)
+            classnames.append(name)
+        else:
+            othernames.append(name)
+    names = classnames + sorted(othernames)
+    return names
+
 
 def modpxd(mod, classes=(), ts=None, max_callbacks=8):
     """Generates a pxd Cython header file for exposing C/C++ data to
@@ -486,12 +508,13 @@ def modpxd(mod, classes=(), ts=None, max_callbacks=8):
     cimport_tups = set()
     classnames = _classnames_in_mod(mod, ts)
     with ts.local_classes(classnames):
-        for name, desc in mod.items():
+        for name in pxd_sorted_names(mod):
+            desc = mod[name]
             if isclassdesc(desc):
                 ci_tup, attr_str = classpxd(desc, classes, ts=ts, 
                                             max_callbacks=max_callbacks)
-            # no need to wrap functions again
             else:
+                # no need to wrap functions again
                 continue
             cimport_tups |= ci_tup
             attrs.append(attr_str)
