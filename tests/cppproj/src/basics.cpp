@@ -13,7 +13,7 @@ std::vector<double> func0(double x, std::vector<double> vec)
 };
 
 
-bool func1(std::pair<int, double> i, std::pair<int, double> j)
+bool func1(std::map<int, double> i, std::map<int, double> j)
 {
   return true;
 };
