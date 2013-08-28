@@ -67,7 +67,7 @@ functions = [
     ('func1', 'basics'),
     ('func2', 'basics'),
     ('func3', 'basics'),
-    ('func4', 'pybasics'),
+    ('func4', 'basics', 'pybasics'),
     (('findmin', 'int32', 'float32',), 'basics'), 
     (('findmin', 'float64', 'float32',), 'basics'), 
     {'srcname': ('findmin', 'int', 'int',), 

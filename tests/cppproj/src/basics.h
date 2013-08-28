@@ -39,7 +39,7 @@ typedef enum PersonID {
 typedef struct struct0 {
   char nuc_name[6];
   int nuc_zz;
-  int8_t thermal_yield;
+  short thermal_yield;
   double xs [63];
 } struct0;
 
