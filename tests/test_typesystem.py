@@ -5,6 +5,9 @@ import os
 from xdress.typesystem import MatchAny, TypeSystem, TypeMatcher, matches
 
 from nose.tools import assert_equal, with_setup
+from nose.plugins.attrib import attr
+
+unit = attr('unit')
 
 # default typesystem
 ts = TypeSystem()
@@ -48,6 +51,7 @@ def check_canon(t, exp):
     pprint.pprint(obs)
     assert_equal(exp, obs)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_canon():
     cases = (
@@ -96,6 +100,7 @@ def check_basename(t, exp):
     pprint.pprint(obs)
     assert_equal(exp, obs)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_basename():
     cases = (
@@ -125,6 +130,7 @@ def check_cython_ctype(t, exp):
     obs = ts.cython_ctype(t)
     assert_equal(exp, obs)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_ctype():
     cases = (
@@ -152,6 +158,7 @@ def check_cython_funcname(name, exp):
     obs = ts.cython_funcname(name)
     assert_equal(exp, obs)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_funcname():
     cases = (
@@ -169,6 +176,7 @@ def check_cython_cimport_tuples_no_cy(t, exp):
     obs = ts.cython_cimport_tuples(t, inc=set(['c']))
     assert_equal(obs, exp)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_cimport_tuples_no_cy():
     cases = (
@@ -201,6 +209,7 @@ def check_cython_cimport_tuples_with_cy(t, exp):
     obs = ts.cython_cimport_tuples(t)
     assert_equal(exp, obs)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_cimport_tuples_with_cy():
     cases = (
@@ -243,6 +252,7 @@ def check_cython_cimport_lines(t, exp):
     obs = ts.cython_cimport_lines(t)
     assert_equal(exp, obs)
 
+@unit
 def test_cython_cimport_lines():
     cases = (
         # type checks
@@ -263,6 +273,7 @@ def check_cython_import_tuples(t, exp):
     obs = ts.cython_import_tuples(t)
     assert_equal(exp, obs)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_import_tuples():
     cases = (
@@ -292,6 +303,7 @@ def check_cython_import_lines(t, exp):
     obs = ts.cython_import_lines(t)
     assert_equal(exp, obs)
 
+@unit
 def test_cython_import_lines():
     cases = (
         # type checks
@@ -312,6 +324,7 @@ def check_cython_cytype(t, exp):
     obs = ts.cython_cytype(t)
     assert_equal(exp, obs)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_cytype():
     cases = (
@@ -339,6 +352,7 @@ def check_cython_pytype(t, exp):
     obs = ts.cython_pytype(t)
     assert_equal(obs, exp)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_pytype():
     cases = (
@@ -367,6 +381,7 @@ def check_cython_c2py(name, t, inst_name, exp):
     obs = ts.cython_c2py(name, t, inst_name=inst_name)
     assert_equal(exp, obs)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_cython_c2py():
     cases = (
@@ -418,6 +433,7 @@ def check_cython_py2c(name, t, inst_name, exp):
     obs = ts.cython_py2c(name, t, inst_name=inst_name)
     assert_equal(exp, obs)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 @with_setup(add_new_py2c, del_new_py2c)
 def test_cython_py2c():
@@ -478,6 +494,7 @@ def check_typematcher(pattern, t, exp):
     obs = tm.matches(t)
     assert_equal(exp, obs)
 
+@unit
 def test_typematcher():
     for pattern, t, exp in type_matcher_cases:
         yield check_typematcher, pattern, t, exp
@@ -486,6 +503,7 @@ def check_matches(pattern, t, exp):
     obs = matches(pattern, t)
     assert_equal(exp, obs)
 
+@unit
 def test_matches():
     for pattern, t, exp in type_matcher_cases:
         yield check_matches, pattern, t, exp
@@ -494,6 +512,7 @@ def check_strip_predicates(t, exp):
     obs = ts.strip_predicates(t)
     assert_equal(exp, obs)
 
+@unit
 def test_strip_predicates():
     cases = [
         [('vector', 'f8'), ('vector', 'float64', 0)],
@@ -513,6 +532,7 @@ def check_cpp_type(t, exp):
     obs = ts.cpp_type(t)
     assert_equal(exp, obs)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_cpp_type():
     cases = (
@@ -540,6 +560,7 @@ def check_cpp_funcname(name, exp):
     obs = ts.cpp_funcname(name)
     assert_equal(exp, obs)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_cpp_funcname():
     cases = (
@@ -556,6 +577,7 @@ def check_gccxml_type(t, exp):
     obs = ts.gccxml_type(t)
     assert_equal(exp, obs)
 
+@unit
 @with_setup(add_new_refined, del_new_refined)
 def test_gccxml_type():
     cases = (
@@ -579,6 +601,7 @@ def test_gccxml_type():
     for t, exp in cases:
         yield check_gccxml_type, t, exp  # Check that the case works,
 
+@unit
 @with_setup(lambda: None, lambda: os.remove('hoover'))
 def test_io():
     filename = 'hoover'

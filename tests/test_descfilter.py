@@ -3,8 +3,11 @@ import os
 from copy import deepcopy
 import pprint
 from nose.tools import assert_equal
+from nose.plugins.attrib import attr
 from xdress.typesystem import TypeMatcher
 from xdress import descfilter as df
+
+unit = attr('unit')
 
 car_class = {
     'name': 'Car',
@@ -53,7 +56,7 @@ filt_types_list = ['str', (('vector', 'int32', 'const'), '&')]
 filt_types_dict = {'Car': ['uint32'],
                    'Plane': ['Chopper', 'float32']}
 
-
+@unit
 def test_typefilter_list():
     skips = [TypeMatcher(i) for i in filt_types_list]
     car_class_copy = deepcopy(car_class)
@@ -74,7 +77,7 @@ def test_typefilter_list():
     pprint.pprint(exp)
     assert_equal(car_class_copy, exp)
 
-
+@unit
 def test_typefilter_dict():
     skiptypes = {'Car': [TypeMatcher(i) for i in filt_types_dict['Car']],
                  'Plane': [TypeMatcher(i) for i in filt_types_dict['Plane']]}

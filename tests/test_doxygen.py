@@ -2,8 +2,10 @@ from __future__ import print_function
 import pprint
 from collections import OrderedDict
 from nose.tools import assert_equal
+from nose.plugins.attrib import attr
 from xdress.doxygen import class_docstr, func_docstr
 
+unit = attr('unit')
 
 car_dict = {'file_name': 'Cars.h',
  'kls_name': 'util::Car',
@@ -79,7 +81,7 @@ car_dict = {'file_name': 'Cars.h',
                           'detaileddescription': '',
                           'ret_type': None}}}
 
-
+@unit
 def test_classdocstr():
     exp = \
 """A very simple car class that can do the basics. This car can
@@ -119,7 +121,7 @@ The class is found in the "util" namespace
     # Strip whitespace before testing b/c editor config
     assert_equal(exp.strip(), actual.strip())
 
-
+@unit
 def test_funcdocstr():
     exp = \
 """Has the car drive to a specified location

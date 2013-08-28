@@ -7,11 +7,14 @@ import subprocess
 import tempfile
 
 from nose.tools import assert_true, assert_equal
+from nose.plugins.attrib import attr
 
 from xdress.astparsers import PARSERS_AVAILABLE
 
 if sys.version_info[0] >= 3:
     basestring = str
+
+integration = attr('integration')
 
 PROJNAME = "cppproj"
 PROJDIR = os.path.abspath(PROJNAME)
@@ -60,7 +63,7 @@ def check_cmd(args, holdsrtn):
 
 # Because we want to guarentee build and test order, we can only have one 
 # master test function which generates the individual tests.
-
+@integration
 def test_all():
     parsers = ['gccxml', 'clang']
     cases = [{'parser': p} for p in parsers]
