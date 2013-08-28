@@ -55,33 +55,38 @@ def check_cmd(args, holdsrtn):
         f.seek(0)
         print("STDOUT + STDERR:\n\n" + f.read())
     f.close()
-    assert_equal(rtn, 0)
     holdsrtn[0] = rtn
+    assert_equal(rtn, 0)
 
 # Because we want to guarentee build and test order, we can only have one 
 # master test function which generates the individual tests.
 
 def test_all():
     parsers = ['gccxml', 'clang']
-    cases = [{'parsers': p} for p in parsers]
+    cases = [{'parser': p} for p in parsers]
 
     cwd = os.getcwd()
     base = os.path.dirname(cwd)
     pyexec = sys.executable
     xdexec = os.path.join(base, 'scripts', 'xdress')
+    defaults = {'cwd': cwd, 'base': base, 'pyexec': pyexec, 'xdexec': xdexec, 
+                'instdir': INSTDIR}
 
-    cmds = [
-        ['PYTHONPATH="{0}"'.format(base), pyexec, xdexec, '--debug'],
-#        [pyexec, 'setup.py', 'install', '--prefix="{0}"'.format(INSTDIR), '--', '--'],
-        ]
+    commands = (
+        'PYTHONPATH="{base}" {pyexec} {xdexec} --debug -p={parser}\n'
+        '{pyexec} setup.py install --prefix="{instdir}" -- --\n'
+        )
 
     for case in cases:
-        parser = case['parsers']
+        parser = case['parser']
         if not PARSERS_AVAILABLE[parser]:
             continue
         cleanfs()
         rtn = 1
         holdsrtn = [rtn]  # needed because nose does not send() to test generator
+        fill = dict(defaults)
+        fill.update(case)
+        cmds = commands.format(**fill).strip().splitlines()
         for cmd in cmds:
             yield check_cmd, cmd, holdsrtn
             rtn = holdsrtn[0]
