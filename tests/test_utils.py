@@ -5,19 +5,25 @@ from xdress.utils import NotSpecified, RunControl, flatten, split_template_args,
 
 from nose.tools import assert_equal, with_setup, assert_true, assert_false, \
     assert_not_equal
+from nose.plugins.attrib import attr
 
+unit = attr('unit')
+
+@unit
 def test_rc_make():
     rc = RunControl(a=NotSpecified, b="hello")
     assert_equal(rc.a, NotSpecified)
     assert_equal(rc.b, 'hello')
     assert_false(hasattr(rc, 'c'))
     
+@unit
 def test_rc_eq():
     rc = RunControl(a=NotSpecified, b="hello")
     d = {'a': NotSpecified, 'b': 'hello'}
     assert_equal(rc._dict, d)
     assert_equal(rc, RunControl(**d))
 
+@unit
 def test_rc_update():
     rc = RunControl(a=NotSpecified, b="hello")
     rc._update(RunControl(c=1, b="world"))
@@ -25,6 +31,7 @@ def test_rc_update():
     rc._update({'a': 42, 'c': NotSpecified})
     assert_equal(rc, {'a': 42, 'b': 'world', 'c': 1})
 
+@unit
 def test_flatten():
     exp = ["hello", None, 1, 3, 2, 5, 6]
     obs = [x for x in flatten(["hello", None, (1, 3, (2, 5, 6))])]
@@ -34,6 +41,7 @@ def check_split_template_args(s, exp):
     obs = split_template_args(s)
     assert_equal(exp, obs)
 
+@unit
 def test_split_template_args():
     cases = [
         ('set<int>', ['int']),
@@ -49,6 +57,7 @@ def test_split_template_args():
 def check_ishashable(assertion, x):
     assertion(ishashable(x))
 
+@unit
 def test_ishashable():
     cases = [
         (assert_true, 'hello'),
@@ -65,6 +74,7 @@ def test_ishashable():
     for assertion, x in cases:
         yield check_ishashable, assertion, x
 
+@unit
 def test_memoize():
     global z
     z = 1
@@ -87,6 +97,7 @@ def test_memoize():
     assert_equal(z, 3)
     del z
 
+@unit
 def test_memoize_method():
     class Joan(object):
 
@@ -113,6 +124,7 @@ def check_ensure_apiname(x, exp):
     obs = ensure_apiname(x)
     assert_equal(exp, obs)
 
+@unit
 def test_ensure_apiname():
     cases = [
         (('Joan', 'joan'), apiname('Joan', 'joan', 'joan', 'Joan')), 
@@ -135,6 +147,7 @@ def check_sortedbytype(x, exp):
     obs = sortedbytype(x)
     assert_equal(exp, obs)
 
+@unit
 def test_sortedbytype():
     cases = [
         (['a', (1, 2), 'b'], ['a', 'b', (1, 2)]),
@@ -147,6 +160,7 @@ def check_cppint(s, exp):
     obs = cppint(s)
     assert_equal(exp, obs)
 
+@unit
 def test_cppint():
     cases = [
         ('42', 42),

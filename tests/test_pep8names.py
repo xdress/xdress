@@ -4,11 +4,16 @@ from xdress.pep8names import pep8func, pep8class
 
 from nose.tools import assert_equal, with_setup, assert_true, assert_false, \
     assert_not_equal
+from nose.plugins.attrib import attr
 
+unit = attr('unit')
+
+@unit
 def check_cases(f, x, exp):
     obs = f(x)
     assert_equal(exp, obs)
 
+@unit
 def test_pep8func():
     cases = [
         ('joan', 'joan'),
@@ -22,6 +27,7 @@ def test_pep8func():
     for s, exp in cases:
         yield check_cases, pep8func, s, exp
 
+@unit
 def test_pep8class():
     cases = [
         ('joan', 'Joan'),

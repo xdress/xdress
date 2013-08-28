@@ -8,8 +8,11 @@ from xdress import autodescribe as ad
 
 import nose
 from nose.tools import assert_equal
+from nose.plugins.attrib import attr
 
 from numpy.testing import dec
+
+unit = attr('unit')
 
 ts = TypeSystem()
 
@@ -85,7 +88,7 @@ full_toaster_desc = {
 #    exp = exp_toaster_desc
 #    assert_equal(obs, exp)
 
-
+@unit
 def test_merge_descriptions():
     obs = ad.merge_descriptions([exp_toaster_desc, meta_toaster_desc])
     exp = full_toaster_desc
@@ -94,6 +97,7 @@ def test_merge_descriptions():
     assert_equal(obs, exp)
 
 @dec.skipif(ad.pycparser is None)
+@unit
 def test_pycparser_describe_device_measure():
     obs = ad.pycparser_describe('device.c', 'Device_measure', 'func', ts=ts)
     exp = {'name': 'Device_measure', 
@@ -120,6 +124,7 @@ def test_pycparser_describe_device_measure():
     assert_equal(obs, exp)
 
 @dec.skipif(ad.pycparser is None)
+@unit
 def test_pycparser_describe_device_init():
     obs = ad.pycparser_describe('device.c', 'Device_Init', 'func', ts=ts)
     exp = {'name': 'Device_Init', 
@@ -138,6 +143,7 @@ def test_pycparser_describe_device_init():
     assert_equal(exp, obs)
 
 @dec.skipif(ad.pycparser is None)
+@unit
 def test_pycparser_describe_device_descriptor_tag():
     ts.register_class('DeviceDescriptorTag')
     obs = ad.pycparser_describe('device.c', 'DeviceDescriptorTag', 'class', ts=ts)
