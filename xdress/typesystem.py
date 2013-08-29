@@ -1075,6 +1075,7 @@ class TypeSystem(object):
             'uint64': ('<unsigned long long> {var}', False),
             'float32': ('<float> {var}', False),
             'float64': ('<double> {var}', False),
+            ('float64', '*'): ('cdef double {proxy_name}_ = {var}', '&{proxy_name}_'),
             'float128': ('<long double> {var}', False),
             'complex128': ('{extra_types}py2c_complex({var})', False),
             'bool': ('<bint> {var}', False),
