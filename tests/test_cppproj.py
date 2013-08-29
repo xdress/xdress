@@ -2,12 +2,13 @@ from __future__ import print_function
 
 import os
 import sys
+import glob
 import shutil
 import subprocess
 import tempfile
 
 from nose.tools import assert_true, assert_equal
-from tools import integration, cleanfs, check_cmd
+from tools import integration, cleanfs, check_cmd, clean_import
 
 from xdress.astparsers import PARSERS_AVAILABLE
 
@@ -74,5 +75,14 @@ def test_all():
                 break  # don't execute further commands
         if rtn != 0:
             break  # don't try further cases
+
+        # we have now run xdress and build the project
+        # What follow are project unit tests, no need to break on these
+        instsite = os.path.join(INSTDIR, 'lib', 'python*', 'site-packages')
+        instsite = glob.glob(instsite)[0]
+        instproj = os.path.join(instsite, PROJNAME)
+
+        with clean_import('basics', [instproj]) as basics:
+            yield basics.func0
     else:
         cleanfs(GENERATED_PATHS)
