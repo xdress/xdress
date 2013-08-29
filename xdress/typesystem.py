@@ -868,7 +868,9 @@ class TypeSystem(object):
             # Has tuple form of (copy, [view, [cached_view]])
             # base types
             'char': ('chr(<int> {var})',),
+            ('char', '*'): ('bytes({var}).decode()',),
             'uchar': ('chr(<unsigned int> {var})',),
+            ('uchar', '*'): ('bytes(<char *> {var}).decode()',),
             'str': ('bytes(<char *> {var}.c_str()).decode()',),
             ('str', '*'): ('bytes(<char *> {var}[0].c_str()).decode()',),
             'int16': ('int({var})',),
@@ -1059,6 +1061,11 @@ class TypeSystem(object):
             # base types
             'char': ('{var}_bytes = {var}.encode()', '(<char *> {var}_bytes)[0]'),
             ('char', '*'): ('{var}_bytes = {var}.encode()', '<char *> {var}_bytes'),
+            (('char', '*'), '*'): ('cdef char * {var}_bytes_\n'
+                                   '{var}_bytes = {var}[0].encode()\n'
+                                   '{var}_bytes_ = {var}_bytes\n'
+                                   '{proxy_name} = &{var}_bytes_', 
+                                   '{proxy_name}'),
             'uchar': ('{var}_bytes = {var}.encode()', '(<unsigned char *> {var}_bytes)[0]'),
             ('uchar', '*'): ('{var}_bytes = {var}.encode()', '<unsigned char *> {var}_bytes'),
             'str': ('{var}_bytes = {var}.encode()', 'std_string(<char *> {var}_bytes)'),

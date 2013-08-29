@@ -165,7 +165,10 @@ std::vector<double> func0(double, std::vector<double>);
 bool func1(std::map<int, double>, std::map<int, double>);
 std::vector< std::vector<int> > func2(std::vector<int> a, std::vector<int> b);
 int func3(char *, char **, int = -1);
-int func4(PersonID id);
+
+// FIXME when enums are implemented properly in C++, see #96
+//int func4(PersonID id);
+int func4(int id); 
 
 // templated functions
 template <class T>

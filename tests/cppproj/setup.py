@@ -4,7 +4,8 @@ import os
 import sys
 import subprocess
 
-PKG = "pkg"
+PKG = "cppproj"
+version = "test"
 
 def setup():
     try:
@@ -18,7 +19,7 @@ def setup():
     pack_data = {PKG: ['*.pxd', '*.json',] + extpttn, PKG + '.lib': extpttn}
     setup_kwargs = {
         "name": PKG,
-        "version": INFO['version'],
+        "version": version,
         "description": "The {0} package".format(PKG),
         "author": 'Anthony Scopatz',
         "author_email": 'scopatz@gmail.com',

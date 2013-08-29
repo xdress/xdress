@@ -8,11 +8,9 @@ from xdress import autodescribe as ad
 
 import nose
 from nose.tools import assert_equal
-from nose.plugins.attrib import attr
+from tools import unit
 
 from numpy.testing import dec
-
-unit = attr('unit')
 
 ts = TypeSystem()
 

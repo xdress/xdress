@@ -4,9 +4,7 @@ from xdress.pep8names import pep8func, pep8class
 
 from nose.tools import assert_equal, with_setup, assert_true, assert_false, \
     assert_not_equal
-from nose.plugins.attrib import attr
-
-unit = attr('unit')
+from tools import unit
 
 @unit
 def check_cases(f, x, exp):

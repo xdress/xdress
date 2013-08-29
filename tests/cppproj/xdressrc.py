@@ -81,7 +81,7 @@ functions = [
     ]
 
 classes = [
-    ('struct0', 'basics', 'pybasics', 'My_Struct_0'),
+#    ('struct0', 'basics', 'pybasics', 'My_Struct_0'),  FIXME This needs more work
     ('A', 'basics'),
     ('B', 'basics'),
     ('C', 'basics'),

@@ -3,11 +3,9 @@ import os
 from copy import deepcopy
 import pprint
 from nose.tools import assert_equal
-from nose.plugins.attrib import attr
+from tools import unit
 from xdress.typesystem import TypeMatcher
 from xdress import descfilter as df
-
-unit = attr('unit')
 
 car_class = {
     'name': 'Car',

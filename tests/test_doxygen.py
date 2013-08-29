@@ -2,10 +2,8 @@ from __future__ import print_function
 import pprint
 from collections import OrderedDict
 from nose.tools import assert_equal
-from nose.plugins.attrib import attr
+from tools import unit
 from xdress.doxygen import class_docstr, func_docstr
-
-unit = attr('unit')
 
 car_dict = {'file_name': 'Cars.h',
  'kls_name': 'util::Car',

@@ -7,14 +7,12 @@ import subprocess
 import tempfile
 
 from nose.tools import assert_true, assert_equal
-from nose.plugins.attrib import attr
+from tools import integration, cleanfs, check_cmd
 
 from xdress.astparsers import PARSERS_AVAILABLE
 
 if sys.version_info[0] >= 3:
     basestring = str
-
-integration = attr('integration')
 
 PROJNAME = "cppproj"
 PROJDIR = os.path.abspath(PROJNAME)
@@ -40,27 +38,6 @@ GENERATED_PATHS = [
     [INSTDIR],
     ]
 
-def cleanfs():
-    for p in GENERATED_PATHS:
-        p = os.path.join(*p)
-        if os.path.isfile(p):
-            os.remove(p)
-        elif os.path.isdir(p):
-            shutil.rmtree(p)
-
-def check_cmd(args, holdsrtn):
-    if not isinstance(args, basestring):
-        args = " ".join(args)
-    print("TESTING: running command in {0}:\n\n{1}\n".format(PROJDIR, args))
-    f = tempfile.NamedTemporaryFile()
-    rtn = subprocess.call(args, shell=True, cwd=PROJDIR, stdout=f, stderr=f)
-    if rtn != 0:
-        f.seek(0)
-        print("STDOUT + STDERR:\n\n" + f.read())
-    f.close()
-    holdsrtn[0] = rtn
-    assert_equal(rtn, 0)
-
 # Because we want to guarentee build and test order, we can only have one 
 # master test function which generates the individual tests.
 @integration
@@ -84,18 +61,18 @@ def test_all():
         parser = case['parser']
         if not PARSERS_AVAILABLE[parser]:
             continue
-        cleanfs()
+        cleanfs(GENERATED_PATHS)
         rtn = 1
         holdsrtn = [rtn]  # needed because nose does not send() to test generator
         fill = dict(defaults)
         fill.update(case)
         cmds = commands.format(**fill).strip().splitlines()
         for cmd in cmds:
-            yield check_cmd, cmd, holdsrtn
+            yield check_cmd, cmd, PROJDIR, holdsrtn
             rtn = holdsrtn[0]
             if rtn != 0:
                 break  # don't execute further commands
         if rtn != 0:
             break  # don't try further cases
     else:
-        cleanfs()
+        cleanfs(GENERATED_PATHS)

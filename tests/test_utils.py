@@ -5,9 +5,7 @@ from xdress.utils import NotSpecified, RunControl, flatten, split_template_args,
 
 from nose.tools import assert_equal, with_setup, assert_true, assert_false, \
     assert_not_equal
-from nose.plugins.attrib import attr
-
-unit = attr('unit')
+from tools import unit
 
 @unit
 def test_rc_make():

@@ -31,7 +31,9 @@ int func3(char * val, char ** arr, int arr_len)
   return -1;
 };
 
-int func4(PersonID id)
+// FIXME #96
+//int func4(PersonID id)
+int func4(int id)
 {
   return id;
 };

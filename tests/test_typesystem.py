@@ -5,9 +5,7 @@ import os
 from xdress.typesystem import MatchAny, TypeSystem, TypeMatcher, matches
 
 from nose.tools import assert_equal, with_setup
-from nose.plugins.attrib import attr
-
-unit = attr('unit')
+from tools import unit
 
 # default typesystem
 ts = TypeSystem()
@@ -409,7 +407,7 @@ def test_cython_c2py():
              '    llama_proxy = stlcontainers.MapIntDouble(False, False)\n'
              '    llama_proxy.map_ptr = &self._inst.llama\n'
              '    self._llama = llama_proxy'), 'self._llama', True)),
-        (('llama', ('char', '*'), None), (None, None, 'chr(<int> llama)', False)),
+        (('llama', ('char', '*'), None), (None, None, 'bytes(llama).decode()', False)),
         (('llama', ('char', 42), None), (None, None, 'chr(<int> llama)', False)),
         (('llama', ('map', 'nucid', ('set', 'nucname')), 'self._inst'), 
             ('cdef stlcontainers._MapIntSetStr llama_proxy\n', 
