@@ -31,9 +31,13 @@ int func3(char * val, char ** arr, int arr_len)
   return -1;
 };
 
+<<<<<<< HEAD
 // FIXME #96
 //int func4(PersonID id)
 int func4(int id)
+=======
+int func4(PersonID id)
+>>>>>>> 72dbc83025b77129bd48c789e9e772c96ed4bbbb
 {
   return id;
 };
