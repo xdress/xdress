@@ -14,7 +14,7 @@ PyCon 2014 Abstract
     can generate custom NumPy dtypes. This talk will go over the "zen of xdress" 
     and teach you how to generate your own wrappers.
 
-:audience: Anyone who has to or wants to expose C/C++ libraries to Python.
+:audience: Anyone who has to or wants to expose a C/C++ API to Python.
 
 :Python level: Intermediate
 
