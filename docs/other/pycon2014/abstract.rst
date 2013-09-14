@@ -7,14 +7,12 @@ PyCon 2014 Abstract
 
 :duration: 30 min
 
-:description: XDress is an automatic wrapper generator for C/C++ written in pure 
-    Python. Currently, xdress may generate Python bindings (via Cython) for 
-    classes, structs, functions, and certain variables types.  It can also create
-    in-memory wrappers for C++ standard library containers (sets, vectors, maps). 
-    XDress also allows you to create fully functional NumPy dtypes for any C/C++ 
-    class or struct.  The main enabling feature of xdress is a dynamic type system 
-    that was designed with the purpose of API generation in mind.  This talk will 
-    go over the "zen of xdress" and teach people how to generate their own wrappers.
+:description: XDress is an automatic wrapper generator for C/C++ written in 
+    pure Python. It can generate Python bindings (via Cython) for classes, 
+    structs, functions, and certain variables types. It can also create 
+    in-memory wrappers for C++ sets, vectors, and maps. This is because it 
+    can generate custom NumPy dtypes. This talk will go over the "zen of xdress" 
+    and teach you how to generate your own wrappers.
 
 :audience: Anyone who has to or wants to expose C/C++ libraries to Python.
 
