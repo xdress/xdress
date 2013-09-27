@@ -35,6 +35,7 @@ import re
 import sys
 from hashlib import md5
 from pprint import pprint, pformat
+from warnings import warn
 try:
     import cPickle as pickle
 except ImportError:
