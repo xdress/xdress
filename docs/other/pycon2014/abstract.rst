@@ -18,9 +18,9 @@ PyCon 2014 Abstract
 
 :Python level: Intermediate
 
-:objectives: To teach people basic type theory concepts and that wrapping C/C++ 
-    and building extension modules does not have to be painful and can have beautiful
-    results.
+:objectives: To teach people basic type theory concepts, that wrapping C/C++ 
+    extension modules does not have to be painful, and that the results can be very 
+    beautiful.
 
 :detailed abstract: XDress is an automatic wrapper generator for C/C++ written 
     in pure Python. Currently, xdress may generate Python bindings (via Cython) for 
