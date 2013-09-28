@@ -1733,7 +1733,7 @@ _pycparser_describers = {
     'class': PycparserClassDescriber,
     }
 
-def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
+def pycparser_describe(filename, name, kind, hdrname=None, includes=(), defines=('XDRESS',),
                        undefines=(), ts=None, verbose=False, debug=False,
                        builddir='build'):
     """Use pycparser to describe the fucntion or struct (class).
@@ -1956,7 +1956,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         for x in srcnames:
             self.load_pysrcmod(x, rc)
 
-    def compute_desc(self, thing, name, srcname, hdrname, tarname, kind, rc):
+    def compute_desc(self, var_func_class, name, srcname, hdrname, tarname, kind, rc):
         """Returns a description dictionary for a class or function
         implemented in a source file and bound into a target file.
 
@@ -1980,7 +1980,7 @@ class XDressPlugin(astparsers.ParserPlugin):
 
         """
         #print("compute_desc %s %s %s %s" % ( name, srcname, tarname, kind))
-        fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir, hdrname=hdrname, language=thing.language )
+        fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir, hdrname=hdrname, language=var_func_class.language )
         srcfname = fnames['source_filename']
         hdrfname = fnames['header_filename']
         if os.path.isabs(srcfname):
