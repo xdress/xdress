@@ -744,7 +744,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
             if node is None:
                 query = "Struct[@name='{0}']".format(self.ts.gccxml_type(self.name))
                 node = self._root.find(query)
-            if node is None and not isinstance(self, basestring):
+            if node is None and not isinstance(self.name, basestring):
                 # Must be a template with some wacky argument values
                 basename = self.name[0]
                 namet = self.desc['type']
