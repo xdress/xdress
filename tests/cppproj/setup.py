@@ -4,12 +4,8 @@ import os
 import sys
 import subprocess
 
-<<<<<<< HEAD:tests/cppproj/setup.py
 PKG = "cppproj"
 version = "test"
-=======
-PKG = "pkg"
->>>>>>> 72dbc83025b77129bd48c789e9e772c96ed4bbbb:tests/cppproj/setup.py
 
 def setup():
     try:
@@ -23,11 +19,7 @@ def setup():
     pack_data = {PKG: ['*.pxd', '*.json',] + extpttn, PKG + '.lib': extpttn}
     setup_kwargs = {
         "name": PKG,
-<<<<<<< HEAD:tests/cppproj/setup.py
         "version": version,
-=======
-        "version": INFO['version'],
->>>>>>> 72dbc83025b77129bd48c789e9e772c96ed4bbbb:tests/cppproj/setup.py
         "description": "The {0} package".format(PKG),
         "author": 'Anthony Scopatz',
         "author_email": 'scopatz@gmail.com',

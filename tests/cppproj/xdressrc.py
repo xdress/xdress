@@ -81,11 +81,7 @@ functions = [
     ]
 
 classes = [
-<<<<<<< HEAD:tests/cppproj/xdressrc.py
 #    ('struct0', 'basics', 'pybasics', 'My_Struct_0'),  FIXME This needs more work
-=======
-    ('struct0', 'basics', 'pybasics', 'My_Struct_0'),
->>>>>>> 72dbc83025b77129bd48c789e9e772c96ed4bbbb:tests/cppproj/xdressrc.py
     ('A', 'basics'),
     ('B', 'basics'),
     ('C', 'basics'),
