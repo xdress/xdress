@@ -18,6 +18,7 @@ if sys.version_info[0] >= 3:
 PROJNAME = "cppproj"
 PROJDIR = os.path.abspath(PROJNAME)
 INSTDIR = os.path.join(PROJDIR, 'install')
+ROOTDIR = os.path.splitdrive(INSTDIR)[0] or '/'
 
 GENERATED_PATHS = [
     [PROJDIR, 'build'],
@@ -51,11 +52,11 @@ def test_all():
     pyexec = sys.executable
     xdexec = os.path.join(base, 'scripts', 'xdress')
     defaults = {'cwd': cwd, 'base': base, 'pyexec': pyexec, 'xdexec': xdexec, 
-                'instdir': INSTDIR}
+                'instdir': INSTDIR, 'rootdir': ROOTDIR}
 
     commands = (
         'PYTHONPATH="{base}" {pyexec} {xdexec} --debug -p={parser}\n'
-        '{pyexec} setup.py install --prefix="{instdir}" -- --\n'
+        '{pyexec} setup.py install --prefix="{instdir}" --root="{rootdir}" -- --\n'
         )
 
     for case in cases:
