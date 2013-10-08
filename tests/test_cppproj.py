@@ -83,7 +83,7 @@ def test_all():
         instsite = glob.glob(instsite)[0]
         instproj = os.path.join(instsite, PROJNAME)
 
-        with clean_import('basics', [instproj]) as basics:
+        with clean_import('basics', [instproj, instsite]) as basics:
             yield basics.func0
     else:
         cleanfs(GENERATED_PATHS)

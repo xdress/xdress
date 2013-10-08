@@ -48,9 +48,11 @@ def clean_import(name, paths=None):
     Be sure to delete any references to the returned module prior to 
     exiting the context.
     """
+    sys.path = paths + sys.path
     origmods = set(sys.modules.keys())
     mod = imp.load_module(name, *imp.find_module(name, paths))
     yield mod
+    sys.path = sys.path[len(paths):]
     del mod
     newmods = set(sys.modules.keys()) - origmods
     for newmod in newmods:
