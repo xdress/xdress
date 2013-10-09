@@ -74,3 +74,14 @@ def modtests(mod):
         tests.append(test)
     return tests
             
+def dirtests(d):
+    """Finds all of the test files in a directory."""
+    files = os.listdir(d)
+    filenames = []
+    for file in files:
+        if not file.endswith('.py'):
+            continue
+        if TESTNAME_RE.match(file) is None:
+            continue
+        filenames.append(file[:-3])
+    return filenames

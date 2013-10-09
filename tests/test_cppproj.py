@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 
 from nose.tools import assert_true, assert_equal
-from tools import integration, cleanfs, check_cmd, clean_import, modtests
+from tools import integration, cleanfs, check_cmd, clean_import, dirtests, modtests
 
 from xdress.astparsers import PARSERS_AVAILABLE
 
@@ -19,6 +19,7 @@ PROJNAME = "cppproj"
 PROJDIR = os.path.abspath(PROJNAME)
 INSTDIR = os.path.join(PROJDIR, 'install')
 ROOTDIR = os.path.splitdrive(INSTDIR)[0] or '/'
+TESTDIR = os.path.join(PROJDIR, PROJNAME, 'tests')
 
 GENERATED_PATHS = [
     [PROJDIR, 'build'],
@@ -35,8 +36,8 @@ GENERATED_PATHS = [
     [PROJDIR, PROJNAME, 'pybasics.pyx'],
     [PROJDIR, PROJNAME, 'stlc.pxd'],
     [PROJDIR, PROJNAME, 'stlc.pyx'],
-    [PROJDIR, PROJNAME, 'tests', 'test_stlc.py'],
     [PROJDIR, 'src', 'cppproj_extra_types.h'],
+    [TESTDIR, 'test_stlc.py'],
     [INSTDIR],
     ]
 
@@ -82,12 +83,10 @@ def test_all():
         instsite = os.path.join(INSTDIR, 'lib', 'python*', 'site-packages')
         instsite = glob.glob(instsite)[0]
         instproj = os.path.join(instsite, PROJNAME)
-        testsdir = os.path.join(PROJDIR, PROJNAME, 'tests')
 
-        #with clean_import('basics', [instproj, instsite]) as basics:
-        #    yield check_a_better_name, basics
-        with clean_import('test_stlc', [testsdir, instproj, instsite]) as test_stlc:
-            for test in modtests(test_stlc):
-                yield test
+        for testfile in dirtests(TESTDIR):
+            with clean_import(testfile, [TESTDIR, instproj, instsite]) as testmod:
+                for test in modtests(testmod):
+                    yield test
     else:
         cleanfs(GENERATED_PATHS)
