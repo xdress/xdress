@@ -48,4 +48,4 @@ tests/xdtest/pydevice.pyx
 tests/cppproj/install
 tests/cppproj/cppproj/*.pxd
 tests/cppproj/cppproj/*.pyx
-tests/cppproj/cppproj/tests
+tests/cppproj/cppproj/tests/test_stlc.py
