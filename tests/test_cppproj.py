@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 
 from nose.tools import assert_true, assert_equal
-from tools import integration, cleanfs, check_cmd, clean_import
+from tools import integration, cleanfs, check_cmd, clean_import, modtests
 
 from xdress.astparsers import PARSERS_AVAILABLE
 
@@ -35,7 +35,7 @@ GENERATED_PATHS = [
     [PROJDIR, PROJNAME, 'pybasics.pyx'],
     [PROJDIR, PROJNAME, 'stlc.pxd'],
     [PROJDIR, PROJNAME, 'stlc.pyx'],
-    [PROJDIR, PROJNAME, 'tests'],
+    [PROJDIR, PROJNAME, 'tests', 'test_stlc.py'],
     [PROJDIR, 'src', 'cppproj_extra_types.h'],
     [INSTDIR],
     ]
@@ -82,8 +82,12 @@ def test_all():
         instsite = os.path.join(INSTDIR, 'lib', 'python*', 'site-packages')
         instsite = glob.glob(instsite)[0]
         instproj = os.path.join(instsite, PROJNAME)
+        testsdir = os.path.join(PROJDIR, PROJNAME, 'tests')
 
-        with clean_import('basics', [instproj, instsite]) as basics:
-            yield basics.func0
+        #with clean_import('basics', [instproj, instsite]) as basics:
+        #    yield check_a_better_name, basics
+        with clean_import('test_stlc', [testsdir, instproj, instsite]) as test_stlc:
+            for test in modtests(test_stlc):
+                yield test
     else:
         cleanfs(GENERATED_PATHS)

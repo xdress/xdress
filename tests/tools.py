@@ -1,9 +1,11 @@
 from __future__ import print_function
 
 import os
+import re
 import sys
 import imp
 import shutil
+import unittest
 import subprocess
 import tempfile
 from contextlib import contextmanager
@@ -57,3 +59,18 @@ def clean_import(name, paths=None):
     newmods = set(sys.modules.keys()) - origmods
     for newmod in newmods:
         del sys.modules[newmod]
+
+TESTNAME_RE = re.compile('(?:^|[\\b_\\.-])[Tt]est')
+
+def modtests(mod):
+    """Finds all of the tests in a module."""
+    tests = []
+    for name in dir(mod):
+        if TESTNAME_RE.match(name) is None:
+            continue
+        test = getattr(mod, name) 
+        if test is unittest.TestCase:
+            continue
+        tests.append(test)
+    return tests
+            
