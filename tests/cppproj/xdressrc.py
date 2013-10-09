@@ -77,6 +77,7 @@ functions = [
      'tarname': 'sillyBoolMin', 
      'srcfile': 'basics'}, 
     (('lessthan', 'int32', 3,), 'basics'),
+    ('call_threenums_op_from_c', 'basics', 'pybasics'),
     ('*', 'discovery'),
     ]
 
