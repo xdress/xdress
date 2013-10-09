@@ -1,6 +1,6 @@
 import numpy as np
 
-from nose.tools import assert_equal, assert_true
+from nose.tools import assert_equal, assert_true, assert_false
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 from cppproj import basics
@@ -61,3 +61,72 @@ def test_tc0boolbool():
     y = basics.TC0Bool[bool]()
     z = basics.TC0Bool['bool']()
 
+def test_untemplated():
+    x = basics.Untemplated()
+    exp = 42
+    obs = x.untemplated_method(65.0)
+    assert_equal(exp, obs)
+
+def test_silly_bool_min():
+    assert_true(basics.silly_bool_min(True, 1))
+    assert_false(basics.silly_bool_min(0, False))
+    assert_false(basics.silly_bool_min(True, False))
+    assert_false(basics.silly_bool_min(1, False))
+
+def test_a():
+    x = basics.A(10)
+    assert_equal(x.a, 10)
+    x.a = 42
+    assert_equal(x.a, 42)
+    x.call()
+    assert_equal(x.a, 1)
+
+def test_b():
+    x = basics.A(10)
+    y = basics.B(11)
+    assert_equal(y.b, 11)
+    y.b = 43
+    assert_equal(y.b, 43)
+    y.call()
+    assert_equal(y.b, 1)
+    y.from_a(x)
+    assert_equal(y.b, 10)
+    assert_true(isinstance(y, basics.A))
+    
+def test_c():
+    x = basics.A(10)
+    y = basics.B(11)
+    z = basics.C(12)
+    assert_equal(z.c, 12)
+    z.c = 44
+    assert_equal(z.c, 44)
+    z.call()
+    assert_equal(z.c, 1)
+    z.from_a(x)
+    assert_equal(z.b, 10)
+    assert_true(isinstance(z, basics.A))
+    assert_true(isinstance(z, basics.B))
+
+def test_findmin_double_float():
+    exp = 42.0
+    obs = basics.findmin_int_float(65.0, 42.0)
+    assert_equal(exp, obs)
+
+    exp = 42.0
+    obs = basics.findmin[float, float](42.0, 65.0)
+    assert_equal(exp, obs)
+
+    exp = 42.0
+    obs = basics.findmin['float64', 'float32'](42.0, 65.0)
+    assert_equal(exp, obs)
+
+
+def test_tclass0int():
+    x = basics.TClass0Int()
+    for x in [basics.TClass0Int(), basics.TClass0[int](), basics.TClass0['int32']()]:
+        assert_equal(x.whatstheanswer_int(65), 42)
+        assert_equal(x.whatstheanswer[int](65), 42)
+        assert_equal(x.whatstheanswer['int32'](65), 42)
+        assert_equal(x.whatstheanswer_float(65.0), 42.0)
+        assert_equal(x.whatstheanswer[float](65.0), 42.0)
+        assert_equal(x.whatstheanswer['float32'](65.0), 42.0)

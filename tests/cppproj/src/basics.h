@@ -50,7 +50,7 @@ class A {
   A() {};
   ~A() {};
   int a;
-  void call() {a=1;};
+  virtual void call() {a=1;};
 };
 
 class B : public A {
@@ -58,7 +58,7 @@ class B : public A {
   B() {};
   ~B() {};
   int b;
-  void call() {b=1;};
+  virtual void call() {b=1;};
   void from_a(A x) {b = x.a;};
 };
 
@@ -67,7 +67,7 @@ class C : public B {
   C() {};
   ~C() {};
   int c;
-  void call() {c=1;};
+  virtual void call() {c=1;};
 };
 
 // templated classes
