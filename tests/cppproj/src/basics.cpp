@@ -34,3 +34,7 @@ int func4(int id) {
 };
 
 } // namespace cppproj
+
+double call_threenums_op_from_c(ThreeNums x) {
+  return x.op(x.a, x.b, x.c);
+}

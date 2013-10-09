@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 
 from nose.tools import assert_equal, assert_true
@@ -54,7 +55,7 @@ def test_three_nums():
     print("f's refcount after op re-assignment: ", sys.getrefcount(f))
 
     v = x.op(14, 16, 17)
-    assert_equal(279.5, v)
+    assert_equal(275.5, v)
     print("result of x.op(14, 16, 17) = ", v)
     v = pybasics.call_threenums_op_from_c(x)
     assert_equal(102.5, v)
@@ -63,7 +64,8 @@ def test_three_nums():
     print("-"*40)
 
     # test two instances
-    y = pybasics.ThreeNums(5, 10)
+    y = pybasics.ThreeNums()
+    y.a, y.b, y.c = 50, 100, 150
     x.op = lambda a_, b_, c_: a_ + b_ + c_
     print("x.op = ", x.op)
     y.op = lambda a_, b_, c_: 2*a_ + b_**2 - c_/2.0

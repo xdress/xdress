@@ -203,6 +203,8 @@ typedef struct ThreeNums
   double (*op)(double, double, double);
 } ThreeNums;
 
+double call_threenums_op_from_c(ThreeNums x); 
+
 // normal classes
 class Untemplated {
 public:
