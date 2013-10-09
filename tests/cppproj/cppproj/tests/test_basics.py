@@ -26,3 +26,38 @@ def test_func3():
     obs = basics.func3("Waka Jawaka", ["Vows are apoken"], 42)
     assert_equal(exp, obs)
     
+def test_voided():
+    assert_true(basics.voided() is None)
+
+
+def test_findmin_int_float():
+    exp = 42
+    obs = basics.findmin_int_float(65, 42.0)
+    assert_equal(exp, obs)
+
+    exp = 42
+    obs = basics.findmin[int, float](42, 65.0)
+    assert_equal(exp, obs)
+
+def test_tclass1double():
+    x = basics.TClass1Double()
+    y = basics.TClass1[float]()
+    z = basics.TClass1['float64']()
+
+def test_regmin_int_int():
+    exp = 42
+    obs = basics.regmin_int_int(65, 42)
+    assert_equal(exp, obs)
+
+    exp = 42
+    obs = basics.regmin[int, int](42, 65)
+    assert_equal(exp, obs)
+
+def test_tc1floater():
+    x = basics.TC1Floater()
+
+def test_tc0boolbool():
+    x = basics.TC0BoolBool()
+    y = basics.TC0Bool[bool]()
+    z = basics.TC0Bool['bool']()
+
