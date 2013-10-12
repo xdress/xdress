@@ -12,6 +12,3 @@ def test_discovery():
     assert_equal(discovery.BETTER, 1)
     assert_equal(discovery.FASTER, 2)
     assert_equal(discovery.STRONGER, 3)
-
-def test_crecendoll():
-    x = discovery.Crescendoll()

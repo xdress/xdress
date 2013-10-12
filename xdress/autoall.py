@@ -252,7 +252,7 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
         node = node or self._root
         super(PycparserFinder, self).visit(node)
 
-    def visit_Enumerator(self, node):
+    def visit_Enum(self, node):
         if node.coord.file not in self.onlyin:
             return
         name = node.name
