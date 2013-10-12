@@ -24,5 +24,5 @@ tests/cproj/src/cproj_extra_types.h
 tests/cppproj/install
 tests/cppproj/cppproj/*.pxd
 tests/cppproj/cppproj/*.pyx
+tests/cppproj/src/cppproj_extra_types.h
 tests/cppproj/cppproj/tests/test_stlc.py
-

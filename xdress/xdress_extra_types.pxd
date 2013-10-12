@@ -18,21 +18,11 @@ ctypedef unsigned int uint32
 ctypedef unsigned long long uint64
 ctypedef long double float128
 
-emit_ifc()
 cdef extern from "{extra_types}.h":
 
-    ctypedef struct complex_t:
+    ctypedef struct complex_t "xd_complex_t":
         double re
         double im
-
-emit_elifcpp()
-cdef extern from "{extra_types}.h" namespace "{extra_types}":
-
-    ctypedef struct complex_t:
-        double re
-        double im
-
-emit_endif()
 
 cdef complex_t py2c_complex(object pyv)
 
