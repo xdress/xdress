@@ -9,10 +9,6 @@ set_source_files_properties(${PROJECT_SOURCE_DIR}/cproj/cproj_extra_types.pyx
                             PROPERTIES CYTHON_IS_CXX TRUE)
 cython_add_module(cproj_extra_types cproj_extra_types.pyx)
 
-set_source_files_properties(${PROJECT_SOURCE_DIR}/cproj/stlc.pyx
-                            PROPERTIES CYTHON_IS_CXX TRUE)
-cython_add_module(stlc stlc.pyx)
-
 # basics
 set_source_files_properties(${PROJECT_SOURCE_DIR}/cproj/basics.pyx
                             PROPERTIES CYTHON_IS_CXX TRUE)

@@ -2,7 +2,8 @@ package = 'cproj'
 sourcedir = 'src'
 packagedir = 'cproj'
 
-plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen',)
+plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen', 
+           'xdress.extratypes')
 
 extra_types = 'cproj_extra_types'  # non-default value
 

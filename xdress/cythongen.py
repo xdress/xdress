@@ -1570,14 +1570,17 @@ def _exception_str(exceptions, srcfile, rtntype, ts):
         if rtntype is None:
             return "except -1"  # helpful when we accidentally mis-guessed C for C++
         rtntype = ts.canon(rtntype)
-        if rtntype in _exc_c_base:
-            return "except -1"
-        elif ts.isenum(rtntype):
-            return "except -1"
-        elif _exc_ptr_matcher.matches(rtntype):
-            return "except -1"
-        else:
-            return ""
+        return ""
+        # The following does not work in general since valid vs invalid returns
+        # cannot be known.
+        #if rtntype in _exc_c_base:
+        #    return "except -1"
+        #elif ts.isenum(rtntype):
+        #    return "except -1"
+        #elif _exc_ptr_matcher.matches(rtntype):
+        #    return "except -1"
+        #else:
+        #    return ""
     elif lang == 'c++':
         return "except +"
     else:
