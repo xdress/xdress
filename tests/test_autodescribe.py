@@ -12,8 +12,6 @@ from tools import unit
 
 from numpy.testing import dec
 
-unit = attr('unit')
-
 ts = TypeSystem()
 
 if not os.path.isdir('build'):

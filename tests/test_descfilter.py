@@ -7,8 +7,6 @@ from tools import unit
 from xdress.typesystem import TypeMatcher
 from xdress import descfilter as df
 
-unit = attr('unit')
-
 car_class = {
     'name': 'Car',
     'namespace': 'util',
