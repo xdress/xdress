@@ -15,35 +15,6 @@ MANIFEST
 # Ignore OSX .DS_Store files
 *.DS_Store
 
-tests/inst/
-tests/build/
-tests/xdtest/tests/
-tests/xdtest/xdstlc.*
-tests/xdtest/stlcontainers.*
-tests/xdtest/xdtest_extra_types.*
-tests/src/xdtest_extra_types.h
-tests/xdtest/cpp_bright.pxd
-tests/xdtest/cpp_pybright.pxd
-tests/xdtest/cpp_enrichment.pxd
-tests/xdtest/cpp_enrichment_parameters.pxd
-tests/xdtest/cpp_fccomp.pxd
-tests/xdtest/cpp_reprocess.pxd
-tests/xdtest/bright.pyx
-tests/xdtest/bright.pxd
-tests/xdtest/pybright.pyx
-tests/xdtest/pybright.pxd
-tests/xdtest/enrichment.pxd
-tests/xdtest/enrichment.pyx
-tests/xdtest/enrichment_parameters.pxd
-tests/xdtest/enrichment_parameters.pyx
-tests/xdtest/fccomp.pxd
-tests/xdtest/fccomp.pyx
-tests/xdtest/reprocess.pxd
-tests/xdtest/reprocess.pyx
-tests/xdtest/c_pydevice.pxd
-tests/xdtest/pydevice.pxd
-tests/xdtest/pydevice.pyx
-
 # Test files to ignore
 tests/cppproj/install
 tests/cppproj/cppproj/*.pxd
