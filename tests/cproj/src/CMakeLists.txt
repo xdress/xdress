@@ -4,14 +4,14 @@ set(CPROJ_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} ${CPROJ_INCLUDE_DIRS}
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # bright
-add_library(cproj_basics basics.cpp)
+add_library(cproj_basics basics.c)
 set_target_properties(cproj_basics PROPERTIES 
                       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/cproj/lib")
 target_link_libraries(cproj_basics)
 install_lib(cproj_basics)
 
 # discovery
-add_library(cproj_discovery discovery.cpp)
+add_library(cproj_discovery discovery.c)
 set_target_properties(cproj_discovery PROPERTIES 
                       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/cproj/lib")
 target_link_libraries(cproj_discovery)
