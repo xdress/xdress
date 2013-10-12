@@ -1502,7 +1502,8 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
     def visit_ArrayDecl(self, node):
         self._pprint(node)
         self.visit(node.type)
-        self._currtype = (self._currtype, '*')
+        predicate = '*' if node.dim is None else int(node.dim.value)
+        self._currtype = (self._currtype, predicate)
 
     def visit_FuncDecl(self, node):
         self._pprint(node)

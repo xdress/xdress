@@ -26,7 +26,7 @@ functions = [
     ]
 
 classes = [
-    ('struct0', 'basics', 'pybasics', 'My_Struct_0'),  #FIXME This needs more work
+#    ('struct0', 'basics', 'pybasics', 'My_Struct_0'),  #FIXME This needs more work
     ('ThreeNums', 'basics', 'pybasics'),
     ('*', 'discovery'),
     ]
