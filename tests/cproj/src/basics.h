@@ -6,7 +6,7 @@
 //standard libraries
 
 // misc
-extern char [31] GET_LUCKY;
+extern char GET_LUCKY [31];
 void voided ();
 extern int verbosity;
 
@@ -30,7 +30,7 @@ typedef struct struct0 {
 unsigned int func0(double x, unsigned int y);
 unsigned int func1(int i, float f);
 char * func2();
-int func3(char *, char **, int = -1);
+int func3(char *, char **, int);
 
 // FIXME when enums are implemented properly in C++, see #96
 //int func4(PersonID id);

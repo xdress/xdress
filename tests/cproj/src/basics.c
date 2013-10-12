@@ -1,8 +1,8 @@
 #include "basics.h"
 
-std::string GET_LUCKY = "She's up all night til the sun.";
+char GET_LUCKY [31] = "She's up all night til the sun.";
 void voided() {};
-int verbosity  = 0;
+int verbosity = 0;
 
 unsigned int func0(double x, unsigned int y) {
   return 1;
