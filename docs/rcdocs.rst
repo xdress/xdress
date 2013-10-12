@@ -73,6 +73,8 @@ xdress.cythongen
 
 xdress.descfilter
 =================
+:includemethods: Method names to be wrapped (dict, keys are class names),
+    *default:* NotSpecified.
 :skipmethods: Method names to filter out from being wrapped, *default:*
     NotSpecified.
 :skiptypes: The types to filter out from being wrapped, *default:* NotSpecified.

@@ -69,18 +69,48 @@ XDress currently has the following external dependencies,
     #. `Cython <http://cython.org/>`_
     #. `NumPy <http://numpy.scipy.org/>`_
 
+*Test Time:*
+
+    #. `nose <https://nose.readthedocs.org/en/latest/>`_
+    #. `CMake <http://www.cmake.org/>`_, optional for integration tests
+
 ===============
 Examples of Use
 ===============
 To see examples of xdress in action (and sample run control files), here are a
 few places to look:
 
-* `xdress/tests <https://github.com/xdress/xdress/tree/master/tests>`_: This is 
-  a fully functioning sample project which uses xdress locally (no install needed).
+* `xdress/tests/cproj <https://github.com/xdress/xdress/tree/master/tests/cproj>`_: 
+  This is a fully functioning sample C project which uses xdress locally.
+* `xdress/tests/cppproj <https://github.com/xdress/xdress/tree/master/tests/cppproj>`_: 
+  This is a fully functioning sample C++ project which uses xdress locally.
 * `PyNE <http://pynesim.org/>`_: This uses xdress to generate STL container wrappers.
 * `Bright <http://bright-dev.github.com/>`_: This uses xdress to automatically
   wrap a suite of interacting C++ class.  This was the motivating use case for the
   xdress project.
+
+=======
+Testing
+=======
+XDress has two major test types: unit tests which test library functionality and 
+integration tests which test the command line tool, the parsers, compilers, etc.  
+The unit tests are generally fast while the integration are slower.  From the 
+`tests/` directory you may use nose to run the tests together or individually::
+
+    # Go into the tests dir
+    $ cd tests
+
+    # Run just the unit tests
+    tests $ nosetests -a unit
+
+    # Run just the integration tests
+    tests $ nosetests -a integration
+
+    # Run all of the tests together
+    tests $ nosetests
+
+Note that the integration tests require CMake in order to build the sample
+projects.
 
 ==========
 Contact Us
