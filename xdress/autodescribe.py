@@ -1416,7 +1416,8 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         self._currfunc.append(name)
         self._currfuncsig = []
         self._level += 1
-        for _, child in ftype.args.children():
+        children = () if ftype.args is None else ftype.args.children()
+        for _, child in children:
             if isinstance(child, pycparser.c_ast.EllipsisParam):
                 continue
             arg = (child.name, self.type(child))
@@ -1506,7 +1507,8 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
     def visit_FuncDecl(self, node):
         self._pprint(node)
         args = []
-        for i, arg in enumerate(node.args.params):
+        params = () if node.args is None else node.args.params
+        for i, arg in enumerate(params):
             if isinstance(arg, pycparser.c_ast.EllipsisParam):
                 continue
             argname = arg.name or '_{0}'.format(i)
