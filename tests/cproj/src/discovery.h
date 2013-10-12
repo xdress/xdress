@@ -1,7 +1,5 @@
-#ifndef CPPPROJ_DISCOVERY
-#define CPPPROJ_DISCOVERY
-
-namespace cppproj {
+#ifndef CPROJ_DISCOVERY
+#define CPROJ_DISCOVERY
 
 typedef enum DigitalLove {
   HARDER,
@@ -12,11 +10,4 @@ typedef enum DigitalLove {
 
 void face2face();
 
-class Crescendoll {
-  public:
-    Crescendoll();
-    ~Crescendoll();
-};
-
-}; // namespace cppproj
 #endif

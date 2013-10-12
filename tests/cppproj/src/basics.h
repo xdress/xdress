@@ -1,7 +1,7 @@
 // Header for general library file.
 
-#if !defined(_BRIGHT_)
-#define _BRIGHT_
+#if !defined(_CPPPROJ_BASICS_)
+#define _CPPPROJ_BASICS_
 
 //standard libraries
 #include <string>
