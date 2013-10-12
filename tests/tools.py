@@ -38,7 +38,7 @@ def check_cmd(args, cwd, holdsrtn):
     rtn = subprocess.call(args, shell=True, cwd=cwd, stdout=f, stderr=f)
     if rtn != 0:
         f.seek(0)
-        print("STDOUT + STDERR:\n\n" + f.read())
+        print("STDOUT + STDERR:\n\n" + f.read().decode())
     f.close()
     holdsrtn[0] = rtn
     assert_equal(rtn, 0)
