@@ -3,7 +3,7 @@ import numpy as np
 from nose.tools import assert_equal, assert_true, assert_false
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
-from cppproj import basics
+from cproj import basics
 
 def test_a_better_name():
     exp = np.zeros(5, float)
