@@ -8,3 +8,4 @@ Conferences
     :maxdepth: 2
 
     scipy2013/index
+    pycon2014/index
