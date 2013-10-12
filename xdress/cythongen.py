@@ -475,7 +475,7 @@ def pxd_sorted_names(mod):
             classnames.append(name)
         else:
             othernames.append(name)
-    names = classnames + sorted(othernames)
+    names = classnames + sortedbytype(othernames)
     return names
 
 
