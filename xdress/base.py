@@ -31,7 +31,7 @@ class XDressPlugin(Plugin):
         dumpdesc=False,
         package=NotSpecified,
         packagedir=NotSpecified,
-        sourcedir='src',
+        sourcedir=NotSpecified,
         builddir='build',
         bash_completion=True,
         )
@@ -48,7 +48,7 @@ class XDressPlugin(Plugin):
         'dumpdesc': "Print the description cache",
         'package': "The Python package name for the generated wrappers", 
         'packagedir': "Path to package directory, same as 'package' if not specified",
-        'sourcedir': "Path to source directory",
+        'sourcedir': "Path to source directory (deprecated)",
         'builddir': "Path to build directory",
         'bash_completion': ("Flag for enabling / disabling BASH completion. "
                             "This is only relevant when using argcomplete."),
@@ -84,8 +84,9 @@ class XDressPlugin(Plugin):
             rc.packagedir = rc.package.replace('.', os.path.sep)
         if not os.path.isdir(rc.packagedir):
             os.makedirs(rc.packagedir)
-        if not os.path.isdir(rc.sourcedir):
-            os.makedirs(rc.sourcedir)
+        if rc.sourcedir is not NotSpecified:
+            warn("sourcedir has been removed in favor of new apiname semantics", 
+                 DepreactionWarning)
         if not os.path.isdir(rc.builddir):
             os.makedirs(rc.builddir)
         writenewonly("", os.path.join(rc.packagedir, '__init__.py'), rc.verbose)

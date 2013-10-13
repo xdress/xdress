@@ -3,6 +3,7 @@ import os
 package = 'cproj'
 sourcedir = 'src'
 packagedir = 'cproj'
+includes = ['src']
 
 plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen', 
            'xdress.extratypes')
