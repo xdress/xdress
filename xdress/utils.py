@@ -10,6 +10,7 @@ import os
 import io
 import re
 import sys
+import glob
 import functools
 from copy import deepcopy
 from pprint import pformat
@@ -175,6 +176,10 @@ def ensuredirs(f):
     if not os.path.isdir(d):
         os.makedirs(d)
 
+def touch(filename):
+    """Opens a file and updates the mtime, like the posix command of the same name."""
+    with open(filename, 'a'):
+        pass
 
 def isvardesc(desc):
     """Tests if a description is a variable-type description."""
@@ -583,10 +588,50 @@ def parse_template(s, open_brace='<', close_brace='>', separator=','):
 # API Name Tuples and Functions
 #
 
-apiname = namedtuple('apiname', ['srcname', 'srcfile', 'tarfile', 'tarname', 
+apiname = namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname', 
                                  'language'])
 
 notspecified_apiname = apiname(*([NotSpecified]*len(apiname._fields)))
+
+def _ensure_srcfiles(inp):
+    """This ensures that srcsfiles is a tuple of filenames that has been 
+    expanded out and the files actually exist on the file system.
+    """
+    if isinstance(inp, basestring):
+        inp = (inp,)
+    out = []
+    for f in inp:
+        if os.path.isfile(f):
+            out.append(f)
+        else:
+            out += sorted([x for x in glob.glob(f) if x not in out])
+    return tuple(out)
+
+def _guess_base(srcfiles, default=None):
+    """Guesses the base name for target files from source file names, or 
+    failing that, a default value."""
+    basefiles = [os.path.basename(f) for f in srcfiles]
+    basename = os.path.splitext(os.path.commonprefix(basefiles))[0]
+    if len(basename) == 0:
+        basename = default
+    return basename
+
+def _find_language(lang, srcfiles):
+    """Tries to discover the canonical language that the srcfiles are 
+    implmenetd in."""
+    if isinstance(lang, basestring):
+        lang = lang.lower()
+        if lang not in _lang_exts:
+            raise ValueError('{0} is not a valid language'.format(lang))
+        return lang
+    langs = set(map(guess_language, srcfiles))
+    if len(langs) == 1:
+        return langs.pop()
+    for precedent in ['cython', 'c++', 'c', 'f90','f77', 'f', 'fortran', 'python']:
+        if precedent in langs:
+            return precedent
+    else:
+        raise ValueError("no valid language was found.")
 
 def ensure_apiname(name):
     """Takes user input and returns the corresponding apiname named tuple.
@@ -605,14 +650,17 @@ def ensure_apiname(name):
     updates = {}
     if name.srcname is NotSpecified:
         raise ValueError("apiname.srcname cannot be unspecified")
-    if name.srcfile is NotSpecified:
-        raise ValueError("apiname.srcfile cannot be unspecified")
-    if name.tarfile is NotSpecified:
-        updates['tarfile'] = name.srcname
+    if name.srcfiles is NotSpecified:
+        raise ValueError("apiname.srcfiles cannot be unspecified")
+    updates['srcfiles'] = _ensure_srcfiles(name.srcfiles)
     if name.tarname is NotSpecified:
         updates['tarname'] = name.srcname
-    if 0 < len(updates):
-        name = name._replace(**updates)
+    if name.tarbase is NotSpecified:
+        updates['tarbase'] = _guess_base(updates['srcfiles'], 
+                                         updates.get('tarname', name.tarname))
+    if name.language not in _lang_exts:
+        updates['language'] = _find_language(name.language, updates['srcfiles'])
+    name = name._replace(**updates)
     return name
 
 #
@@ -677,5 +725,4 @@ class memoize_method(object):
             return cache[key]
         else:
             return self.meth(*args, **kwargs)
-
 

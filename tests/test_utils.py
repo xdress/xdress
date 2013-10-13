@@ -1,7 +1,9 @@
 from __future__ import print_function
+import os
+
 from xdress.utils import NotSpecified, RunControl, flatten, split_template_args, \
     ishashable, memoize, memoize_method, apiname, ensure_apiname, sortedbytype, \
-    cppint
+    cppint, touch
 
 from nose.tools import assert_equal, with_setup, assert_true, assert_false, \
     assert_not_equal
@@ -120,23 +122,31 @@ def test_memoize_method():
 
 def check_ensure_apiname(x, exp):
     obs = ensure_apiname(x)
+    print(exp)
+    print(obs)
     assert_equal(exp, obs)
 
+apiname_srcfiles = ['joan.cpp', 'joan.c', 'joan.h']
+
 @unit
+@with_setup(lambda: map(touch, apiname_srcfiles), 
+            lambda: map(os.remove, apiname_srcfiles))
 def test_ensure_apiname():
     cases = [
-        (('Joan', 'joan'), apiname('Joan', 'joan', 'joan', 'Joan')), 
-        (('Joan', 'joan', 'pyjoan'), apiname('Joan', 'joan', 'pyjoan', 'Joan')), 
-        (('Joan', 'joan', 'pyjoan', 'PyJoan'), 
-            apiname('Joan', 'joan', 'pyjoan', 'PyJoan')), 
-        (['Joan', 'joan', 'pyjoan', 'PyJoan'], 
-            apiname('Joan', 'joan', 'pyjoan', 'PyJoan')), 
-        ({'srcname': 'Joan', 'srcfile': 'joan'}, 
-            apiname('Joan', 'joan', 'joan', 'Joan')), 
-        (apiname('Joan', 'joan', 'pyjoan', 'PyJoan'), 
-            apiname('Joan', 'joan', 'pyjoan', 'PyJoan')), 
-        (apiname('Joan', 'joan', 'pyjoan', NotSpecified), 
-            apiname('Joan', 'joan', 'pyjoan', 'Joan')), 
+        (('Joan', 'joan.cpp'), apiname('Joan', ('joan.cpp',), 'joan', 'Joan', 'c++')), 
+        (('Joan', ['joan.h', 'joan.cpp'], 'pyjoan'), 
+            apiname('Joan', ('joan.h', 'joan.cpp'), 'pyjoan', 'Joan', 'c++')), 
+        (('Joan', ('joan.h', 'j*.c'), 'pyjoan', 'PyJoan'), 
+            apiname('Joan', ('joan.h', 'joan.c'), 'pyjoan', 'PyJoan', 'c')), 
+        (['Joan', 'joan*', 'pyjoan', 'PyJoan', 'python'], 
+            apiname('Joan', ('joan.c', 'joan.cpp', 'joan.h'), 'pyjoan', 'PyJoan', 
+                    'python')), 
+        ({'srcname': 'Joan', 'srcfiles': 'joan.h', 'language': 'C'}, 
+            apiname('Joan', ('joan.h',), 'joan', 'Joan', 'c')), 
+        (apiname('Joan', 'joan.cpp', 'pyjoan', 'PyJoan', None), 
+            apiname('Joan', ('joan.cpp',), 'pyjoan', 'PyJoan', 'c++')), 
+        (apiname('Joan', ('joan.cpp',), 'pyjoan', NotSpecified, NotSpecified), 
+            apiname('Joan', ('joan.cpp',), 'pyjoan', 'Joan', 'c++')), 
         ]
     for x, exp in cases:
         yield check_ensure_apiname, x, exp
