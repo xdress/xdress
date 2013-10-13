@@ -129,8 +129,8 @@ def check_ensure_apiname(x, exp):
 apiname_srcfiles = ['joan.cpp', 'joan.c', 'joan.h', 'joan.py', 'phone.py']
 
 @unit
-@with_setup(lambda: map(touch, apiname_srcfiles), 
-            lambda: map(os.remove, apiname_srcfiles))
+@with_setup(lambda: list(map(touch, apiname_srcfiles)), 
+            lambda: list(map(os.remove, apiname_srcfiles)))
 def test_ensure_apiname():
     cases = [
         (('Joan', 'joan.cpp'), 

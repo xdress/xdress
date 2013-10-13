@@ -178,8 +178,8 @@ def ensuredirs(f):
 
 def touch(filename):
     """Opens a file and updates the mtime, like the posix command of the same name."""
-    with open(filename, 'a'):
-        pass
+    with io.open(filename, 'a') as f:
+        os.utime(filename, None)
 
 def isvardesc(desc):
     """Tests if a description is a variable-type description."""
