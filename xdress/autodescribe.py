@@ -197,7 +197,7 @@ def clearmemo():
 # GCC-XML Describers
 #
 
-def gccxml_describe(filename, name, kind, hdrname=None, includes=(), defines=('XDRESS',),
+def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                     undefines=(), ts=None, verbose=False, debug=False,
                     builddir='build'):
     """Use GCC-XML to describe the class.
@@ -241,8 +241,6 @@ def gccxml_describe(filename, name, kind, hdrname=None, includes=(), defines=('X
     basename = filename.rsplit('.', 1)[0]
     onlyin = set([filename] +
                  [basename + '.' + h for h in utils._hdr_exts if h.startswith('h')])
-    if hdrname is not None:
-        onlyin |= set([hdrname])
     describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber,
                   'var': GccxmlVarDescriber}
     describer = describers[kind](name, root, onlyin=onlyin, ts=ts, verbose=verbose)
@@ -1736,7 +1734,7 @@ _pycparser_describers = {
     'class': PycparserClassDescriber,
     }
 
-def pycparser_describe(filename, name, kind, hdrname=None, includes=(), defines=('XDRESS',),
+def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                        undefines=(), ts=None, verbose=False, debug=False,
                        builddir='build'):
     """Use pycparser to describe the fucntion or struct (class).
@@ -1837,7 +1835,7 @@ def describe(filename, hdrname=None, name=None, kind='class', includes=(), defin
         name = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
     parser = astparsers.pick_parser(filename, parsers)
     describer = _describers[parser]
-    desc = describer(filename, name, kind, hdrname=hdrname, includes=includes, defines=defines,
+    desc = describer(filename, name, kind, includes=includes, defines=defines,
                      undefines=undefines, ts=ts, verbose=verbose, debug=debug,
                      builddir=builddir)
     return desc
@@ -1907,7 +1905,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         for i, cls in enumerate(rc.classes):
             print("autodescribe: registering {0}".format(cls.srcname))
             fnames = find_filenames(cls.srcfile, tarname=cls.tarfile,
-                                    sourcedir=rc.sourcedir, hdrname=cls.hdrfile, language=cls.language)
+                                    sourcedir=rc.sourcedir, language=cls.language)
             if cls.tarfile is None:
                 pxd_base = cls.srcfile
                 lang_ext = fnames['language_extension']
@@ -1945,21 +1943,13 @@ class XDressPlugin(astparsers.ParserPlugin):
 
     def load_sidecars(self, rc):
         """Loads all sidecar files."""
-        def flatten(lst):
-            nlst = []
-            for x in lst:
-                if isinstance(x, list):
-                    nlst += tuple(x)
-                else:
-                    nlst.append(x)
-            return nlst
-        srcnames = set(flatten([x[1] for x in rc.variables]))
-        srcnames |= set(flatten([x[1] for x in rc.functions]))
-        srcnames |= set(flatten([x[1] for x in rc.classes]))
+        srcnames = set([x[1] for x in rc.variables])
+        srcnames |= set([x[1] for x in rc.functions])
+        srcnames |= set([x[1] for x in rc.classes])
         for x in srcnames:
             self.load_pysrcmod(x, rc)
 
-    def compute_desc(self, var_func_class, name, srcname, hdrname, tarname, kind, rc):
+    def compute_desc(self, name, srcname, hdrname, tarname, kind, rc):
         """Returns a description dictionary for a class or function
         implemented in a source file and bound into a target file.
 
@@ -1982,24 +1972,14 @@ class XDressPlugin(astparsers.ParserPlugin):
             Description dictionary.
 
         """
-        #print("compute_desc %s %s %s %s" % ( name, srcname, tarname, kind))
-        fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir, hdrname=hdrname, language=var_func_class.language )
+        fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir)
         srcfname = fnames['source_filename']
-        hdrfname = fnames['header_filename']
-        if os.path.isabs(srcfname):
-            filename = srcfname
-        else:
-            filename = os.path.join(rc.sourcedir, srcfname)
-        if hdrfname is not NotSpecified:
-            if os.path.isabs(hdrfname):
-                hdrfname = hdrfname
-            else:
-                hdrfname = os.path.join(rc.sourcedir, hdrfname)
+        filename = os.path.join(rc.sourcedir, srcfname)
         cache = rc._cache
         if cache.isvalid(name, filename, kind):
             srcdesc = cache[name, filename, kind]
         else:
-            srcdesc = describe(filename, hdrname=hdrfname, name=name, kind=kind, includes=rc.includes,
+            srcdesc = describe(filename, name=name, kind=kind, includes=rc.includes,
                                defines=rc.defines, undefines=rc.undefines,
                                parsers=rc.parsers, ts=rc.ts, verbose=rc.verbose,
                                debug=rc.debug, builddir=rc.builddir)
@@ -2036,7 +2016,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         cache = rc._cache
         for i, var in enumerate(rc.variables):
             print("autodescribe: describing {0}".format(var.srcname))
-            desc = self.compute_desc(var, var.srcname, var.srcfile, var.hdrfile, var.tarfile, 'var', rc)
+            desc = self.compute_desc(var.srcname, var.srcfile, var.tarfile, 'var', rc)
             if rc.verbose:
                 pprint(desc)
             cache.dump()
@@ -2068,8 +2048,8 @@ class XDressPlugin(astparsers.ParserPlugin):
         cache = rc._cache
         env = rc.env  # target environment, not source one
         for i, cls in enumerate(rc.classes):
-            print("autodescribe: describing {0} - {1}".format(cls.srcname, cls.srcfile))
-            desc = self.compute_desc(cls, cls.srcname, cls.srcfile, cls.hdrfile, cls.tarfile,
+            print("autodescribe: describing {0}".format(cls.srcname))
+            desc = self.compute_desc(cls, cls.srcname, cls.srcfile, cls.tarfile,
                                      'class', rc)
             cache.dump()
             if cls.srcname != cls.tarname:
