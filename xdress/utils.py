@@ -585,85 +585,6 @@ def parse_template(s, open_brace='<', close_brace='>', separator=','):
     return tuple(t)
 
 #
-# API Name Tuples and Functions
-#
-
-apiname = namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname', 
-                                 'language'])
-
-notspecified_apiname = apiname(*([NotSpecified]*len(apiname._fields)))
-
-def _ensure_srcfiles(inp):
-    """This ensures that srcsfiles is a tuple of filenames that has been 
-    expanded out and the files actually exist on the file system.
-    """
-    if isinstance(inp, basestring):
-        inp = (inp,)
-    out = []
-    for f in inp:
-        if os.path.isfile(f):
-            out.append(f)
-        else:
-            out += sorted([x for x in glob.glob(f) if x not in out])
-    return tuple(out)
-
-def _guess_base(srcfiles, default=None):
-    """Guesses the base name for target files from source file names, or 
-    failing that, a default value."""
-    basefiles = [os.path.basename(f) for f in srcfiles]
-    basename = os.path.splitext(os.path.commonprefix(basefiles))[0]
-    if len(basename) == 0:
-        basename = default
-    return basename
-
-def _find_language(lang, srcfiles):
-    """Tries to discover the canonical language that the srcfiles are 
-    implmenetd in."""
-    if isinstance(lang, basestring):
-        lang = lang.lower()
-        if lang not in _lang_exts:
-            raise ValueError('{0} is not a valid language'.format(lang))
-        return lang
-    langs = set(map(guess_language, srcfiles))
-    if len(langs) == 1:
-        return langs.pop()
-    for precedent in ['cython', 'c++', 'c', 'f90','f77', 'f', 'fortran', 'python']:
-        if precedent in langs:
-            return precedent
-    else:
-        raise ValueError("no valid language was found.")
-
-def ensure_apiname(name):
-    """Takes user input and returns the corresponding apiname named tuple.
-    If the name is already an apiname instance with no NotSpecified fields,
-    this does not make a copy.
-    """
-    # ensure is a valid apiname
-    if isinstance(name, apiname):
-        pass
-    elif isinstance(name, Sequence):
-        name = notspecified_apiname._replace(**dict(zip(apiname._fields, name)))
-    elif isinstance(name, Mapping):
-        name = notspecified_apiname._replace(**name)
-
-    # ensure fields are not NotSpecified
-    updates = {}
-    if name.srcname is NotSpecified:
-        raise ValueError("apiname.srcname cannot be unspecified")
-    if name.srcfiles is NotSpecified:
-        raise ValueError("apiname.srcfiles cannot be unspecified")
-    updates['srcfiles'] = _ensure_srcfiles(name.srcfiles)
-    if name.tarname is NotSpecified:
-        updates['tarname'] = name.srcname
-    if name.tarbase is NotSpecified:
-        updates['tarbase'] = _guess_base(updates['srcfiles'], 
-                                         updates.get('tarname', name.tarname))
-    if name.language not in _lang_exts:
-        updates['language'] = _find_language(name.language, updates['srcfiles'])
-    name = name._replace(**updates)
-    return name
-
-#
 # Memoization
 #
 
@@ -725,4 +646,100 @@ class memoize_method(object):
             return cache[key]
         else:
             return self.meth(*args, **kwargs)
+
+
+#
+# API Name Tuples and Functions
+#
+
+apiname = namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname', 
+                                 'sidecars', 'language'])
+
+notspecified_apiname = apiname(*([NotSpecified]*len(apiname._fields)))
+
+def _ensure_srcfiles(inp):
+    """This ensures that srcsfiles is a tuple of filenames that has been 
+    expanded out and the files actually exist on the file system.
+    """
+    if isinstance(inp, basestring):
+        inp = (inp,)
+    out = []
+    for f in inp:
+        if os.path.isfile(f):
+            out.append(f)
+        else:
+            out += sorted([x for x in glob.glob(f) if x not in out])
+    return tuple(out)
+
+def _guess_base(srcfiles, default=None):
+    """Guesses the base name for target files from source file names, or 
+    failing that, a default value."""
+    basefiles = [os.path.basename(f) for f in srcfiles]
+    basename = os.path.splitext(os.path.commonprefix(basefiles))[0]
+    if len(basename) == 0:
+        basename = default
+    return basename
+
+@memoize
+def find_sidecar(filename):
+    """Finds the sidecar for a filename, if it exists. Otherwise returns None."""
+    sc = os.path.splitext(filename)[0] + '.py'
+    sc = sc if os.path.isfile(sc) else None
+    return sc
+
+def _guess_sidecars(srcfiles):
+    """Gueses the sidecar file names from the source file names."""
+    scs = set(find_sidecar(f) for f in srcfiles)
+    scs.discard(None)
+    return tuple(sorted(scs))
+
+def _find_language(lang, srcfiles):
+    """Tries to discover the canonical language that the srcfiles are 
+    implmenetd in."""
+    if isinstance(lang, basestring):
+        lang = lang.lower()
+        if lang not in _lang_exts:
+            raise ValueError('{0} is not a valid language'.format(lang))
+        return lang
+    langs = set(map(guess_language, srcfiles))
+    if len(langs) == 1:
+        return langs.pop()
+    for precedent in ['cython', 'c++', 'c', 'f90','f77', 'f', 'fortran', 'python']:
+        if precedent in langs:
+            return precedent
+    else:
+        raise ValueError("no valid language was found.")
+
+def ensure_apiname(name):
+    """Takes user input and returns the corresponding apiname named tuple.
+    If the name is already an apiname instance with no NotSpecified fields,
+    this does not make a copy.
+    """
+    # ensure is a valid apiname
+    if isinstance(name, apiname):
+        pass
+    elif isinstance(name, Sequence):
+        name = notspecified_apiname._replace(**dict(zip(apiname._fields, name)))
+    elif isinstance(name, Mapping):
+        name = notspecified_apiname._replace(**name)
+
+    # ensure fields are not NotSpecified
+    updates = {}
+    if name.srcname is NotSpecified:
+        raise ValueError("apiname.srcname cannot be unspecified")
+    if name.srcfiles is NotSpecified:
+        raise ValueError("apiname.srcfiles cannot be unspecified")
+    updates['srcfiles'] = _ensure_srcfiles(name.srcfiles)
+    if name.tarname is NotSpecified:
+        updates['tarname'] = name.srcname
+    if name.tarbase is NotSpecified:
+        updates['tarbase'] = _guess_base(updates['srcfiles'], 
+                                         updates.get('tarname', name.tarname))
+    if name.sidecars is NotSpecified:
+        updates['sidecars'] = _guess_sidecars(updates['srcfiles'])
+    updates['sidecars'] = _ensure_srcfiles(updates.get('sidecars', name.sidecars))
+    if name.language not in _lang_exts:
+        updates['language'] = _find_language(name.language, updates['srcfiles'])
+    name = name._replace(**updates)
+    return name
 

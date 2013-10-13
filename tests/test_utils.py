@@ -126,27 +126,30 @@ def check_ensure_apiname(x, exp):
     print(obs)
     assert_equal(exp, obs)
 
-apiname_srcfiles = ['joan.cpp', 'joan.c', 'joan.h']
+apiname_srcfiles = ['joan.cpp', 'joan.c', 'joan.h', 'joan.py', 'phone.py']
 
 @unit
 @with_setup(lambda: map(touch, apiname_srcfiles), 
             lambda: map(os.remove, apiname_srcfiles))
 def test_ensure_apiname():
     cases = [
-        (('Joan', 'joan.cpp'), apiname('Joan', ('joan.cpp',), 'joan', 'Joan', 'c++')), 
+        (('Joan', 'joan.cpp'), 
+            apiname('Joan', ('joan.cpp',), 'joan', 'Joan', ('joan.py',), 'c++')), 
         (('Joan', ['joan.h', 'joan.cpp'], 'pyjoan'), 
-            apiname('Joan', ('joan.h', 'joan.cpp'), 'pyjoan', 'Joan', 'c++')), 
+            apiname('Joan', ('joan.h', 'joan.cpp'), 'pyjoan', 'Joan', ('joan.py',), 
+                    'c++')), 
         (('Joan', ('joan.h', 'j*.c'), 'pyjoan', 'PyJoan'), 
-            apiname('Joan', ('joan.h', 'joan.c'), 'pyjoan', 'PyJoan', 'c')), 
-        (['Joan', 'joan*', 'pyjoan', 'PyJoan', 'python'], 
-            apiname('Joan', ('joan.c', 'joan.cpp', 'joan.h'), 'pyjoan', 'PyJoan', 
-                    'python')), 
+            apiname('Joan', ('joan.h', 'joan.c'), 'pyjoan', 'PyJoan', ('joan.py',), 
+                    'c')), 
+        (['Joan', 'joan*', 'pyjoan', 'PyJoan', ('phone.py',), 'python'], 
+            apiname('Joan', ('joan.c', 'joan.cpp', 'joan.h', 'joan.py'), 'pyjoan', 
+                    'PyJoan', ('phone.py',), 'python')), 
         ({'srcname': 'Joan', 'srcfiles': 'joan.h', 'language': 'C'}, 
-            apiname('Joan', ('joan.h',), 'joan', 'Joan', 'c')), 
-        (apiname('Joan', 'joan.cpp', 'pyjoan', 'PyJoan', None), 
-            apiname('Joan', ('joan.cpp',), 'pyjoan', 'PyJoan', 'c++')), 
-        (apiname('Joan', ('joan.cpp',), 'pyjoan', NotSpecified, NotSpecified), 
-            apiname('Joan', ('joan.cpp',), 'pyjoan', 'Joan', 'c++')), 
+            apiname('Joan', ('joan.h',), 'joan', 'Joan', ('joan.py',), 'c')), 
+        (apiname('Joan', 'joan.cpp', 'pyjoan', 'PyJoan', ('loan.py',), None), 
+            apiname('Joan', ('joan.cpp',), 'pyjoan', 'PyJoan', (), 'c++')), 
+        (apiname('Joan', ('joan.cpp',), 'pyjoan', NotSpecified, (), NotSpecified), 
+            apiname('Joan', ('joan.cpp',), 'pyjoan', 'Joan', (), 'c++')), 
         ]
     for x, exp in cases:
         yield check_ensure_apiname, x, exp
