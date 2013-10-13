@@ -740,6 +740,6 @@ def ensure_apiname(name):
     updates['sidecars'] = _ensure_srcfiles(updates.get('sidecars', name.sidecars))
     if name.language not in _lang_exts:
         updates['language'] = _find_language(name.language, updates['srcfiles'])
-    name = name._replace(**updates)
-    return name
+    ensured = name._replace(**updates)
+    return name if name == ensured else ensured
 
