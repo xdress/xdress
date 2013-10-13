@@ -372,7 +372,7 @@ class Plugins(object):
         if rc.debug:
             import traceback
             sep = nyansep + '\n\n'
-            msg = '{0}xdress failed with the following error:\n\n'.format(sep)
+            msg = u'{0}xdress failed with the following error:\n\n'.format(sep)
             msg += traceback.format_exc()
             msg += '\n{0}Run control run-time contents:\n\n{1}\n\n'.format(sep, 
                                                                     rc._pformat())
