@@ -511,19 +511,19 @@ class XDressPlugin(astparsers.ParserPlugin):
         for i, var in enumerate(rc.variables):
             rc.variables[i] = var = ensure_apiname(var)
             if var.srcname == '*':
-                allsrc.add(var.srcfile)
+                allsrc.add(var.srcfiles)
                 varhasstar = True
         fnchasstar = False
         for i, fnc in enumerate(rc.functions):
             rc.functions[i] = fnc = ensure_apiname(fnc)
             if fnc.srcname == '*':
-                allsrc.add(fnc.srcfile)
+                allsrc.add(fnc.srcfiles)
                 fnchasstar = True
         clshasstar = False
         for i, cls in enumerate(rc.classes):
             rc.classes[i] = cls = ensure_apiname(cls)
             if cls.srcname == '*':
-                allsrc.add(cls.srcfile)
+                allsrc.add(cls.srcfiles)
                 clshasstar = True
         self.allsrc = allsrc
         self.varhasstar = varhasstar
