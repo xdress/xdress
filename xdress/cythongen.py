@@ -5,7 +5,7 @@ auto-describer, it sure helps!  The functions in this module are conceptually
 easy to understand -- given class descriptions they generate strings of Cython
 code -- their implementations do a lot of heavy lifting.
 
-This module is available as an xdress plugin by the name ``xdress.cythongen``. 
+This module is available as an xdress plugin by the name ``xdress.cythongen``.
 Note that while the module does not rely on the autodescriber the plugin does.
 
 :author: Anthony Scopatz <scopatz@gmail.com>
@@ -83,7 +83,7 @@ def _addotherclsnames(t, classes, name, others, ts):
                 others[name].add(spsubt)
 
 def cpppxd_sorted_names(mod, ts):
-    """Sorts the variable names in a cpp_*.pxd module so that C/C++ 
+    """Sorts the variable names in a cpp_*.pxd module so that C/C++
     declarations happen in the proper order.
     """
     classes = set([name for name, desc in  mod.items() if isclassdesc(desc)])
@@ -284,7 +284,7 @@ def funccpppxd(desc, exceptions=True, ts=None):
         argfill = ", ".join([ts.cython_ctype(a[1]) for a in fargs])
         for a in fargs:
             ts.cython_cimport_tuples(a[1], cimport_tups, inc)
-        estr = _exception_str(exceptions, desc['source_filename'], frtn, ts)
+        estr = _exception_str(exceptions, desc['source_filename'], desc['language'], frtn, ts)
         if fname == cppname == cyname:
             line = "{0}({1}) {2}".format(fname, argfill, estr)
         else:
@@ -359,7 +359,10 @@ def classcpppxd(desc, exceptions=True, ts=None):
         d['alias'] = ' ' + _format_alias(desc, ts)
     #construct_kinds = {'struct': 'struct', 'class': 'cppclass'}
     #d['construct_kind'] = construct_kinds[desc.get('construct', 'class')]
-    lang = guess_language(desc['source_filename'])
+    if isinstance(desc['language'],  basestring):
+        lang = desc['language']
+    else:
+        lang = guess_language(desc['source_filename'])
     construct_kinds = {'c': 'struct', 'c++': 'cppclass'}
     d['construct_kind'] = construct_kinds[lang]
     inc = set(['c'])
@@ -397,7 +400,7 @@ def classcpppxd(desc, exceptions=True, ts=None):
         argfill = ", ".join([ts.cython_ctype(a[1]) for a in margs])
         for a in margs:
             ts.cython_cimport_tuples(a[1], cimport_tups, inc)
-        estr = _exception_str(exceptions, desc['source_filename'], mrtn, ts)
+        estr = _exception_str(exceptions, desc['source_filename'], desc['language'], mrtn, ts)
         if mname == mcppname == mcyname:
             line = "{0}({1}) {2}".format(mname, argfill, estr)
         else:
@@ -511,7 +514,7 @@ def modpxd(mod, classes=(), ts=None, max_callbacks=8):
         for name in pxd_sorted_names(mod):
             desc = mod[name]
             if isclassdesc(desc):
-                ci_tup, attr_str = classpxd(desc, classes, ts=ts, 
+                ci_tup, attr_str = classpxd(desc, classes, ts=ts,
                                             max_callbacks=max_callbacks)
             else:
                 # no need to wrap functions again
@@ -711,7 +714,7 @@ def modpyx(mod, classes=None, ts=None, max_callbacks=8):
             elif isfuncdesc(desc):
                 i_tup, ci_tup, attr_str = funcpyx(desc, ts=ts)
             elif isclassdesc(desc):
-                i_tup, ci_tup, attr_str = classpyx(desc, classes=classes, ts=ts, 
+                i_tup, ci_tup, attr_str = classpyx(desc, classes=classes, ts=ts,
                                                    max_callbacks=max_callbacks)
             else:
                 continue
@@ -815,7 +818,7 @@ def _gen_property_get(name, t, ts, cached_names=None, inst_name="self._inst",
     lines += indent("return {0}".format(rtn), join=False)
     return lines
 
-def _gen_property_set(name, t, ts, inst_name="self._inst", cached_name=None, 
+def _gen_property_set(name, t, ts, inst_name="self._inst", cached_name=None,
                       classes=()):
     """This generates a Cython property setter for a variable of a given
     name and type."""
@@ -830,7 +833,7 @@ def _gen_property_set(name, t, ts, inst_name="self._inst", cached_name=None,
         lines += indent("{0} = None".format(cached_name), join=False)
     return lines
 
-def _gen_property(name, t, ts, doc=None, cached_names=None, inst_name="self._inst", 
+def _gen_property(name, t, ts, doc=None, cached_names=None, inst_name="self._inst",
                   classes=()):
     """This generates a Cython property for a variable of a given name and type."""
     lines  = ['property {0}:'.format(name)]
@@ -1071,7 +1074,7 @@ def _gen_dispatcher(name, name_mangled, ts, doc=None, hasrtn=True, is_method=Tru
     types = ["types = set([(i, type(a)) for i, a in enumerate(args)])",
              "types.update([(k, type(v)) for k, v in kwargs.items()])",]
     lines += indent(types, join=False)
-    refinenum = lambda x: (sum([int(ts.isrefinement(a[1])) for a in x[0][1:]]), 
+    refinenum = lambda x: (sum([int(ts.isrefinement(a[1])) for a in x[0][1:]]),
                            len(x[0]), x[1])
     mangitems = sorted(name_mangled.items(), key=refinenum)
     mtypeslines = []
@@ -1300,7 +1303,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
             construct = desc['construct']
             if construct == 'struct':
                 cimport_tups.add(('libc.stdlib', 'malloc'))
-            clines += _gen_constructor(mcyname, mname_mangled, desc['name'], margs, 
+            clines += _gen_constructor(mcyname, mname_mangled, desc['name'], margs,
                         ts, doc=mdoc, srcpxd_filename=desc['srcpxd_filename'],
                         inst_name=minst_name, construct=construct)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
@@ -1483,7 +1486,7 @@ class XDressPlugin(Plugin):
     defaultrc = {'max_callbacks': 8}
 
     rcdocs = {
-        "max_callbacks": "The maximum number of callbacks for function pointers", 
+        "max_callbacks": "The maximum number of callbacks for function pointers",
         }
 
     def update_argparser(self, parser):
@@ -1559,13 +1562,17 @@ _exc_c_base = frozenset(['int16', 'int32', 'int64', 'int128',
                          'float32', 'float64', 'float128'])
 
 _exc_ptr_matcher = TypeMatcher((MatchAny, '*'))
-    
-def _exception_str(exceptions, srcfile, rtntype, ts):
+
+def _exception_str(exceptions, srcfile, language, rtntype, ts):
     if not exceptions:
         return ""
     if isinstance(exceptions, basestring):
         return "except " + exceptions
-    lang = guess_language(srcfile)
+    if isinstance(language,  basestring):
+        lang = language
+    else:
+        lang = guess_language(srcfile)
+
     if lang == 'c':
         if rtntype is None:
             return "except -1"  # helpful when we accidentally mis-guessed C for C++
