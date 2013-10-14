@@ -1,7 +1,6 @@
 import os
 
 package = 'cproj'
-sourcedir = 'src'
 packagedir = 'cproj'
 includes = ['src']
 

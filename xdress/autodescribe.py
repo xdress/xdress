@@ -177,7 +177,7 @@ except ImportError:
 from . import utils
 from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
     find_source, FORBIDDEN_NAMES, find_filenames, warn_forbidden_name, \
-    apiname, ensure_apiname, cppint
+    apiname, ensure_apiname, cppint, extra_filenames
 from . import astparsers
 from .typesystem import TypeSystem
 
@@ -1904,19 +1904,12 @@ class XDressPlugin(astparsers.ParserPlugin):
         ts = rc.ts
         for i, cls in enumerate(rc.classes):
             print("autodescribe: registering {0}".format(cls.srcname))
-            fnames = find_filenames(cls.srcfile, tarname=cls.tarfile,
-                                    sourcedir=rc.sourcedir, language=cls.language)
-            if cls.tarfile is None:
-                pxd_base = cls.srcfile
-                lang_ext = fnames['language_extension']
-                cpppxd_base = '{0}_{1}'.format(lang_ext, cls.srcfile)
-            else:
-                pxd_base = fnames['pxd_filename'].rsplit('.', 1)[0]  # eg, fccomp
-                cpppxd_base = fnames['srcpxd_filename'].rsplit('.', 1)[0]  # eg, cpp_fccomp
-            ts.register_classname(cls.srcname, rc.package, pxd_base, cpppxd_base)
+            fnames = extra_filenames(cls)
+            ts.register_classname(cls.srcname, rc.package, fnames['pxd_base'], 
+                                  fnames['cpppxd_base'])
             if cls.srcname != cls.tarname:
-                ts.register_classname(cls.tarname, rc.package, pxd_base,
-                                      cpppxd_base, cpp_classname=cls.srcname)
+                ts.register_classname(cls.tarname, rc.package, fnames['pxd_base'],
+                                      fnames['cpppxd_base'], cpp_classname=cls.srcname)
 
     def load_pysrcmod(self, srcname, rc):
         """Loads a module dictionary from a src file intox the pysrcenv cache."""

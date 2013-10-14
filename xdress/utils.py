@@ -426,6 +426,38 @@ def find_filenames(srcname, tarname=None, sourcedir='src', language=None):
         desc['srcpxd_filename'] = '{0}_{1}.pxd'.format(ext, tarname)
     return desc
 
+def extra_filenames(name):
+    """Returns a diictionary of extra filenames for an API element
+    implemented in a given language and bound into a target.
+
+    Parameters
+    ----------
+    name : apiname
+        The API element name.
+
+    Returns
+    -------
+    extra : dict
+        Extra filenames.
+
+    """
+    extra = {}
+    ext = _lang_exts[name.language]
+    tarbase = name.tarbase
+    if tarbase is None:
+        extra['pxd_filename'] = extra['pyx_filename'] = \
+                                extra['srcpxd_filename'] = None
+        srcbase = os.path.splitext(os.path.basename(name.srcfiles[0]))[0]
+        extra['pxd_base'] = srcbase
+        extra['cpppxd_base'] = '{0}_{1}'.format(ext, srcbase)
+    else:
+        extra['pxd_filename'] = '{0}.pxd'.format(tarbase)
+        extra['pyx_filename'] = '{0}.pyx'.format(tarbase)
+        extra['srcpxd_filename'] = '{0}_{1}.pxd'.format(ext, tarbase)
+        extra['pxd_base'] = tarbase
+        extra['cpppxd_base'] = '{0}_{1}'.format(ext, tarbase)
+    return extra
+
 def infer_format(filename, format):
     """Tries to figure out a file format."""
     if isinstance(format, basestring):
