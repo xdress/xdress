@@ -10,6 +10,7 @@ Base Plugin API
 from __future__ import print_function
 import os
 import sys
+from warnings import warn
 
 from .utils import RunControl, NotSpecified, writenewonly, DescriptionCache, \
     DEFAULT_RC_FILE, DEFAULT_PLUGINS, nyansep
@@ -86,7 +87,7 @@ class XDressPlugin(Plugin):
             os.makedirs(rc.packagedir)
         if rc.sourcedir is not NotSpecified:
             warn("sourcedir has been removed in favor of new apiname semantics", 
-                 DepreactionWarning)
+                 DeprecationWarning)
         if not os.path.isdir(rc.builddir):
             os.makedirs(rc.builddir)
         writenewonly("", os.path.join(rc.packagedir, '__init__.py'), rc.verbose)

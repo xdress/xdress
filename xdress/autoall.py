@@ -537,35 +537,28 @@ class XDressPlugin(astparsers.ParserPlugin):
             print("autoall: no API names to discover!")
             return
         allsrc = self.allsrc
+        kinds = ['variables', 'functions', 'classes']
 
         # second pass -- find all
-        allnames = {}
+        allfiles = {}
         cachefile = os.path.join(rc.builddir, 'autoname.cache')
         autonamecache = AutoNameCache(cachefile=cachefile)
-        for i, srcname in enumerate(allsrc):
-            srcfname, hdrfname, lang, ext = find_source(srcname, 
-                                                        sourcedir=rc.sourcedir)
-            filename = os.path.join(rc.sourcedir, srcfname)
-            print("autoall: searching {0} (from {1!r})".format(srcfname, srcname))
-            if autonamecache.isvalid(filename):
-                found = autonamecache[filename]
+        for i, srcfile in enumerate(allsrc):
+            print("autoall: searching {0}".format(srcfile))
+            if autonamecache.isvalid(srcfile):
+                found = autonamecache[srcfile]
             else:
-                found = findall(filename, includes=rc.includes, defines=rc.defines, 
+                found = findall(srcfile, includes=rc.includes, defines=rc.defines, 
                                 undefines=rc.undefines, parsers=rc.parsers, 
                                 verbose=rc.verbose, debug=rc.debug, 
                                 builddir=rc.builddir)
-                autonamecache[filename] = found
+                autonamecache[srcfile] = found
                 autonamecache.dump()
-            allnames[srcname] = found
-            if 0 < len(found[0]):
-                fstr = ", ".join([str(_) for _ in found[0]])
-                print("autoall: found variables: " + fstr)
-            if 0 < len(found[1]):
-                fstr = ", ".join([str(_) for _ in found[1]])
-                print("autoall: found functions: " + fstr)
-            if 0 < len(found[2]):
-                fstr = ", ".join([str(_) for _ in found[2]])
-                print("autoall: found classes: " + fstr)
+            allfiles[srcfile] = found
+            for k, kind in enumerate(kinds):
+                if 0 < len(found[k]):
+                    fstr = ", ".join([str(_) for _ in found[k]])
+                    print("autoall: found {0}: {1}".format(kind, fstr))
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 
@@ -574,8 +567,9 @@ class XDressPlugin(astparsers.ParserPlugin):
             newvars = []
             for var in rc.variables:
                 if var.srcname == '*':
-                    for x in allnames[var.srcfile][0]:
-                        newvars.append(var._replace(srcname=x, tarname=x))
+                    for srcfile in var.srcfiles:
+                        for x in allfiles[srcfile][0]:
+                            newvars.append(var._replace(srcname=x, tarname=x))
                 else:
                     newvars.append(var)
             rc.variables = newvars
@@ -583,8 +577,9 @@ class XDressPlugin(astparsers.ParserPlugin):
             newfncs = []
             for fnc in rc.functions:
                 if fnc.srcname == '*':
-                    for x in allnames[fnc.srcfile][1]:
-                        newfncs.append(fnc._replace(srcname=x, tarname=x))
+                    for srcfile in fnc.srcfiles:
+                        for x in allfiles[srcfile][1]:
+                            newfncs.append(fnc._replace(srcname=x, tarname=x))
                 else:
                     newfncs.append(fnc)
             rc.functions = newfncs
@@ -592,8 +587,9 @@ class XDressPlugin(astparsers.ParserPlugin):
             newclss = []
             for cls in rc.classes:
                 if cls.srcname == '*':
-                    for x in allnames[cls.srcfile][2]:
-                        newclss.append(cls._replace(srcname=x, tarname=x))
+                    for srcfile in cls.srcfiles:
+                        for x in allfiles[srcfile][2]:
+                            newclss.append(cls._replace(srcname=x, tarname=x))
                 else:
                     newclss.append(cls)
             rc.classes = newclss
