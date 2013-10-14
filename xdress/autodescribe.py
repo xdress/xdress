@@ -1911,15 +1911,14 @@ class XDressPlugin(astparsers.ParserPlugin):
                 ts.register_classname(cls.tarname, rc.package, fnames['pxd_base'],
                                       fnames['cpppxd_base'], cpp_classname=cls.srcname)
 
-    def load_pysrcmod(self, srcname, rc):
-        """Loads a module dictionary from a src file intox the pysrcenv cache."""
-        if srcname in self.pysrcenv:
+    def load_pysrcmod(self, sidecar, rc):
+        """Loads a module dictionary from a sidecar file into the pysrcenv cache."""
+        if sidecar in self.pysrcenv:
             return
-        pyfilename = os.path.join(rc.sourcedir, srcname + '.py')
-        if os.path.isfile(pyfilename):
+        if os.path.isfile(sidecar):
             glbs = globals()
             locs = {}
-            exec_file(pyfilename, glbs, locs)
+            exec_file(sidecar, glbs, locs)
             if 'mod' not in locs:
                 pymod = {}
             elif callable(locs['mod']):
@@ -1932,15 +1931,19 @@ class XDressPlugin(astparsers.ParserPlugin):
                 rc.ts.update(locs['type_system'])
         else:
             pymod = {}
-        self.pysrcenv[srcname] = pymod
+        self.pysrcenv[sidecar] = pymod
 
     def load_sidecars(self, rc):
         """Loads all sidecar files."""
-        srcnames = set([x[1] for x in rc.variables])
-        srcnames |= set([x[1] for x in rc.functions])
-        srcnames |= set([x[1] for x in rc.classes])
-        for x in srcnames:
-            self.load_pysrcmod(x, rc)
+        sidecars = set()
+        for x in rc.variables:
+            sidecars.update(x.sidecars)
+        for x in rc.functions:
+            sidecars.update(x.sidecars)
+        for x in rc.classes:
+            sidecars.update(x.sidecars)
+        for sidecar in sidecars:
+            self.load_pysrcmod(sidecar, rc)
 
     def compute_desc(self, name, srcname, hdrname, tarname, kind, rc):
         """Returns a description dictionary for a class or function
