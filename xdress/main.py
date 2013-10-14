@@ -166,6 +166,7 @@ import os
 import io
 import sys
 import argparse
+import warnings
 from pprint import pprint, pformat
 
 try:
@@ -184,6 +185,7 @@ if sys.version_info[0] >= 3:
 
 def main():
     """Entry point for xdress API generation."""
+    warnings.simplefilter('default')
     # Preprocess plugin names, which entails preprocessing the rc file
     preparser = argparse.ArgumentParser("XDress Pre-processor", add_help=False)
     preparser.add_argument('--rc', default=NotSpecified, 

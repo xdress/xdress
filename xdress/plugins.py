@@ -144,6 +144,7 @@ Plugins API
 import os
 import io
 import sys
+import warnings
 import importlib
 import argparse
 import textwrap
@@ -290,6 +291,7 @@ class Plugins(object):
         self.parser = None
         self.rc = None
         self.rcdocs = {}
+        self.warnings = []
 
     def _load(self, modnames, loaddeps=True):
         for modname in modnames:
@@ -317,6 +319,18 @@ class Plugins(object):
         self.parser = parser
         return parser
 
+    def _setshowwarning(self):
+        def showwarning(message, category, filename, lineno, file=None, line=None):
+            if self.rc.debug:
+                debugmsg = "{0}: '{1}' from {2}:{3}"
+                debugmsg = debugmsg.format(category.__name__, message, 
+                                           filename, lineno)
+                self.warnings.append(debugmsg)
+            printmsg = "WARNING: {0}: {1}"
+            printmsg = printmsg.format(category.__name__, message)
+            print(printmsg)
+        warnings.showwarning = showwarning
+
     def merge_rcs(self):
         """Finds all of the default run controllers and returns a new and 
         full default RunControl() instance.  This has also merged all of 
@@ -337,10 +351,11 @@ class Plugins(object):
                 docs = docs()
             rcdocs.update(docs)
         self.rc = rc
+        self._setshowwarning()
         return rc
 
     def setup(self):
-        """Preforms all plugin setup tasks."""
+        """Performs all plugin setup tasks."""
         rc = self.rc
         try:
             for plugin in self.plugins:
@@ -374,6 +389,10 @@ class Plugins(object):
             sep = nyansep + '\n\n'
             msg = u'{0}xdress failed with the following error:\n\n'.format(sep)
             msg += traceback.format_exc()
+            if len(self.warnings) > 0:
+                warnmsg = u'\n{0}xdress issued the following warnings:\n\n{1}\n\n'
+                warnmsg = warnmsg.format(sep, "\n".join(self.warnings))
+                msg += warnmsg
             msg += '\n{0}Run control run-time contents:\n\n{1}\n\n'.format(sep, 
                                                                     rc._pformat())
             for plugin in self.plugins:

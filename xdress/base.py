@@ -86,8 +86,8 @@ class XDressPlugin(Plugin):
         if not os.path.isdir(rc.packagedir):
             os.makedirs(rc.packagedir)
         if rc.sourcedir is not NotSpecified:
-            warn("sourcedir has been removed in favor of new apiname semantics", 
-                 DeprecationWarning)
+            warn("run control parameter 'sourcedir' has been removed in favor "
+                 "of new apiname semantics", DeprecationWarning)
         if not os.path.isdir(rc.builddir):
             os.makedirs(rc.builddir)
         writenewonly("", os.path.join(rc.packagedir, '__init__.py'), rc.verbose)
