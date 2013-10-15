@@ -177,7 +177,7 @@ except ImportError:
 from . import utils
 from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
     find_source, FORBIDDEN_NAMES, find_filenames, warn_forbidden_name, \
-    apiname, ensure_apiname, cppint, extra_filenames
+    apiname, ensure_apiname, cppint, extra_filenames, newoverwrite, _lang_exts
 from . import astparsers
 from .typesystem import TypeSystem
 
@@ -1783,21 +1783,37 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
 #  General utilities
 #
 
+def _make_includer(filenames, builddir, language, verbose=False):
+    """Creates a source file made up of #include pre-processor statements for 
+    all of the files in filenames.  Returns the path to the newly made file.
+    """
+    newfile = ""
+    newnames = []
+    for filename in filenames:
+        newnames.append(filename.replace(os.path.sep, '_'))
+        newfile += '#include "{0}"\n'.format(filename)
+    newname = os.path.join(builddir, "-".join(newnames) + '.' + _lang_exts[language])
+    newoverwrite(newfile, newname, verbose=verbose)
+    return 
+
 _describers = {
     'clang': clang_describe,
     'gccxml': gccxml_describe,
     'pycparser': pycparser_describe,
     }
 
-def describe(filename, hdrname=None, name=None, kind='class', includes=(), defines=('XDRESS',),
+def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',),
              undefines=(), parsers='gccxml', ts=None, verbose=False, debug=False,
-             builddir='build'):
+             builddir='build', language='c++'):
     """Automatically describes an API element in a file.  This is the main entry point.
 
     Parameters
     ----------
-    filename : str
-        The path to the file.
+    filename : str or container of strs
+        The path to the file or a list of file paths.  If this is a list to many
+        files, a temporary file will be created that #includes all of the files
+        in this list in order.  This temporary file is the one which will be 
+        parsed.
     name : str or None, optional
         The name, a 'None' value will attempt to infer this from the
         filename.
@@ -1824,6 +1840,8 @@ def describe(filename, hdrname=None, name=None, kind='class', includes=(), defin
         Flag to enable/disable debug mode.
     builddir : str, optional
         Location of -- often temporary -- build files.
+    language : str
+        Valid langugae flag.
 
     Returns
     -------
@@ -1831,9 +1849,12 @@ def describe(filename, hdrname=None, name=None, kind='class', includes=(), defin
         A dictionary describing the class which may be used to generate
         API bindings.
     """
+    if not isinstance(filename, basestring):
+        filename = filename[0] if len(filename) == 0 \
+                   else _make_includer(filename, builddir, language, verbose=verbose)
     if name is None:
         name = os.path.split(filename)[-1].rsplit('.', 1)[0].capitalize()
-    parser = astparsers.pick_parser(filename, parsers)
+    parser = astparsers.pick_parser(language, parsers)
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, defines=defines,
                      undefines=undefines, ts=ts, verbose=verbose, debug=debug,
@@ -1945,18 +1966,14 @@ class XDressPlugin(astparsers.ParserPlugin):
         for sidecar in sidecars:
             self.load_pysrcmod(sidecar, rc)
 
-    def compute_desc(self, name, srcname, hdrname, tarname, kind, rc):
+    def compute_desc(self, name, kind, rc):
         """Returns a description dictionary for a class or function
         implemented in a source file and bound into a target file.
 
         Parameters
         ----------
-        name : str
-            Class or function name to describe.
-        srcname : str
-            File basename of implementation.
-        tarname : str
-            File basename where the bindings will be generated.
+        name : apiname
+            API element name to describe.
         kind : str
             The kind of type to describe, valid flags are 'class', 'func', and 'var'.
         rc : xdress.utils.RunControl
@@ -1968,20 +1985,20 @@ class XDressPlugin(astparsers.ParserPlugin):
             Description dictionary.
 
         """
-        fnames = find_filenames(srcname, tarname=tarname, sourcedir=rc.sourcedir)
-        srcfname = fnames['source_filename']
-        filename = os.path.join(rc.sourcedir, srcfname)
         cache = rc._cache
-        if cache.isvalid(name, filename, kind):
-            srcdesc = cache[name, filename, kind]
+        if cache.isvalid(name, kind):
+            srcdesc = cache[name, kind]
         else:
-            srcdesc = describe(filename, name=name, kind=kind, includes=rc.includes,
-                               defines=rc.defines, undefines=rc.undefines,
-                               parsers=rc.parsers, ts=rc.ts, verbose=rc.verbose,
-                               debug=rc.debug, builddir=rc.builddir)
-            cache[name, filename, kind] = srcdesc
-        pydesc = self.pysrcenv[srcname].get(name, {})  # python description
-        desc = merge_descriptions([srcdesc, pydesc, fnames])
+            srcdesc = describe(name.srcfiles, name=name.srcname, kind=kind, 
+                               includes=rc.includes, defines=rc.defines, 
+                               undefines=rc.undefines, parsers=rc.parsers, ts=rc.ts, 
+                               verbose=rc.verbose, debug=rc.debug, 
+                               builddir=rc.builddir, language=name.language)
+            cache[name, kind] = srcdesc
+        descs = [srcdesc]
+        descs += [self.pysrcenv[s].get(name.srcname, {}) for s in name.sidecars]
+        descs.append({'extra': extra_filenames(name)})
+        desc = merge_descriptions(descs)
         return desc
 
     def adddesc2env(self, desc, env, name):
@@ -2045,11 +2062,9 @@ class XDressPlugin(astparsers.ParserPlugin):
         env = rc.env  # target environment, not source one
         for i, cls in enumerate(rc.classes):
             print("autodescribe: describing {0}".format(cls.srcname))
-            desc = self.compute_desc(cls, cls.srcname, cls.srcfile, cls.tarfile,
-                                     'class', rc)
+            desc = self.compute_desc(cls, 'class', rc)
             cache.dump()
-            if cls.srcname != cls.tarname:
-                desc['name'] = cls.tarname
+            desc['name'] = dict(zip(cls._fields, cls))
             if rc.verbose:
                 pprint(desc)
             self.adddesc2env(desc, env, cls)

@@ -505,27 +505,37 @@ class DescriptionCache(object):
         else:
             self.cache = {}
 
-    def isvalid(self, name, filename, kind):
-        """Boolean on whether the cach value for a (name, filename, kind)
+    def _hash_srcfiles(self, srcfiles):
+        hashes = []
+        for srcfile in srcfiles:
+            with io.open(srcfile, 'rb') as f:
+                filebytes = f.read()
+            hashes.append(md5(filebytes).hexdigest())
+        return tuple(hashes)
+
+    def isvalid(self, name, kind):
+        """Boolean on whether the cach value for a (apiname, kind)
         tuple matches the state of the file on the system."""
-        key = (name, filename, kind)
+        key = tuple(name) + (kind,)
         if key not in self.cache:
             return False
-        cachehash = self.cache[key][0]
-        with io.open(filename, 'rb') as f:
-            filebytes = f.read()
-        currhash = md5(filebytes).hexdigest()
-        return cachehash == currhash
+        cachehashes = self.cache[key][0]
+        currhashes = self._hash_srcfiles(name.srcfiles)
+        return cachehashes == currhashes
 
     def __getitem__(self, key):
+        if len(key) == 2 and isinstance(key[0], apiname):
+            key = tuple(key[0]) + key[1:]
         return self.cache[key][1]  # return the description only
 
     def __setitem__(self, key, value):
-        name, filename, kind = key
-        with io.open(filename, 'rb') as f:
-            filebytes = f.read()
-        currhash = md5(filebytes).hexdigest()
-        self.cache[key] = (currhash, value)
+        if len(key) == 2 and isinstance(key[0], apiname):
+            name, kind = key
+            key = tuple(key[0]) + key[1:]
+        else:
+            name, kind = apiname(*key[0]), key[1]
+        currhashes = self._hash_srcfiles(name.srcfiles)
+        self.cache[key] = (currhashes, value)
 
     def __delitem__(self, key):
         del self.cache[key]

@@ -238,13 +238,13 @@ def pycparser_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
 #  General utilities
 #
 
-def pick_parser(filename, parsers):
+def pick_parser(file_or_lang, parsers):
     """Determines the parse to use for a file.
 
     Parameters
     ----------
-    filename : str
-        The path to the file.
+    file_or_lang : str 
+        The path to the file OR a valid language flag.
     parsers : str, list, or dict, optional
         The parser / AST to use to use for the file.  Currently 'clang', 'gccxml', 
         and 'pycparser' are supported, though others may be implemented in the 
@@ -268,7 +268,8 @@ def pick_parser(filename, parsers):
             raise RuntimeError(msg)
         parser = ps[0].lower()
     elif isinstance(parsers, collections.Mapping):
-        lang = guess_language(filename)
+        lang = file_or_lang if file_or_lang in parsers \
+                            else guess_language(file_or_lang)
         ps = parsers[lang]
         ps = [p for p in ps if PARSERS_AVAILABLE[p.lower()]]
         if len(ps) == 0:
