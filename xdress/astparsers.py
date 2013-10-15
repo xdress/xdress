@@ -335,7 +335,7 @@ class ParserPlugin(Plugin):
     """This plugin requires 'xdress.base'."""
     
     defaultrc = utils.RunControl(
-        includes=[],
+        includes=['.'],
         defines=["XDRESS"],
         undefines=[],
         variables=(),

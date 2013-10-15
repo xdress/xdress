@@ -1794,7 +1794,7 @@ def _make_includer(filenames, builddir, language, verbose=False):
         newfile += '#include "{0}"\n'.format(filename)
     newname = os.path.join(builddir, "-".join(newnames) + '.' + _lang_exts[language])
     newoverwrite(newfile, newname, verbose=verbose)
-    return 
+    return newname
 
 _describers = {
     'clang': clang_describe,
@@ -2007,11 +2007,11 @@ class XDressPlugin(astparsers.ParserPlugin):
         # docstrings overwrite, extras accrete
         mod = {name.tarname: desc,
                'docstring': self.pysrcenv[name.srcfile].get('docstring', ''),
-               'srcpxd_filename': desc['srcpxd_filename'],
-               'pxd_filename': desc['pxd_filename'],
-               'pyx_filename': desc['pyx_filename'],
-               'language': desc['language'],
-               'language_extension': desc['language_extension'],}
+               'srcpxd_filename': desc['extra']['srcpxd_filename'],
+               'pxd_filename': desc['extra']['pxd_filename'],
+               'pyx_filename': desc['extra']['pyx_filename'],
+               'language': name.language,
+               }
         srcfile = name.srcfile
         tarfile = name.tarfile
         if tarfile not in env:
