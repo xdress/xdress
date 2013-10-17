@@ -2044,8 +2044,7 @@ class XDressPlugin(astparsers.ParserPlugin):
             if rc.verbose:
                 pprint(desc)
             cache.dump()
-            if var.srcname != var.tarname:
-                desc['name'] = var.tarname
+            desc['name'] = dict(zip(var._fields, var))
             self.adddesc2env(desc, env, var)
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
@@ -2060,8 +2059,7 @@ class XDressPlugin(astparsers.ParserPlugin):
             if rc.verbose:
                 pprint(desc)
             cache.dump()
-            if fnc.srcname != fnc.tarname:
-                desc['name'] = fnc.tarname
+            desc['name'] = dict(zip(fnc._fields, fnc))
             self.adddesc2env(desc, env, fnc)
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
