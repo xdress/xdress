@@ -2001,27 +2001,38 @@ class XDressPlugin(astparsers.ParserPlugin):
         desc = merge_descriptions(descs)
         return desc
 
+    _extrajoinkeys = ['pxd_header', 'pxd_footer', 'pyx_header', 'pyx_footer', 
+                      'cpppxd_header', 'cpppxd_footer']
+
     def adddesc2env(self, desc, env, name):
         """Adds a description to environment."""
         # Add to target environment
         # docstrings overwrite, extras accrete
+        docs = [self.pysrcenv[s].get(name.srcname, {}).get('docstring', '') \
+                for s in name.sidecars]
+        docs = "\n\n".join([d for d in docs if len(d) > 0])
         mod = {name.tarname: desc,
-               'docstring': self.pysrcenv[name.srcfile].get('docstring', ''),
+               'docstring': docs,
                'srcpxd_filename': desc['extra']['srcpxd_filename'],
                'pxd_filename': desc['extra']['pxd_filename'],
                'pyx_filename': desc['extra']['pyx_filename'],
                'language': name.language,
                }
-        srcfile = name.srcfile
-        tarfile = name.tarfile
-        if tarfile not in env:
-            env[tarfile] = mod
-            env[tarfile]["name"] = tarfile
-            env[tarfile]['extra'] = self.pysrcenv[srcfile].get('extra', '')
+        tarbase = name.tarbase
+        extrajoinkeys = self._extrajoinkeys
+        if tarbase not in env:
+            env[tarbase] = mod
+            env[tarbase]["name"] = tarbase
+            env[tarbase]['extra'] = modextra = dict(zip(extrajoinkeys, 
+                                                        ['']*len(extrajoinkeys)))
         else:
-            #env[tarname].update(mod)
-            env[tarfile][name.tarname] = desc
-            env[tarfile]['extra'] += self.pysrcenv[srcfile].get('extra', '')
+            #env[tarbase].update(mod)
+            env[tarbase][name.tarname] = desc
+            modextra = env[tarbase]['extra']
+        for sidecar in name.sidecars:
+            pyextra = self.pysrcenv[sidecar].get(name.srcname, {}).get('extra', {})
+            for key in extrajoinkeys:
+                modextra[key] += pyextra.get(key, '')
 
     def compute_variables(self, rc):
         """Computes variables descriptions and loads them into the environment."""
@@ -2029,7 +2040,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         cache = rc._cache
         for i, var in enumerate(rc.variables):
             print("autodescribe: describing {0}".format(var.srcname))
-            desc = self.compute_desc(var.srcname, var.srcfile, var.tarfile, 'var', rc)
+            desc = self.compute_desc(var, 'var', rc)
             if rc.verbose:
                 pprint(desc)
             cache.dump()
@@ -2045,7 +2056,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         cache = rc._cache
         for i, fnc in enumerate(rc.functions):
             print("autodescribe: describing {0}".format(fnc.srcname))
-            desc = self.compute_desc(fnc, fnc.srcname, fnc.srcfile, fnc.hdrfile, fnc.tarfile, 'func', rc)
+            desc = self.compute_desc(fnc, 'func', rc)
             if rc.verbose:
                 pprint(desc)
             cache.dump()
