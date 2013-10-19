@@ -17,11 +17,12 @@ from __future__ import print_function
 import os
 import sys
 import math
+import warnings
 from copy import deepcopy
 from pprint import pprint
 
 from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
-    isvardesc, guess_language, newoverwrite, sortedbytype
+    isvardesc, newoverwrite, sortedbytype
 from .plugins import Plugin
 from .typesystem import TypeSystem, TypeMatcher, MatchAny
 
@@ -149,6 +150,13 @@ def modcpppxd(mod, exceptions=True, ts=None):
     with ts.local_classes(classnames, frozenset(['c'])):
         for name in cpppxd_sorted_names(mod, ts):
             desc = mod[name]
+            incfiles = desc['name']['incfiles']
+            if 0 == len(incfiles):
+                msg = "cythongen requires an include file for {0}, none found"
+                raise ValueError(msg.format(name))
+            elif 1 < len(incfiles):
+                msg = "multiple include files found for {0}, choosing the first: {1}"
+                warnings.warn(msg.format(name, incfiles[0]), RuntimeWarning)
             if isvardesc(desc):
                 ci_tup, attr_str = varcpppxd(desc, exceptions, ts)
             elif isfuncdesc(desc):
@@ -200,12 +208,11 @@ def varcpppxd(desc, exceptions=True, ts=None):
 
     """
     ts = ts or TypeSystem()
-    d = {}
     t = ts.canon(desc['type'])
-    copy_from_desc = ['name', 'header_filename']
-    for key in copy_from_desc:
-        d[key] = desc[key]
-    d['namespace'] = _format_ns(desc)
+    d = {'name': desc['name']['srcname'], 
+         'header_filename':  desc['name']['incfiles'][0],
+         'namespace': _format_ns(desc),
+         }
 
     inc = set(['c'])
     cimport_tups = set()
@@ -262,11 +269,10 @@ def funccpppxd(desc, exceptions=True, ts=None):
 
     """
     ts = ts or TypeSystem()
-    d = {}
-    copy_from_desc = ['name', 'header_filename']
-    for key in copy_from_desc:
-        d[key] = desc[key]
-    d['namespace'] = _format_ns(desc)
+    d = {'name': desc['name']['srcname'], 
+         'header_filename':  desc['name']['incfiles'][0],
+         'namespace': _format_ns(desc),
+         }
     inc = set(['c'])
     cimport_tups = set()
 
@@ -284,7 +290,7 @@ def funccpppxd(desc, exceptions=True, ts=None):
         argfill = ", ".join([ts.cython_ctype(a[1]) for a in fargs])
         for a in fargs:
             ts.cython_cimport_tuples(a[1], cimport_tups, inc)
-        estr = _exception_str(exceptions, desc['source_filename'], desc['language'], frtn, ts)
+        estr = _exception_str(exceptions, desc['name']['language'], frtn, ts)
         if fname == cppname == cyname:
             line = "{0}({1}) {2}".format(fname, argfill, estr)
         else:
@@ -348,9 +354,9 @@ def classcpppxd(desc, exceptions=True, ts=None):
     ts = ts or TypeSystem()
     pars = ', '.join([ts.cython_ctype(p) for p in desc['parents'] or ()])
     d = {'parents': pars if 0 == len(pars) else '('+pars+')',
-         'header_filename': desc['header_filename'],}
+         'header_filename': desc['name']['incfiles'][0],}
     d['namespace'] = _format_ns(desc)
-    name = desc['name']
+    name = desc['name']['srcname']
     if isinstance(desc['type'], basestring):
         d['name'] = ts.cython_ctype(name)
         d['alias'] = ''
@@ -359,10 +365,7 @@ def classcpppxd(desc, exceptions=True, ts=None):
         d['alias'] = ' ' + _format_alias(desc, ts)
     #construct_kinds = {'struct': 'struct', 'class': 'cppclass'}
     #d['construct_kind'] = construct_kinds[desc.get('construct', 'class')]
-    if isinstance(desc['language'],  basestring):
-        lang = desc['language']
-    else:
-        lang = guess_language(desc['source_filename'])
+    lang = desc['name']['language']
     construct_kinds = {'c': 'struct', 'c++': 'cppclass'}
     d['construct_kind'] = construct_kinds[lang]
     inc = set(['c'])
@@ -400,7 +403,7 @@ def classcpppxd(desc, exceptions=True, ts=None):
         argfill = ", ".join([ts.cython_ctype(a[1]) for a in margs])
         for a in margs:
             ts.cython_cimport_tuples(a[1], cimport_tups, inc)
-        estr = _exception_str(exceptions, desc['source_filename'], desc['language'], mrtn, ts)
+        estr = _exception_str(exceptions, desc['name']['language'], mrtn, ts)
         if mname == mcppname == mcyname:
             line = "{0}({1}) {2}".format(mname, argfill, estr)
         else:
@@ -1563,15 +1566,11 @@ _exc_c_base = frozenset(['int16', 'int32', 'int64', 'int128',
 
 _exc_ptr_matcher = TypeMatcher((MatchAny, '*'))
 
-def _exception_str(exceptions, srcfile, language, rtntype, ts):
+def _exception_str(exceptions, lang, rtntype, ts):
     if not exceptions:
         return ""
     if isinstance(exceptions, basestring):
         return "except " + exceptions
-    if isinstance(language,  basestring):
-        lang = language
-    else:
-        lang = guess_language(srcfile)
 
     if lang == 'c':
         if rtntype is None:
