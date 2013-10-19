@@ -1,4 +1,4 @@
-"""Helper functions for xdress.
+"""Helpers for xdress.
 
 :author: Anthony Scopatz <scopatz@gmail.com>
 
@@ -695,7 +695,7 @@ class memoize_method(object):
 #
 
 apiname = namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname', 
-                                 'sidecars', 'language'])
+                                 'incfiles', 'sidecars', 'language'])
 
 notspecified_apiname = apiname(*([NotSpecified]*len(apiname._fields)))
 
@@ -721,6 +721,29 @@ def _guess_base(srcfiles, default=None):
     if len(basename) == 0:
         basename = default
     return basename
+
+def _guess_incfiles(srcfiles):
+    """This function guess potential include files from the headers that are 
+    present in the source files.
+    """
+    incs = [s for s in srcfiles if os.path.splitext(s)[-1][1:] in _hdr_exts]
+    return tuple(incs)
+
+def _ensure_incfiles(inp):
+    """This ensures that incfiles is a tuple of unique filenames. This does not 
+    test that the files actually exist on the file system nor glob the filenames.
+    """
+    if isinstance(inp, basestring):
+        inp = (inp,)
+    if inp is NotSpecified or inp is None:
+        inp = ()
+    out = []
+    for f in inp:
+        if not isinstance(f, basestring):
+            raise ValueError("{0!r} must be a string.".format(f))
+        if f not in out:
+            out.append(f)
+    return tuple(out)
 
 @memoize
 def find_sidecar(filename):
@@ -777,6 +800,9 @@ def ensure_apiname(name):
     if name.tarbase is NotSpecified:
         updates['tarbase'] = _guess_base(updates['srcfiles'], 
                                          updates.get('tarname', name.tarname))
+    if name.incfiles is NotSpecified:
+        updates['incfiles'] = _guess_incfiles(updates['srcfiles'])
+    updates['incfiles'] = _ensure_incfiles(updates.get('incfiles', name.incfiles))
     if name.sidecars is NotSpecified:
         updates['sidecars'] = _guess_sidecars(updates['srcfiles'])
     updates['sidecars'] = _ensure_srcfiles(updates.get('sidecars', name.sidecars))
