@@ -34,7 +34,7 @@ GENERATED_PATHS = [
     [PROJDIR, PROJNAME, 'discovery.pyx'],
     [PROJDIR, PROJNAME, 'pybasics.pxd'],
     [PROJDIR, PROJNAME, 'pybasics.pyx'],
-    [PROJDIR, 'src', 'cproj_extra_types.h'],
+    [PROJDIR, PROJNAME, 'cproj_extra_types.h'],
     [INSTDIR],
     ]
 

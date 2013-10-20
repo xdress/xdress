@@ -611,7 +611,7 @@ def classpxd(desc, classes=(), ts=None, max_callbacks=8):
             decl = "cdef public {0} {1}".format(cyt, cachename)
             body.append(decl)
         if ts.isfunctionpointer(atype):
-            apyname, acname = _mangle_function_pointer_name(aname, desc['name'])
+            apyname, acname = _mangle_function_pointer_name(aname, name)
             acdecl = "cdef public " + ts.cython_ctype(('function',)+ atype[1:])
             for i in range(max_callbacks):
                 suffix = "{0:0{1}}".format(i, mczeropad)
@@ -1215,7 +1215,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
     """
     ts = ts or TypeSystem()
     if classes is None:
-        classes = {desc['name']: desc}
+        classes = {desc['name']['tarname']: desc}
     nodocmsg = "no docstring for {0}, please file a bug report!"
     pars = ', '.join([ts.cython_cytype(p) for p in desc['parents'] or ()])
     d = {'parents': pars if 0 == len(pars) else '('+pars+')',
@@ -1253,7 +1253,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
                         cached_names=cached_names, inst_name=inst_name,
                         classname=name, max_callbacks=mc)
             fplines += _gen_function_pointer_wrapper(aname, atype, ts,
-                        max_callbacks=mc, classname=desc['name'])
+                        max_callbacks=mc, classname=name)
             pdlines.append("self._{0}_vtab_i = {1}".format(aname, mc+1))
         else:
             alines += _gen_property(aname, atype, ts, adoc, cached_names=cached_names,
@@ -1261,7 +1261,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
         ts.cython_import_tuples(atype, import_tups)
         ts.cython_cimport_tuples(atype, cimport_tups)
     if len(fplines) > 0:
-        fplines.append("_MAX_CALLBACKS_{0} = {1}".format(desc['name'], mc))
+        fplines.append("_MAX_CALLBACKS_{0} = {1}".format(name, mc))
     d['attrs_block'] = indent(alines)
     d['function_pointer_block'] = "\n".join(fplines)
     pdlines += ["{0} = None".format(n) for n in cached_names]
