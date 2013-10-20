@@ -3,6 +3,7 @@ from xdress.utils import make_apiname
 
 package = 'cppproj'
 packagedir = 'cppproj'
+includes = ['src']
 
 plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen', 'xdress.stlwrap', 
     )
@@ -57,7 +58,7 @@ stlcontainers = [
 stlcontainers_module = 'stlc'
 
 _fromsrcdir = lambda x: os.path.join('src', x)
-_inbasics = {'srcfiles': _fromsrcdir('basics*'),
+_inbasics = {'srcfiles': _fromsrcdir('basics.[ch]'),
              'incfiles': 'basics.h',
              'language': 'c++',
              }
