@@ -199,7 +199,7 @@ def clearmemo():
 
 def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                     undefines=(), ts=None, verbose=False, debug=False,
-                    builddir='build'):
+                    builddir='build', onlyin=None):
     """Use GCC-XML to describe the class.
 
     Parameters
@@ -225,6 +225,8 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         Flag to enable/disable debug mode.
     builddir : str, optional
         Location of -- often temporary -- build files.
+    onlyin: set of str
+        The paths to the files that the definition is allowed to exist in.
 
     Returns
     -------
@@ -239,8 +241,8 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                                    undefines=undefines, verbose=verbose, debug=debug,
                                    builddir=builddir)
     basename = filename.rsplit('.', 1)[0]
-    onlyin = set([filename] +
-                 [basename + '.' + h for h in utils._hdr_exts if h.startswith('h')])
+    if onlyin is None:
+        onlyin = set([filename])
     describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber,
                   'var': GccxmlVarDescriber}
     describer = describers[kind](name, root, onlyin=onlyin, ts=ts, verbose=verbose)
@@ -933,12 +935,12 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 @astparsers.not_implemented
 def clang_describe(filename, name, includes=(), defines=('XDRESS',),
                    undefines=(), ts=None, verbose=False, debug=False,
-                   builddir='build'):
+                   builddir='build', onlyin=None):
     "Use clang to describe the class."
     index = cindex.Index.create()
     tu = index.parse(filename, args=['-cc1', '-I' + pyne.includes, '-D', 'XDRESS'])
-    #onlyin = set([filename, filename.replace('.cpp', '.h')])
-    onlyin = set([filename.replace('.cpp', '.h')])
+    if onlyin is None:
+        onlyin = set([filename])
     describer = ClangClassDescriber(name, onlyin=onlyin, ts=ts, verbose=verbose)
     describer.visit(tu.cursor)
     pprint(describer.desc)
@@ -1736,7 +1738,7 @@ _pycparser_describers = {
 
 def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                        undefines=(), ts=None, verbose=False, debug=False,
-                       builddir='build'):
+                       builddir='build', onlyin=None):
     """Use pycparser to describe the fucntion or struct (class).
 
     Parameters
@@ -1762,6 +1764,8 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         Flag to enable/disable debug mode.
     builddir : str, optional
         Location of -- often temporary -- build files.
+    onlyin: set of str
+        The paths to the files that the definition is allowed to exist in.
 
     Returns
     -------
@@ -1772,7 +1776,8 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     root = astparsers.pycparser_parse(filename, includes=includes, defines=defines,
                                       undefines=undefines, verbose=verbose,
                                       debug=debug, builddir=builddir)
-    onlyin = set([filename, filename.replace('.c', '.h')])
+    if onlyin is None:
+        onlyin = set([filename])
     describer = _pycparser_describers[kind](name, root, onlyin=onlyin, ts=ts,
                                             verbose=verbose)
     describer.visit()
@@ -1841,7 +1846,7 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     builddir : str, optional
         Location of -- often temporary -- build files.
     language : str
-        Valid langugae flag.
+        Valid language flag.
 
     Returns
     -------
@@ -1849,7 +1854,10 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
         A dictionary describing the class which may be used to generate
         API bindings.
     """
-    if not isinstance(filename, basestring):
+    if isinstance(filename, basestring):
+        onlyin = set([filename])
+    else:
+        onlyin = set([filename])
         filename = filename[0] if len(filename) == 0 \
                    else _make_includer(filename, builddir, language, verbose=verbose)
     if name is None:
@@ -1858,7 +1866,7 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, defines=defines,
                      undefines=undefines, ts=ts, verbose=verbose, debug=debug,
-                     builddir=builddir)
+                     builddir=builddir, onlyin=onlyin)
     return desc
 
 
