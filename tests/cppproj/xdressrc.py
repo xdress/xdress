@@ -58,7 +58,7 @@ stlcontainers = [
 stlcontainers_module = 'stlc'
 
 _fromsrcdir = lambda x: os.path.join('src', x)
-_inbasics = {'srcfiles': _fromsrcdir('basics.[ch]'),
+_inbasics = {'srcfiles': _fromsrcdir('basics.[ch]*'),
              'incfiles': 'basics.h',
              'language': 'c++',
              }

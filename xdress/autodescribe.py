@@ -288,11 +288,14 @@ class GccxmlBaseDescriber(object):
         for fnode in root.iterfind("File"):
             fid = fnode.attrib['id']
             fname = fnode.attrib['name']
+
             self._filemap[fid] = fname
         for fname in onlyin:
             fnode = root.find("File[@name='{0}']".format(fname))
             if fnode is None:
-                continue
+                fnode = root.find("File[@name='./{0}']".format(fname))
+                if fnode is None:
+                    continue
             fid = fnode.attrib['id']
             self.onlyin.add(fid)
         if 0 == len(self.onlyin):
@@ -773,6 +776,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
                 fid = node.attrib['file']
                 ois = ", ".join(["{0!r} ({1!r})".format(self._filemap[v], v) \
                                                  for v in sorted(self.onlyin)])
+                print("ONLYIN =", self.onlyin)
                 msg = msg.format(self.name, self._filemap[fid], fid, ois)
                 raise RuntimeError(msg)
             self.desc['construct'] = node.tag.lower()
@@ -1857,7 +1861,7 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     if isinstance(filename, basestring):
         onlyin = set([filename])
     else:
-        onlyin = set([filename])
+        onlyin = set(filename)
         filename = filename[0] if len(filename) == 0 \
                    else _make_includer(filename, builddir, language, verbose=verbose)
     if name is None:
