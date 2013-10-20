@@ -694,21 +694,17 @@ class memoize_method(object):
 # API Name Tuples and Functions
 #
 
-apiname = namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname', 
-                                 'incfiles', 'sidecars', 'language'])
+class apiname(namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname', 
+                                     'incfiles', 'sidecars', 'language'])):
+    """This is 
+    """
+    def __new__(cls, srcname=NotSpecified, srcfiles=NotSpecified, 
+                tarbase=NotSpecified, tarname=NotSpecified, incfiles=NotSpecified,
+                sidecars=NotSpecified, language=NotSpecified):
+        return super(apiname, cls).__new__(cls, srcname, srcfiles, tarbase, tarname,
+                                           incfiles, sidecars, language)
 
 notspecified_apiname = apiname(*([NotSpecified]*len(apiname._fields)))
-
-def make_apiname(*args, **kwargs):
-    """Makes an apiname instance from any combination of args and keyword args.
-    Fields that are not given are set to NotSpecified.
-    """
-    name = notspecified_apiname
-    if 0 < len(args):
-        name = name._replace(**dict(zip(apiname._fields, args)))
-    if 0 < len(kwargs):
-        name = name._replace(**kwargs)
-    return name
 
 def _ensure_srcfiles(inp):
     """This ensures that srcsfiles is a tuple of filenames that has been 

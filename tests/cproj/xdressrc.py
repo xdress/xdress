@@ -1,5 +1,5 @@
 import os
-from xdress.utils import make_apiname
+from xdress.utils import apiname
 
 package = 'cproj'
 packagedir = 'cproj'
@@ -19,30 +19,30 @@ _indiscovery = {'srcfiles': _fromsrcdir('discovery*'),
                 }
 
 variables = [
-    make_apiname('PersonID', tarbase='pybasics', **_inbasics),
-    make_apiname('*', **_indiscovery),
+    apiname('PersonID', tarbase='pybasics', **_inbasics),
+    apiname('*', **_indiscovery),
     ]
 
 functions = [
-    make_apiname('voided', **_inbasics),
+    apiname('voided', **_inbasics),
     {'srcname': 'func0', 
      'tarname': 'a_better_name',
      'srcfiles': _fromsrcdir('basics*'),
      'incfiles': 'basics.h',
      },
-    make_apiname('func1', **_inbasics),
-    make_apiname('func2', **_inbasics),
-    make_apiname('func3', **_inbasics),
-    make_apiname('func4', tarbase='pybasics', **_inbasics),
-    make_apiname('call_threenums_op_from_c', tarbase='pybasics', **_inbasics),
-    make_apiname('*', **_indiscovery),
+    apiname('func1', **_inbasics),
+    apiname('func2', **_inbasics),
+    apiname('func3', **_inbasics),
+    apiname('func4', tarbase='pybasics', **_inbasics),
+    apiname('call_threenums_op_from_c', tarbase='pybasics', **_inbasics),
+    apiname('*', **_indiscovery),
     ]
 
 classes = [
-#    make_apiname('struct0', _fromsrcdir('basics*'), 'pybasics', 'My_Struct_0'),  #FIXME This needs more work
-    make_apiname('ThreeNums', tarbase='pybasics', **_inbasics),
-    make_apiname('*', **_indiscovery),
+#    apiname('struct0', _fromsrcdir('basics*'), 'pybasics', 'My_Struct_0'),  #FIXME This needs more work
+    apiname('ThreeNums', tarbase='pybasics', **_inbasics),
+    apiname('*', **_indiscovery),
     ]
 
 del os
-del make_apiname
+del apiname

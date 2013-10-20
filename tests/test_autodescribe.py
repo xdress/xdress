@@ -18,7 +18,7 @@ if not os.path.isdir('build'):
     os.mkdir('build')
 
 exp_toaster_desc = {
-    'name': 'Toaster',
+    'name': {'srcname': 'Toaster', 'tarname': 'Toaster'},
     'namespace': 'bright',
     'parents': ['FCComp'],
     'attrs': {
@@ -34,7 +34,7 @@ exp_toaster_desc = {
     }
 
 meta_toaster_desc = {
-    'name': 'Toaster',
+    'name': {'srcname': 'Toaster', 'tarname': 'Toaster'},
     'header_filename': 'toaster.h',
     'srcpxd_filename': 'cpp_toaster.pxd',
     'docstrings': {
@@ -51,7 +51,7 @@ meta_toaster_desc = {
     }
 
 full_toaster_desc = {
-    'name': 'Toaster',
+    'name': {'srcname': 'Toaster', 'tarname': 'Toaster'},
     'header_filename': 'toaster.h',
     'srcpxd_filename': 'cpp_toaster.pxd',
     'namespace': 'bright',
@@ -98,7 +98,8 @@ def test_merge_descriptions():
 @unit
 def test_pycparser_describe_device_measure():
     obs = ad.pycparser_describe('device.c', 'Device_measure', 'func', ts=ts)
-    exp = {'name': 'Device_measure', 
+    exp = {#'name': {'srcname': 'Device_measure', 'tarname': 'Device_measure'},
+           'name': 'Device_measure',
            'namespace': None,
            'signatures': {
             ('Device_measure', ('_0', ('uint32', '*'))): ('enum', 
@@ -125,7 +126,8 @@ def test_pycparser_describe_device_measure():
 @unit
 def test_pycparser_describe_device_init():
     obs = ad.pycparser_describe('device.c', 'Device_Init', 'func', ts=ts)
-    exp = {'name': 'Device_Init', 
+    exp = {#'name': {'srcname': 'Device_Init', 'tarname': 'Device_Init'},
+           'name': 'Device_Init',
            'namespace': None,
            'signatures': {
             ('Device_Init', ('_0', ('DeviceParamTag', '*'))): ('enum', 
@@ -145,7 +147,8 @@ def test_pycparser_describe_device_init():
 def test_pycparser_describe_device_descriptor_tag():
     ts.register_class('DeviceDescriptorTag')
     obs = ad.pycparser_describe('device.c', 'DeviceDescriptorTag', 'class', ts=ts)
-    exp = {'name': 'DeviceDescriptorTag', 
+    exp = {#'name': {'srcname': 'DeviceDescriptorTag', 'tarname': 'DeviceDescriptorTag'},
+           'name': 'DeviceDescriptorTag',
            'type': 'DeviceDescriptorTag',
            'namespace': None,
            'construct': 'struct',

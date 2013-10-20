@@ -1,5 +1,5 @@
 import os
-from xdress.utils import make_apiname
+from xdress.utils import apiname
 
 package = 'cppproj'
 packagedir = 'cppproj'
@@ -68,22 +68,22 @@ _indiscovery = {'srcfiles': _fromsrcdir('discovery*'),
                 }
 
 variables = [
-    make_apiname('PersonID', tarbase='pybasics', **_inbasics),
-    make_apiname('*', **_indiscovery),
+    apiname('PersonID', tarbase='pybasics', **_inbasics),
+    apiname('*', **_indiscovery),
     ]
 
 functions = [
-    make_apiname('voided', **_inbasics),
+    apiname('voided', **_inbasics),
     {'srcname': 'func0', 
      'tarname': 'a_better_name',
      'incfiles': 'basics.h',
      'srcfiles': _fromsrcdir('basics.[ch]*')},
-    make_apiname('func1', **_inbasics),
-    make_apiname('func2', **_inbasics),
-    make_apiname('func3', **_inbasics),
-    make_apiname('func4', tarbase='pybasics', **_inbasics),
-    make_apiname(('findmin', 'int32', 'float32',), **_inbasics), 
-    make_apiname(('findmin', 'float64', 'float32',), **_inbasics), 
+    apiname('func1', **_inbasics),
+    apiname('func2', **_inbasics),
+    apiname('func3', **_inbasics),
+    apiname('func4', tarbase='pybasics', **_inbasics),
+    apiname(('findmin', 'int32', 'float32',), **_inbasics), 
+    apiname(('findmin', 'float64', 'float32',), **_inbasics), 
     {'srcname': ('findmin', 'int', 'int',), 
      'incfiles': 'basics.h',
      'tarname': ('regmin', 'int', 'int',), 
@@ -92,33 +92,33 @@ functions = [
      'tarname': 'sillyBoolMin', 
      'incfiles': 'basics.h',
      'srcfiles': _fromsrcdir('basics.[ch]*')}, 
-    make_apiname(('lessthan', 'int32', 3,), **_inbasics),
-    make_apiname('call_threenums_op_from_c', tarbase='pybasics', **_inbasics),
-    make_apiname('*', **_indiscovery),
+    apiname(('lessthan', 'int32', 3,), **_inbasics),
+    apiname('call_threenums_op_from_c', tarbase='pybasics', **_inbasics),
+    apiname('*', **_indiscovery),
     ]
 
 classes = [
-#    make_apiname('struct0', 'basics', 'pybasics', 'My_Struct_0'),  FIXME This needs more work
-    make_apiname('A', **_inbasics),
-    make_apiname('B', **_inbasics),
-    make_apiname('C', **_inbasics),
-    make_apiname(('TClass1', 'int32'), **_inbasics), 
-    make_apiname(('TClass1', 'float64'), **_inbasics), 
+#    apiname('struct0', 'basics', 'pybasics', 'My_Struct_0'),  FIXME This needs more work
+    apiname('A', **_inbasics),
+    apiname('B', **_inbasics),
+    apiname('C', **_inbasics),
+    apiname(('TClass1', 'int32'), **_inbasics), 
+    apiname(('TClass1', 'float64'), **_inbasics), 
     {'srcname': ('TClass1', 'float32'), 
      'tarname': 'TC1Floater', 
      'incfiles': 'basics.h',
      'srcfiles': _fromsrcdir('basics.[ch]*')}, 
-    make_apiname(('TClass0', 'int32'), **_inbasics), 
-    make_apiname(('TClass0', 'float64'), **_inbasics), 
+    apiname(('TClass0', 'int32'), **_inbasics), 
+    apiname(('TClass0', 'float64'), **_inbasics), 
     {'srcname': ('TClass0', 'bool'), 
      'tarname': ('TC0Bool', 'bool'),
      'incfiles': 'basics.h',
      'srcfiles': _fromsrcdir('basics.[ch]*')}, 
-    make_apiname('Untemplated', **_inbasics), 
-    make_apiname('ThreeNums', tarbase='pybasics', **_inbasics),
-    make_apiname('*', **_indiscovery),
+    apiname('Untemplated', **_inbasics), 
+    apiname('ThreeNums', tarbase='pybasics', **_inbasics),
+    apiname('*', **_indiscovery),
     ]
 
 del os
-del make_apiname
+del apiname
 
