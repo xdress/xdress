@@ -22,7 +22,7 @@ from copy import deepcopy
 from pprint import pprint
 
 from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
-    isvardesc, newoverwrite, sortedbytype
+    isvardesc, newoverwrite, sortedbytype, _lang_exts
 from .plugins import Plugin
 from .typesystem import TypeSystem, TypeMatcher, MatchAny
 
@@ -232,8 +232,10 @@ def varcpppxd(desc, exceptions=True, ts=None):
 
     d['extra'] = desc.get('extra', {}).get('cpppxd', '')
     cpppxd = _cpppxd_var_template.format(**d)
-    if 'srcpxd_filename' not in desc:
-        desc['srcpxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
+    extra = desc['extra']
+    if 'srcpxd_filename' not in extra:
+        ext = _lang_exts[name.language]
+        extra['srcpxd_filename'] = '{0}_{1}.pxd'.format(ext, d['name']['tarbase'])
     return cimport_tups, cpppxd
 
 _cpppxd_func_template = \
@@ -1377,7 +1379,7 @@ def varpyx(desc, ts=None):
     """
     ts = ts or TypeSystem()
     nodocmsg = "no docstring for {0}, please file a bug report!"
-    inst_name = desc['srcpxd_filename'].rsplit('.', 1)[0]
+    inst_name = desc['extra']['srcpxd_filename'].rsplit('.', 1)[0]
     import_tups = set()
     cimport_tups = set(((inst_name,),))
     name = desc['name']
@@ -1405,7 +1407,7 @@ def varpyx(desc, ts=None):
     pyx = '\n'.join(vlines)
     extra = desc['extra']
     if 'pyx_filename' not in extra:
-        extra['pyx_filename'] = '{0}.pyx'.format(desc['name']['tarbase'].lower())
+        extra['pyx_filename'] = '{0}.pyx'.format(desc['name']['tarbase'])
     return import_tups, cimport_tups, pyx
 
 
@@ -1428,7 +1430,7 @@ def funcpyx(desc, ts=None):
     """
     ts = ts or TypeSystem()
     nodocmsg = "no docstring for {0}, please file a bug report!"
-    inst_name = desc['srcpxd_filename'].rsplit('.', 1)[0]
+    inst_name = desc['extra']['srcpxd_filename'].rsplit('.', 1)[0]
 
     import_tups = set()
     cimport_tups = set(((inst_name,),))
@@ -1475,7 +1477,7 @@ def funcpyx(desc, ts=None):
     pyx = '\n'.join(flines)
     extra = desc['extra']
     if 'pyx_filename' not in extra:
-        extra['pyx_filename'] = '{0}.pyx'.format(extra['name']['tarbase'].lower())
+        extra['pyx_filename'] = '{0}.pyx'.format(extra['name']['tarbase'])
     return import_tups, cimport_tups, pyx
 
 #

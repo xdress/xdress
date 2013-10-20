@@ -699,6 +699,17 @@ apiname = namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname',
 
 notspecified_apiname = apiname(*([NotSpecified]*len(apiname._fields)))
 
+def make_apiname(*args, **kwargs):
+    """Makes an apiname instance from any combination of args and keyword args.
+    Fields that are not given are set to NotSpecified.
+    """
+    name = notspecified_apiname
+    if 0 < len(args):
+        name = name._replace(**dict(zip(apiname._fields, args)))
+    if 0 < len(kwargs):
+        name = name._replace(**kwargs)
+    return name
+
 def _ensure_srcfiles(inp):
     """This ensures that srcsfiles is a tuple of filenames that has been 
     expanded out and the files actually exist on the file system.
