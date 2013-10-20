@@ -362,7 +362,8 @@ _finders = {
     }
 
 def findall(filename, includes=(), defines=('XDRESS',), undefines=(), 
-            parsers='gccxml', verbose=False, debug=False,  builddir='build'):
+            parsers='gccxml', verbose=False, debug=False,  builddir='build', 
+            language='c++'):
     """Automatically finds all API elements in a file.  This is the main entry point.
 
     Parameters
@@ -388,6 +389,9 @@ def findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         Flag to enable/disable debug mode.
     builddir : str, optional
         Location of -- often temporary -- build files.
+    language : str
+        Valid language flag.
+
 
     Returns
     -------
@@ -399,7 +403,7 @@ def findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         A list of class names to wrap from the file.
 
     """
-    parser = astparsers.pick_parser(filename, parsers)
+    parser = astparsers.pick_parser(language, parsers)
     finder = _finders[parser]
     rtn = finder(filename, includes=includes, defines=defines, undefines=undefines, 
                  verbose=verbose, debug=debug, builddir=builddir)
@@ -506,24 +510,26 @@ class XDressPlugin(astparsers.ParserPlugin):
     def setup_basic(self, rc):
         """Does the easy part of setting up an autodecsibe environment"""
         # first pass -- gather and expand target
-        allsrc = set()
+        allsrc = {}
         varhasstar = False
         for i, var in enumerate(rc.variables):
             rc.variables[i] = var = ensure_apiname(var)
             if var.srcname == '*':
-                allsrc.update(var.srcfiles)
+                allsrc.update(zip(var.srcfiles, [var.language]*len(var.srcfiles)))
                 varhasstar = True
         fnchasstar = False
         for i, fnc in enumerate(rc.functions):
             rc.functions[i] = fnc = ensure_apiname(fnc)
             if fnc.srcname == '*':
-                allsrc.update(fnc.srcfiles)
+                allsrc.update(zip(fnc.srcfiles, [fnc.language]*len(fnc.srcfiles)))
+                #allsrc.update(fnc.srcfiles)
                 fnchasstar = True
         clshasstar = False
         for i, cls in enumerate(rc.classes):
             rc.classes[i] = cls = ensure_apiname(cls)
             if cls.srcname == '*':
-                allsrc.update(cls.srcfiles)
+                allsrc.update(zip(cls.srcfiles, [cls.language]*len(cls.srcfiles)))
+                #allsrc.update(cls.srcfiles)
                 clshasstar = True
         self.allsrc = allsrc
         self.varhasstar = varhasstar
@@ -543,7 +549,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         allfiles = {}
         cachefile = os.path.join(rc.builddir, 'autoname.cache')
         autonamecache = AutoNameCache(cachefile=cachefile)
-        for i, srcfile in enumerate(allsrc):
+        for i, (srcfile, lang) in enumerate(allsrc.items()):
             print("autoall: searching {0}".format(srcfile))
             if autonamecache.isvalid(srcfile):
                 found = autonamecache[srcfile]
@@ -551,7 +557,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                 found = findall(srcfile, includes=rc.includes, defines=rc.defines, 
                                 undefines=rc.undefines, parsers=rc.parsers, 
                                 verbose=rc.verbose, debug=rc.debug, 
-                                builddir=rc.builddir)
+                                builddir=rc.builddir, language=lang)
                 autonamecache[srcfile] = found
                 autonamecache.dump()
             allfiles[srcfile] = found
