@@ -52,7 +52,7 @@ class XDressPlugin(Plugin):
         srcs = [os.path.join(d, 'xdress_extra_types.h'),
                 os.path.join(d, 'xdress_extra_types.pxd'),
                 os.path.join(d, 'xdress_extra_types.pyx')]
-        tars = [os.path.join(rc.sourcedir, rc.extra_types + '.h'),
+        tars = [os.path.join(rc.packagedir, rc.extra_types + '.h'),
                 os.path.join(rc.packagedir, rc.extra_types + '.pxd'),
                 os.path.join(rc.packagedir, rc.extra_types + '.pyx')]
         for src, tar in zip(srcs, tars):

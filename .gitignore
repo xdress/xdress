@@ -19,10 +19,10 @@ MANIFEST
 tests/cproj/install
 tests/cproj/cproj/*.pxd
 tests/cproj/cproj/*.pyx
-tests/cproj/src/cproj_extra_types.h
+tests/cproj/cproj/cproj_extra_types.h
 
 tests/cppproj/install
 tests/cppproj/cppproj/*.pxd
 tests/cppproj/cppproj/*.pyx
-tests/cppproj/src/cppproj_extra_types.h
+tests/cppproj/cppproj/cppproj_extra_types.h
 tests/cppproj/cppproj/tests/test_stlc.py

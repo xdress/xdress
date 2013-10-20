@@ -209,7 +209,7 @@ def varcpppxd(desc, exceptions=True, ts=None):
     """
     ts = ts or TypeSystem()
     t = ts.canon(desc['type'])
-    d = {'name': desc['name']['srcname'], 
+    d = {'name': desc['name']['tarname'], 
          'header_filename':  desc['name']['incfiles'][0],
          'namespace': _format_ns(desc),
          }
@@ -269,7 +269,7 @@ def funccpppxd(desc, exceptions=True, ts=None):
 
     """
     ts = ts or TypeSystem()
-    d = {'name': desc['name']['srcname'], 
+    d = {'name': desc['name']['tarname'], 
          'header_filename':  desc['name']['incfiles'][0],
          'namespace': _format_ns(desc),
          }
@@ -356,7 +356,7 @@ def classcpppxd(desc, exceptions=True, ts=None):
     d = {'parents': pars if 0 == len(pars) else '('+pars+')',
          'header_filename': desc['name']['incfiles'][0],}
     d['namespace'] = _format_ns(desc)
-    name = desc['name']['srcname']
+    name = desc['name']['tarname']
     if isinstance(desc['type'], basestring):
         d['name'] = ts.cython_ctype(name)
         d['alias'] = ''
@@ -570,11 +570,12 @@ def classpxd(desc, classes=(), ts=None, max_callbacks=8):
 
     """
     ts = ts or TypeSystem()
-    if 'pxd_filename' not in desc:
-        desc['pxd_filename'] = '{0}.pxd'.format(desc['name'].lower())
+    extra = desc['extra']
+    if 'pxd_filename' not in extra:
+        extra['pxd_filename'] = '{0}.pxd'.format(desc['name']['tarbase'])
     pars = ', '.join([ts.cython_cytype(p) for p in desc['parents'] or ()])
     d = {'parents': pars if 0 == len(pars) else '('+pars+')'}
-    name = desc['name']
+    name = desc['name']['tarname']
     d['name'] = name if isinstance(name, basestring) else ts.cython_classname(name)[1]
     max_callbacks = desc.get('extra', {}).get('max_callbacks', max_callbacks)
     mczeropad = int(math.log10(max_callbacks)) + 1
@@ -584,8 +585,9 @@ def classpxd(desc, classes=(), ts=None, max_callbacks=8):
         ts.cython_cimport_tuples(parent, cimport_tups, set(['cy']))
 
     from_cpppxd = desc['srcpxd_filename'].rsplit('.', 1)[0]
-    d['name_type'] = ts.cython_ctype(desc['name'])
-    ts.cython_cimport_tuples(desc['name'], cimport_tups, set(['c']))
+    tarname = desc['name']['tarname']
+    d['name_type'] = ts.cython_ctype(tarname)
+    ts.cython_cimport_tuples(tarname, cimport_tups, set(['c']))
 
     parentless_body = ['cdef void * _inst', 'cdef public bint _free_inst']
     body = parentless_body if desc['parents'] is None else []
@@ -618,7 +620,7 @@ def classpxd(desc, classes=(), ts=None, max_callbacks=8):
             fplines.append("cdef unsigned int _current_{0}_vtab_i".format(apyname))
 
     if len(fplines) > 0:
-        fplines.append("cdef unsigned int _MAX_CALLBACKS_" + desc['name'])
+        fplines.append("cdef unsigned int _MAX_CALLBACKS_" + desc['name']['tarname'])
 
     d['body'] = indent(body or ['pass'])
     d['function_pointer_block'] = '\n'.join(fplines)
@@ -1216,14 +1218,13 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
     pars = ', '.join([ts.cython_cytype(p) for p in desc['parents'] or ()])
     d = {'parents': pars if 0 == len(pars) else '('+pars+')',
          'namespace': desc['namespace'],
-         'header_filename': desc['header_filename'],
          }
-    name = desc['name']
+    name = desc['name']['tarname']
     d['name'] = name if isinstance(name, basestring) else ts.cython_classname(name)[1]
     class_doc = desc.get('docstrings', {}).get('class', nodocmsg.format(desc['name']))
     d['class_docstring'] = indent('\"\"\"{0}\"\"\"'.format(class_doc))
 
-    class_ctype = ts.cython_ctype(desc['name'])
+    class_ctype = ts.cython_ctype(name)
     inst_name = "(<{0} *> self._inst)".format(class_ctype)
 
     import_tups = set()
@@ -1248,7 +1249,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
         if ts.isfunctionpointer(atype):
             alines += _gen_function_pointer_property(aname, atype, ts, adoc,
                         cached_names=cached_names, inst_name=inst_name,
-                        classname=desc['name'], max_callbacks=mc)
+                        classname=name, max_callbacks=mc)
             fplines += _gen_function_pointer_wrapper(aname, atype, ts,
                         max_callbacks=mc, classname=desc['name'])
             pdlines.append("self._{0}_vtab_i = {1}".format(aname, mc+1))
@@ -1331,7 +1332,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
     if 0 == len(desc['methods']) or 0 == len(clines):
         # provide a default constructor
         mdocs = desc.get('docstrings', {}).get('methods', {})
-        mdoc = mdocs.get(desc['name'], False) or mdocs.get('__init__', '')
+        mdoc = mdocs.get(desc['name']['tarname'], False) or mdocs.get('__init__', '')
         mdoc = _doc_add_sig(mdoc, '__init__',
                             [(_a, _t, "None") for _a, _t in attritems])
         clines += _gen_default_constructor(desc, attritems, ts, doc=mdoc)
@@ -1402,8 +1403,9 @@ def varpyx(desc, ts=None):
 
     vlines.append(desc.get('extra', {}).get('pyx', ''))
     pyx = '\n'.join(vlines)
-    if 'pyx_filename' not in desc:
-        desc['pyx_filename'] = '{0}.pyx'.format(desc['name'].lower())
+    extra = desc['extra']
+    if 'pyx_filename' not in extra:
+        extra['pyx_filename'] = '{0}.pyx'.format(desc['name']['tarbase'].lower())
     return import_tups, cimport_tups, pyx
 
 
@@ -1432,7 +1434,7 @@ def funcpyx(desc, ts=None):
     cimport_tups = set(((inst_name,),))
 
     # For renaming
-    ftopname = desc['name']
+    ftopname = desc['name']['tarname']
     fcytopname = ts.cython_funcname(ftopname)
 
     flines = []
@@ -1471,8 +1473,9 @@ def funcpyx(desc, ts=None):
             flines += _gen_dispatcher(fcytopname, nm, ts, doc=fdoc, is_method=False)
     flines.append(desc.get('extra', {}).get('pyx', ''))
     pyx = '\n'.join(flines)
-    if 'pyx_filename' not in desc:
-        desc['pyx_filename'] = '{0}.pyx'.format(desc['name'].lower())
+    extra = desc['extra']
+    if 'pyx_filename' not in extra:
+        extra['pyx_filename'] = '{0}.pyx'.format(extra['name']['tarbase'].lower())
     return import_tups, cimport_tups, pyx
 
 #
