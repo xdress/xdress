@@ -308,8 +308,10 @@ def funccpppxd(desc, exceptions=True, ts=None):
 
     d['extra'] = desc.get('extra', {}).get('cpppxd', '')
     cpppxd = _cpppxd_func_template.format(**d)
-    if 'srcpxd_filename' not in desc:
-        desc['srcpxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
+    extra = desc['extra']
+    if 'srcpxd_filename' not in extra:
+        ext = _lang_exts[name.language]
+        extra['srcpxd_filename'] = '{0}_{1}.pxd'.format(d['name']['tarbase'])
     return cimport_tups, cpppxd
 
 _cpppxd_class_template = \
@@ -1133,16 +1135,18 @@ def _class_heirarchy(cls, ch, classes):
 
 def _method_instance_names(desc, classes, key, rtn, ts):
     classnames = []
-    _class_heirarchy(desc['name'], classnames, classes)
+    _class_heirarchy(desc['name']['tarname'], classnames, classes)
     for classname in classnames:
-        classrtn = classes.get(classname, {}).get('methods', {}).get(key, NotImplemented)
+        classrtn = classes.get(classname, {}).get('methods', {}).get(key, 
+                                                                     NotImplemented)
         if rtn != classrtn:
             continue
         #class_ctype = ts.cython_ctype(desc['name'])
         class_ctype = ts.cython_ctype(classname)
         inst_name = "(<{0} *> self._inst)".format(class_ctype)
         return inst_name, classname
-    return "(<{0} *> self._inst)".format(ts.cython_ctype(desc['name'])), desc['name']
+    tarname = desc['name']['tarname']
+    return "(<{0} *> self._inst)".format(ts.cython_ctype(tarname)), tarname
 
 
 def _count0(x):
@@ -1546,7 +1550,7 @@ def _format_ns(desc):
 
 def _format_alias(desc, ts):
     ns = desc.get('namespace', None)
-    cpp_name = ts.cpp_type(desc['name'])
+    cpp_name = ts.cpp_type(desc['name']['tarname'])
     if ns is None or len(ns) == 0:
         return '"{0}"'.format(cpp_name)
     else:

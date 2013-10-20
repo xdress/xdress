@@ -574,7 +574,7 @@ def merge_descriptions(descriptions):
             else:
                 desc[key] = deepcopy(value)
     # now sanitize methods
-    name = desc['name']
+    name = desc['name']['srcname'] # srcname or tarname?
     methods = desc.get('methods', {})
     for methkey, methval in list(methods.items()):
         if methval is None:
