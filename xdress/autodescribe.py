@@ -1994,6 +1994,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                                undefines=rc.undefines, parsers=rc.parsers, ts=rc.ts, 
                                verbose=rc.verbose, debug=rc.debug, 
                                builddir=rc.builddir, language=name.language)
+            srcdesc['name'] = dict(zip(name._fields, name))
             cache[name, kind] = srcdesc
         descs = [srcdesc]
         descs += [self.pysrcenv[s].get(name.srcname, {}) for s in name.sidecars]
@@ -2044,7 +2045,6 @@ class XDressPlugin(astparsers.ParserPlugin):
             if rc.verbose:
                 pprint(desc)
             cache.dump()
-            desc['name'] = dict(zip(var._fields, var))
             self.adddesc2env(desc, env, var)
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
@@ -2059,7 +2059,6 @@ class XDressPlugin(astparsers.ParserPlugin):
             if rc.verbose:
                 pprint(desc)
             cache.dump()
-            desc['name'] = dict(zip(fnc._fields, fnc))
             self.adddesc2env(desc, env, fnc)
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
@@ -2073,7 +2072,6 @@ class XDressPlugin(astparsers.ParserPlugin):
             print("autodescribe: describing {0}".format(cls.srcname))
             desc = self.compute_desc(cls, 'class', rc)
             cache.dump()
-            desc['name'] = dict(zip(cls._fields, cls))
             if rc.verbose:
                 pprint(desc)
             self.adddesc2env(desc, env, cls)
