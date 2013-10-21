@@ -696,7 +696,56 @@ class memoize_method(object):
 
 class apiname(namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname', 
                                      'incfiles', 'sidecars', 'language'])):
-    """This is 
+    """apiname(srcname=NotSpecified, srcfiles=NotSpecified, tarbase=NotSpecified, 
+               tarname=NotSpecified, incfiles=NotSpecified, sidecars=NotSpecified, 
+               language=NotSpecified)
+
+    This is a type, based on a named tuple, that represents the API element 
+    names and is used to declare or discover where variables, functions, and 
+    classes live for the rest of xdress.  All of the fields default to 
+    NotSpecified if not given.  These feilds are the sames as what appear in 
+    description dictionaries under the 'name' key.
+
+    Parameters
+    ----------
+    srcname : str, tuple, or NotSpecified
+        The element's API name in the original source code, eg. MyClass.
+    srcfiles : str, tuple of str, or NotSpecified
+        This is a sequence of unique strings which represents the file paths where
+        the API element *may* be defined. For example, ('myfile.c', 'myfile.h').  
+        If the element is defined outside of these files, then the automatic 
+        discovery or description may fail. When using ensure_apiname(), all strings
+        are automatically globbed, so 'src/myfile.*' will be converted to 
+        ('src/myfile.c', 'src/myfile.h').  Since these files are parsed they must 
+        actually exist on the filesystem.
+    tarbase : str or NotSpecified
+        The base portion of all automatically generated (target) files. This does 
+        not include the directory or the file extension.  For example, if you 
+        wanted cythongen to create a file name 'mynewfile.pyx' then the value here
+        would be simply 'mynewfile'.
+    tarname : str, tuple, or NotSpecified
+        The element's API element in the automatically generated (target) files, 
+        e.g. MyNewClass.
+    incfiles : tuple of str or NotSpecified
+        This is a sequence of all files which must be #include'd to access the 
+        srcname at compile time.  This should be as minimal of a set as possible, 
+        preferably only one file.  For example even though most HDF5 API 
+        declarations are split across multiple files, to use the public API you 
+        only ever need to include 'hdf5.h'. Because these files are not parsed they 
+        do not need to exist for xdress to run.  Thus the strings in incfiles are 
+        not globbed.
+    sidecars : str, tuple of str, or NotSpecified
+        This is a sequence of all sidecar files to use for this API element. Like
+        srcfiles, these files must exist for xdress to run.  They similarly 
+        globbed.  For example, 'myfile.py'.
+    language : str or NotSpecified
+        Flag for the language that the srcfiles are implemented in. Valid options 
+        are: 'c', 'c++', 'f', 'fortran', 'f77', 'f90', 'python', and 'cython'.
+
+    See Also
+    --------
+    ensure_apiname
+
     """
     def __new__(cls, srcname=NotSpecified, srcfiles=NotSpecified, 
                 tarbase=NotSpecified, tarname=NotSpecified, incfiles=NotSpecified,
@@ -793,7 +842,7 @@ def ensure_apiname(name):
     elif isinstance(name, Sequence):
         name = notspecified_apiname._replace(**dict(zip(apiname._fields, name)))
     elif isinstance(name, Mapping):
-        name = notspecified_apiname._replace(**name)
+        name = apiname(**name)
 
     # ensure fields are not NotSpecified
     updates = {}

@@ -16,12 +16,42 @@ The abstract representation of a C++ class is known as a **description** (abbr.
 This structure makes heavy use of the type system to declare the types of all needed
 parameters.
 
+The Name Key
+------------
+The *name* key is a dictionary that represents the API name of the element
+being described.  This contains exactly the same keys that the utils.apiname()
+type has fields.  While apiname is used for user input and validation, the values
+here must truly describe the API element.  The following keys -- and only the 
+following keys -- are allowed in the name dictionary.
+
+:srcname: str or tuple, the element's API name in the original source code, 
+    eg. MyClass.
+:srcfiles: tuple of str, this is a sequence of unique strings which represents 
+    the file paths where the API element *may* be defined. For example, ('myfile.c', 
+    'myfile.h').  If the element is defined outside of these files, then the automatic 
+    discovery or description may fail. Since these files are parsed they must 
+    actually exist on the filesystem.
+:tarbase: str, the base portion of all automatically generated (target) files. 
+    This does not include the directory or the file extension.  For example, if you 
+    wanted cythongen to create a file name 'mynewfile.pyx' then the value here would 
+    be simply 'mynewfile'.
+:tarname: str or tuple, the element's API name in the automatically generated 
+    (target) files, e.g. MyNewClass.
+:incfiles: tuple of str, this is a sequence of all files which must be #include'd 
+    to access the srcname at compile time.  This should be as minimal of a set as 
+    possible, preferably only one file.  For example, 'hdf5.h'. 
+:sidecars: tuple of str, this is a sequence of all sidecar files to use for 
+    this API element. Like srcfiles, these files must exist for xdress to run. 
+    For example, 'myfile.py'.
+:language: str, flag for the language that the srcfiles are implemented in. Valid 
+    options are: 'c', 'c++', 'f', 'fortran', 'f77', 'f90', 'python', and 'cython'.
+
 Variable Description Top-Level Keys
 ------------------------------------
 The following are valid top-level keys in a variable description dictionary:
 name, namespace, type, docstring, and extra.
 
-:name: str, the variable name
+:name: dict, the variable name, see above
 :namespace: str or None, the namespace or module the variable lives in.
 :type: str or tuple, the type of the variable
 :docstring: str, optional, this is a documentation string for the variable.
@@ -36,7 +66,7 @@ Function Description Top-Level Keys
 The following are valid top-level keys in a function description dictionary:
 name, namespace, signatures, docstring, and extra.
 
-:name: str or tuple, the function name
+:name: dict, the function name, see above
 :namespace: str or None, the namespace or module the function lives in.
 :signatures: dict or dict-like, the keys of this dictionary are function call
     signatures and the values are the function return types. The signatures
@@ -58,7 +88,7 @@ Class Description Top-Level Keys
 The following are valid top-level keys in a class description dictionary:
 name, parents, namespace, attrs, methods, docstrings, and extra.
 
-:name: str or tuple, the class name
+:name: dict, the class name, see above
 :parents: list of strings or None, the immediate parents of the class
     (not grandparents).
 :namespace: str or None, the namespace or module the class lives in.
