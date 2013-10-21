@@ -1,6 +1,5 @@
 package = 'mypack'     # top-level python package name
 packagedir = 'mypack'  # loation of the python package
-sourcedir = 'src'
 
 stlcontainers = [
     ('vector', 'str'),
@@ -9,9 +8,9 @@ stlcontainers = [
     ]
 
 classes = [
-        ('A', 'hoover'),
-        ('B', 'hoover', 'hoover_b'),
+        ('A', ('src/hoover.h', 'src/hoover.cpp')),
+        ('B', ('src/hoover.h', 'src/hoover.cpp'), 'hoover_b'),
         ]
 
-functions = [('do_nothing_ab', 'hoover', 'hoover_b')]
+functions = [('do_nothing_ab', ('src/hoover.h', 'src/hoover.cpp'), 'hoover_b')]
 

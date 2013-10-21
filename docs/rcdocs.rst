@@ -17,7 +17,7 @@ xdress.base
 :plugins: Plugins to include, *default:* ('xdress.autoall', 'xdress.cythongen',
     'xdress.stlwrap').
 :rc: Path to run control file, *default:* 'xdressrc.py'.
-:sourcedir: Path to source directory, *default:* 'src'.
+:sourcedir: Path to source directory (deprecated), *default:* NotSpecified.
 :ts: The xdress type system., *default:* xdress.typesystem.TypeSystem instance.
 :verbose: Print more output., *default:* False.
 
@@ -34,7 +34,7 @@ xdress.autoall
 :dumpast: Prints the abstract syntax tree of a file., *default:* NotSpecified.
 :functions: A list of function names in sequence, mapping, or apiname format,
     *default:* ().
-:includes: Additional include directories, *default:* [].
+:includes: Additional include directories, *default:* ['.'].
 :parsers: Parser(s) name, list, or dict, *default:* {'c': ['pycparser',
     'gccxml', 'clang'], 'c++': ['gccxml', 'clang', 'pycparser']}.
 :undefines: Unset additional macro definitions, *default:* [].
@@ -55,7 +55,7 @@ xdress.autodescribe
 :env: The target environment computed by the autodescriber., *default:* {}.
 :functions: A list of function names in sequence, mapping, or apiname format,
     *default:* ().
-:includes: Additional include directories, *default:* [].
+:includes: Additional include directories, *default:* ['.'].
 :parsers: Parser(s) name, list, or dict, *default:* {'c': ['pycparser',
     'gccxml', 'clang'], 'c++': ['gccxml', 'clang', 'pycparser']}.
 :undefines: Unset additional macro definitions, *default:* [].
