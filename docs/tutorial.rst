@@ -69,7 +69,6 @@ control file would contain the following variables.
 
     package = 'mypack'     # top-level python package name
     packagedir = 'mypack'  # location of the python package
-    sourcedir = 'src'      # location of C/C++ source
 
     stlcontainers = [
         ('vector', 'str'),
@@ -143,17 +142,18 @@ we simply need to tell xdress that they live in hoover.  We do this by adding to
 **xdressrc.py**::
 
     classes = [
-        ('A', 'hoover'),
-        ('B', 'hoover', 'hoover_b'),
+        ('A', 'src/hoover.*'),
+        ('B', 'src/hoover.*', 'hoover_b'),
         ]
 
-    functions = [('do_nothing_ab', 'hoover')]
+    functions = [('do_nothing_ab', 'src/hoover.*')]
 
 Note that to do this we need only give the construct names -- no signatures need
 be specified.  That is the point of API generation!  Also note that we only give
-the base file name without the preceding ``src/`` directory or the file extension
-(``.cpp``, ``.h``).  Furthermore, the base names of the source and target files need
-not be the same...even for APIs which share the same source file!  We may then run
+the base file name with the preceding ``src/`` directory and the file extension
+(``.cpp``, ``.h``).  Strings passed in here are globbed, so we can be a little lazy. 
+Furthermore, the base names of the source and target files need not be the 
+same...even for APIs which share the same source file!  We may then run 
 xdress normally:
 
 .. code-block:: bash
@@ -263,7 +263,6 @@ one might run across in a production level environment.
 
     package = 'mypack'     # top-level python package name
     packagedir = 'mypack'  # location of the python package
-    sourcedir = 'src'      # location of C/C++ source
 
     # wrappers for non-standard types (uints, complex)
     extra_types = 'xdress_extra_types'
@@ -344,16 +343,16 @@ one might run across in a production level environment.
     #
     # This is useful for wrapping larger existing libraries.
     classes = [
-        ('FCComp', 'fccomp'),
-        ('EnrichmentParameters', 'enrichment_parameters'),
-        ('Enrichment', 'bright_enrichment', 'enrichment'),
-        ('DontWrap', 'bright_enrichment', None),
-        ('Reprocess', 'reprocess'),
+        ('FCComp', 'src/fccomp.*'),
+        ('EnrichmentParameters', 'src/enrichment_parameters.*'),
+        ('Enrichment', 'src/bright_enrichment.*', 'enrichment'),
+        ('DontWrap', 'src/bright_enrichment.*', None),
+        ('Reprocess', 'src/reprocess.*'),
         ]
 
     # List of functions to wrap
     functions = [
-        ('*', 'reprocess'),
-        ('fillUraniumEnrichmentDefaults', 'enrichment_parameters'),
+        ('*', 'src/reprocess.*'),
+        ('fillUraniumEnrichmentDefaults', 'src/enrichment_parameters.*'),
         ]
 
