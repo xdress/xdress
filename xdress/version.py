@@ -2,21 +2,37 @@
 """
 
 import re
+from collections import namedtuple
+
+class version_info(namedtuple('version_info', ['major', 'minor', 'micro', 'extra'])):
+    """A representation of version information.
+    """
+    def __new__(cls, major=-1, minor=-1, micro=-1, extra=''):
+        return super(version_info, cls).__new__(cls, major, minor, micro, extra)
+
+_ver_r = re.compile('(\d+)\.(\d+)\.?(\d+)?-?(.*)')
+
+def version_parser(ver):
+    """Parses a nominal version string into a version_info object.
+    e.g. '0.20dev' -> version_info(0, 20, 0, 'dev').
+    """
+    m = _ver_r.match(cython_version)
+    g = m.groups()
+    vi = version_info(int(g[0]), int(g[1] or 0), int(g[2] or 0), g[3])
+    return vi
+
+#
+# Cython
+#
 
 try:
     import Cython
 except ImportError:
     Cython = None
 
-_cyver_r = re.compile('(\d+)\.(\d+)\.?(\d+)?(.*)')
-
 if Cython is None:
-    CYTHON_VERSION = CYTHON_MAJOR = CYTHON_MINOR = CYTHON_MICRO = CYTHON_EXTRA =None
+    cython_version = None
+    cython_version_info = version_info()
 else:
-    CYTHON_VERSION = Cython.__version__
-    _cygs = _cyver_r.match(CYTHON_VERSION).groups()
-    CYTHON_MAJOR = int(_cygs[0])
-    CYTHON_MINOR = int(_cygs[1])
-    CYTHON_MICRO = int(_cygs[2] or 0)
-    CYTHON_EXTRA = _cygs[3]
-    del _cygs
+    cython_version = Cython.__version__
+    cython_version_info = version_parser(cython_version)
