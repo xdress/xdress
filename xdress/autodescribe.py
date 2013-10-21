@@ -122,7 +122,15 @@ Suppose we have a C++ class called Toaster that takes bread and makes delicious
 toast.  A valid description dictionary for this class would be as follows::
 
     class_desc = {
-        'name': 'Toaster',
+        'name': {
+            'language': 'c++',
+            'incfiles': ('toaster.h',), 
+            'srcfiles': ('src/toaster.h', 'src/toaster.cpp'), 
+            'srcname': 'Toaster', 
+            'sidecars': ('src/toaster.py',), 
+            'tarbase': 'toaster',
+            'tarname': 'Toaster', 
+            },
         'parents': ['FCComp'],
         'namespace': 'bright',
         'attrs': {
