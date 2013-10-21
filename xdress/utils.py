@@ -724,7 +724,7 @@ class apiname(namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname'
         wanted cythongen to create a file name 'mynewfile.pyx' then the value here
         would be simply 'mynewfile'.
     tarname : str, tuple, or NotSpecified
-        The element's API element in the automatically generated (target) files, 
+        The element's API name in the automatically generated (target) files, 
         e.g. MyNewClass.
     incfiles : tuple of str or NotSpecified
         This is a sequence of all files which must be #include'd to access the 
