@@ -8,7 +8,9 @@ import subprocess
 import tempfile
 
 from nose.tools import assert_true, assert_equal
-from tools import integration, cleanfs, check_cmd, clean_import, dirtests, modtests
+from tools import integration, cleanfs, check_cmd, clean_import, dirtests, \
+    modtests, skip_then_continue
+    
 
 from xdress.astparsers import PARSERS_AVAILABLE
 
@@ -63,6 +65,7 @@ def test_all():
     for case in cases:
         parser = case['parser']
         if not PARSERS_AVAILABLE[parser]:
+            yield skip_then_continue, parser + " unavailable"
             continue
         cleanfs(GENERATED_PATHS)
         rtn = 1

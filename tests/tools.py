@@ -12,6 +12,7 @@ from contextlib import contextmanager
 
 from nose.tools import assert_true, assert_equal
 from nose.plugins.attrib import attr
+from nose.plugins.skip import SkipTest
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -85,3 +86,10 @@ def dirtests(d):
             continue
         filenames.append(file[:-3])
     return filenames
+
+def skip_then_continue(msg=""):
+    """A simple function to yield such that a test is marked as skipped
+    and we may continue on our merry way. A message may be optionally passed
+    to this function.
+    """
+    raise SkipTest(msg)
