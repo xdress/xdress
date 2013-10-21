@@ -93,3 +93,16 @@ def skip_then_continue(msg=""):
     to this function.
     """
     raise SkipTest(msg)
+
+#
+# Here there be Hackons!
+#
+
+# hack to make sure that we are actually in the tests dir when we start running 
+# tests.  This works because this file is imported by many of the other test 
+# files.
+_fdir = os.path.dirname(__file__)
+if os.getcwd() != _fdir:
+    os.chdir(_fdir)
+del _fdir
+    
