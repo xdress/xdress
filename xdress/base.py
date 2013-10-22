@@ -13,9 +13,10 @@ import sys
 from warnings import warn
 
 from .utils import RunControl, NotSpecified, writenewonly, DescriptionCache, \
-    DEFAULT_RC_FILE, DEFAULT_PLUGINS, nyansep
+    DEFAULT_RC_FILE, DEFAULT_PLUGINS, nyansep, indent
 from .plugins import Plugin
 from .typesystem import TypeSystem
+from .version import report_versions
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -29,6 +30,7 @@ class XDressPlugin(Plugin):
         debug=False,
         ts=TypeSystem(),
         verbose=False,
+        version=False,
         dumpdesc=False,
         package=NotSpecified,
         packagedir=NotSpecified,
@@ -46,6 +48,7 @@ class XDressPlugin(Plugin):
         'debug': 'Build in debugging mode', 
         'ts': "The xdress type system.",
         'verbose': "Print more output.",
+        'version': "Print version information.",
         'dumpdesc': "Print the description cache",
         'package': "The Python package name for the generated wrappers", 
         'packagedir': "Path to package directory, same as 'package' if not specified",
@@ -62,6 +65,8 @@ class XDressPlugin(Plugin):
                             help=self.rcdocs["debug"])
         parser.add_argument('-v', '--verbose', action='store_true', dest='verbose',
                             help=self.rcdocs["verbose"])
+        parser.add_argument('--version', action='store_true', dest='version',
+                            help=self.rcdocs["version"])
         parser.add_argument('--dumpdesc', action='store_true', dest='dumpdesc',
                             help=self.rcdocs["dumpdesc"])
         parser.add_argument('--package', action='store', dest='package',
@@ -78,6 +83,10 @@ class XDressPlugin(Plugin):
                             help="disable bash completion", dest="bash_completion")
 
     def setup(self, rc):
+        if rc.version:
+            print(report_versions())
+            sys.exit()
+
         if rc.package is NotSpecified:
             msg = "no package name given; please add 'package' to {0}"
             sys.exit(msg.format(rc.rc))
@@ -99,8 +108,10 @@ class XDressPlugin(Plugin):
             sys.exit()
 
     def report_debug(self, rc):
-        msg = 'Current descripton cache contents:\n\n{0}\n\n'
-        msg = msg.format(str(rc._cache))
+        msg = 'Version Information:\n\n{0}\n\n'
+        msg += nyansep + "\n\n"
+        msg += 'Current descripton cache contents:\n\n{1}\n\n'
+        msg = msg.format(indent(report_versions()), str(rc._cache))
         msg += nyansep + "\n\n"
         msg += "Current type system contents:\n\n" + str(rc.ts) + "\n\n"
         return msg
