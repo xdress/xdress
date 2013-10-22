@@ -22,6 +22,13 @@ def version_parser(ver):
     return vi
 
 #
+# XDress
+#
+
+xdress_version = '0.4-dev'
+xdress_version_info = version_info(0, 4, 0, 'dev')
+
+#
 # Cython
 #
 
@@ -36,3 +43,19 @@ if Cython is None:
 else:
     cython_version = Cython.__version__
     cython_version_info = version_parser(cython_version)
+
+#
+# lxml
+#
+
+try:
+    import lxml.etree
+except ImportError:
+    lxml = None
+
+if lxml is None:
+    lxml_version = None
+    lxml_version_info = version_info()
+else:
+    lxml_version = lxml.etree.__version__
+    lxml_version_info = version_parser(lxml_version)

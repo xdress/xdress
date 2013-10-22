@@ -37,3 +37,4 @@ dynamic type system.
     plugins
     base
     extratypes
+    version

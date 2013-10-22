@@ -5,10 +5,13 @@ import io
 import sys
 import json
 
-INFO = {
-    'version': '0.4-dev',
-}
+sys.path.insert(0, '')
+import xdress.version
+sys.path.pop(0)
 
+INFO = {
+    'version': xdress.version.xdress_version,
+}
 
 def main():
     "Run functions specified on the command line"
