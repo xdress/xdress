@@ -107,7 +107,8 @@ def setup():
         "scripts": scripts,
         "description": "Goes all J. Edgar Hoover on your code.",
         "long_description": long_desc,
-        "download_url": "https://github.com/scopatz/xdress/zipball/0.2",
+        "download_url": ("https://github.com/scopatz/xdress/"
+                         "zipball/{0}.{1}").format(*xdress.version.xdress_version[:2]),
         "classifiers": [
             "License :: OSI Approved :: BSD License",
             "Intended Audience :: Developers",
