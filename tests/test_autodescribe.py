@@ -18,9 +18,10 @@ if not os.path.isdir('build'):
     os.mkdir('build')
 
 exp_toaster_desc = {
-    'name': {'srcname': 'Toaster', 'tarname': 'Toaster'},
-    'namespace': 'bright',
-    'parents': ['FCComp'],
+    'name': 'Toaster',
+    'namespace': 'xdress',
+    'parents': None,
+    'construct': 'class',
     'attrs': {
         'nslices': 'uint32',
         'toastiness': 'str',
@@ -31,6 +32,7 @@ exp_toaster_desc = {
         ('~Toaster',): None, 
         ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1)): 'int32',
         },
+    'type': 'Toaster',
     }
 
 meta_toaster_desc = {
@@ -52,9 +54,10 @@ meta_toaster_desc = {
 
 full_toaster_desc = {
     'name': {'srcname': 'Toaster', 'tarname': 'Toaster'},
+    'construct': 'class',
     'header_filename': 'toaster.h',
     'srcpxd_filename': 'cpp_toaster.pxd',
-    'namespace': 'bright',
+    'namespace': 'xdress',
     'docstrings': {
         'module': "I am the Toaster lib! Hear me sizzle!", 
         'class': "I am the Toaster! FORKS DO NOT GO IN ME!",
@@ -66,7 +69,7 @@ full_toaster_desc = {
             'make_toast': "I'll make you some toast you can't refuse...", 
             },
         },
-    'parents': ['FCComp'],
+    'parents': None,
     'attrs': {
         'nslices': 'uint32',
         'toastiness': 'str',
@@ -77,21 +80,25 @@ full_toaster_desc = {
         ('~Toaster',): None, 
         ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1)): 'int32',
         },
+    'type': 'Toaster',
     }
 
 @unit
 def test_describe_gccxml():
     fname = os.path.join(os.path.split(__file__)[0], 'toaster.h')
+    ts.register_classname('Toaster', 'toaster', 'toaster', 'cpp_toaster')
     obs = ad.describe(fname, name='Toaster', parsers='gccxml', verbose=False, ts=ts)
     exp = exp_toaster_desc
+    #pprint(exp)
+    #pprint(obs)
     assert_equal(obs, exp)
 
 @unit
 def test_merge_descriptions():
     obs = ad.merge_descriptions([exp_toaster_desc, meta_toaster_desc])
     exp = full_toaster_desc
-    pprint(exp)
-    pprint(obs)
+    #pprint(exp)
+    #pprint(obs)
     assert_equal(obs, exp)
 
 @dec.skipif(ad.pycparser is None)
