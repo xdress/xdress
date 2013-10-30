@@ -10,7 +10,7 @@ from xdress import descfilter as df
 car_class = {
     'name': 'Car',
     'namespace': 'util',
-    'parents': None,
+    'parents': [],
     'attrs': {
         'nwheels': 'uint32',
         'maxrpm': 'float64',
@@ -30,7 +30,7 @@ car_class = {
 plane_class = {
     'name': 'Plane',
     'namespace': 'util',
-    'parents': None,
+    'parents': [],
     'attrs': {
         'homeAirport': 'str',
         'maxrpm': 'float64',
@@ -59,7 +59,7 @@ def test_typefilter_list():
     skips = [TypeMatcher(i) for i in filt_types_list]
     car_class_copy = deepcopy(car_class)
     df.modify_desc(skips, car_class_copy)
-    exp = {'name': 'Car', 'namespace': 'util', 'parents': None,
+    exp = {'name': 'Car', 'namespace': 'util', 'parents': [],
     'attrs': {
         'nwheels': 'uint32',
         'maxrpm': 'float64',
@@ -93,7 +93,7 @@ def test_typefilter_dict():
     exp_car = {
         'name': 'Car',
         'namespace': 'util',
-        'parents': None,
+        'parents': [],
         'attrs': {
             'maxrpm': 'float64',
             'maxspeed': 'float32',
@@ -108,7 +108,7 @@ def test_typefilter_dict():
     exp_plane = {
         'name': 'Plane',
         'namespace': 'util',
-        'parents': None,
+        'parents': [],
         'attrs': {
             'homeAirport': 'str',
             'maxrpm': 'float64',

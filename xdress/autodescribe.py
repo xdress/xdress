@@ -89,7 +89,7 @@ The following are valid top-level keys in a class description dictionary:
 name, parents, namespace, attrs, methods, docstrings, and extra.
 
 :name: dict, the class name, see above
-:parents: list of strings or None, the immediate parents of the class
+:parents: possibly empty list of strings, the immediate parents of the class
     (not grandparents).
 :namespace: str or None, the namespace or module the class lives in.
 :attrs: dict or dict-like, the names of the attributes (member variables) of the
@@ -473,7 +473,7 @@ class GccxmlBaseDescriber(object):
                        "of type {0!r} somewhere in the source or header.")
                 raise NotImplementedError(msg.format(name))
             bases = node.attrib['bases'].split()
-            bases = None if len(bases) == 0 else [self.type(b) for b in bases]
+            bases = [self.type(b) for b in bases]
             self.desc['parents'] = bases
             ns = self.context(node.attrib['context'])
             if ns is not None and ns != "::":
@@ -1741,7 +1741,7 @@ class PycparserClassDescriber(PycparserBaseDescriber):
                                                       ts=ts, verbose=verbose)
         self.desc['attrs'] = {}
         self.desc[self._funckey] = {}
-        self.desc['parents'] = None
+        self.desc['parents'] = []
         self.desc['construct'] = self._constructvalue
         self.desc['type'] = ts.canon(name)
 

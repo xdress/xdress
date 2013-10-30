@@ -357,8 +357,8 @@ def classcpppxd(desc, exceptions=True, ts=None):
 
     """
     ts = ts or TypeSystem()
-    pars = ', '.join([ts.cython_ctype(p) for p in desc['parents'] or ()])
-    d = {'parents': pars if 0 == len(pars) else '('+pars+')',
+    pars = ', '.join([ts.cython_ctype(p) for p in desc['parents']])
+    d = {'parents': '('+pars+')' if pars else '',
          'header_filename': desc['name']['incfiles'][0],}
     d['namespace'] = _format_ns(desc)
     name = desc['name']['tarname']
@@ -376,7 +376,7 @@ def classcpppxd(desc, exceptions=True, ts=None):
     inc = set(['c'])
 
     cimport_tups = set()
-    for parent in desc['parents'] or ():
+    for parent in desc['parents']:
         ts.cython_cimport_tuples(parent, cimport_tups, inc)
 
     alines = []
@@ -477,7 +477,7 @@ def pxd_sorted_names(mod):
             if name in classnames:
                 continue
             parents = desc['parents']
-            if parents is None:
+            if not parents:
                 classnames.insert(0, name)
                 continue
             for parent in parents:
@@ -578,15 +578,15 @@ def classpxd(desc, classes=(), ts=None, max_callbacks=8):
     extra = desc['extra']
     if 'pxd_filename' not in extra:
         extra['pxd_filename'] = '{0}.pxd'.format(desc['name']['tarbase'])
-    pars = ', '.join([ts.cython_cytype(p) for p in desc['parents'] or ()])
-    d = {'parents': pars if 0 == len(pars) else '('+pars+')'}
+    pars = ', '.join([ts.cython_cytype(p) for p in desc['parents']])
+    d = {'parents': '('+pars+')' if pars else ''}
     name = desc['name']['tarname']
     d['name'] = name if isinstance(name, basestring) else ts.cython_classname(name)[1]
     max_callbacks = desc.get('extra', {}).get('max_callbacks', max_callbacks)
     mczeropad = int(math.log10(max_callbacks)) + 1
 
     cimport_tups = set()
-    for parent in desc['parents'] or ():
+    for parent in desc['parents']:
         ts.cython_cimport_tuples(parent, cimport_tups, set(['cy']))
 
     from_cpppxd = desc['srcpxd_filename'].rsplit('.', 1)[0]
@@ -594,8 +594,7 @@ def classpxd(desc, classes=(), ts=None, max_callbacks=8):
     d['name_type'] = ts.cython_ctype(tarname)
     ts.cython_cimport_tuples(tarname, cimport_tups, set(['c']))
 
-    parentless_body = ['cdef void * _inst', 'cdef public bint _free_inst']
-    body = parentless_body if desc['parents'] is None else []
+    body = [] if desc['parents'] else ['cdef void * _inst', 'cdef public bint _free_inst']
     attritems = sorted(desc['attrs'].items())
     fplines = []
     for aname, atype in attritems:
@@ -1126,7 +1125,7 @@ def _gen_dispatcher(name, name_mangled, ts, doc=None, hasrtn=True, is_method=Tru
 
 
 def _class_heirarchy(cls, ch, classes):
-    if classes[cls]['parents'] is None:
+    if not classes[cls]['parents']:
         return
     if 0 == len(ch) or ch[0] != cls:
         ch.insert(0, cls)
@@ -1222,8 +1221,8 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
     if classes is None:
         classes = {desc['name']['tarname']: desc}
     nodocmsg = "no docstring for {0}, please file a bug report!"
-    pars = ', '.join([ts.cython_cytype(p) for p in desc['parents'] or ()])
-    d = {'parents': pars if 0 == len(pars) else '('+pars+')',
+    pars = ', '.join([ts.cython_cytype(p) for p in desc['parents']])
+    d = {'parents': '('+pars+')' if pars else '',
          'namespace': desc['namespace'],
          }
     name = desc['name']['tarname']
@@ -1236,7 +1235,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
 
     import_tups = set()
     cimport_tups = set()
-    for parent in desc['parents'] or ():
+    for parent in desc['parents']:
         ts.cython_import_tuples(parent, import_tups)
         ts.cython_cimport_tuples(parent, cimport_tups)
 
@@ -1344,7 +1343,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
                             [(_a, _t, "None") for _a, _t in attritems])
         clines += _gen_default_constructor(desc, attritems, ts, doc=mdoc)
         cimport_tups.add(('libc.stdlib', 'malloc'))
-    if desc['parents'] is None:
+    if not desc['parents']:
         clines += ["def __dealloc__(self):"]
         clines += indent("if self._free_inst:", join=False)
         clines += indent(indent("free(self._inst)", join=False), join=False)

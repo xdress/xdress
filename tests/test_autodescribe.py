@@ -20,7 +20,7 @@ if not os.path.isdir('build'):
 exp_toaster_desc = {
     'name': 'Toaster',
     'namespace': 'xdress',
-    'parents': None,
+    'parents': [],
     'construct': 'class',
     'attrs': {
         'nslices': 'uint32',
@@ -70,7 +70,7 @@ full_toaster_desc = {
             'make_toast': "I'll make you some toast you can't refuse...", 
             },
         },
-    'parents': None,
+    'parents': [],
     'attrs': {
         'nslices': 'uint32',
         'toastiness': 'str',
@@ -161,7 +161,7 @@ def test_pycparser_describe_device_descriptor_tag():
            'type': 'DeviceDescriptorTag',
            'namespace': None,
            'construct': 'struct',
-           'parents': None,
+           'parents': [],
            'attrs': {
             'deviceNumber': 'uchar',
             'deviceMeasurement': ('function_pointer', (('_0', ('uint32', '*')),), 
