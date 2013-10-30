@@ -28,9 +28,10 @@ exp_toaster_desc = {
         'rate': 'float32',
         },
     'methods': {
-        ('Toaster',): None,
+        ('Toaster', ('slices', 'int32')): None,
         ('~Toaster',): None, 
         ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1)): 'int32',
+        ('templates', ('strange', ('Base', 'int32', 3, 0))): ('Base', 'float32', 0, 0),
         },
     'type': 'Toaster',
     }
@@ -76,9 +77,10 @@ full_toaster_desc = {
         'rate': 'float32',
         },
     'methods': {
-        ('Toaster',): None,
+        ('Toaster', ('slices', 'int32')): None,
         ('~Toaster',): None, 
         ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1)): 'int32',
+        ('templates', ('strange', ('Base', 'int32', 3, 0))): ('Base', 'float32', 0, 0),
         },
     'type': 'Toaster',
     }

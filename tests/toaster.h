@@ -12,11 +12,13 @@
 
 namespace xdress {
 
+  template<class T, int i=0> struct Base {};
+
   // Toaster class
   class Toaster {
   public:
     // Toaster Constructors
-    Toaster();
+    Toaster(int slices);
     ~Toaster();
     
     // Public data
@@ -26,6 +28,11 @@ namespace xdress {
 
     // Public access functions
     int make_toast(std::string when, unsigned int nslices=1);
+    Base<float> templates(Base<int,3> strange);
+
+  private:
+    // Should not be described
+    int hidden();
   };
 
 // end namespace
