@@ -4,15 +4,16 @@
 #if !defined(_XDRESS_TOASTER_)
 #define _XDRESS_TOASTER_
 
+#include <string>
+
 /*********************************************/
 /*** Toaster Component Class and Functions ***/
 /*********************************************/
 
 namespace xdress {
 
-  class Toaster :
-  {
   // Toaster class
+  class Toaster {
   public:
     // Toaster Constructors
     Toaster();
