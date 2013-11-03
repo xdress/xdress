@@ -220,6 +220,12 @@ from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
 from . import astparsers
 from .typesystem import TypeSystem
 
+try:
+    from clang import cindex
+    from clang.cindex import CursorKind, TypeKind, AccessKind
+except ImportError:
+    cindex = None
+
 if sys.version_info[0] >= 3:
     basestring = str
 
@@ -232,13 +238,69 @@ def clearmemo():
         if callable(x) and hasattr(x, 'cache'):
             x.cache.clear()
 
+def _make_c_to_xdress():
+    numpy_to_c = {
+        'void': 'void',
+        'bool': 'bool',
+        'byte': ('char','signed char'), # TODO: Don't assume char is signed in C
+        'ubyte': 'unsigned char',
+        'short': ('short','short int'),
+        'ushort': ('unsigned short','short unsigned int'),
+        'intc': 'int',
+        'uintc': 'unsigned int',
+        'int': ('long','long int'),
+        'uint': ('unsigned long','long unsigned int'),
+        'longlong': 'long long',
+        'ulonglong': ('unsigned long long','long long unsigned int'),
+        'int16': 'int16_t',
+        'int32': 'int32_t',
+        'int64': 'int64_t',
+        'float32': 'float',
+        'float64': 'double',
+        'complex64': 'float _Complex',
+        'complex128': 'double _Complex',
+        'longdouble': 'long double',
+        }
+    # TODO: Revisit as part of https://github.com/xdress/xdress/issues/109.
+    # The above table is likely fine (except for the signedness of char),
+    # but we need to make sure the platform-agnostic information isn't
+    # standardized away.
+    c_to_xdress = {}
+    for n,cs in numpy_to_c.items():
+        for c in cs if isinstance(cs,tuple) else (cs,):
+            c_to_xdress[c] = n
+    return c_to_xdress
+_c_to_xdress = _make_c_to_xdress()
+_integer_types = frozenset(s+i for i in 'int16 int32 int64 short intc int longlong'.split() for s in ('','u'))
+
+if cindex is not None:
+    _clang_base_types = {
+        TypeKind.VOID       : 'void',
+        TypeKind.BOOL       : 'bool',
+        TypeKind.CHAR_U     : 'ubyte',
+        TypeKind.UCHAR      : 'ubyte',
+        TypeKind.USHORT     : 'ushort',
+        TypeKind.UINT       : 'uintc',
+        TypeKind.ULONG      : 'uint',
+        TypeKind.ULONGLONG  : 'ulonglong',
+        TypeKind.CHAR_S     : 'byte',
+        TypeKind.SCHAR      : 'byte',
+        TypeKind.SHORT      : 'short',
+        TypeKind.INT        : 'intc',
+        TypeKind.LONG       : 'int',
+        TypeKind.LONGLONG   : 'longlong',
+        TypeKind.FLOAT      : 'float32',
+        TypeKind.DOUBLE     : 'float64',
+        TypeKind.LONGDOUBLE : 'longdouble',
+        }
+
 #
 # GCC-XML Describers
 #
 
 def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                     undefines=(), ts=None, verbose=False, debug=False,
-                    builddir='build', onlyin=None):
+                    builddir='build', onlyin=None, language='c++'):
     """Use GCC-XML to describe the class.
 
     Parameters
@@ -265,6 +327,8 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         Location of -- often temporary -- build files.
     onlyin: set of str
         The paths to the files that the definition is allowed to exist in.
+    language : str
+        Valid language flag.
 
     Returns
     -------
@@ -278,7 +342,6 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     root = astparsers.gccxml_parse(posixfilename, includes=includes, defines=defines,
                                    undefines=undefines, verbose=verbose, debug=debug,
                                    builddir=builddir)
-    basename = filename.rsplit('.', 1)[0]
     if onlyin is None:
         onlyin = set([filename])
     describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber,
@@ -295,7 +358,6 @@ class GccxmlBaseDescriber(object):
 
     _funckey = None
     _describes = None
-    _integer_types = frozenset(['int32', 'int64', 'uint32', 'uint64'])
 
     def __init__(self, name, root=None, onlyin=None, ts=None, verbose=False):
         """Parameters
@@ -568,7 +630,7 @@ class GccxmlBaseDescriber(object):
         if default is None:
             arg = (name, t)
         else:
-            if t in self._integer_types:
+            if t in _integer_types:
                 default = cppint(default)
             elif default == 'true':
                 default = True
@@ -606,36 +668,12 @@ class GccxmlBaseDescriber(object):
             currenum.append((child.attrib['name'], child.attrib['init']))
         return ('enum', node.attrib['name'], tuple(currenum))
 
-    _fundemntal_to_base = {
-        'char': 'char',
-        'unsigned char': 'uchar',
-        'int16_t': 'int16',
-        'short': 'int16',
-        'short int': 'int16',
-        'short unsigned int': 'uint16',
-        'unsigned short': 'uint16',
-        'int32_t': 'int32',
-        'int': 'int32',
-        'long long': 'int64',
-        'long int': 'int64',
-        'unsigned int': 'uint32',
-        'long long unsigned int': 'uint64',
-        'long unsigned int': 'uint64',
-        'unsigned long long': 'uint64',
-        'short unsigned int': 'uint16',
-        'float': 'float32',
-        'double': 'float64',
-        'complex': 'complex128',
-        'void': 'void',
-        'bool': 'bool',
-        }
-
     def visit_fundamentaltype(self, node):
         """visits a base C++ type, mapping it to the approriate type in the
         type system."""
         self._pprint(node)
         tname = node.attrib['name']
-        t = self._fundemntal_to_base.get(tname, None)
+        t = _c_to_xdress.get(tname, None)
         return t
 
     _predicates = frozenset(['*', '&', 'const', 'volatile', 'restrict'])
@@ -974,22 +1012,67 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 # Clang Describers
 #
 
-@astparsers.not_implemented
-def clang_describe(filename, name, includes=(), defines=('XDRESS',),
+def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                    undefines=(), ts=None, verbose=False, debug=False,
-                   builddir='build', onlyin=None):
-    "Use clang to describe the class."
+                   builddir=None, onlyin=None, language='c++'):
+    """Use Clang to describe the class.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the file.
+    name : str
+        The name to describe.
+    kind : str
+        The kind of type to describe, valid flags are 'class', 'func', and 'var'.
+    includes: list of str, optional
+        The list of extra include directories to search for header files.
+    defines: list of str, optional
+        The list of extra macro definitions to apply.
+    undefines: list of str, optional
+        The list of extra macro undefinitions to apply.
+    ts : TypeSystem, optional
+        A type system instance.
+    verbose : bool, optional
+        Flag to diplay extra information while describing the class.
+    debug : bool, optional
+        Flag to enable/disable debug mode.  Currently ignored.
+    builddir : str, optional
+        Ignored.  Exists only for compatibility with gccxml_describe.
+    onlyin : set of str
+        The paths to the files that the definition is allowed to exist in.
+    language : str
+        Valid language flag.
+
+    Returns
+    -------
+    desc : dict
+        A dictionary describing the class which may be used to generate
+        API bindings.
+    """
     index = cindex.Index.create()
-    tu = index.parse(filename, args=['-cc1', '-I' + pyne.includes, '-D', 'XDRESS'])
-    if onlyin is None:
-        onlyin = set([filename])
-    describer = ClangClassDescriber(name, onlyin=onlyin, ts=ts, verbose=verbose)
-    describer.visit(tu.cursor)
-    pprint(describer.desc)
-    return describer.desc
+    tu = index.parse(filename, args=  ['-cc1']
+                                    + ['-x',language]
+                                    + ['-I'+d for d in includes]
+                                    + ['-D'+d for d in defines]
+                                    + ['-U'+d for u in undefines])
+    # Check for fatal errors
+    failed = False
+    for d in tu.diagnostics:
+        if d.severity >= cindex.Diagnostic.Error:
+            print(d.format())
+            failed = True
+    if failed:
+        raise RuntimeError('failed to parse {0}'.format(filename))
+    ts = ts or TypeSystem()
+    if kind == 'class':
+        cls = clang_find_class(tu, name, filename=filename)
+        desc = clang_describe_class(cls, ts=ts, verbose=verbose)
+    else:
+        raise NotImplementedError('kind {0}'.format(kind))
+    linecache.clearcache() # Clean up results of clang_range_str
+    return desc
 
-
-@astparsers.not_implemented
 def clang_is_loc_in_range(location, source_range):
     """Returns whether a given Clang location is part of a source file range."""
     if source_range is None or location is None:
@@ -1004,8 +1087,6 @@ def clang_is_loc_in_range(location, source_range):
         return False
     return start.column <= location.column <= stop.column
 
-
-@astparsers.not_implemented
 def clang_range_str(source_range):
     """Get the text present on a source range."""
     start = source_range.start
@@ -1021,348 +1102,146 @@ def clang_range_str(source_range):
     s = "".join(lines)
     return s
 
-
-
-@astparsers.not_implemented
-class ClangClassDescriber(object):
-
-    _funckinds = set(['function_decl', 'cxx_method', 'constructor', 'destructor'])
-
-    def __init__(self, name, root=None, onlyin=None, ts=None, verbose=False):
-        self.desc = {'name': name, 'attrs': {}, 'methods': {}}
-        self.name = name
-        self.ts = ts or TypeSystem()
-        self.verbose = verbose
-        onlyin = [onlyin] if isinstance(onlyin, basestring) else onlyin
-        self.onlyin = set() if onlyin is None else set(onlyin)
-        self._currfunc = []  # this must be a stack to handle nested functions
-        self._currfuncsig = None
-        self._currfuncarg = None
-        self._currclass = []  # this must be a stack to handle nested classes
-
-    def __str__(self):
-        return pformat(self.desc)
-
-    def __del__(self):
-        linecache.clearcache()
-
-    def _pprint(self, node, typename):
-        if self.verbose:
-            print("{0}: {1}".format(typename, node.displayname))
-
-    def visit(self, root):
-        for node in root.get_children():
-            if not node.location.file or node.location.file.name not in self.onlyin:
-                continue  # Ignore AST elements not from the desired source files
-            kind = node.kind.name.lower()
-            meth_name = 'visit_' + kind
-            meth = getattr(self, meth_name, None)
-            if meth is not None:
-                meth(node)
-            if hasattr(node, 'get_children'):
-                self.visit(node)
-
-            # reset the current function and class
-            if kind in self._funckinds and node.spelling == self._currfunc[-1]:
-                _key, _value = self._currfuncsig
-                _key = (_key[0],) + tuple([tuple(k) for k in _key[1:]])
-                self.desc['methods'][_key] = _value
-                self._currfunc.pop()
-                self._currfuncsig = None
-            elif 'class_decl' == kind and node.spelling == self._currclass[-1]:
-                self._currclass.pop()
-            elif 'unexposed_expr' == kind and node.spelling == self._currfuncarg:
-                self._currfuncarg = None
-
-    def visit_class_decl(self, node):
-        self._pprint(node, "Class")
-        self._currclass.append(node.spelling)  # This could also be node.displayname
-
-    def visit_function_decl(self, node):
-        self._pprint(node, "Function")
-        self._currfunc.append(node.spelling)  # This could also be node.displayname
-        rtntype = node.type.get_result()
-        rtnname = ClangTypeVisitor(verbose=self.verbose).visit(rtntype)
-        self._currfuncsig = ([node.spelling], rtnname)
-
-    visit_cxx_method = visit_function_decl
-
-    def visit_constructor(self, node):
-        self._pprint(node, "Constructor")
-        self._currfunc.append(node.spelling)  # This could also be node.displayname
-        self._currfuncsig = ([node.spelling], None)
-
-    def visit_destructor(self, node):
-        self._pprint(node, "Destructor")
-        self._currfunc.append(node.spelling)  # This could also be node.displayname
-        self._currfuncsig = ([node.spelling], None)
-
-    def visit_parm_decl(self, node):
-        self._pprint(node, "Function Argument")
-        name = node.spelling
-        t = ClangTypeVisitor(verbose=self.verbose).visit(node)
-        self._currfuncsig[0].append([name, t])
-        self._currfuncarg = name
-
-    def visit_field_decl(self, node):
-        self._pprint(node, "Field")
-
-    def visit_var_decl(self, node):
-        self._pprint(node, "Variable")
-
-    def visit_unexposed_expr(self, node):
-        self._pprint(node, "Default Parameter (Unexposed Expression)")
-        # a little hacky reading from the file,
-        # but Clang doesn't expose this data...
-        if self._currfuncsig is None:
-            return
-        currarg = self._currfuncsig[0][-1]
-        assert currarg[0] == self._currfuncarg
-        r = node.extent
-        default_val = clang_range_str(r)
-        if 2 == len(currarg):
-            currarg.append(default_val)
-        elif 3 == len(currarg):
-            currarg[2] = default_val
-
-    ##########
-
-    def visit_type_ref(self, cur):
-        self._pprint(cur, "type ref")
-
-    def visit_template_ref(self, cur):
-        self._pprint(cur, "template ref")
-
-    def visit_template_type_parameter(self, cur):
-        self._pprint(cur, "template type param")
-
-    def visit_template_non_type_parameter(self, cur):
-        self._pprint(cur, "template non-type param")
-
-    def visit_template_template_parameter(self, cur):
-        self._pprint(cur, "template template param")
-
-    def visit_class_template(self, cur):
-        self._pprint(cur, "class template")
-
-    def visit_class_template_partial_specialization(self, cur):
-        self._pprint(cur, "class template partial specialization")
-
-
-@astparsers.not_implemented
-def clang_find_class(node, name, namespace=None):
-    """Find the node for a given class underneath the current node.
-    """
+def clang_find_decls(tu, name, kind, namespace=None, filename=None):
+    """Find all declarations of the given name and kind under the given namespace and filename"""
+    onlyin = None if filename is None else set([filename])
+    namespace_kind = CursorKind.NAMESPACE
     if namespace is None:
-        nsdecls = [node]
+        def all_namespaces(node):
+            for n in node.get_children():
+                if n.kind == namespace_kind:
+                    if onlyin is None or n.location.file.name in onlyin:
+                        yield n
+                    for c in all_namespaces(n):
+                        yield c
+        node = tu.cursor
+        scopes = (node,)+tuple(all_namespaces(node))
     else:
-        nsdecls = [n for n in clang_find_declarations(node) if n.spelling == namespace]
-    classnode = None
-    for nsnode in nsdecls[::-1]:
-        decls = [n for n in clang_find_declarations(nsnode) if n.spelling == name]
-        if 0 < len(decls):
-            assert 1 == len(decls)
-            classnode = decls[0]
-            break
-    if classnode is None:
-        msg = "the class {0} could not be found in {1}".format(name, filename)
-        raise ValueError(msg)
-    return classnode
+        scopes = []
+        for n in node.get_children():
+            if n.kind == namespace_kind and n.spelling == namespace:
+                if onlyin is None or n.location.file.name in onlyin:
+                    scopes.append(n)
+    for s in scopes[::-1]:
+        for c in s.get_children():
+            if c.kind == kind and c.spelling == name:
+                if onlyin is None or c.location.file.name in onlyin:
+                    yield c
 
+def clang_find_class(node, name, namespace=None, filename=None):
+    """Find the node for a given class underneath the current node."""
+    cs = list(clang_find_decls(node, name, kind=CursorKind.CLASS_DECL, namespace=namespace, filename=filename))
+    if len(cs)==1:
+        return cs[0]
+    where = ''
+    if namespace is not None:
+        where += " in namespace {0}".format(namespace)
+    if filename is not None:
+        where += " in file {0}".format(filename)
+    if not cs:
+        raise ValueError("class {0} could not be found{1}".format(name, where))
+    else:
+        raise ValueError("class {0} found more than once{1}".format(name, where))
 
-@astparsers.not_implemented
 def clang_find_declarations(node):
     """Finds declarations one level below the Clang node."""
     return [n for n in node.get_children() if n.kind.is_declaration()]
 
-@astparsers.not_implemented
 def clang_find_attributes(node):
     """Finds attributes one level below the Clang node."""
     return [n for n in node.get_children() if n.kind.is_attribute()]
 
+def clang_dump(node,indent=0):
+    try:
+        spelling = node.spelling
+    except AttributeError:
+        spelling = '<unknown-spelling>'
+    s = '%*s%s %s'%(indent,'',node.kind.name,spelling)
+    if node.kind == CursorKind.CXX_ACCESS_SPEC_DECL:
+        s += ' '+node.access.name
+    r = node.extent
+    if r.start.line == r.end.line:
+        try:
+            s += ' : '+clang_range_str(r)
+        except AttributeError:
+            pass
+    print(s)
+    for c in node.get_children():
+        clang_dump(c,indent+2)
 
-@astparsers.not_implemented
-class ClangTypeVisitor(object):
-    """For a Clang type located at a root node, compute the cooresponding
-    typesystem type.
-    """
-
-    def __init__(self, verbose=False):
-        self.type = []
-        self.verbose = verbose
-        self.namespace = []  # this must be a stack to handle nested namespaces
-        self._atrootlevel = True
-        self._currtype = []
-
-    def _pprint(self, node, typename):
-        if self.verbose:
-            msg = "{0}: {1}"
-            if isinstance(node, cindex.Type):
-                msg = msg.format(typename, node.kind.spelling)
-            elif isinstance(node, cindex.Cursor):
-                msg = msg.format(typename, node.displayname)
-            else:
-                msg = msg.format(typename, node)
-            print(msg)
-
-    def visit(self, root):
-        """Takes a root type."""
-        atrootlevel = self._atrootlevel
-
-        if isinstance(root, cindex.Type):
-            typekind = root.kind.name.lower()
-            methname = 'visit_' + typekind
-            meth = getattr(self, methname, None)
-            if meth is not None and root.kind != cindex.TypeKind.INVALID:
-                meth(root)
-        elif isinstance(root, cindex.Cursor):
-            self.visit(root.type)
-            for child in root.get_children():
-                kindname = child.kind.name.lower()
-                methname = 'visit_' + kindname
-                meth = getattr(self, methname, None)
-                if meth is not None:
-                    meth(child)
-                if hasattr(child, 'get_children'):
-                    self._atrootlevel = False
-                    self.visit(child)
-                    self._atrootlevel = atrootlevel
-                else:
-                    self.visit(child.type)
-
-        if self._atrootlevel:
-            currtype = self._currtype
-            currtype = currtype[0] if 1 == len(currtype) else tuple(currtype)
-            self.type = [self.type, currtype] if isinstance(self.type, basestring) \
-                        else list(self.type) + [currtype]
-            self._currtype = []
-            self.type = self.type[0] if 1 == len(self.type) else tuple(self.type)
-            return self.type
-
-    def visit_void(self, typ):
-        self._pprint(typ, "void")
-        self._currtype.append("void")
-
-    def visit_bool(self, typ):
-        self._pprint(typ, "boolean")
-        self._currtype.append("bool")
-
-    def visit_char_u(self, typ):
-        self._pprint(typ, "character")
-        self._currtype.append("char")
-
-    visit_uchar = visit_char_u
-
-    def visit_uint(self, typ):
-        self._pprint(typ, "unsigned integer, 32-bit")
-        self._currtype.append("uint32")
-
-    def visit_ulong(self, typ):
-        self._pprint(typ, "unsigned integer, 64-bit")
-        self._currtype.append("uint64")
-
-    def visit_int(self, typ):
-        self._pprint(typ, "integer, 32-bit")
-        self._currtype.append("int32")
-
-    def visit_long(self, typ):
-        self._pprint(typ, "integer, 64-bit")
-        self._currtype.append("int64")
-
-    def visit_float(self, typ):
-        self._pprint(typ, "float, 32-bit")
-        self._currtype.append("float32")
-
-    def visit_double(self, typ):
-        self._pprint(typ, "float, 64-bit")
-        self._currtype.append("float64")
-
-    def visit_complex(self, typ):
-        self._pprint(typ, "complex, 128-bit")
-        self._currtype.append("complex128")
-
-    def visit_unexposed(self, typ):
-        self._pprint(typ, "unexposed")
-        #typ = typ.get_canonical()
-        decl = typ.get_declaration()
-        self._currtype.append(decl.spelling)
-        print("   canon: ",  typ.get_canonical().get_declaration().displayname)
-        #import pdb; pdb.set_trace()
-        #self.visit(decl)
-        #self.visit(typ.get_canonical().get_declaration())
-        #self.visit(typ.get_canonical())
-
-    def visit_typedef(self, typ):
-        self._pprint(typ, "typedef")
-        decl = typ.get_declaration()
-        t = decl.underlying_typedef_type
-        #self.visit(t.get_canonical())
-
-    def visit_record(self, typ):
-        self._pprint(typ, "record")
-        self.visit(typ.get_declaration())
-
-    def visit_invalid(self, typ):
-        self._pprint(typ, "invalid")
-        self.visit(typ.get_declaration())
-
-    def visit_namespace_ref(self, cur):
-        self._pprint(cur, "namespace")
-        if self._atrootlevel:
-            self.namespace.append(cur.displayname)
-
-    def visit_type_ref(self, cur):
-        self._pprint(cur, "type ref")
-        self._currtype.append(cur.displayname)
-#        print "    cur type kin =", cur.type.kind
-        #self.visit(cur.type)
-        #self.visit(cur)
-
-    def visit_template_ref(self, cur):
-        self._pprint(cur, "template ref")
-        self._currtype.append(cur.displayname)
-        #self.visit(cur)
-
-        #import pdb; pdb.set_trace()
-#        self.visit(cur)
-        print("   canon: ",  cur.type.get_canonical().get_declaration().displayname)
-
-    def visit_template_type_parameter(self, cur):
-        self._pprint(cur, "template type param")
-
-    def visit_template_non_type_parameter(self, cur):
-        self._pprint(cur, "template non-type param")
-
-    def visit_template_template_parameter(self, cur):
-        self._pprint(cur, "template template param")
-
-    def visit_function_template(self, cur):
-        self._pprint(cur, "function template")
-
-#    def visit_class_template(self, cur):
-#        self._pprint(cur, "class template")
-
-    def visit_class_template_partial_specialization(self, cur):
-        self._pprint(cur, "class template partial specialization")
-
-#    def visit_var_decl(self, cur):
-#        self._pprint(cur, "variable")
-
-@astparsers.not_implemented
-def clang_canonize(t):
-    kind = t.kind
-    if kind in clang_base_typekinds:
-        name = clang_base_typekinds[kind]
-    elif kind == cindex.TypeKind.UNEXPOSED:
-        name = t.get_declaration().spelling
-    elif kind == cindex.TypeKind.TYPEDEF:
-        print([n.displayname for n in t.get_declaration().get_children()])
-        print([n.kind.name for n in t.get_declaration().get_children()])
-        name = "<fixme>"
+def clang_describe_class(cls, ts, verbose=False):
+    """Describe the class at the given clang AST node"""
+    parents = []
+    attrs = {}
+    methods = {}
+    if cls.kind == CursorKind.CLASS_DECL:
+        construct = 'class'
+        public = False
+    elif cls.kind == CursorKind.STRUCT_DECL:
+        construct = 'struct'
+        public = True
     else:
-        name = "<error:{0}>".format(kind)
-    return name
+        raise ValueError('bad class kind {0}'.format(cls.kind.name))
+    for kid in cls.get_children():
+        kind = kid.kind
+        if kind == CursorKind.CXX_BASE_SPECIFIER:
+            parents.append(clang_describe_type(kid.type,ts))
+        elif kind == CursorKind.CXX_ACCESS_SPEC_DECL:
+            public = kid.access == AccessKind.PUBLIC
+        elif public:
+            if kind in (CursorKind.CXX_METHOD,CursorKind.CONSTRUCTOR,CursorKind.DESTRUCTOR):
+                ret = clang_describe_type(kid.result_type,ts) if kind == CursorKind.CXX_METHOD else None
+                methods[clang_describe_args(kid,ts)] = ret
+            elif kind == CursorKind.FIELD_DECL:
+                attrs[kid.spelling] = clang_describe_type(kid.type,ts)
+    return {'name': cls.spelling, 'parents': parents, 'attrs': attrs, 'methods': methods, 'construct': construct,
+            'type' : cls.spelling, # TODO: Account for template arguments
+            'namespace': cls.semantic_parent.spelling if cls.semantic_parent.kind == CursorKind.NAMESPACE else None}
 
+def clang_describe_args(func, ts):
+    descs = [func.spelling]
+    for arg in func.get_arguments():
+        desc = [arg.spelling,clang_describe_type(arg.type,ts)]
+        default = arg.default_argument
+        if default is not None:
+            desc.append(clang_describe_expression(default,ts))
+        descs.append(tuple(desc))
+    return tuple(descs)
+
+def clang_describe_type(typ, ts):
+    """Describe the type reference at the given cursor"""
+    typ = typ.get_canonical()
+    try:
+        return _clang_base_types[typ.kind]
+    except KeyError:
+        if typ.kind == TypeKind.RECORD:
+            decl = typ.get_declaration()
+            cls = decl.spelling
+            if cls == 'basic_string':
+                return 'str'
+            if not decl.has_template_args():
+                return cls
+            else:
+                desc = [cls]
+                for arg in decl.get_template_args():
+                    if arg.kind == CursorKind.TYPE_TEMPLATE_ARG:
+                        desc.append(clang_describe_type(arg.type,ts))
+                    elif arg.kind == CursorKind.INTEGRAL_TEMPLATE_ARG:
+                        desc.append(int(arg.spelling))
+                    else:
+                        raise NotImplementedError('template argument kind {0}'.format(arg.kind.name))
+                desc.append(0) # No predicate
+                return tuple(desc)
+        raise NotImplementedError('type kind {0}'.format(typ.kind))
+
+def clang_describe_expression(exp, ts):
+    # For now, we just use clang_range_str to pull the expression out of the file.
+    # This is because clang doesn't seem to have any mechanism for printing expressions.
+    s = clang_range_str(exp.extent)
+    try:
+        return int(s)
+    except ValueError:
+        return NotImplementedError('unhandled expression "{0}"'.format(s))
 
 
 #
@@ -1780,7 +1659,7 @@ _pycparser_describers = {
 
 def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                        undefines=(), ts=None, verbose=False, debug=False,
-                       builddir='build', onlyin=None):
+                       builddir='build', onlyin=None, language='c'):
     """Use pycparser to describe the fucntion or struct (class).
 
     Parameters
@@ -1805,8 +1684,10 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         Flag to enable/disable debug mode.
     builddir : str, optional
         Location of -- often temporary -- build files.
-    onlyin: set of str
+    onlyin : set of str
         The paths to the files that the definition is allowed to exist in.
+    language : str
+        Must be 'c'.
 
     Returns
     -------
@@ -1814,6 +1695,7 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         A dictionary describing the class which may be used to generate
         API bindings.
     """
+    assert language=='c'
     root = astparsers.pycparser_parse(filename, includes=includes, defines=defines,
                                       undefines=undefines, verbose=verbose,
                                       debug=debug, builddir=builddir)
@@ -1910,7 +1792,7 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, defines=defines,
                      undefines=undefines, ts=ts, verbose=verbose, debug=debug,
-                     builddir=builddir, onlyin=onlyin)
+                     builddir=builddir, onlyin=onlyin, language=language)
     return desc
 
 

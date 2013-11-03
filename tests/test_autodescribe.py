@@ -1,6 +1,6 @@
 from __future__ import print_function
 import os
-from pprint import pprint
+from pprint import pprint,pformat
 
 from xdress.typesystem import TypeSystem
 from xdress import cythongen as cg
@@ -23,15 +23,15 @@ exp_toaster_desc = {
     'parents': [],
     'construct': 'class',
     'attrs': {
-        'nslices': 'uint32',
+        'nslices': 'uintc',
         'toastiness': 'str',
         'rate': 'float32',
         },
     'methods': {
-        ('Toaster', ('slices', 'int32')): None,
+        ('Toaster', ('slices', 'intc', 7)): None,
         ('~Toaster',): None, 
-        ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1)): 'int32',
-        ('templates', ('strange', ('Base', 'int32', 3, 0))): ('Base', 'float32', 0, 0),
+        ('make_toast', ('when', 'str'), ('nslices', 'uintc', 1)): 'intc',
+        ('templates', ('strange', ('Base', 'intc', 3, 0))): ('Base', 'float32', 0, 0),
         },
     'type': 'Toaster',
     }
@@ -72,18 +72,39 @@ full_toaster_desc = {
         },
     'parents': [],
     'attrs': {
-        'nslices': 'uint32',
+        'nslices': 'uintc',
         'toastiness': 'str',
         'rate': 'float32',
         },
     'methods': {
-        ('Toaster', ('slices', 'int32')): None,
+        ('Toaster', ('slices', 'intc', 7)): None,
         ('~Toaster',): None, 
-        ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1)): 'int32',
-        ('templates', ('strange', ('Base', 'int32', 3, 0))): ('Base', 'float32', 0, 0),
+        ('make_toast', ('when', 'str'), ('nslices', 'uintc', 1)): 'intc',
+        ('templates', ('strange', ('Base', 'intc', 3, 0))): ('Base', 'float32', 0, 0),
         },
     'type': 'Toaster',
     }
+
+def show_diff(a,b,key=None):
+    """Generated a colored diff between two strings.
+    If key is passed, {0} and {1} are substituted with the colors of a and b, respectively."""
+    red   = chr(27)+'[1;31m'
+    green = chr(27)+'[1;32m'
+    blue  = chr(27)+'[1;34m'
+    clear = chr(27)+'[00m'
+    import difflib
+    m = difflib.SequenceMatcher(a=a,b=b,autojunk=0)
+    r = []
+    if key is not None:
+        r.extend((green,key.format(blue+'blue'+green,red+'red'+green)))
+    ia,ib = 0,0
+    for ja,jb,n in m.get_matching_blocks():
+        r.extend((blue, a[ia:ja],
+                  red,  b[ib:jb],
+                  clear,a[ja:ja+n]))
+        ia = ja+n
+        ib = jb+n
+    return ''.join(r)
 
 @unit
 def test_describe_gccxml():
@@ -91,9 +112,24 @@ def test_describe_gccxml():
     ts.register_classname('Toaster', 'toaster', 'toaster', 'cpp_toaster')
     obs = ad.describe(fname, name='Toaster', parsers='gccxml', verbose=False, ts=ts)
     exp = exp_toaster_desc
-    #pprint(exp)
-    #pprint(obs)
-    assert_equal(obs, exp)
+    try:
+        assert_equal(obs, exp)
+    except:
+        key = '\n\n# only expected = {0}, only computed = {1}\n'
+        print(show_diff(pformat(exp),pformat(obs),key=key))
+        raise
+
+@unit
+def test_describe_clang():
+    fname = os.path.join(os.path.split(__file__)[0], 'toaster.h')
+    obs = ad.describe(fname, name='Toaster', parsers='clang', verbose=False, ts=ts)
+    exp = exp_toaster_desc
+    try:
+        assert_equal(obs, exp)
+    except:
+        key = '\n\n# only expected = {0}, only computed = {1}\n'
+        print(show_diff(pformat(exp),pformat(obs),key=key))
+        raise
 
 @unit
 def test_merge_descriptions():

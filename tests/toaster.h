@@ -18,7 +18,7 @@ namespace xdress {
   class Toaster {
   public:
     // Toaster Constructors
-    Toaster(int slices);
+    Toaster(int slices = 7);
     ~Toaster();
     
     // Public data

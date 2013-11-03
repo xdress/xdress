@@ -61,12 +61,18 @@ except ImportError:
     pycparser = None
     PycparserNodeVisitor = object  # fake this for class definitions
 
+# clang conditional imports
+try:
+    from . import clang
+except ImportError:
+    clang = None
+
 from . import utils
 from .utils import guess_language, RunControl, NotSpecified
 from .plugins import Plugin
 
 PARSERS_AVAILABLE = {
-    'clang': False, 
+    'clang': clang is not None,
     'pycparser': pycparser is not None,
     }
 with tempfile.NamedTemporaryFile() as f:
