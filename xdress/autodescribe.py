@@ -196,6 +196,7 @@ import itertools
 import functools
 import pickle
 import collections
+from hashlib import md5
 from numbers import Number
 from pprint import pprint, pformat
 from warnings import warn
@@ -1837,7 +1838,11 @@ def _make_includer(filenames, builddir, language, verbose=False):
     for filename in filenames:
         newnames.append(filename.replace(os.path.sep, '_'))
         newfile += '#include "{0}"\n'.format(filename)
-    newname = os.path.join(builddir, "-".join(newnames) + '.' + _lang_exts[language])
+    newnames = "-".join(newnames)
+    if len(newnames) > 250:
+        # this is needed to prevent 'IOError: [Errno 36] File name too long'
+        newnames = md5(newnames).hexdigest()
+    newname = os.path.join(builddir, newnames + '.' + _lang_exts[language])
     newoverwrite(newfile, newname, verbose=verbose)
     return newname
 

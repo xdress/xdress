@@ -849,7 +849,7 @@ def ensure_apiname(name):
     if name.srcname is NotSpecified:
         raise ValueError("apiname.srcname cannot be unspecified")
     if name.srcfiles is NotSpecified:
-        raise ValueError("apiname.srcfiles cannot be unspecified")
+        raise ValueError("apiname.srcfiles cannot be unspecified: {0}".format(name))
     updates['srcfiles'] = _ensure_srcfiles(name.srcfiles)
     if name.tarname is NotSpecified:
         updates['tarname'] = name.srcname
