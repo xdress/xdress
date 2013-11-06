@@ -228,7 +228,7 @@ def pycparser_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
                 ]}
     kwargs['cpp_args'] += ['-I' + i for i in includes]
     kwargs['cpp_args'] += ['-D' + d for d in defines]
-    kwargs['cpp_args'] += ['-U' + d for u in undefines]
+    kwargs['cpp_args'] += ['-U' + u for u in undefines]
     root = pycparser.parse_file(filename, use_cpp=True, **kwargs)
     with gzip.open(pklgzname, 'wb') as f:
         f.write(pickle.dumps(root, pickle.HIGHEST_PROTOCOL))
