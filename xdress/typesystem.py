@@ -1277,7 +1277,7 @@ class TypeSystem(object):
         s += ")"
         return s
 
-    #################### Importnat Methods below ###############################
+    #################### Important Methods below ###############################
 
     @memoize_method
     def istemplate(self, t):
