@@ -5,10 +5,9 @@ from pprint import pprint,pformat
 from xdress.typesystem import TypeSystem
 from xdress import cythongen as cg
 from xdress import autodescribe as ad
+from xdress.astparsers import PARSERS_AVAILABLE
 
-import nose
-from nose.tools import assert_equal
-from tools import unit
+from tools import unit, assert_equal_or_diff
 
 from numpy.testing import dec
 
@@ -17,26 +16,87 @@ ts = TypeSystem()
 if not os.path.isdir('build'):
     os.mkdir('build')
 
+base = ('Base', 'int32', 7, 0)
+def exp_base_desc(parser):
+    # TODO: The results depend on the parser since gccxml misses stuff
+    bad = parser == 'gccxml'
+    return {'name': base,
+            'namespace': 'xdress',
+            'parents': [],
+            'construct': 'struct',
+            'attrs': {} if bad else {'field': 'int32'},
+            'methods': {(( 'Base', 'int32', 7),): None,
+                        (('~Base', 'int32', 7),): None,
+                        ('base', ('a', 'int32', 1)): 'void'},
+            'type': base,
+            }
+
 exp_toaster_desc = {
     'name': 'Toaster',
     'namespace': 'xdress',
-    'parents': [],
+    'parents': [base],
     'construct': 'class',
     'attrs': {
-        'nslices': 'uintc',
+        'nslices': 'uint32',
         'toastiness': 'str',
         'rate': 'float32',
+        'fp': ('function_pointer', (('_0', 'float32'),), 'int32'),
+        'vec': ('vector', 'char', 0),
         },
     'methods': {
-        ('Toaster', ('slices', 'intc', 7)): None,
-        ('~Toaster',): None, 
-        ('make_toast', ('when', 'str'), ('nslices', 'uintc', 1)): 'intc',
-        ('templates', ('strange', ('Base', 'intc', 3, 0))): ('Base', 'float32', 0, 0),
+        ('Toaster', ('slices', 'int32', 7)): None,
+        ('~Toaster',): None,
+        ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1), ('dub', 'float64', 3e-8)): 'int32',
+        ('templates', ('strange', ('Base', 'int32', 3, 0))): ('Base', 'float32', 0, 0),
+        ('const_', ('c', ('int32', 'const'))): ('int32', 'const'),
+        ('pointers', ('a', ('int32', '*')), ('b', (('int32', 'const'), '*')),
+                     ('c', (('int32', '*'), 'const')),
+                     ('d', ((('int32', 'const'), '*'), 'const'))): ('int32', '*'),
+        ('reference', ('a', ('int32', '&')), ('b', (('int32', 'const'), '&'))): ('int32', '&'),
         },
     'type': 'Toaster',
     }
 
-meta_toaster_desc = {
+exp_simple_desc = {
+    'name': 'simple',
+    'namespace': 'xdress',
+    'signatures': {('simple', ('s', 'float32')): 'int32'}}
+
+exp_twice_desc = {
+    'name': 'twice',
+    'namespace': 'xdress',
+    'signatures': {('twice', ('x', 'int32')): 'void'}}
+
+def exp_lasso_desc(n):
+    lasso_name = ('lasso',n,'int32','float32')
+    return {'name': lasso_name,
+            'namespace': 'xdress',
+            'signatures': {(lasso_name, ('a', 'int32'), ('b', (('float32', 'const'), '&'))): 'int32'}}
+
+exp_choices_desc = {
+    'name': 'Choices',
+    'namespace': 'xdress',
+    'type': ('enum', 'Choices', (('CA', '0'), ('CB', '17')))}
+
+exp_merge_desc = {
+    'name': 'Toaster',
+    'namespace': 'xdress',
+    'parents': [base],
+    'construct': 'class',
+    'attrs': {
+        'nslices': 'uint32',
+        'toastiness': 'str',
+        'rate': 'float32',
+        },
+    'methods': {
+        ('Toaster', ('slices', 'int32', 7)): None,
+        ('~Toaster',): None,
+        ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1)): 'int32',
+        },
+    'type': 'Toaster',
+    }
+
+meta_merge_desc = {
     'name': {'srcname': 'Toaster', 'tarname': 'Toaster'},
     'header_filename': 'toaster.h',
     'srcpxd_filename': 'cpp_toaster.pxd',
@@ -53,7 +113,7 @@ meta_toaster_desc = {
         },
     }
 
-full_toaster_desc = {
+full_merge_desc = {
     'name': {'srcname': 'Toaster', 'tarname': 'Toaster'},
     'construct': 'class',
     'header_filename': 'toaster.h',
@@ -70,74 +130,45 @@ full_toaster_desc = {
             'make_toast': "I'll make you some toast you can't refuse...", 
             },
         },
-    'parents': [],
+    'parents': [base],
     'attrs': {
-        'nslices': 'uintc',
+        'nslices': 'uint32',
         'toastiness': 'str',
         'rate': 'float32',
         },
     'methods': {
-        ('Toaster', ('slices', 'intc', 7)): None,
-        ('~Toaster',): None, 
-        ('make_toast', ('when', 'str'), ('nslices', 'uintc', 1)): 'intc',
-        ('templates', ('strange', ('Base', 'intc', 3, 0))): ('Base', 'float32', 0, 0),
+        ('Toaster', ('slices', 'int32', 7)): None,
+        ('~Toaster',): None,
+        ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1)): 'int32',
         },
     'type': 'Toaster',
     }
 
-def show_diff(a,b,key=None):
-    """Generated a colored diff between two strings.
-    If key is passed, {0} and {1} are substituted with the colors of a and b, respectively."""
-    red   = chr(27)+'[1;31m'
-    green = chr(27)+'[1;32m'
-    blue  = chr(27)+'[1;34m'
-    clear = chr(27)+'[00m'
-    import difflib
-    m = difflib.SequenceMatcher(a=a,b=b,autojunk=0)
-    r = []
-    if key is not None:
-        r.extend((green,key.format(blue+'blue'+green,red+'red'+green)))
-    ia,ib = 0,0
-    for ja,jb,n in m.get_matching_blocks():
-        r.extend((blue, a[ia:ja],
-                  red,  b[ib:jb],
-                  clear,a[ja:ja+n]))
-        ia = ja+n
-        ib = jb+n
-    return ''.join(r)
-
 @unit
-def test_describe_gccxml():
+def test_describe_cpp():
     fname = os.path.join(os.path.split(__file__)[0], 'toaster.h')
+    ts.register_class('Base', ('T', 'i'), cpp_type='Base')
     ts.register_classname('Toaster', 'toaster', 'toaster', 'cpp_toaster')
-    obs = ad.describe(fname, name='Toaster', parsers='gccxml', verbose=False, ts=ts)
-    exp = exp_toaster_desc
-    try:
-        assert_equal(obs, exp)
-    except:
-        key = '\n\n# only expected = {0}, only computed = {1}\n'
-        print(show_diff(pformat(exp),pformat(obs),key=key))
-        raise
-
-@unit
-def test_describe_clang():
-    fname = os.path.join(os.path.split(__file__)[0], 'toaster.h')
-    obs = ad.describe(fname, name='Toaster', parsers='clang', verbose=False, ts=ts)
-    exp = exp_toaster_desc
-    try:
-        assert_equal(obs, exp)
-    except:
-        key = '\n\n# only expected = {0}, only computed = {1}\n'
-        print(show_diff(pformat(exp),pformat(obs),key=key))
-        raise
+    def check(parser):
+        goals = (('class',('Base','int32',7,0),exp_base_desc(parser)),
+                 ('class','Toaster',exp_toaster_desc),
+                 ('func','simple',exp_simple_desc),
+                 # ('func','twice',exp_twice_desc), # TODO: Doesn't work yet for either clang or gccxml
+                 ('func',('lasso',17,'int32','float32'),exp_lasso_desc(17)),
+                 ('func',('lasso',18,'int32','float32'),exp_lasso_desc(18)),
+                 ('var','Choices',exp_choices_desc))
+        for kind,name,exp in goals:
+            obs = ad.describe(fname, name=name, kind=kind, parsers=parser, verbose=False, ts=ts)
+            assert_equal_or_diff(obs, exp)
+    for parser in 'gccxml','clang':
+        if parser in PARSERS_AVAILABLE:
+            yield check, parser
 
 @unit
 def test_merge_descriptions():
-    obs = ad.merge_descriptions([exp_toaster_desc, meta_toaster_desc])
-    exp = full_toaster_desc
-    #pprint(exp)
-    #pprint(obs)
-    assert_equal(obs, exp)
+    obs = ad.merge_descriptions([exp_merge_desc, meta_merge_desc])
+    exp = full_merge_desc
+    assert_equal_or_diff(obs, exp)
 
 @dec.skipif(ad.pycparser is None)
 @unit
@@ -163,9 +194,7 @@ def test_pycparser_describe_device_measure():
                                                        ('ERROR_FAILED_INIT', 1))),
             }
            }
-    #pprint(obs)
-    #pprint(exp)
-    assert_equal(obs, exp)
+    assert_equal_or_diff(obs, exp)
 
 @dec.skipif(ad.pycparser is None)
 @unit
@@ -183,9 +212,7 @@ def test_pycparser_describe_device_init():
                                                        ('ERROR_FAILED_INIT', 1))),
             }
            }
-    #pprint(exp)
-    #pprint(obs)
-    assert_equal(exp, obs)
+    assert_equal_or_diff(obs, exp)
 
 @dec.skipif(ad.pycparser is None)
 @unit
@@ -207,9 +234,8 @@ def test_pycparser_describe_device_descriptor_tag():
             },
            'methods': {},
            }
-    #pprint(obs)
-    #pprint(exp)
-    assert_equal(obs, exp)
+    assert_equal_or_diff(obs, exp)
 
 if __name__ == '__main__':
+    import nose
     nose.runmodule()

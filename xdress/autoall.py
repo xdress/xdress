@@ -1,5 +1,5 @@
 """This module is used to scrape the all of the APIs from a given source file
-and return thier name and kind.  These include classes, structs, functions, 
+and return their name and kind.  These include classes, structs, functions,
 and certain variable types.  It is not used to actually describe these elements.
 That is the job of the autodescriber.
 
@@ -45,6 +45,12 @@ try:
     import pycparser
 except ImportError:
     pycparser = None
+
+try:
+    import clang
+    from clang.cindex import CursorKind
+except ImportError:
+    clang = None
 
 from . import utils
 from . import astparsers
@@ -155,7 +161,7 @@ class GccxmlFinder(object):
             
 
 def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
-                   verbose=False, debug=False,  builddir='build'):
+                   verbose=False, debug=False, builddir='build', language='c++'):
     """Automatically finds all API elements in a file via GCC-XML.
 
     Parameters
@@ -168,19 +174,14 @@ def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         The list of extra macro definitions to apply.
     undefines : list of str, optional
         The list of extra macro undefinitions to apply.
-    parsers : str, list, or dict, optional
-        The parser / AST to use to use for the file.  Currently 'clang', 'gccxml', 
-        and 'pycparser' are supported, though others may be implemented in the 
-        future.  If this is a string, then this parser is used.  If this is a list, 
-        this specifies the parser order to use based on availability.  If this is
-        a dictionary, it specifies the order to use parser based on language, i.e.
-        ``{'c' ['pycparser', 'gccxml'], 'c++': ['gccxml', 'pycparser']}``.
     verbose : bool, optional
         Flag to diplay extra information while describing the class.
     debug : bool, optional
         Flag to enable/disable debug mode.
     builddir : str, optional
         Location of -- often temporary -- build files.
+    language : str
+        Valid language flag.
 
     Returns
     -------
@@ -204,9 +205,61 @@ def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
     finder.visit()
     return finder.variables, finder.functions, finder.classes
 
-@astparsers.not_implemented
-def clang_findall(*args, **kwargs):
-    pass
+
+def clang_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
+                  verbose=False, debug=False, builddir='build', language='c++'):
+    """Automatically finds all API elements in a file via clang.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the file
+    includes : list of str, optional
+        The list of extra include directories to search for header files.
+    defines : list of str, optional
+        The list of extra macro definitions to apply.
+    undefines : list of str, optional
+        The list of extra macro undefinitions to apply.
+    language : str
+        Valid language flag.
+    verbose : Ignored
+    debug : Ignored
+    builddir : Ignored
+
+    Returns
+    -------
+    variables : list of strings
+        A list of variable names to wrap from the file.
+    functions : list of strings
+        A list of function names to wrap from the file.
+    classes : list of strings
+        A list of class names to wrap from the file.
+
+    """
+    tu = astparsers.clang_parse(filename, includes=includes, defines=defines,
+                                undefines=undefines, verbose=verbose, debug=debug,
+                                language=language)
+    basename = filename.rsplit('.', 1)[0]
+    onlyin = frozenset([filename] +
+                       [basename + '.' + h for h in utils._hdr_exts if h.startswith('h')])
+    variables, functions, classes = [],[],[]
+    def visit(node):
+        kind = node.kind
+        if kind == CursorKind.NAMESPACE:
+            for kid in node.get_children():
+                visit(kid)
+        elif kind == CursorKind.ENUM_DECL:
+            variables.append(node.spelling)
+        elif kind == CursorKind.FUNCTION_DECL:
+            functions.append(node.spelling)
+        elif kind in (CursorKind.CLASS_DECL,CursorKind.STRUCT_DECL):
+            classes.append(node.spelling)
+    for node in tu.cursor.get_children():
+        file = node.extent.start.file
+        if file and file.name in onlyin:
+            visit(node)
+    return variables, functions, classes
+
 
 class PycparserFinder(astparsers.PycparserNodeVisitor):
     """Class used for discovering APIs using the pycparser AST."""
@@ -312,7 +365,7 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
 
 
 def pycparser_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
-                      verbose=False, debug=False,  builddir='build'):
+                      verbose=False, debug=False, builddir='build', language='c'):
     """Automatically finds all API elements in a file via GCC-XML.
 
     Parameters
@@ -331,6 +384,8 @@ def pycparser_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         Flag to enable/disable debug mode.
     builddir : str, optional
         Location of -- often temporary -- build files.
+    language : str
+        Valid language flag.
 
     Returns
     -------
@@ -362,7 +417,7 @@ _finders = {
     }
 
 def findall(filename, includes=(), defines=('XDRESS',), undefines=(), 
-            parsers='gccxml', verbose=False, debug=False,  builddir='build', 
+            parsers='gccxml', verbose=False, debug=False, builddir='build',
             language='c++'):
     """Automatically finds all API elements in a file.  This is the main entry point.
 
@@ -392,7 +447,6 @@ def findall(filename, includes=(), defines=('XDRESS',), undefines=(),
     language : str
         Valid language flag.
 
-
     Returns
     -------
     variables : list of strings
@@ -406,7 +460,7 @@ def findall(filename, includes=(), defines=('XDRESS',), undefines=(),
     parser = astparsers.pick_parser(language, parsers)
     finder = _finders[parser]
     rtn = finder(filename, includes=includes, defines=defines, undefines=undefines, 
-                 verbose=verbose, debug=debug, builddir=builddir)
+                 verbose=verbose, debug=debug, builddir=builddir, language=language)
     return rtn
 
 

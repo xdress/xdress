@@ -221,10 +221,10 @@ from . import astparsers
 from .typesystem import TypeSystem
 
 try:
-    from clang import cindex
+    import clang.cindex
     from clang.cindex import CursorKind, TypeKind, AccessKind
 except ImportError:
-    cindex = None
+    clang = None
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -272,8 +272,9 @@ def _make_c_to_xdress():
     return c_to_xdress
 _c_to_xdress = _make_c_to_xdress()
 _integer_types = frozenset(s+i for i in 'int16 int32 int64 short intc int longlong'.split() for s in ('','u'))
+_float_types = frozenset('float double float32 float64'.split())
 
-if cindex is not None:
+if clang is not None:
     _clang_base_types = {
         TypeKind.VOID       : 'void',
         TypeKind.BOOL       : 'bool',
@@ -293,6 +294,36 @@ if cindex is not None:
         TypeKind.DOUBLE     : 'float64',
         TypeKind.LONGDOUBLE : 'longdouble',
         }
+
+if 1:
+    # TODO: This step uses platform dependent details, and will need to be cleaned
+    # if we want to generate platform independent .pyx files.
+    from numpy import dtype
+    def hack_type(t):
+        t = dtype(t).name
+        return t[:-4]+'char' if t.endswith('int8') else t
+    _c_to_xdress = dict((k,hack_type(v)) for k,v in _c_to_xdress.items())
+    if clang is not None:
+        _clang_base_types = dict((k,hack_type(v)) for k,v in _clang_base_types.items())
+
+# Hard code knowledge of certain templated classes, so that allocator arguments
+# can be stripped.  TODO: This should be replaced by a more flexible mechanism
+hack_template_args = {
+    'array': ('value_type',),
+    'deque': ('value_type',),
+    'forward_list': ('value_type',),
+    'list': ('value_type',),
+    'map': ('key_type', 'mapped_type'),
+    'multimap': ('key_type', 'mapped_type'),
+    'set': ('key_type',),
+    'multiset': ('key_type',),
+    'unordered_map': ('key_type', 'mapped_type'),
+    'unordered_multimap': ('key_type', 'mapped_type'),
+    'unordered_set': ('key_type',),
+    'unordered_multiset': ('key_type',),
+    'vector': ('value_type',),
+    }
+
 
 #
 # GCC-XML Describers
@@ -406,6 +437,7 @@ class GccxmlBaseDescriber(object):
         self._currfuncsig = None
         self._currclass = []  # this must be a stack to handle nested classes
         self._level = -1
+        self._template_args = hack_template_args
         #self._template_args.update(ts.template_types)
 
     def __str__(self):
@@ -419,22 +451,6 @@ class GccxmlBaseDescriber(object):
             print("{0}{1} {2}: {3}".format(self._level * "  ", node.tag,
                                        node.attrib.get('id', ''),
                                        node.attrib.get('name', None)))
-
-    _template_args = {
-        'array': ('value_type',),
-        'deque': ('value_type',),
-        'forward_list': ('value_type',),
-        'list': ('value_type',),
-        'map': ('key_type', 'mapped_type'),
-        'multimap': ('key_type', 'mapped_type'),
-        'set': ('key_type',),
-        'multiset': ('key_type',),
-        'unordered_map': ('key_type', 'mapped_type'),
-        'unordered_multimap': ('key_type', 'mapped_type'),
-        'unordered_set': ('key_type',),
-        'unordered_multiset': ('key_type',),
-        'vector': ('value_type',),
-        }
 
     def _template_literal_arg(self, targ):
         """Parses a literal template parameter."""
@@ -536,7 +552,8 @@ class GccxmlBaseDescriber(object):
                        "of type {0!r} somewhere in the source or header.")
                 raise NotImplementedError(msg.format(name))
             bases = node.attrib['bases'].split()
-            bases = [self.type(b) for b in bases]
+            # TODO: Record whether bases are public, private, or protected
+            bases = [self.type(b.replace('private:','')) for b in bases]
             self.desc['parents'] = bases
             ns = self.context(node.attrib['context'])
             if ns is not None and ns != "::":
@@ -632,6 +649,8 @@ class GccxmlBaseDescriber(object):
         else:
             if t in _integer_types:
                 default = cppint(default)
+            elif t in _float_types:
+                default = float(default)
             elif default == 'true':
                 default = True
             elif default == 'false':
@@ -711,7 +730,7 @@ class GccxmlBaseDescriber(object):
         return tuple(t)
 
     def visit_referencetype(self, node):
-        """visits a refernece and maps it to a '&' refinement type."""
+        """visits a reference and maps it to a '&' refinement type."""
         self._pprint(node)
         baset = self.type(node.attrib['type'])
         t = self._add_predicate(baset, '&')
@@ -988,15 +1007,15 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
                     x = ts.canon(x)
                 namet.append(x)
             namet = tuple(namet)
+        if not isinstance(name, basestring):
+            pattern = re.compile(r'(?: |::)'+basename+'.*>')
         for n in root.iterfind("Function[@name='{0}']".format(basename)):
             if not isinstance(name, basestring):
                 # Must be a template function
                 if n.attrib['file'] not in self.onlyin:
                     continue
                 nodename = n.attrib.get('demangled', '')
-                if " " + basename + "<" not in nodename:
-                    continue
-                if '<' not in nodename or '>' not in nodename:
+                if not pattern.search(nodename):
                     continue
                 nodet = self._visit_template_function(n)
                 if nodet != namet:
@@ -1039,7 +1058,7 @@ def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         Flag to enable/disable debug mode.  Currently ignored.
     builddir : str, optional
         Ignored.  Exists only for compatibility with gccxml_describe.
-    onlyin : set of str
+    onlyin : set of str, optional
         The paths to the files that the definition is allowed to exist in.
     language : str
         Valid language flag.
@@ -1050,42 +1069,25 @@ def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         A dictionary describing the class which may be used to generate
         API bindings.
     """
-    index = cindex.Index.create()
-    tu = index.parse(filename, args=  ['-cc1']
-                                    + ['-x',language]
-                                    + ['-I'+d for d in includes]
-                                    + ['-D'+d for d in defines]
-                                    + ['-U'+d for u in undefines])
-    # Check for fatal errors
-    failed = False
-    for d in tu.diagnostics:
-        if d.severity >= cindex.Diagnostic.Error:
-            print(d.format())
-            failed = True
-    if failed:
-        raise RuntimeError('failed to parse {0}'.format(filename))
+    tu = astparsers.clang_parse(filename, includes=includes, defines=defines,
+                                undefines=undefines, verbose=verbose, debug=debug,
+                                language=language)
     ts = ts or TypeSystem()
+    if onlyin is None:
+        onlyin = None if filename is None else frozenset([filename])
     if kind == 'class':
-        cls = clang_find_class(tu, name, filename=filename)
-        desc = clang_describe_class(cls, ts=ts, verbose=verbose)
+        cls = clang_find_class(tu, name, ts=ts, filename=filename, onlyin=onlyin)
+        desc = clang_describe_class(cls)
+    elif kind == 'func':
+        fn = clang_find_function(tu, name, ts=ts, filename=filename, onlyin=onlyin)
+        desc = clang_describe_function(fn)
+    elif kind == 'var':
+        var = clang_find_var(tu, name, ts=ts, filename=filename, onlyin=onlyin)
+        desc = clang_describe_var(var)
     else:
-        raise NotImplementedError('kind {0}'.format(kind))
+        raise ValueError('bad description kind {0}, name {1}'.format(kind,name))
     linecache.clearcache() # Clean up results of clang_range_str
     return desc
-
-def clang_is_loc_in_range(location, source_range):
-    """Returns whether a given Clang location is part of a source file range."""
-    if source_range is None or location is None:
-        return False
-    start = source_range.start
-    stop = source_range.end
-    file = location.file
-    if file != start.file or file != stop.file:
-        return False
-    line = location.line
-    if line < start.line or stop.line < line:
-        return False
-    return start.column <= location.column <= stop.column
 
 def clang_range_str(source_range):
     """Get the text present on a source range."""
@@ -1102,9 +1104,8 @@ def clang_range_str(source_range):
     s = "".join(lines)
     return s
 
-def clang_find_decls(tu, name, kind, namespace=None, filename=None):
-    """Find all declarations of the given name and kind under the given namespace and filename"""
-    onlyin = None if filename is None else set([filename])
+def clang_find_scopes(tu, onlyin, namespace=None):
+    """Find all 'toplevel' scopes, optionally restricting to a given namespace"""
     namespace_kind = CursorKind.NAMESPACE
     if namespace is None:
         def all_namespaces(node):
@@ -1114,44 +1115,124 @@ def clang_find_decls(tu, name, kind, namespace=None, filename=None):
                         yield n
                     for c in all_namespaces(n):
                         yield c
-        node = tu.cursor
-        scopes = (node,)+tuple(all_namespaces(node))
+        return (tu.cursor,)+tuple(all_namespaces(tu.cursor))
     else:
         scopes = []
-        for n in node.get_children():
+        for n in tu.cursor.get_children():
             if n.kind == namespace_kind and n.spelling == namespace:
                 if onlyin is None or n.location.file.name in onlyin:
                     scopes.append(n)
+
+def clang_find_decls(tu, name, kinds, onlyin, namespace=None):
+    """Find all declarations of the given name and kind in the given scopes.
+    Scopes are searched in reverse order for efficiency, since we usually don't
+    care about included files."""
+    scopes = clang_find_scopes(tu, onlyin, namespace=namespace)
+    decls = set()
     for s in scopes[::-1]:
         for c in s.get_children():
-            if c.kind == kind and c.spelling == name:
+            if c.kind in kinds and c.spelling == name:
                 if onlyin is None or c.location.file.name in onlyin:
-                    yield c
+                    # If a definition is available, always use that
+                    decls.add(c.get_definition() or c)
+    return decls
 
-def clang_find_class(node, name, namespace=None, filename=None):
-    """Find the node for a given class underneath the current node."""
-    cs = list(clang_find_decls(node, name, kind=CursorKind.CLASS_DECL, namespace=namespace, filename=filename))
-    if len(cs)==1:
-        return cs[0]
+# TODO: This functionality belongs in TypeSystem
+def canon_template_arg(ts, arg):
+    if isinstance(arg,int):
+        return arg
+    return ts.canon(arg)
+
+def clang_where(namespace, filename):
     where = ''
     if namespace is not None:
         where += " in namespace {0}".format(namespace)
     if filename is not None:
         where += " in file {0}".format(filename)
-    if not cs:
-        raise ValueError("class {0} could not be found{1}".format(name, where))
+    return where
+
+def clang_find_class(tu, name, ts, namespace=None, filename=None, onlyin=None):
+    """Find the node for a given class in the given translation unit."""
+    templated = isinstance(name, tuple)
+    if templated:
+        basename = name[0]
+        if name[-1] != 0:
+            raise NotImplementedError('no predicate support in clang class description')
+        args = tuple(canon_template_arg(ts,a) for a in name[1:-1])
+        kinds = CursorKind.CLASS_TEMPLATE,
     else:
-        raise ValueError("class {0} found more than once{1}".format(name, where))
+        basename = name
+        kinds = CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL
+    decls = clang_find_decls(tu, basename, kinds=kinds, onlyin=onlyin, namespace=namespace)
+    if len(decls)==1:
+        decl, = decls
+        if not templated:
+            # No templates, so we're done
+            return decl
+        else:
+            # Search for the desired template specialization
+            args = clang_expand_template_args(decl, args)
+            for spec in decl.get_specializations():
+                if args == tuple(canon_template_arg(ts,a) for a in clang_describe_template_args(spec)):
+                    return spec
 
-def clang_find_declarations(node):
-    """Finds declarations one level below the Clang node."""
-    return [n for n in node.get_children() if n.kind.is_declaration()]
+    # Nothing found, time to complain
+    where = clang_where(namespace, filename)
+    if not decls:
+        raise ValueError("class {0} could not be found{1}".format(name, where))
+    elif len(decls)>1:
+        raise ValueError("class {0} found more than once ({2} times) {1}".format(name, len(decls), where))
+    else:
+        raise ValueError("class {0} found, but specialization {1} not found{1}".format(cls, name, where))
 
-def clang_find_attributes(node):
-    """Finds attributes one level below the Clang node."""
-    return [n for n in node.get_children() if n.kind.is_attribute()]
+def clang_find_function(tu, name, ts, namespace=None, filename=None, onlyin=None):
+    """Find the node for a given function."""
+    templated = isinstance(name, tuple)
+    if templated:
+        basename = name[0]
+        args = tuple(canon_template_arg(ts,a) for a in name[1:])
+        kinds = CursorKind.FUNCTION_TEMPLATE,
+    else:
+        basename = name
+        kinds = CursorKind.FUNCTION_DECL,
+    decls = clang_find_decls(tu, basename, kinds=kinds, onlyin=onlyin, namespace=namespace)
+    if len(decls)==1:
+        decl, = decls
+        if not templated:
+            # No templates, so we're done
+            return decl
+        else:
+            # Search for the desired function specialization
+            args = clang_expand_template_args(decl, args)
+            for spec in decl.get_specializations():
+                if args == tuple(canon_template_arg(ts,a) for a in clang_describe_template_args(spec)):
+                    return spec
 
-def clang_dump(node,indent=0):
+    # Nothing found, time to complain
+    where = clang_where(namespace, filename)
+    if not decls:
+        raise ValueError("function {0} could not be found{1}".format(name, where))
+    elif len(decls)>1:
+        raise ValueError("function {0} found more than once ({2} times) {1}".format(name, len(decls), where))
+    else:
+        raise ValueError("function {0} found, but specialization {1} not found{1}".format(cls, name, where))
+
+def clang_find_var(tu, name, ts, namespace=None, filename=None, onlyin=None):
+    """Find the node for a given var."""
+    assert isinstance(name, basestring)
+    kinds = CursorKind.ENUM_DECL,
+    decls = list(clang_find_decls(tu, name, kinds=kinds, onlyin=onlyin, namespace=namespace))
+    if len(decls)==1:
+        return decls[0]
+
+    # Nothing found, time to complain
+    where = clang_where(namespace, filename)
+    if not decls:
+        raise ValueError("var {0} could not be found{1}".format(name, where))
+    else:
+        raise ValueError("var {0} found more than once ({2} times) {1}".format(name, len(decls), where))
+
+def clang_dump(node, indent=0, onlyin=None):
     try:
         spelling = node.spelling
     except AttributeError:
@@ -1166,82 +1247,200 @@ def clang_dump(node,indent=0):
         except AttributeError:
             pass
     print(s)
-    for c in node.get_children():
-        clang_dump(c,indent+2)
+    if onlyin is None:
+        for c in node.get_children():
+            clang_dump(c,indent+2)
+    else:
+        for c in node.get_children():
+            file = c.extent.start.file
+            if file and file.name in onlyin:
+                clang_dump(c,indent+2)
 
-def clang_describe_class(cls, ts, verbose=False):
+def clang_parent_namespace(node):
+    if node.semantic_parent.kind == CursorKind.NAMESPACE:
+        return node.semantic_parent.spelling
+    # Otherwise, return none
+
+_operator_pattern = re.compile(r'^operator\W')
+
+def clang_describe_class(cls):
     """Describe the class at the given clang AST node"""
     parents = []
     attrs = {}
     methods = {}
     if cls.kind == CursorKind.CLASS_DECL:
         construct = 'class'
-        public = False
     elif cls.kind == CursorKind.STRUCT_DECL:
         construct = 'struct'
-        public = True
     else:
         raise ValueError('bad class kind {0}'.format(cls.kind.name))
-    for kid in cls.get_children():
+    typ = cls.spelling
+    dest = '~'+typ
+    templated = cls.has_template_args()
+    if templated:
+        cons = (typ,) + clang_describe_template_args(cls)
+        dest = (dest,) + cons[1:]
+        typ = cons + (0,)
+    else:
+        cons = typ
+    for kid in cls.get_children(all_spec_bodies=1):
         kind = kid.kind
         if kind == CursorKind.CXX_BASE_SPECIFIER:
-            parents.append(clang_describe_type(kid.type,ts))
-        elif kind == CursorKind.CXX_ACCESS_SPEC_DECL:
-            public = kid.access == AccessKind.PUBLIC
-        elif public:
-            if kind in (CursorKind.CXX_METHOD,CursorKind.CONSTRUCTOR,CursorKind.DESTRUCTOR):
-                ret = clang_describe_type(kid.result_type,ts) if kind == CursorKind.CXX_METHOD else None
-                methods[clang_describe_args(kid,ts)] = ret
+            parents.append(clang_describe_type(kid.type))
+        elif kid.access == AccessKind.PUBLIC:
+            if kind == CursorKind.CXX_METHOD:
+                # TODO: For now, we ignore operators
+                if not _operator_pattern.match(kid.spelling):
+                    methods[clang_describe_args(kid)] = clang_describe_type(kid.result_type)
+            elif kind == CursorKind.CONSTRUCTOR:
+                methods[(cons,)+clang_describe_args(kid)[1:]] = None
+            elif kind == CursorKind.DESTRUCTOR:
+                methods[(dest,)] = None
             elif kind == CursorKind.FIELD_DECL:
-                attrs[kid.spelling] = clang_describe_type(kid.type,ts)
-    return {'name': cls.spelling, 'parents': parents, 'attrs': attrs, 'methods': methods, 'construct': construct,
-            'type' : cls.spelling, # TODO: Account for template arguments
-            'namespace': cls.semantic_parent.spelling if cls.semantic_parent.kind == CursorKind.NAMESPACE else None}
+                attrs[kid.spelling] = clang_describe_type(kid.type)
+    # Make sure defaulted methods are described
+    if cls.has_default_constructor():
+        # Check if any user defined constructors act as a default constructor
+        for method in methods.keys():
+            if method[0] == cons:
+                for arg in method[1:]:
+                    if len(arg) < 3:
+                        break
+                else:
+                    # All arguments have defaults, so no need to generate a default manually
+                    break
+        else:
+            methods[(cons,)] = None
+    if cls.has_simple_destructor():
+        methods[(dest,)] = None
+    # Put everything together
+    return {'name': typ, 'type': typ, 'namespace': clang_parent_namespace(cls),
+            'parents': parents, 'attrs': attrs, 'methods': methods, 'construct': construct}
 
-def clang_describe_args(func, ts):
-    descs = [func.spelling]
+def clang_describe_var(var):
+    """Describe the var at the given clang AST node"""
+    if var.kind == CursorKind.ENUM_DECL:
+        options = tuple((v.spelling, str(v.enum_value)) for v in var.get_children())
+        return {'name': var.spelling, 'namespace': clang_parent_namespace(var),
+                'type': ('enum', var.spelling, options)}
+    else:
+        raise NotImplementedError('var kind {0}: {1}'.format(var.kind, var.spelling))
+
+def clang_describe_function(func):
+    """Describe the function at the given clang AST node"""
+    assert func.kind == CursorKind.FUNCTION_DECL
+    signatures = {clang_describe_args(func): clang_describe_type(func.result_type)}
+    name = next(iter(signatures))[0]
+    return {'name': name, 'namespace': clang_parent_namespace(func), 'signatures': signatures}
+
+def clang_describe_args(func):
+    if func.has_template_args():
+        descs = [(func.spelling,) + clang_describe_template_args(func)]
+    else:
+        descs = [func.spelling]
     for arg in func.get_arguments():
-        desc = [arg.spelling,clang_describe_type(arg.type,ts)]
+        desc = [arg.spelling,clang_describe_type(arg.type)]
         default = arg.default_argument
         if default is not None:
-            desc.append(clang_describe_expression(default,ts))
+            desc.append(clang_describe_expression(default))
         descs.append(tuple(desc))
     return tuple(descs)
 
-def clang_describe_type(typ, ts):
+def clang_describe_type(typ):
     """Describe the type reference at the given cursor"""
     typ = typ.get_canonical()
+    kind = typ.kind
     try:
-        return _clang_base_types[typ.kind]
+        desc = _clang_base_types[kind]
     except KeyError:
-        if typ.kind == TypeKind.RECORD:
+        if kind == TypeKind.RECORD:
             decl = typ.get_declaration()
             cls = decl.spelling
             if cls == 'basic_string':
-                return 'str'
-            if not decl.has_template_args():
-                return cls
+                desc = 'str'
+            elif decl.has_template_args():
+                desc = (cls,) + clang_describe_template_args(decl) + (0,)
             else:
-                desc = [cls]
-                for arg in decl.get_template_args():
-                    if arg.kind == CursorKind.TYPE_TEMPLATE_ARG:
-                        desc.append(clang_describe_type(arg.type,ts))
-                    elif arg.kind == CursorKind.INTEGRAL_TEMPLATE_ARG:
-                        desc.append(int(arg.spelling))
-                    else:
-                        raise NotImplementedError('template argument kind {0}'.format(arg.kind.name))
-                desc.append(0) # No predicate
-                return tuple(desc)
-        raise NotImplementedError('type kind {0}'.format(typ.kind))
+                desc = cls
+        elif kind == TypeKind.LVALUEREFERENCE:
+            desc = (clang_describe_type(typ.get_pointee()), '&')
+        elif kind == TypeKind.POINTER:
+            p = typ.get_pointee()
+            if p.kind == TypeKind.FUNCTIONPROTO:
+                desc = ('function_pointer',
+                        tuple(('_{0}'.format(i),clang_describe_type(arg)) for i,arg in enumerate(p.argument_types())),
+                        clang_describe_type(p.get_result()))
+            else:
+                desc = (clang_describe_type(p), '*')
+        elif kind == TypeKind.FUNCTIONPROTO:
+            desc = ('function',
+                    tuple(('_{0}'.format(i),clang_describe_type(arg)) for i,arg in enumerate(typ.argument_types())),
+                    clang_describe_type(typ.get_result()))
+        else:
+            raise NotImplementedError('type kind {0}: {1}'.format(typ.kind, typ.spelling))
+    if typ.is_const_qualified():
+        return (desc, 'const')
+    else:
+        return desc
 
-def clang_describe_expression(exp, ts):
+if 0:
+    # TODO: Automatic support for default template arguments doesn't work yet
+    def clang_template_arg_info(node):
+        count = 0
+        defaults = []
+        kinds = CursorKind.TEMPLATE_TYPE_PARAMETER, CursorKind.TEMPLATE_NON_TYPE_PARAMETER
+        for kid in node.get_children():
+            if kid.kind in kinds:
+                count += 1
+                default = kid.default_argument
+                if default is not None:
+                    defaults.append(default)
+            else:
+                break
+        return count,tuple(defaults)
+
+def clang_describe_template_args(node):
+    ''' TODO: Broken version handling defaults automatically
+    _,defaults = clang_template_arg_info(node.specialized_template)
+    args = [clang_describe_template_arg(a) for a in node.get_template_args()]
+    for i in xrange(len(defaults)):
+        if defaults[-1-i] == args[-1]:
+            args.pop()
+    return tuple(args)'''
+    args = tuple(clang_describe_template_arg(a) for a in node.get_template_args())
+    if node.spelling in hack_template_args:
+        return args[:len(hack_template_args[node.spelling])]
+    else:
+        return args
+
+def clang_expand_template_args(node, args):
+    ''' TODO: Broken version handling defaults automatically
+    count,defaults = clang_template_arg_info(node)
+    print('SP %s, COUNT %s, %s, %s'%(node.spelling,count,defaults,args))
+    if len(args) < count:
+        return tuple(args) + defaults[(count-len(args)):]
+    return tuple(args)+defaults[  count-len(args)] '''
+    return args
+
+def clang_describe_template_arg(arg):
+    if arg.kind == CursorKind.TYPE_TEMPLATE_ARG:
+        return clang_describe_type(arg.type)
+    elif arg.kind == CursorKind.INTEGRAL_TEMPLATE_ARG:
+        return int(arg.spelling)
+    else:
+        raise NotImplementedError('template argument kind {0}'.format(arg.kind.name))
+
+def clang_describe_expression(exp):
     # For now, we just use clang_range_str to pull the expression out of the file.
     # This is because clang doesn't seem to have any mechanism for printing expressions.
     s = clang_range_str(exp.extent)
     try:
         return int(s)
     except ValueError:
-        return NotImplementedError('unhandled expression "{0}"'.format(s))
+        try:
+            return float(s)
+        except ValueError:
+            raise NotImplementedError('unhandled expression "{0}"'.format(s))
 
 
 #

@@ -63,7 +63,7 @@ except ImportError:
 
 # clang conditional imports
 try:
-    from . import clang
+    import clang.cindex
 except ImportError:
     clang = None
 
@@ -159,7 +159,7 @@ def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
     verbose : bool, optional
-        Flag to diplay extra information while describing the class.
+        Flag to display extra information while describing the class.
     debug : bool, optional
         Flag to enable/disable debug mode.
     builddir : str, optional
@@ -189,6 +189,54 @@ def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     return root
 
 #
+# clang parser
+#
+@_memoize_parser
+def clang_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
+                verbose=False, debug=False, builddir='build', language='c++'):
+    """Use clang to parse a file.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the file.
+    includes: list of str, optional
+        The list of extra include directories to search for header files.
+    defines: list of str, optional
+        The list of extra macro definitions to apply.
+    undefines: list of str, optional
+        The list of extra macro undefinitions to apply.
+    verbose : bool, optional
+        Flag to display extra information while describing the class.  Ignored.
+    debug : bool, optional
+        Flag to enable/disable debug mode.  Currently ignored.
+    builddir : str, optional
+        Ignored.  Exists only for compatibility with gccxml_describe.
+    language : str
+        Valid language flag.
+
+    Returns
+    -------
+    tu : libclang TranslationUnit object
+    """
+    index = clang.cindex.Index.create()
+    options = clang.cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES
+    tu = index.parse(filename, options=options,
+                     args=  ['-x',language]
+                          + ['-I'+d for d in includes]
+                          + ['-D'+d for d in defines]
+                          + ['-U'+d for u in undefines])
+    # Check for fatal errors
+    failed = False
+    for d in tu.diagnostics:
+        if d.severity >= clang.cindex.Diagnostic.Error:
+            print(d.format())
+            failed = True
+    if failed:
+        raise RuntimeError('failed to parse {0}'.format(filename))
+    return tu
+
+#
 # pycparser Describers
 #
 
@@ -208,7 +256,7 @@ def pycparser_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
     verbose : bool, optional
-        Flag to diplay extra information while describing the class.
+        Flag to display extra information while describing the class.
     debug : bool, optional
         Flag to enable/disable debug mode.
     builddir : str, optional

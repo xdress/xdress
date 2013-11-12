@@ -48,13 +48,16 @@ def test_all():
 
     cwd = os.getcwd()
     base = os.path.dirname(cwd)
+    path = base
+    if 'PYTHONPATH' in os.environ:
+        path = path+':'+os.environ['PYTHONPATH']
     pyexec = sys.executable
     xdexec = os.path.join(base, 'scripts', 'xdress')
     defaults = {'cwd': cwd, 'base': base, 'pyexec': pyexec, 'xdexec': xdexec, 
-                'instdir': INSTDIR, 'rootdir': ROOTDIR}
+                'instdir': INSTDIR, 'rootdir': ROOTDIR, 'path': path}
 
     commands = (
-        'PYTHONPATH="{base}" {pyexec} {xdexec} --debug -p={parser}\n'
+        'PYTHONPATH="{path}" {pyexec} {xdexec} --debug -p={parser}\n'
         '{pyexec} setup.py install --prefix="{instdir}" --root="{rootdir}" -- --\n'
         )
 
