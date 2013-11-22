@@ -1,3 +1,5 @@
+from xdress.utils import apiname
+
 package = 'mypack'     # top-level python package name
 packagedir = 'mypack'  # loation of the python package
 
@@ -8,9 +10,10 @@ stlcontainers = [
     ]
 
 classes = [
-        ('A', ('src/hoover.h', 'src/hoover.cpp')),
-        ('B', ('src/hoover.h', 'src/hoover.cpp'), 'hoover_b'),
-        ]
+    apiname('A', ('src/hoover.h', 'src/hoover.cpp'), incfiles='hoover.h'),
+    apiname('B', ('src/hoover.h', 'src/hoover.cpp'), 'hoover_b', incfiles='hoover.h'),
+    ]
 
-functions = [('do_nothing_ab', ('src/hoover.h', 'src/hoover.cpp'), 'hoover_b')]
+functions = [apiname('do_nothing_ab', ('src/hoover.h', 'src/hoover.cpp'), 'hoover_b', 
+                     incfiles='hoover.h')]
 

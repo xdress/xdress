@@ -12,11 +12,15 @@ cimport stlcontainers
 from libcpp.map cimport map as cpp_map
 from mypack cimport cpp_hoover
 
+
+
 cdef class A:
     cdef void * _inst
     cdef public bint _free_inst
     cdef public stlcontainers._MapIntDouble _y
+    pass
 
 
 
 
+{'cpppxd_footer': '', 'pyx_header': '', 'pxd_header': '', 'pxd_footer': '', 'cpppxd_header': '', 'pyx_footer': ''}

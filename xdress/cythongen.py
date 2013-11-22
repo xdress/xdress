@@ -481,7 +481,7 @@ def pxd_sorted_names(mod):
                 classnames.insert(0, name)
                 continue
             for parent in parents:
-                if parent not in classnames:
+                if parent not in classnames and parent in mod:
                     classnames.append(parent)
             classnames.append(name)
         else:

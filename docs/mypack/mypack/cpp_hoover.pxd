@@ -14,15 +14,16 @@ cdef extern from "hoover.h" namespace "hoover":
 
     cdef cppclass A:
         # constructors
-        A() except +
-        A(int) except +
+
 
         # attributes
         cpp_map[int, double] y
 
         # methods
 
+        pass
 
 
 
 
+{'cpppxd_footer': '', 'pyx_header': '', 'pxd_header': '', 'pxd_footer': '', 'cpppxd_header': '', 'pyx_footer': ''}

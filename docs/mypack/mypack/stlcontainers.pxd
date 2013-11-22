@@ -13,6 +13,7 @@ from libcpp.utility cimport pair
 from libcpp.map cimport map as cpp_map
 from libcpp.vector cimport vector as cpp_vector
 from libc cimport stdio
+from cpython.version cimport PY_MAJOR_VERSION
 from cpython.ref cimport PyTypeObject, Py_INCREF, Py_XDECREF
 from cpython.type cimport PyType_Ready
 from cpython.object cimport PyObject
@@ -26,12 +27,21 @@ cimport xdress_extra_types
 
 cimport numpy as np
 
+
+# Cython Imports For Types
+cimport xdress_extra_types
+from libcpp.string cimport string as std_string
+
 cdef extern from "Python.h":
     ctypedef Py_ssize_t Py_ssize_t
 
     cdef long Py_TPFLAGS_DEFAULT 
     cdef long Py_TPFLAGS_BASETYPE 
     cdef long Py_TPFLAGS_CHECKTYPES
+    cdef long Py_TPFLAGS_HEAPTYPE
+
+    ctypedef struct PyGetSetDef:
+        char * name
 
     ctypedef struct PyTypeObject:
         char * tp_name
@@ -39,7 +49,6 @@ cdef extern from "Python.h":
         int tp_itemsize
         object tp_alloc(PyTypeObject *, Py_ssize_t)
         void tp_dealloc(object)
-        int tp_compare(object, object)
         object tp_richcompare(object, object, int)
         object tp_new(PyTypeObject *, object, object)
         object tp_str(object)
@@ -51,12 +60,18 @@ cdef extern from "Python.h":
         PyGetSetDef * tp_getset
         PyTypeObject * tp_base
         void tp_free(void *)
+        # This is a dirty hack by declaring to Cython both the Python 2 & 3 APIs
+        int (*tp_compare)(object, object)      # Python 2
+        void * (*tp_reserved)(object, object)  # Python 3
 
+# structmember.h isn't included in Python.h for some reason
+cdef extern from "structmember.h":
     ctypedef struct PyMemberDef:
         char * name
-
-    ctypedef struct PyGetSetDef:
-        char * name
+        int type
+        Py_ssize_t offset
+        int flags
+        char * doc
 
 cdef extern from "numpy/arrayobject.h":
 
@@ -105,6 +120,8 @@ cdef extern from "numpy/arrayobject.h":
         PyObject  *shape
 
     cdef void ** PyArray_API
+
+    cdef PyTypeObject * PyArrayDescr_Type
     
     ctypedef struct PyArray_Descr:
         Py_ssize_t ob_refcnt
@@ -119,6 +136,7 @@ cdef extern from "numpy/arrayobject.h":
         int alignment
         PyArray_ArrayDescr * subarray
         PyObject * fields
+        PyObject * names
         PyArray_ArrFuncs * f
 
     cdef int PyArray_RegisterDataType(PyArray_Descr *)
@@ -147,12 +165,12 @@ cdef np.npy_bool pyxd_str_nonzero(void * data, void * arr)
 
 # SetUInt
 cdef class _SetIterUInt(object):
-    cdef cpp_set[xdress_extra_types.uint].iterator * iter_now
-    cdef cpp_set[xdress_extra_types.uint].iterator * iter_end
-    cdef void init(_SetIterUInt, cpp_set[xdress_extra_types.uint] *)
+    cdef cpp_set[xdress_extra_types.uint32].iterator * iter_now
+    cdef cpp_set[xdress_extra_types.uint32].iterator * iter_end
+    cdef void init(_SetIterUInt, cpp_set[xdress_extra_types.uint32] *)
 
 cdef class _SetUInt:
-    cdef cpp_set[xdress_extra_types.uint] * set_ptr
+    cdef cpp_set[xdress_extra_types.uint32] * set_ptr
     cdef public bint _free_set
 
 
