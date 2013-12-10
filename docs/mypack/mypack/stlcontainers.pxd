@@ -23,13 +23,13 @@ from cpython.object cimport Py_LT, Py_LE, Py_EQ, Py_NE, Py_GT, Py_GE
 cimport numpy as np
 
 # Local imports
-cimport xdress_extra_types
+cimport mypack_extra_types
 
 cimport numpy as np
 
 
 # Cython Imports For Types
-cimport xdress_extra_types
+cimport mypack_extra_types
 from libcpp.string cimport string as std_string
 
 cdef extern from "Python.h":
@@ -143,7 +143,7 @@ cdef extern from "numpy/arrayobject.h":
 
     cdef object PyArray_Scalar(void *, PyArray_Descr *, object)
 
-cdef extern from "xdress_extra_types.h" namespace "xdress_extra_types":
+cdef extern from "mypack_extra_types.h" namespace "mypack_extra_types":
     cdef cppclass MemoryKnight[T]:
         MemoryKnight() nogil except +
         T * defnew() nogil except +
@@ -165,12 +165,12 @@ cdef np.npy_bool pyxd_str_nonzero(void * data, void * arr)
 
 # SetUInt
 cdef class _SetIterUInt(object):
-    cdef cpp_set[xdress_extra_types.uint32].iterator * iter_now
-    cdef cpp_set[xdress_extra_types.uint32].iterator * iter_end
-    cdef void init(_SetIterUInt, cpp_set[xdress_extra_types.uint32] *)
+    cdef cpp_set[mypack_extra_types.uint32].iterator * iter_now
+    cdef cpp_set[mypack_extra_types.uint32].iterator * iter_end
+    cdef void init(_SetIterUInt, cpp_set[mypack_extra_types.uint32] *)
 
 cdef class _SetUInt:
-    cdef cpp_set[xdress_extra_types.uint32] * set_ptr
+    cdef cpp_set[mypack_extra_types.uint32] * set_ptr
     cdef public bint _free_set
 
 

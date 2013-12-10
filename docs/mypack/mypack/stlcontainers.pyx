@@ -27,10 +27,10 @@ import numpy as np
 
 np.import_array()
 
-cimport xdress_extra_types
+cimport mypack_extra_types
 
 # Cython Imports For Types
-cimport xdress_extra_types
+cimport mypack_extra_types
 from libcpp.string cimport string as std_string
 
 # Imports For Types
@@ -293,12 +293,12 @@ dtypes[xd_str_num] = xd_str
 
 # SetUInt
 cdef class _SetIterUInt(object):
-    cdef void init(self, cpp_set[xdress_extra_types.uint32] * set_ptr):
-        cdef cpp_set[xdress_extra_types.uint32].iterator * itn = <cpp_set[xdress_extra_types.uint32].iterator *> malloc(sizeof(set_ptr.begin()))
+    cdef void init(self, cpp_set[mypack_extra_types.uint32] * set_ptr):
+        cdef cpp_set[mypack_extra_types.uint32].iterator * itn = <cpp_set[mypack_extra_types.uint32].iterator *> malloc(sizeof(set_ptr.begin()))
         itn[0] = set_ptr.begin()
         self.iter_now = itn
 
-        cdef cpp_set[xdress_extra_types.uint32].iterator * ite = <cpp_set[xdress_extra_types.uint32].iterator *> malloc(sizeof(set_ptr.end()))
+        cdef cpp_set[mypack_extra_types.uint32].iterator * ite = <cpp_set[mypack_extra_types.uint32].iterator *> malloc(sizeof(set_ptr.end()))
         ite[0] = set_ptr.end()
         self.iter_end = ite
 
@@ -310,8 +310,8 @@ cdef class _SetIterUInt(object):
         return self
 
     def __next__(self):
-        cdef cpp_set[xdress_extra_types.uint32].iterator inow = deref(self.iter_now)
-        cdef cpp_set[xdress_extra_types.uint32].iterator iend = deref(self.iter_end)
+        cdef cpp_set[mypack_extra_types.uint32].iterator inow = deref(self.iter_now)
+        cdef cpp_set[mypack_extra_types.uint32].iterator iend = deref(self.iter_end)
 
         if inow != iend:
 
@@ -325,7 +325,7 @@ cdef class _SetIterUInt(object):
 
 cdef class _SetUInt:
     def __cinit__(self, new_set=True, bint free_set=True):
-        cdef xdress_extra_types.uint32 s
+        cdef mypack_extra_types.uint32 s
 
 
         # Decide how to init set, if at all
@@ -334,13 +334,13 @@ cdef class _SetUInt:
         elif hasattr(new_set, '__iter__') or \
                 (hasattr(new_set, '__len__') and
                 hasattr(new_set, '__getitem__')):
-            self.set_ptr = new cpp_set[xdress_extra_types.uint32]()
+            self.set_ptr = new cpp_set[mypack_extra_types.uint32]()
             for value in new_set:
 
-                s = <xdress_extra_types.uint32> long(value)
+                s = <mypack_extra_types.uint32> long(value)
                 self.set_ptr.insert(s)
         elif bool(new_set):
-            self.set_ptr = new cpp_set[xdress_extra_types.uint32]()
+            self.set_ptr = new cpp_set[mypack_extra_types.uint32]()
 
         # Store free_set
         self._free_set = free_set
@@ -350,11 +350,11 @@ cdef class _SetUInt:
             del self.set_ptr
 
     def __contains__(self, value):
-        cdef xdress_extra_types.uint32 s
+        cdef mypack_extra_types.uint32 s
 
         if isinstance(value, int):
 
-            s = <xdress_extra_types.uint32> long(value)
+            s = <mypack_extra_types.uint32> long(value)
         else:
             return False
 
@@ -372,19 +372,19 @@ cdef class _SetUInt:
         return si
 
     def add(self, value):
-        cdef xdress_extra_types.uint32 v
+        cdef mypack_extra_types.uint32 v
 
 
-        v = <xdress_extra_types.uint32> long(value)
+        v = <mypack_extra_types.uint32> long(value)
         self.set_ptr.insert(v)
         return
 
     def discard(self, value):
-        cdef xdress_extra_types.uint32 v
+        cdef mypack_extra_types.uint32 v
 
         if value in self:
 
-            v = <xdress_extra_types.uint32> long(value)
+            v = <mypack_extra_types.uint32> long(value)
             self.set_ptr.erase(v)
         return
 

@@ -14,12 +14,12 @@ set( cxx_pyx_files
   hoover_b.pyx
   hoover.pyx
   stlcontainers.pyx
-  xdress_extra_types.pyx
+  mypack_extra_types.pyx
   )
 set_source_files_properties( ${cxx_pyx_files}
   PROPERTIES CYTHON_IS_CXX TRUE )
 
-cython_add_module( xdress_extra_types xdress_extra_types.pyx )
+cython_add_module( mypack_extra_types mypack_extra_types.pyx)
 cython_add_module( stlcontainers stlcontainers.pyx )
 cython_add_module( hoover hoover.pyx ../src/hoover.cpp )
 cython_add_module( hoover_b hoover_b.pyx ../src/hoover.cpp )
