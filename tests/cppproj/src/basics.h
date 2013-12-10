@@ -205,6 +205,8 @@ typedef struct ThreeNums
 
 double call_threenums_op_from_c(ThreeNums x); 
 
+bool operator<(ThreeNums x, ThreeNums y);
+
 // normal classes
 class Untemplated {
 public:
