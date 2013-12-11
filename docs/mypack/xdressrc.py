@@ -3,6 +3,8 @@ from xdress.utils import apiname
 package = 'mypack'     # top-level python package name
 packagedir = 'mypack'  # loation of the python package
 
+extra_types = 'mypack_extra_types'
+
 stlcontainers = [
     ('vector', 'str'),
     ('set', 'uint'),

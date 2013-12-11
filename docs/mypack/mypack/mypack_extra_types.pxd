@@ -18,7 +18,7 @@ ctypedef unsigned int uint32
 ctypedef unsigned long long uint64
 ctypedef long double float128
 
-cdef extern from "xdress_extra_types.h":
+cdef extern from "mypack_extra_types.h":
 
     ctypedef struct complex_t "xd_complex_t":
         double re
