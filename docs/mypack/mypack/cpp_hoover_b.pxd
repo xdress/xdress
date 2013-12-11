@@ -15,7 +15,7 @@ cdef extern from "hoover.h" namespace "hoover":
 
     cdef cppclass B(cpp_hoover.A):
         # constructors
-
+        B() except +
 
         # attributes
         int z

@@ -26,3 +26,10 @@ tests/cppproj/cppproj/*.pxd
 tests/cppproj/cppproj/*.pyx
 tests/cppproj/cppproj/cppproj_extra_types.h
 tests/cppproj/cppproj/tests/test_stlc.py
+
+# Doc build files to ignore
+docs/mypack/mypack/hoover.cpp
+docs/mypack/mypack/hoover_b.cpp
+docs/mypack/mypack/mypack_extra_types.cpp
+docs/mypack/mypack/mypack_extra_types.h
+docs/mypack/mypack/stlcontainers.cpp

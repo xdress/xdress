@@ -14,7 +14,8 @@ cdef extern from "hoover.h" namespace "hoover":
 
     cdef cppclass A:
         # constructors
-
+        A() except +
+        A(int) except +
 
         # attributes
         cpp_map[int, double] y

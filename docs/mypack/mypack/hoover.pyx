@@ -11,7 +11,6 @@
 cimport hoover
 cimport stlcontainers
 from libc.stdlib cimport free
-from libc.stdlib cimport malloc
 from libcpp.map cimport map as cpp_map
 from mypack cimport cpp_hoover
 
@@ -20,7 +19,7 @@ import stlcontainers
 
 
 cdef class A:
-    """no docstring for {'tarbase': 'hoover', 'tarname': 'A', 'language': 'c++', 'srcname': 'A', 'sidecars': (), 'incfiles': ('hoover.h',), 'srcfiles': ('src/hoover.h', 'src/hoover.cpp')}, please file a bug report!"""
+    """no docstring for {'sidecars': (), 'tarbase': 'hoover', 'tarname': 'A', 'language': 'c++', 'srcname': 'A', 'incfiles': ('hoover.h',), 'srcfiles': ('src/hoover.h', 'src/hoover.cpp')}, please file a bug report!"""
 
 
 
@@ -32,12 +31,10 @@ cdef class A:
         # cached property defaults
         self._y = None
 
-    def __init__(self, y=None, *args, **kwargs):
-        """__init__(self, y=None)
+    def __init__(self, x=5):
+        """A(self, x=5)
         """
-        self._inst = new cpp_hoover.A()
-        if y is not None:
-            self.y = y
+        self._inst = new cpp_hoover.A(<int> x)
     
     
     def __dealloc__(self):
