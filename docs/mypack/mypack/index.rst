@@ -14,5 +14,5 @@ mypack
     stlcontainers.pxd
     stlcontainers.pyx
     tests/index
-    xdress_extra_types.pxd
-    xdress_extra_types.pyx
+    mypack_extra_types.pxd
+    mypack_extra_types.pyx

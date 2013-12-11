@@ -20,6 +20,7 @@ xdress.base
 :sourcedir: Path to source directory (deprecated), *default:* NotSpecified.
 :ts: The xdress type system., *default:* xdress.typesystem.TypeSystem instance.
 :verbose: Print more output., *default:* False.
+:version: Print version information., *default:* False.
 
 
 
