@@ -223,9 +223,9 @@ def clang_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     options = clang.cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES
     tu = index.parse(filename, options=options,
                      args=  ['-x',language]
-                          + ['-I'+d for d in includes]
+                          + ['-I'+i for i in includes]
                           + ['-D'+d for d in defines]
-                          + ['-U'+d for u in undefines])
+                          + ['-U'+u for u in undefines])
     # Check for fatal errors
     failed = False
     for d in tu.diagnostics:
