@@ -14,6 +14,7 @@ from libcpp.string cimport string as std_string
 from libcpp.utility cimport pair
 from libcpp.map cimport map as cpp_map
 from libcpp.vector cimport vector as cpp_vector
+from cpython.version cimport PY_MAJOR_VERSION
 from cpython.ref cimport PyTypeObject
 from cpython.type cimport PyType_Ready
 from cpython.object cimport Py_LT, Py_LE, Py_EQ, Py_NE, Py_GT, Py_GE
@@ -26,9 +27,28 @@ import numpy as np
 
 np.import_array()
 
-cimport xdress_extra_types
+cimport mypack_extra_types
+
+# Cython Imports For Types
+cimport mypack_extra_types
+from libcpp.string cimport string as std_string
+
+# Imports For Types
+
 
 dtypes = {}
+
+if PY_MAJOR_VERSION >= 3:
+    basestring = str
+
+
+# Dirty ifdef, else, else preprocessor hack
+# see http://comments.gmane.org/gmane.comp.python.cython.user/4080
+cdef extern from *:
+    cdef void emit_ifpy2k "#if PY_MAJOR_VERSION == 2 //" ()
+    cdef void emit_ifpy3k "#if PY_MAJOR_VERSION == 3 //" ()
+    cdef void emit_else "#else //" ()
+    cdef void emit_endif "#endif //" ()
 
 # std_string dtype
 cdef MemoryKnight[std_string] mk_str = MemoryKnight[std_string]()
@@ -37,16 +57,16 @@ cdef MemoryKnight[PyXDStr_Type] mk_str_type = MemoryKnight[PyXDStr_Type]()
 cdef object pyxd_str_getitem(void * data, void * arr):
 
 
-    pyval = str(<char *> deref(<std_string *> data).c_str())
+    pyval = bytes(<char *> deref(<std_string *> data).c_str()).decode()
     return pyval
 
 cdef int pyxd_str_setitem(object value, void * data, void * arr):
     cdef std_string * new_data
-
+    cdef char * value_proxy
     if isinstance(value, basestring):
-
+        value_bytes = value.encode()
         new_data = mk_str.renew(data)
-        new_data[0] = std_string(<char *> value)
+        new_data[0] = std_string(<char *> value_bytes)
         return 0
     else:
         return -1
@@ -152,7 +172,7 @@ cdef object pyxd_str_type_str(object self):
     cdef PyXDStr_Type * cself = <PyXDStr_Type *> self
 
 
-    pyval = str(<char *> (cself.obval).c_str())
+    pyval = bytes(<char *> (cself.obval).c_str()).decode()
     s = str(pyval)
     return s
 
@@ -160,7 +180,7 @@ cdef object pyxd_str_type_repr(object self):
     cdef PyXDStr_Type * cself = <PyXDStr_Type *> self
 
 
-    pyval = str(<char *> (cself.obval).c_str())
+    pyval = bytes(<char *> (cself.obval).c_str()).decode()
     s = repr(pyval)
     return s
 
@@ -215,7 +235,7 @@ cdef long pyxd_str_type_hash(object self):
     return id(self)
 
 cdef PyMemberDef pyxd_str_type_members[1]
-pyxd_str_type_members[0] = PyMemberDef(NULL)
+pyxd_str_type_members[0] = PyMemberDef(NULL, 0, 0, 0, NULL)
 
 cdef PyGetSetDef pyxd_str_type_getset[1]
 pyxd_str_type_getset[0] = PyGetSetDef(NULL)
@@ -226,7 +246,7 @@ pyxd_str_is_ready = PyType_Ready(<object> PyXD_Str)
 (<PyTypeObject *> PyXD_Str).tp_basicsize = sizeof(PyXDStr_Type)
 (<PyTypeObject *> PyXD_Str).tp_itemsize = 0
 (<PyTypeObject *> PyXD_Str).tp_doc = "Python scalar type for std_string"
-(<PyTypeObject *> PyXD_Str).tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES
+(<PyTypeObject *> PyXD_Str).tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_CHECKTYPES | Py_TPFLAGS_HEAPTYPE
 (<PyTypeObject *> PyXD_Str).tp_alloc = pyxd_str_type_alloc
 (<PyTypeObject *> PyXD_Str).tp_dealloc = pyxd_str_type_dealloc
 (<PyTypeObject *> PyXD_Str).tp_new = pyxd_str_type_new
@@ -235,7 +255,9 @@ pyxd_str_is_ready = PyType_Ready(<object> PyXD_Str)
 (<PyTypeObject *> PyXD_Str).tp_repr = pyxd_str_type_repr
 (<PyTypeObject *> PyXD_Str).tp_base = (<PyTypeObject *> PyArray_API[10])  # PyGenericArrType_Type
 (<PyTypeObject *> PyXD_Str).tp_hash = pyxd_str_type_hash
-(<PyTypeObject *> PyXD_Str).tp_compare = pyxd_str_type_compare
+emit_ifpy2k()
+(<PyTypeObject *> PyXD_Str).tp_compare = &pyxd_str_type_compare
+emit_endif()
 (<PyTypeObject *> PyXD_Str).tp_richcompare = pyxd_str_type_richcompare
 (<PyTypeObject *> PyXD_Str).tp_members = pyxd_str_type_members
 (<PyTypeObject *> PyXD_Str).tp_getset = pyxd_str_type_getset
@@ -243,25 +265,26 @@ pyxd_str_is_ready = PyType_Ready(<object> PyXD_Str)
 Py_INCREF(PyXD_Str)
 XDStr = PyXD_Str
 
-cdef PyArray_Descr c_xd_str_descr = PyArray_Descr(
-    0, # ob_refcnt
-    (<PyTypeObject *> PyArray_API[3]), # ob_type == PyArrayDescr_Type
-    <PyTypeObject *> PyXD_Str, # typeobj
-    'x',  # kind, for xdress
-    'x',  # type
-    '=',  # byteorder
-    0,    # flags
-    0,    # type_num, assigned at registration
-    sizeof(std_string),  # elsize, 
-    8,  # alignment
-    NULL,  # subarray
-    <PyObject *> None,  # fields
-    &PyXD_Str_ArrFuncs,  # f == PyArray_ArrFuncs
-    )
-cdef object xd_str_descr = <object> (<void *> &c_xd_str_descr)
+cdef PyArray_Descr * c_xd_str_descr = <PyArray_Descr *> malloc(sizeof(PyArray_Descr))
+(<PyObject *> c_xd_str_descr).ob_refcnt = 0 # ob_refcnt
+(<PyObject *> c_xd_str_descr).ob_type = <PyTypeObject *> PyArray_API[3]
+c_xd_str_descr.typeobj = <PyTypeObject *> PyXD_Str # typeobj
+c_xd_str_descr.kind = 'x'  # kind, for xdress
+c_xd_str_descr.type = 'x'  # type
+c_xd_str_descr.byteorder = '='  # byteorder
+c_xd_str_descr.flags = 0    # flags
+c_xd_str_descr.type_num = 0    # type_num, assigned at registration
+c_xd_str_descr.elsize = sizeof(std_string)  # elsize, 
+c_xd_str_descr.alignment = 8  # alignment
+c_xd_str_descr.subarray = NULL  # subarray
+c_xd_str_descr.fields = NULL  # fields
+c_xd_str_descr.names = NULL
+(<PyArray_Descr *> c_xd_str_descr).f = <PyArray_ArrFuncs *> &PyXD_Str_ArrFuncs  # f == PyArray_ArrFuncs
+
+cdef object xd_str_descr = <object> (<void *> c_xd_str_descr)
 Py_INCREF(<object> xd_str_descr)
 xd_str = xd_str_descr
-cdef int xd_str_num = PyArray_RegisterDataType(&c_xd_str_descr)
+cdef int xd_str_num = PyArray_RegisterDataType(c_xd_str_descr)
 dtypes['str'] = xd_str
 dtypes['xd_str'] = xd_str
 dtypes[xd_str_num] = xd_str
@@ -270,12 +293,12 @@ dtypes[xd_str_num] = xd_str
 
 # SetUInt
 cdef class _SetIterUInt(object):
-    cdef void init(self, cpp_set[xdress_extra_types.uint] * set_ptr):
-        cdef cpp_set[xdress_extra_types.uint].iterator * itn = <cpp_set[xdress_extra_types.uint].iterator *> malloc(sizeof(set_ptr.begin()))
+    cdef void init(self, cpp_set[mypack_extra_types.uint32] * set_ptr):
+        cdef cpp_set[mypack_extra_types.uint32].iterator * itn = <cpp_set[mypack_extra_types.uint32].iterator *> malloc(sizeof(set_ptr.begin()))
         itn[0] = set_ptr.begin()
         self.iter_now = itn
 
-        cdef cpp_set[xdress_extra_types.uint].iterator * ite = <cpp_set[xdress_extra_types.uint].iterator *> malloc(sizeof(set_ptr.end()))
+        cdef cpp_set[mypack_extra_types.uint32].iterator * ite = <cpp_set[mypack_extra_types.uint32].iterator *> malloc(sizeof(set_ptr.end()))
         ite[0] = set_ptr.end()
         self.iter_end = ite
 
@@ -287,8 +310,8 @@ cdef class _SetIterUInt(object):
         return self
 
     def __next__(self):
-        cdef cpp_set[xdress_extra_types.uint].iterator inow = deref(self.iter_now)
-        cdef cpp_set[xdress_extra_types.uint].iterator iend = deref(self.iter_end)
+        cdef cpp_set[mypack_extra_types.uint32].iterator inow = deref(self.iter_now)
+        cdef cpp_set[mypack_extra_types.uint32].iterator iend = deref(self.iter_end)
 
         if inow != iend:
 
@@ -302,7 +325,7 @@ cdef class _SetIterUInt(object):
 
 cdef class _SetUInt:
     def __cinit__(self, new_set=True, bint free_set=True):
-        cdef xdress_extra_types.uint s
+        cdef mypack_extra_types.uint32 s
 
 
         # Decide how to init set, if at all
@@ -311,13 +334,13 @@ cdef class _SetUInt:
         elif hasattr(new_set, '__iter__') or \
                 (hasattr(new_set, '__len__') and
                 hasattr(new_set, '__getitem__')):
-            self.set_ptr = new cpp_set[xdress_extra_types.uint]()
+            self.set_ptr = new cpp_set[mypack_extra_types.uint32]()
             for value in new_set:
 
-                s = <xdress_extra_types.uint> long(value)
+                s = <mypack_extra_types.uint32> long(value)
                 self.set_ptr.insert(s)
         elif bool(new_set):
-            self.set_ptr = new cpp_set[xdress_extra_types.uint]()
+            self.set_ptr = new cpp_set[mypack_extra_types.uint32]()
 
         # Store free_set
         self._free_set = free_set
@@ -327,11 +350,11 @@ cdef class _SetUInt:
             del self.set_ptr
 
     def __contains__(self, value):
-        cdef xdress_extra_types.uint s
+        cdef mypack_extra_types.uint32 s
 
-        if isinstance(value, int) or isinstance(value, long):
+        if isinstance(value, int):
 
-            s = <xdress_extra_types.uint> long(value)
+            s = <mypack_extra_types.uint32> long(value)
         else:
             return False
 
@@ -348,20 +371,20 @@ cdef class _SetUInt:
         si.init(self.set_ptr)
         return si
 
-    def add(self, long value):
-        cdef xdress_extra_types.uint v
+    def add(self, value):
+        cdef mypack_extra_types.uint32 v
 
 
-        v = <xdress_extra_types.uint> long(value)
+        v = <mypack_extra_types.uint32> long(value)
         self.set_ptr.insert(v)
         return
 
     def discard(self, value):
-        cdef xdress_extra_types.uint v
+        cdef mypack_extra_types.uint32 v
 
         if value in self:
 
-            v = <xdress_extra_types.uint> long(value)
+            v = <mypack_extra_types.uint32> long(value)
             self.set_ptr.erase(v)
         return
 
@@ -455,7 +478,7 @@ cdef class _MapIntDouble:
     def __contains__(self, key):
         cdef int k
 
-        if not isinstance(key, int) and not isinstance(key, long):
+        if not isinstance(key, int):
             return False
 
         k = <int> key
@@ -478,7 +501,7 @@ cdef class _MapIntDouble:
         cdef double v
 
 
-        if not isinstance(key, int) and not isinstance(key, long):
+        if not isinstance(key, int):
             raise TypeError("Only integer keys are valid.")
 
         k = <int> key
@@ -497,6 +520,8 @@ cdef class _MapIntDouble:
 
 
         item = pair[int, double](<int> key, <double> value)
+        if 0 < self.map_ptr.count(<int> key):
+            self.map_ptr.erase(<int> key)
         self.map_ptr.insert(item)
 
     def __delitem__(self, key):

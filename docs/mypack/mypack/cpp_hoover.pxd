@@ -22,7 +22,9 @@ cdef extern from "hoover.h" namespace "hoover":
 
         # methods
 
+        pass
 
 
 
 
+{'cpppxd_footer': '', 'pyx_header': '', 'pxd_header': '', 'pxd_footer': '', 'cpppxd_header': '', 'pyx_footer': ''}

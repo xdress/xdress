@@ -382,7 +382,8 @@ def genpyx_map(t, u, ts):
     tisnotinst = ["not isinstance(key, {0})".format(x) for x in ts.from_pytypes[t]]
     kw['tisnotinst'] = " and ".join(tisnotinst)
     tc2pykeys = ['tc2pydecl', 'tc2pybody', 'tc2pyrtn']
-    tc2py = ts.cython_c2py("deref(inow).first", t, cached=False)
+    tc2py = ts.cython_c2py('inow_first', t, existing_name="deref(inow).first", 
+                           cached=False)
     kw.update([(k, indentstr(v or '')) for k, v in zip(tc2pykeys, tc2py)])
     uc2pykeys = ['uc2pydecl', 'uc2pybody', 'uc2pyrtn']
     uc2py = ts.cython_c2py("v", u, cached=False, 

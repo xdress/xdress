@@ -8,7 +8,7 @@ import numpy as np
 incdirs = [os.path.join(os.getcwd(), 'src'), np.get_include()]
 
 ext_modules = [
-    Extension("mypack.xdress_extra_types", ["mypack/xdress_extra_types.pyx"], 
+    Extension("mypack.mypack_extra_types", ["mypack/mypack_extra_types.pyx"], 
               include_dirs=incdirs, language="c++"),
     Extension("mypack.stlcontainers", ["mypack/stlcontainers.pyx"], 
               include_dirs=incdirs, language="c++"),

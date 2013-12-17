@@ -12,6 +12,7 @@ cython_add_module(cppproj_extra_types cppproj_extra_types.pyx)
 set_source_files_properties(${PROJECT_SOURCE_DIR}/cppproj/stlc.pyx
                             PROPERTIES CYTHON_IS_CXX TRUE)
 cython_add_module(stlc stlc.pyx)
+target_link_libraries(stlc cppproj_basics)
 
 # basics
 set_source_files_properties(${PROJECT_SOURCE_DIR}/cppproj/basics.pyx

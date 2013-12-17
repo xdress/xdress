@@ -22,14 +22,16 @@ cdef extern from "hoover.h" namespace "hoover":
 
         # methods
 
+        pass
 
 
 
 # function signatures
 cdef extern from "hoover.h" namespace "hoover":
 
-    void do_nothing_ab(cpp_hoover.A, cpp_hoover_b.B) except +
+    void do_nothing_ab(cpp_hoover.A, B) except +
 
 
 
 
+{'cpppxd_footer': '', 'pyx_header': '', 'pxd_header': '', 'pxd_footer': '', 'cpppxd_header': '', 'pyx_footer': ''}

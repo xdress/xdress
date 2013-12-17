@@ -30,6 +30,7 @@ stlcontainers = [
     ('map', 'uint', 'str'),
     ('map', 'uint', 'uint'),
     ('map', 'str', 'float'),
+    ('map', 'ThreeNums', 'float'),
     ('map', 'int', 'int'),
     ('map', 'int', 'bool'),
     ('map', 'int', 'char'),

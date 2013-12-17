@@ -38,3 +38,7 @@ int func4(int id) {
 double call_threenums_op_from_c(ThreeNums x) {
   return x.op(x.a, x.b, x.c);
 }
+
+bool operator<(ThreeNums x, ThreeNums y) {
+  return (x.a < y.a) && (x.b < y.b) && (x.c < y.c);
+};

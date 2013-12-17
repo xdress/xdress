@@ -6,4 +6,3 @@ src
 
     hoover.cpp
     hoover.h
-    xdress_extra_types.h
