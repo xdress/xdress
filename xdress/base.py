@@ -37,6 +37,7 @@ class XDressPlugin(Plugin):
         sourcedir=NotSpecified,
         builddir='build',
         bash_completion=True,
+        stlcontainers_module='stlcontainers',
         )
 
     # Sweet hack because ts.update() returns None
@@ -56,6 +57,8 @@ class XDressPlugin(Plugin):
         'builddir': "Path to build directory",
         'bash_completion': ("Flag for enabling / disabling BASH completion. "
                             "This is only relevant when using argcomplete."),
+        'stlcontainers_module': ("Module name for C++ standard library "
+                                 "container wrappers."),
         }
 
     def update_argparser(self, parser):
@@ -81,11 +84,16 @@ class XDressPlugin(Plugin):
                             help="enable bash completion", dest="bash_completion")
         parser.add_argument('--no-bash-completion', action='store_false',
                             help="disable bash completion", dest="bash_completion")
+        parser.add_argument('--stlcontainers-module', action='store',
+                dest='stlcontainers_module', help=self.rcdocs["stlcontainers_module"])
 
     def setup(self, rc):
         if rc.version:
             print(report_versions())
             sys.exit()
+
+        # This should be done ASAP after the ts is set
+        rc.ts.stlcontainers = rc.stlcontainers_module
 
         if rc.package is NotSpecified:
             msg = "no package name given; please add 'package' to {0}"
