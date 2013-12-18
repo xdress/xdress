@@ -5,8 +5,7 @@ package = 'cppproj'
 packagedir = 'cppproj'
 includes = ['src']
 
-plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen', 'xdress.stlwrap', 
-    )
+plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen', 'xdress.stlwrap', )
 
 extra_types = 'cppproj_extra_types'  # non-default value
 

@@ -1147,21 +1147,17 @@ class XDressPlugin(Plugin):
 
     defaultrc = RunControl(
         stlcontainers=[],
-        stlcontainers_module='stlcontainers',
+        #stlcontainers_module='stlcontainers',  # Moved to base plugin
         make_stlcontainers=True,
         )
 
     rcdocs = {
         "stlcontainers": "List of C++ standard library containers to wrap.",
-        "stlcontainers_module": ("Module name for C++ standard library "
-                                 "container wrappers."),
         "make_stlcontainers": ("Flag for enabling / disabling creating the "
                                "C++ standard library container wrappers."),
         }
 
     def update_argparser(self, parser):
-        parser.add_argument('--stlcontainers-module', action='store', 
-                dest='stlcontainers_module', help=self.rcdocs["stlcontainers_module"])
         parser.add_argument('--make-stlcontainers', action='store_true',
                     dest='make_stlcontainers', help="make C++ STL container wrappers")
         parser.add_argument('--no-make-stlcontainers', action='store_false',
@@ -1170,12 +1166,10 @@ class XDressPlugin(Plugin):
     def setup(self, rc):
         print("stlwrap: registering C++ standard library types")
         ts = rc.ts
-        ts.stlcontainers = rc.stlcontainers_module
         # register dtypes
         for t in rc.stlcontainers:
             if t[0] == 'vector':
                 ts.register_numpy_dtype(t[1])
-
 
     def execute(self, rc):
         if not rc.make_stlcontainers:
