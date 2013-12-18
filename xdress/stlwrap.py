@@ -180,7 +180,7 @@ def genpyx_set(t, ts):
     fpt = ts.from_pytypes[t]
     kw['isinst'] = " or ".join(["isinstance(value, {0})".format(x) for x in fpt])
     c2pykeys = ['c2pydecl', 'c2pybody', 'c2pyrtn']
-    c2py = ts.cython_c2py("deref(inow)", t, cached=False)
+    c2py = ts.cython_c2py('inow', t, existing_name="deref(inow)", cached=False)
     kw.update([(k, indentstr(v or '')) for k, v in zip(c2pykeys, c2py)])
     py2ckeys = ['py2cdecl', 'py2cbody', 'py2crtn']
     py2c = ts.cython_py2c("value", t)
@@ -219,6 +219,8 @@ def test_set_{fncname}():
 def gentest_set(t, ts):
     """Returns the test snippet for a set of type t."""
     t = ts.canon(t)
+    if t not in testvals:
+        return ""
     return _testset.format(*[repr(i) for i in testvals[t]], 
                            clsname=ts.cython_classname(t)[1],
                            fncname=ts.cython_functionname(t)[1],

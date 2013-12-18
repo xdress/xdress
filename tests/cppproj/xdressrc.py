@@ -23,6 +23,7 @@ stlcontainers = [
     ('set', 'str'),
     ('set', 'uint'),
     ('set', 'char'),
+    ('set', 'ThreeNums'),
     ('map', 'str', 'str'),
     ('map', 'str', 'int'),
     ('map', 'int', 'str'),
