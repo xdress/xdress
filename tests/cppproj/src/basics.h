@@ -48,6 +48,7 @@ typedef struct struct0 {
 class A {
  public:
   A() {};
+  A(int b) {};
   ~A() {};
   int a;
   virtual void call() {a=1;};
