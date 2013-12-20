@@ -2507,6 +2507,17 @@ class TypeSystem(object):
             del self._cache[meth.func.meth, args, tuple(sorted(kwargs.items()))]
 
     @contextmanager
+    def swap_dtypes(self, s):
+        """A context manager for temporarily swapping out the dtypes value
+        with a new value and replacing the original value before exiting."""
+        old = self.dtypes
+        self.dtypes = s
+        self.clearmemo()
+        yield
+        self.clearmemo()
+        self.dtypes = old
+
+    @contextmanager
     def swap_stlcontainers(self, s):
         """A context manager for temporarily swapping out the stlcontainer value
         with a new value and replacing the original value before exiting."""

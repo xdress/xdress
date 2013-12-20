@@ -20,6 +20,16 @@ from .typesystem import TypeSystem
 if sys.version_info[0] >= 3: 
     basestring = str
 
+testvals = {
+    'char': ["m", "e", "t", "l"],
+    'str': ["Aha", "Take", "Me", "On"],
+    'int32': [1, 42, -65, 18],
+    'bool': [True, False, False, True],
+    'uint32': [1, 65, 4294967295, 42],
+    'float32': [1.0, 42.42, -65.5555, 18],
+    'float64': [1.0, 42.42, -65.5555, 18],
+    'complex128': [1.0, 42+42j, -65.55-1j, 0.18j],
+    }
 
 _pyxdtype = """# {ctype} dtype
 cdef MemoryKnight[{ctype}] mk_{fncname} = MemoryKnight[{ctype}]()
@@ -268,7 +278,7 @@ def genpyx_dtype(t, ts):
     kw = dict(clsname=ts.cython_classname(t)[1], humname=ts.humanname(t)[1], 
               fncname=ts.cython_functionname(t)[1], 
               ctype=ts.cython_ctype(t), pytype=ts.cython_pytype(t), 
-              cytype=ts.cython_cytype(t), stlcontainers=ts.stlcontainers, 
+              cytype=ts.cython_cytype(t), dtypes=ts.dtypes, 
               extra_types=ts.extra_types)
     t0 = t
     while not isinstance(t0, basestring):
@@ -312,16 +322,16 @@ def genpxd_dtype(t, ts):
 
 _testdtype = """# dtype{clsname}
 def test_dtype_{fncname}():
-    a = np.array({0}, dtype={stlcontainers}.xd_{fncname})
-    #for x, y in zip(a, np.array({0}, dtype={stlcontainers}.xd_{fncname})):
+    a = np.array({0}, dtype={dtypes}.xd_{fncname})
+    #for x, y in zip(a, np.array({0}, dtype={dtypes}.xd_{fncname})):
     #    assert_equal(x, y)
     a[:] = {1}
-    #for x, y in zip(a, np.array({1}, dtype={stlcontainers}.xd_{fncname})):
+    #for x, y in zip(a, np.array({1}, dtype={dtypes}.xd_{fncname})):
     #    assert_equal(x, y)
-    a = np.array({2} + {3}, dtype={stlcontainers}.xd_{fncname})
-    #for x, y in zip(a, np.array({2} + {3}, dtype={stlcontainers}.xd_{fncname})):
+    a = np.array({2} + {3}, dtype={dtypes}.xd_{fncname})
+    #for x, y in zip(a, np.array({2} + {3}, dtype={dtypes}.xd_{fncname})):
     #    assert_equal(x, y)
-    b =  np.array(({2} + {3})[::2], dtype={stlcontainers}.xd_{fncname})
+    b =  np.array(({2} + {3})[::2], dtype={dtypes}.xd_{fncname})
     #for x, y in zip(a[::2], b):
     #    assert_equal(x, y)
     a[:2] = b[-2:]
@@ -331,15 +341,14 @@ def test_dtype_{fncname}():
 def gentest_dtype(t, ts):
     """Returns the test snippet for a set of type t."""
     t = ts.canon(t)
-    if ('dtype', t, 0) in testvals:
-        s = _testdtype.format(*[repr(i) for i in testvals['dtype', t, 0]], 
+    if t in testvals:
+        s = _testdtype.format(*[repr(i) for i in testvals[t]], 
                                clsname=ts.cython_classname(t)[1],
                                fncname=ts.cython_functionname(t)[1],
-                               stlcontainers=ts.stlcontainers)
+                               dtypes=ts.dtypes)
     else:
         s = ""
     return s
-
 
 
 #
@@ -372,22 +381,20 @@ import collections
 
 cimport numpy as np
 import numpy as np
-
 np.import_array()
 
 cimport {extra_types}
 
-# Cython Imports For Types
+# Cython imports for types
 {cimports}
 
-# Imports For Types
+# imports for types
 {imports}
 
 dtypes = {{}}
 
 if PY_MAJOR_VERSION >= 3:
     basestring = str
-
 
 # Dirty ifdef, else, else preprocessor hack
 # see http://comments.gmane.org/gmane.comp.python.cython.user/4080
@@ -398,13 +405,13 @@ cdef extern from *:
     cdef void emit_endif "#endif //" ()
 
 """
-def genpyx(template, header=None, ts=None):
+def genpyx(types, header=None, ts=None):
     ts = ts or TypeSystem()
-    """Returns a string of a pyx file representing the given template."""
+    """Returns a string of a pyx file representing the given types."""
     pyxfuncs = dict([(k[7:], v) for k, v in globals().items() \
                     if k.startswith('genpyx_') and callable(v)])
     pyx = _pyxheader if header is None else header
-    with ts.swap_stlcontainers(None):
+    with ts.swap_dtypes(None):
         import_tups = set()
         cimport_tups = set()
         for t in template:
@@ -415,8 +422,8 @@ def genpyx(template, header=None, ts=None):
         cimports = "\n".join(ts.cython_cimport_lines(cimport_tups))
         pyx = pyx.format(extra_types=ts.extra_types, cimports=cimports, 
                          imports=imports)
-        for t in template:
-            pyx += pyxfuncs[t[0]](*t[1:], ts=ts) + "\n\n" 
+        for t in types:
+            pyx += genpyx_dtype(t, ts=ts) + "\n\n" 
     return pyx
 
 
@@ -435,16 +442,13 @@ from cpython.type cimport PyType_Ready
 from cpython.object cimport PyObject
 from cpython.object cimport Py_LT, Py_LE, Py_EQ, Py_NE, Py_GT, Py_GE
 
-# Python Imports
+# Python imports
 cimport numpy as np
 
 # Local imports
 cimport {extra_types}
 
-cimport numpy as np
-
-
-# Cython Imports For Types
+# Cython imports for types
 {cimports}
 
 cdef extern from "Python.h":
@@ -566,21 +570,18 @@ cdef extern from "{extra_types}.h" namespace "{extra_types}":
         void deall(T *) nogil except +
 
 """
-def genpxd(template, header=None, ts=None):
-    """Returns a string of a pxd file representing the given template."""
+def genpxd(types, header=None, ts=None):
+    """Returns a string of a pxd file representing the given dtypes."""
     ts = ts or TypeSystem()
-    pxdfuncs = dict([(k[7:], v) for k, v in globals().items() \
-                    if k.startswith('genpxd_') and callable(v)])
     pxd = _pxdheader if header is None else header
-    with ts.swap_stlcontainers(None):
+    with ts.swap_dtypes(None):
         cimport_tups = set()
-        for t in template:
-            for arg in t[1:]:
-                ts.cython_cimport_tuples(arg, cimport_tups, set(['c']))
+        for t in types:
+            ts.cython_cimport_tuples(t, cimport_tups, set(['c']))
         cimports = "\n".join(ts.cython_cimport_lines(cimport_tups))
         pxd = pxd.format(extra_types=ts.extra_types, cimports=cimports)
-    for t in template:
-        pxd += pxdfuncs[t[0]](*t[1:], ts=ts) + "\n\n" 
+    for t in types:
+        pxd += genpxd_dtype(t, ts=ts) + "\n\n" 
     return pxd
 
 
@@ -610,14 +611,12 @@ _testfooter = '''if __name__ == '__main__':
 '''
 
 def gentest(types, header=None, package='..', ts=None):
-    """Returns a string of a test file representing the given template."""
+    """Returns a string of a test file representing the given types."""
     ts = ts or TypeSystem()
-    testfuncs = dict([(k[8:], v) for k, v in globals().items() \
-                    if k.startswith('gentest_') and callable(v)])
     test = _testheader if header is None else header
-    test = test.format(dtypes=ts.stlcontainers, package=package)
+    test = test.format(dtypes=ts.dtypes, package=package)
     for t in types:
-        test += testfuncs[t[0]](*t[1:], ts=ts) + "\n\n" 
+        test += gentest_dtype(t, ts=ts) + "\n\n" 
     test += _testfooter
     return test
 
