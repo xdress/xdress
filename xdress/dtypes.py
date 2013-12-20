@@ -31,6 +31,9 @@ testvals = {
     'complex128': [1.0, 42+42j, -65.55-1j, 0.18j],
     }
 
+for t, tval in list(testvals.items()):
+    testvals[t] = [tval, tval[::-1], tval[::2]*2, tval[1::2]*2]
+
 _pyxdtype = """# {ctype} dtype
 cdef MemoryKnight[{ctype}] mk_{fncname} = MemoryKnight[{ctype}]()
 cdef MemoryKnight[PyXD{clsname}_Type] mk_{fncname}_type = MemoryKnight[PyXD{clsname}_Type]()
