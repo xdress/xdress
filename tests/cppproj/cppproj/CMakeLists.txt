@@ -9,6 +9,11 @@ set_source_files_properties(${PROJECT_SOURCE_DIR}/cppproj/cppproj_extra_types.py
                             PROPERTIES CYTHON_IS_CXX TRUE)
 cython_add_module(cppproj_extra_types cppproj_extra_types.pyx)
 
+set_source_files_properties(${PROJECT_SOURCE_DIR}/cppproj/dt.pyx
+                            PROPERTIES CYTHON_IS_CXX TRUE)
+cython_add_module(dt dt.pyx)
+target_link_libraries(dt cppproj_basics)
+
 set_source_files_properties(${PROJECT_SOURCE_DIR}/cppproj/stlc.pyx
                             PROPERTIES CYTHON_IS_CXX TRUE)
 cython_add_module(stlc stlc.pyx)

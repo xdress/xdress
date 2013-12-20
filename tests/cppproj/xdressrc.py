@@ -5,12 +5,17 @@ package = 'cppproj'
 packagedir = 'cppproj'
 includes = ['src']
 
-plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen', 'xdress.stlwrap', )
+plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen', 
+           'xdress.stlwrap', )
 
 extra_types = 'cppproj_extra_types'  # non-default value
 
+dtypes = [
+    'float32',
+    ]
+
 stlcontainers = [
-    ('vector', 'float32'),
+    #('vector', 'float32'),
     ('vector', 'float64'),
     ('vector', 'str'),
     ('vector', 'int32'),
@@ -56,6 +61,7 @@ stlcontainers = [
     ('map', 'int', ('map', 'int', ('vector', 'float'))),
     ]
 
+dtypes_module = 'dt'
 stlcontainers_module = 'stlc'
 
 _fromsrcdir = lambda x: os.path.join('src', x)

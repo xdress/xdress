@@ -529,7 +529,7 @@ def gentest_vector(t, ts):
     t = ts.canon(t)
     if ('vector', t, 0) in testvals:
         s = _testvector.format(*[repr(i) for i in testvals['vector', t, 0]], 
-                               clsname=ts.cython_classname(t)[1],)
+                               clsname=ts.cython_classname(t)[1])
     else:
         s = ""
     return s
@@ -724,7 +724,7 @@ def genfiles(template, fname='temp', pxdname=None, testname=None,
 class XDressPlugin(Plugin):
     """This class provides extra type functionality for xdress."""
 
-    requires = ('xdress.base', 'xdress.extratypes')
+    requires = ('xdress.base', 'xdress.extratypes', 'xdress.dtypes')
 
     defaultrc = RunControl(
         stlcontainers=[],

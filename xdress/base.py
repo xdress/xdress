@@ -37,6 +37,7 @@ class XDressPlugin(Plugin):
         sourcedir=NotSpecified,
         builddir='build',
         bash_completion=True,
+        dtypes_module='dtypes',
         stlcontainers_module='stlcontainers',
         )
 

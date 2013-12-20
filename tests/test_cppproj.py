@@ -39,6 +39,7 @@ GENERATED_PATHS = [
     [PROJDIR, PROJNAME, 'stlc.pxd'],
     [PROJDIR, PROJNAME, 'stlc.pyx'],
     [PROJDIR, PROJNAME, 'cppproj_extra_types.h'],
+    [TESTDIR, 'test_dt.py'],
     [TESTDIR, 'test_stlc.py'],
     [INSTDIR],
     ]
