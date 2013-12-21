@@ -289,8 +289,20 @@ def genpyx_dtype(t, ts):
     fpt = ts.from_pytypes[t0]
     kw['isinst'] = " or ".join(["isinstance(value, {0})".format(x) for x in fpt])
     c2pykeys = ['c2pydecl', 'c2pybody', 'c2pyrtn']
-    c2py = ts.cython_c2py("deref(<{0} *> data)".format(kw['ctype']), t, cached=False,
+    #c2py = ts.cython_c2py("deref(<{0} *> data)".format(kw['ctype']), t, cached=False,
+    #                      proxy_name="data_proxy")
+    c2py = ts.cython_c2py("(<{0} *> data)[0]".format(kw['ctype']), t, cached=False,
                           proxy_name="data_proxy")
+    #print(t)
+    #try:
+    #    if isinstance(t, basestring) or t[-1] != 0:
+    #        tptr = (t, '*') 
+    #    else:
+    #        tptr = t[:-1] + ('*',)
+    #    c2py = ts.cython_c2py("<{0} *> data".format(kw['ctype']), tptr, cached=False,
+    #                      proxy_name="data_proxy")
+    #except TypeError as e:
+    #    import pdb; pdb.set_trace()
     kw.update([(k, indentstr(v or '')) for k, v in zip(c2pykeys, c2py)])
     cself2pykeys = ['cself2pydecl', 'cself2pybody', 'cself2pyrtn']
     cself2py = ts.cython_c2py("(cself.obval)", t, cached=False, proxy_name="val_proxy")

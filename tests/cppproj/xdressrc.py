@@ -11,6 +11,7 @@ plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen',
 extra_types = 'cppproj_extra_types'  # non-default value
 
 dtypes = [
+    ('set', 'int'),
     'float32',
     ('vector', 'int32'),
     'ThreeNums',

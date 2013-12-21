@@ -927,6 +927,14 @@ class TypeSystem(object):
                     '    {proxy_name}.set_ptr = &{var}\n'
                     '    {cache_name} = {proxy_name}\n'
                     )),
+            TypeMatcher(('set', MatchAny, '*')): ('{t.cython_pytype}(deref({var}))',
+                   ('{proxy_name} = {t.cython_pytype}(False, False)\n'
+                    '{proxy_name}.set_ptr = {var}\n'),
+                   ('if {cache_name} is None:\n'
+                    '    {proxy_name} = {t.cython_pytype}(False, False)\n'
+                    '    {proxy_name}.set_ptr = {var}\n'
+                    '    {cache_name} = {proxy_name}\n'
+                    )),
             'vector': (
                 ('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
                  '{proxy_name} = np.PyArray_SimpleNewFromData(1, {var}_shape, {t.cython_nptypes[0]}, &{var}[0])\n'
