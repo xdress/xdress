@@ -12,17 +12,16 @@ extra_types = 'cppproj_extra_types'  # non-default value
 
 dtypes = [
     'float32',
+    ('vector', 'int32'),
+    'ThreeNums',
     ]
 
 stlcontainers = [
-    #('vector', 'float32'),
     ('vector', 'float64'),
     ('vector', 'str'),
     ('vector', 'int32'),
     ('vector', 'complex'),
-    ('vector', ('vector', 'int32')),
     ('vector', ('vector', 'float64')),
-    ('vector', 'ThreeNums'),
     ('set', 'int'),
     ('set', 'str'),
     ('set', 'uint'),
