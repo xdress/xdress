@@ -87,11 +87,18 @@ cdef class _SetIter{clsname}(object):
 cdef class _Set{clsname}:
     def __cinit__(self, new_set=True, bint free_set=True):
         cdef {ctype} s
+        cdef cpp_set[{ctype}] * set_ptr
 {py2cdecl.indent8}
 
         # Decide how to init set, if at all
         if isinstance(new_set, _Set{clsname}):
             self.set_ptr = (<_Set{clsname}> new_set).set_ptr
+        elif np.isscalar(new_set) and np.PyArray_DescrFromScalar(new_set).type_num == {set_cython_nptype}:
+            # scalars are copies, sadly not views, so we need to re-copy
+            if self.set_ptr == NULL:
+                self.set_ptr = new cpp_set[{ctype}]()
+            np.PyArray_ScalarAsCtype(new_set, &set_ptr)
+            self.set_ptr[0] = set_ptr[0]
         elif hasattr(new_set, '__iter__') or \\
                 (hasattr(new_set, '__len__') and
                 hasattr(new_set, '__getitem__')):
@@ -185,6 +192,7 @@ def genpyx_set(t, ts):
     py2ckeys = ['py2cdecl', 'py2cbody', 'py2crtn']
     py2c = ts.cython_py2c("value", t)
     kw.update([(k, indentstr(v or '')) for k, v in zip(py2ckeys, py2c)])
+    kw['set_cython_nptype'] = ts.cython_nptype(('set', t, 0))
     return _pyxset.format(**kw)
 
 _pxdset = """# Set{clsname}

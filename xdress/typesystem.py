@@ -546,7 +546,7 @@ class TypeSystem(object):
             'complex128': ['complex', 'float'],
             'file': ['file'],
             ('file', '*'): ['file'],
-            'set': ['set', 'list', 'basestring', 'tuple'],
+            'set': ['collections.Set', 'set', 'list', 'basestring', 'tuple'],
             'vector': ['list', 'tuple', 'np.ndarray'],
             }
 
@@ -748,7 +748,7 @@ class TypeSystem(object):
             'map': (('{stlcontainers}',),),
             'dict': (None,),
             'pair': (('{stlcontainers}',),),
-            'set': (('{stlcontainers}',),),
+            'set': (('{stlcontainers}',), ('collections',)),
             'vector': (('numpy', 'as', 'np'),),
             'nucid': (('pyne', 'nucname'),),
             'nucname': (('pyne', 'nucname'),),

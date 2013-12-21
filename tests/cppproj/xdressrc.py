@@ -59,6 +59,7 @@ stlcontainers = [
     ('map', 'int', ('map', 'int', ('vector', 'bool'))),
     ('map', 'int', ('map', 'int', ('vector', 'char'))),
     ('map', 'int', ('map', 'int', ('vector', 'float'))),
+    ('map', 'int', ('vector', ('set', 'int'))),
     ]
 
 dtypes_module = 'dt'
