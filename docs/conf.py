@@ -234,6 +234,7 @@ rcdocs += summarize_rcdocs([
     'xdress.descfilter',
     'xdress.doxygen',
     'xdress.extratypes',
+    'xdress.dtypes',
     'xdress.stlwrap',
     ])
 newoverwrite(rcdocs, 'rcdocs.rst')
