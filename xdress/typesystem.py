@@ -2212,7 +2212,7 @@ class TypeSystem(object):
         self.clearmemo()
 
     def register_classname(self, classname, package, pxd_base, cpppxd_base, 
-                           cpp_classname=None):
+                           cpp_classname=None, make_dtypes=True):
         """Registers a class with the type system from only its name, 
         and relevant header file information.
 
@@ -2227,6 +2227,9 @@ class TypeSystem(object):
             Base name of the cpppxd file to cimport.
         cpp_classname : str or tuple, optional
             Name of class in C++, equiv. to apiname.srcname. Defaults to classname.
+        make_dtypes : bool, optional
+            Flag for registering dtypes for this class simeltaneously with 
+            registering the class itself.
         """
         # target classname
         baseclassname = classname
@@ -2305,11 +2308,12 @@ class TypeSystem(object):
             kwclassspec['name'] = self.canon(cpp_classname)
             self.register_class(**kwclassspec)
         # register numpy type
-        self.register_numpy_dtype(classname,
-            cython_cimport=class_cimport,
-            cython_cyimport=pxd_base,
-            cython_pyimport=pxd_base,
-            )
+        if make_dtypes:
+            self.register_numpy_dtype(classname,
+                cython_cimport=class_cimport,
+                cython_cyimport=pxd_base,
+                cython_pyimport=pxd_base,
+                )
         # register vector
         class_vector_py2c = ((
             '# {var} is a {t.type}\n'
