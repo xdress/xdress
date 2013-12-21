@@ -11,21 +11,21 @@ import os
 import numpy  as np
 
 from cppproj import dt
-
-
+from cppproj import stlc
 
 
 # dtype set<int>
 def test_dtype_set_int():
     a = np.array([set([1, 42, -65, 18])], dtype=dt.xd_set_int)
-    #a[:] = [18, -65, 42, 1]
-    #a = np.array([1, -65, 1, -65] + [42, 18, 42, 18], dtype=dt.xd_int)
-    #b =  np.array(([1, -65, 1, -65] + [42, 18, 42, 18])[::2], dtype=dt.xd_int)
-    #a[:2] = b[-2:]
-    print(a)
-    print(a[0])
-    print(type(a[0]))
-    assert False
+    a[:] = set([1818, -6565, 4242, 11])
+    a = np.array([set([1, -65]), set([42, 18])], dtype=dt.xd_set_int)
+    b = np.array([set([1, -65]), set([42, 18])], dtype=dt.xd_set_int)
+    a[:2] = b[-2:]
+
+    x = np.array([set([16, 42])], dtype=dt.xd_set_int)
+    s = stlc.SetInt(x[0])
+    s.add(10)
+    x[0] = s
 
 
 if __name__ == '__main__':
