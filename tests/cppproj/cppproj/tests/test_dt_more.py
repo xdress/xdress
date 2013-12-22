@@ -27,6 +27,12 @@ def test_dtype_set_int():
     s.add(10)
     x[0] = s
 
+# dtype map<str, int>
+def test_dtype_map_str_int():
+    x = np.array([{"hello": 42}], dtype=dt.xd_map_str_int)
+    m = stlc.MapStrInt(x[0])
+    m['world'] = 10 
+    x[0] = m
 
 if __name__ == '__main__':
     nose.run()

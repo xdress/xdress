@@ -93,7 +93,7 @@ cdef class _Set{clsname}:
         # Decide how to init set, if at all
         if isinstance(new_set, _Set{clsname}):
             self.set_ptr = (<_Set{clsname}> new_set).set_ptr
-        elif np.isscalar(new_set) and np.PyArray_DescrFromScalar(new_set).type_num == {set_cython_nptype}:
+        elif isinstance(new_set, np.generic) and np.PyArray_DescrFromScalar(new_set).type_num == {set_cython_nptype}:
             # scalars are copies, sadly not views, so we need to re-copy
             if self.set_ptr == NULL:
                 self.set_ptr = new cpp_set[{ctype}]()
@@ -271,12 +271,19 @@ cdef class _MapIter{tclsname}{uclsname}(object):
 cdef class _Map{tclsname}{uclsname}:
     def __cinit__(self, new_map=True, bint free_map=True):
         cdef pair[{tctype}, {uctype}] item
+        cdef cpp_map[{tctype}, {uctype}] * map_ptr
 {tpy2cdecl.indent8}
 {upy2cdecl.indent8}
 
         # Decide how to init map, if at all
         if isinstance(new_map, _Map{tclsname}{uclsname}):
             self.map_ptr = (<_Map{tclsname}{uclsname}> new_map).map_ptr
+        elif isinstance(new_map, np.generic) and np.PyArray_DescrFromScalar(new_map).type_num == {map_cython_nptype}:
+            # scalars are copies, sadly not views, so we need to re-copy
+            if self.map_ptr == NULL:
+                self.map_ptr = new cpp_map[{tctype}, {uctype}]()
+            np.PyArray_ScalarAsCtype(new_map, &map_ptr)
+            self.map_ptr[0] = map_ptr[0]
         elif hasattr(new_map, 'items'):
             self.map_ptr = new cpp_map[{tctype}, {uctype}]()
             for key, value in new_map.items():
@@ -405,6 +412,7 @@ def genpyx_map(t, u, ts):
     upy2ckeys = ['upy2cdecl', 'upy2cbody', 'upy2crtn']
     upy2c = ts.cython_py2c("value", u)
     kw.update([(k, indentstr(v or '')) for k, v in zip(upy2ckeys, upy2c)])
+    kw['map_cython_nptype'] = ts.cython_nptype(('map', t, u, 0))
     return _pyxmap.format(**kw)
 
 
