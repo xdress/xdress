@@ -223,9 +223,9 @@ class XDressPlugin(Plugin):
             for mod_key, mod in rc.env.items():
                 for kls_key, desc in mod.items():
                     if isclassdesc(desc):
-                        if desc['name'] in skip_classes:
+                        if desc['name']['tarname'] in skip_classes:
                             # Pull out skiptypes
-                            skips = rc.skips[desc['name']]
+                            skips = rc.skips[desc['name']['tarname']]
                             # let modify_desc remove unwanted methods
                             modify_desc(skips, desc)
         elif isinstance(rc.skiptypes, collections.Sequence):
@@ -243,7 +243,7 @@ class XDressPlugin(Plugin):
         for m_key, mod in rc.env.items():
             for k_key, kls_desc in mod.items():
                 if isclassdesc(kls_desc):
-                    if kls_desc['name'] in skip_classes:
+                    if kls_desc['name']['tarname'] in skip_classes:
                         skippers = rc.skipmethods[k_key]
                         m_nms = rc.env[m_key][k_key]['methods'].keys()
                         for m in skippers:
@@ -267,7 +267,7 @@ class XDressPlugin(Plugin):
         for m_key, mod in rc.env.items():
             for k_key, kls_desc in mod.items():
                 if isclassdesc(kls_desc):
-                    if kls_desc['name'] in inc_classes:
+                    if kls_desc['name']['tarname'] in inc_classes:
                         keeps = set(rc.includemethods[k_key])
                         m_nms = rc.env[m_key][k_key]['methods'].keys()
                         m_keep = filter(lambda x: x[0] in keeps, m_nms)
