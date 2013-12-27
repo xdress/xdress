@@ -93,6 +93,12 @@ class TClass0 {
   template <class U> int whatstheanswer(U u){return 42;};
 };
 
+
+template <class T> class TClass2 : public TClass0<T> {
+  public:
+    T bob;
+};
+
 template <class T>
 class TClass1 {
  public:
@@ -192,6 +198,8 @@ std::vector<float> vf;
 std::vector< std::vector<float> > vvf;
 TClass0<float> smeflts;
 TClass1<float> spflts;
+TClass0<float> smeflts0;
+TClass2<float> spflts2;
 
 }; // namespace cppproj
 

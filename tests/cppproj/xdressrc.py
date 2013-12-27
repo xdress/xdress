@@ -119,6 +119,8 @@ classes = [
     apiname('Untemplated', **_inbasics), 
     apiname('ThreeNums', tarbase='pybasics', **_inbasics),
     apiname('*', **_indiscovery),
+    apiname(('TClass0', 'float32'), **_inbasics), 
+    apiname(('TClass2', 'float32'), **_inbasics), 
     ]
 
 del os

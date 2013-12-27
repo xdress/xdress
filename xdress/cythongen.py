@@ -95,6 +95,8 @@ def cpppxd_sorted_names(mod, ts):
     for name in clssort:
         desc = mod[name]
         othercls[name] = set()
+        for pitem in desc['parents']:
+            _addotherclsnames(pitem, classes, name, othercls, ts)
         for aname, atype in desc['attrs'].items():
             _addotherclsnames(atype, classes, name, othercls, ts)
         for mkey, mtype in desc['methods'].items():
@@ -318,7 +320,7 @@ def funccpppxd(desc, exceptions=True, ts=None):
 _cpppxd_class_template = \
 """cdef extern from "{header_filename}" {namespace}:
 
-    cdef {construct_kind} {name}{parents}{alias}:
+    cdef {construct_kind} {name}{alias}{parents}:
         # constructors
 {constructors_block}
 
