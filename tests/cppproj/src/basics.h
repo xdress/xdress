@@ -48,6 +48,7 @@ typedef struct struct0 {
 class A {
  public:
   A() {};
+  A(int b) {};
   ~A() {};
   int a;
   virtual void call() {a=1;};
@@ -90,6 +91,12 @@ class TClass0 {
   // Takes life, the universe, and everything and returns 42
   // Templated functions on templated classes are not supported by GCC-XML
   template <class U> int whatstheanswer(U u){return 42;};
+};
+
+
+template <class T> class TClass2 : public TClass0<T> {
+  public:
+    T bob;
 };
 
 template <class T>
@@ -191,6 +198,8 @@ std::vector<float> vf;
 std::vector< std::vector<float> > vvf;
 TClass0<float> smeflts;
 TClass1<float> spflts;
+TClass0<float> smeflts0;
+TClass2<float> spflts2;
 
 }; // namespace cppproj
 

@@ -2038,6 +2038,8 @@ class XDressPlugin(astparsers.ParserPlugin):
             if not isinstance(cls.tarname, basestring) and cls.tarname[-1] is not 0:
                 # ensure the predicate is a scalar for template specializations
                 rc.classes[i] = cls = cls._replace(tarname=tuple(cls.tarname) + (0,))
+        if 'make_dtypes' not in rc:
+            rc.make_dtypes = False
         self.register_classes(rc)
 
     def execute(self, rc):
@@ -2060,10 +2062,11 @@ class XDressPlugin(astparsers.ParserPlugin):
             print("autodescribe: registering {0}".format(cls.srcname))
             fnames = extra_filenames(cls)
             ts.register_classname(cls.srcname, rc.package, fnames['pxd_base'], 
-                                  fnames['cpppxd_base'])
+                                  fnames['cpppxd_base'], make_dtypes=rc.make_dtypes)
             if cls.srcname != cls.tarname:
                 ts.register_classname(cls.tarname, rc.package, fnames['pxd_base'],
-                                      fnames['cpppxd_base'], cpp_classname=cls.srcname)
+                                      fnames['cpppxd_base'], cpp_classname=cls.srcname,
+                                      make_dtypes=rc.make_dtypes)
 
     def load_pysrcmod(self, sidecar, rc):
         """Loads a module dictionary from a sidecar file into the pysrcenv cache."""

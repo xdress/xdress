@@ -1,9 +1,9 @@
-.. _xdress_extratypes:
+.. _xdress_dtypes:
 
-******************
-Extra Types Plugin
-******************
+*******************
+NumPy DTypes Plugin
+*******************
 
-.. automodule:: xdress.extratypes
+.. automodule:: xdress.dtypes
     :members:
 

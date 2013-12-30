@@ -6,7 +6,7 @@ easy to understand -- given class descriptions they generate strings of Cython
 code -- their implementations do a lot of heavy lifting.
 
 This module is available as an xdress plugin by the name ``xdress.cythongen``.
-Note that while the module does not rely on the autodescriber the plugin does.
+Note that while the module does not rely on the autodescriber, the plugin does.
 
 :author: Anthony Scopatz <scopatz@gmail.com>
 
@@ -95,6 +95,8 @@ def cpppxd_sorted_names(mod, ts):
     for name in clssort:
         desc = mod[name]
         othercls[name] = set()
+        for pitem in desc['parents']:
+            _addotherclsnames(pitem, classes, name, othercls, ts)
         for aname, atype in desc['attrs'].items():
             _addotherclsnames(atype, classes, name, othercls, ts)
         for mkey, mtype in desc['methods'].items():
@@ -318,7 +320,7 @@ def funccpppxd(desc, exceptions=True, ts=None):
 _cpppxd_class_template = \
 """cdef extern from "{header_filename}" {namespace}:
 
-    cdef {construct_kind} {name}{parents}{alias}:
+    cdef {construct_kind} {name}{alias}{parents}:
         # constructors
 {constructors_block}
 
@@ -432,8 +434,11 @@ def classcpppxd(desc, exceptions=True, ts=None):
 
     d['extra'] = desc.get('extra', {}).get('cpppxd', '')
     cpppxd = _cpppxd_class_template.format(**d)
+
+    extra = desc['extra']
     if 'srcpxd_filename' not in desc:
-        desc['srcpxd_filename'] = 'cpp_{0}.pxd'.format(d['name'].lower())
+        desc['srcpxd_filename'] = extra['srcpxd_filename']
+
     return cimport_tups, cpppxd
 
 
@@ -581,7 +586,7 @@ def classpxd(desc, classes=(), ts=None, max_callbacks=8):
     pars = ', '.join([ts.cython_cytype(p) for p in desc['parents']])
     d = {'parents': '('+pars+')' if pars else ''}
     name = desc['name']['tarname']
-    d['name'] = name if isinstance(name, basestring) else ts.cython_classname(name)[1]
+    d['name'] = ts.cython_classname(name)[1]
     max_callbacks = desc.get('extra', {}).get('max_callbacks', max_callbacks)
     mczeropad = int(math.log10(max_callbacks)) + 1
 
@@ -624,7 +629,7 @@ def classpxd(desc, classes=(), ts=None, max_callbacks=8):
             fplines.append("cdef unsigned int _current_{0}_vtab_i".format(apyname))
 
     if len(fplines) > 0:
-        fplines.append("cdef unsigned int _MAX_CALLBACKS_" + desc['name']['tarname'])
+        fplines.append("cdef unsigned int _MAX_CALLBACKS_" + d['name'])
 
     d['body'] = indent(body or ['pass'])
     d['function_pointer_block'] = '\n'.join(fplines)
@@ -1226,7 +1231,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
          'namespace': desc['namespace'],
          }
     name = desc['name']['tarname']
-    d['name'] = name if isinstance(name, basestring) else ts.cython_classname(name)[1]
+    d['name'] = ts.cython_classname(name)[1]
     class_doc = desc.get('docstrings', {}).get('class', nodocmsg.format(desc['name']))
     d['class_docstring'] = indent('\"\"\"{0}\"\"\"'.format(class_doc))
 
@@ -1288,7 +1293,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
         if any([a[1] is None or a[1][0] is None for a in margs]):
             continue
         if 1 < methcounts[mname]:
-            mname_mangled = "_{0}_{1}_{2:0{3}}".format(desc['name'], mcyname,
+            mname_mangled = "_{0}_{1}_{2:0{3}}".format(d['name'], mcyname,
                     currcounts[mname], int(math.log(methcounts[mname], 10)+1)).lower()
         else:
             mname_mangled = mcyname
@@ -1298,12 +1303,12 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
             ts.cython_import_tuples(a[1], import_tups)
             ts.cython_cimport_tuples(a[1], cimport_tups)
         minst_name, mcname = _method_instance_names(desc, classes, mkey, mrtn, ts)
-        if mcname != desc['name']:
+        if mcname != d['name']:
             ts.cython_import_tuples(mcname, import_tups)
             ts.cython_cimport_tuples(mcname, cimport_tups)
         if mrtn is None:
             # this must be a constructor
-            if mname not in (desc['name'], '__init__'):
+            if mname not in (d['name'], '__init__'):
                 continue  # skip destuctors
             if 1 == methcounts[mname]:
                 mname_mangled = '__init__'
@@ -1313,7 +1318,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
             construct = desc['construct']
             if construct == 'struct':
                 cimport_tups.add(('libc.stdlib', 'malloc'))
-            clines += _gen_constructor(mcyname, mname_mangled, desc['name'], margs,
+            clines += _gen_constructor(mcyname, mname_mangled, d['name'], margs,
                         ts, doc=mdoc, srcpxd_filename=desc['srcpxd_filename'],
                         inst_name=minst_name, construct=construct)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:

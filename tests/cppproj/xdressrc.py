@@ -5,23 +5,30 @@ package = 'cppproj'
 packagedir = 'cppproj'
 includes = ['src']
 
-plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen', 'xdress.stlwrap', )
+plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen', 
+           'xdress.stlwrap', )
 
 extra_types = 'cppproj_extra_types'  # non-default value
 
+dtypes = [
+    ('map', 'str', 'int'),
+    ('set', 'int'),
+    'float32',
+    ('vector', 'int32'),
+    'ThreeNums',
+    ]
+
 stlcontainers = [
-    ('vector', 'float32'),
     ('vector', 'float64'),
     ('vector', 'str'),
     ('vector', 'int32'),
     ('vector', 'complex'),
-    ('vector', ('vector', 'int32')),
     ('vector', ('vector', 'float64')),
-    ('vector', 'ThreeNums'),
     ('set', 'int'),
     ('set', 'str'),
     ('set', 'uint'),
     ('set', 'char'),
+    ('set', 'ThreeNums'),
     ('map', 'str', 'str'),
     ('map', 'str', 'int'),
     ('map', 'int', 'str'),
@@ -53,8 +60,10 @@ stlcontainers = [
     ('map', 'int', ('map', 'int', ('vector', 'bool'))),
     ('map', 'int', ('map', 'int', ('vector', 'char'))),
     ('map', 'int', ('map', 'int', ('vector', 'float'))),
+    ('map', 'int', ('vector', ('set', 'int'))),
     ]
 
+dtypes_module = 'dt'
 stlcontainers_module = 'stlc'
 
 _fromsrcdir = lambda x: os.path.join('src', x)
@@ -117,6 +126,8 @@ classes = [
     apiname('Untemplated', **_inbasics), 
     apiname('ThreeNums', tarbase='pybasics', **_inbasics),
     apiname('*', **_indiscovery),
+    apiname(('TClass0', 'float32'), **_inbasics), 
+    apiname(('TClass2', 'float32'), **_inbasics), 
     ]
 
 del os

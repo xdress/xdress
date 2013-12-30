@@ -37,6 +37,7 @@ class XDressPlugin(Plugin):
         sourcedir=NotSpecified,
         builddir='build',
         bash_completion=True,
+        dtypes_module='dtypes',
         stlcontainers_module='stlcontainers',
         )
 
@@ -57,6 +58,7 @@ class XDressPlugin(Plugin):
         'builddir': "Path to build directory",
         'bash_completion': ("Flag for enabling / disabling BASH completion. "
                             "This is only relevant when using argcomplete."),
+        'dtypes_module': "Module name for numpy dtype wrappers.",
         'stlcontainers_module': ("Module name for C++ standard library "
                                  "container wrappers."),
         }
@@ -84,8 +86,11 @@ class XDressPlugin(Plugin):
                             help="enable bash completion", dest="bash_completion")
         parser.add_argument('--no-bash-completion', action='store_false',
                             help="disable bash completion", dest="bash_completion")
+        parser.add_argument('--dtypes-module', action='store', dest='dtypes_module', 
+                            help=self.rcdocs["dtypes_module"])
         parser.add_argument('--stlcontainers-module', action='store',
-                dest='stlcontainers_module', help=self.rcdocs["stlcontainers_module"])
+                            dest='stlcontainers_module', 
+                            help=self.rcdocs["stlcontainers_module"])
 
     def setup(self, rc):
         if rc.version:
@@ -93,6 +98,7 @@ class XDressPlugin(Plugin):
             sys.exit()
 
         # This should be done ASAP after the ts is set
+        rc.ts.dtypes = rc.dtypes_module
         rc.ts.stlcontainers = rc.stlcontainers_module
 
         if rc.package is NotSpecified:
