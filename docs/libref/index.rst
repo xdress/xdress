@@ -12,6 +12,7 @@ dynamic type system.
     :maxdepth: 1
 
     typesystem
+    dtypes
     stlwrap
     astparsers
     autodescribe

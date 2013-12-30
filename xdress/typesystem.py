@@ -276,14 +276,14 @@ class TypeSystem(object):
     """
 
     datafields = set(['base_types', 'template_types', 'refined_types', 'humannames', 
-        'extra_types', 'stlcontainers', 'type_aliases', 'cpp_types', 'numpy_types', 
-        'from_pytypes', 'cython_ctypes', 'cython_cytypes', 'cython_pytypes', 
-        'cython_cimports', 'cython_cyimports', 'cython_pyimports', 
+        'extra_types', 'dtypes', 'stlcontainers', 'type_aliases', 'cpp_types', 
+        'numpy_types', 'from_pytypes', 'cython_ctypes', 'cython_cytypes', 
+        'cython_pytypes', 'cython_cimports', 'cython_cyimports', 'cython_pyimports', 
         'cython_functionnames', 'cython_classnames', 'cython_c2py_conv', 
         'cython_py2c_conv'])
 
     def __init__(self, base_types=None, template_types=None, refined_types=None, 
-                 humannames=None, extra_types='xdress_extra_types', 
+                 humannames=None, extra_types='xdress_extra_types', dtypes='dtypes',
                  stlcontainers='stlcontainers', type_aliases=None, cpp_types=None, 
                  numpy_types=None, from_pytypes=None, cython_ctypes=None, 
                  cython_cytypes=None, cython_pytypes=None, cython_cimports=None, 
@@ -305,6 +305,8 @@ class TypeSystem(object):
             The human readable names for types.
         extra_types : str, optional
             The name of the xdress extra types module.
+        dtypes : str, optional
+            The name of the xdress numpy dtypes wrapper module.
         stlcontainers : str, optional
             The name of the xdress C++ standard library containers wrapper module.
         type_aliases : dict, optional
@@ -401,6 +403,7 @@ class TypeSystem(object):
             'vector': 'vector [ndarray] of {value_type}',
             }
         self.extra_types = extra_types
+        self.dtypes = dtypes
         self.stlcontainers = stlcontainers
         self.type_aliases = _LazyConfigDict(type_aliases if type_aliases is not \
                                                                       None else {
@@ -543,7 +546,8 @@ class TypeSystem(object):
             'complex128': ['complex', 'float'],
             'file': ['file'],
             ('file', '*'): ['file'],
-            'set': ['set', 'list', 'basestring', 'tuple'],
+            'set': ['collections.Set', 'list', 'basestring', 'tuple'],
+            'map': ['collections.Mapping', 'list', 'tuple'],
             'vector': ['list', 'tuple', 'np.ndarray'],
             }
 
@@ -710,7 +714,7 @@ class TypeSystem(object):
             'dict': (None,),
             'pair': (('{stlcontainers}',),),
             'set': (('{stlcontainers}',),),
-            'vector': (('numpy', 'as', 'np'), ('{stlcontainers}',)),
+            'vector': (('numpy', 'as', 'np'), ('{dtypes}',)),
             'nucid': (('pyne', 'nucname'),),
             'nucname': (('pyne', 'nucname'),),
             'function': cython_cyimports_functionish,
@@ -742,10 +746,10 @@ class TypeSystem(object):
             'void': (None,),
             'file': (None,),
             'exception': (None,),
-            'map': (('{stlcontainers}',),),
+            'map': (('{stlcontainers}',), ('collections',)),
             'dict': (None,),
             'pair': (('{stlcontainers}',),),
-            'set': (('{stlcontainers}',),),
+            'set': (('{stlcontainers}',), ('collections',)),
             'vector': (('numpy', 'as', 'np'),),
             'nucid': (('pyne', 'nucname'),),
             'nucname': (('pyne', 'nucname'),),
@@ -922,6 +926,14 @@ class TypeSystem(object):
                    ('if {cache_name} is None:\n'
                     '    {proxy_name} = {t.cython_pytype}(False, False)\n'
                     '    {proxy_name}.set_ptr = &{var}\n'
+                    '    {cache_name} = {proxy_name}\n'
+                    )),
+            TypeMatcher(('set', MatchAny, '*')): ('{t.cython_pytype}(deref({var}))',
+                   ('{proxy_name} = {t.cython_pytype}(False, False)\n'
+                    '{proxy_name}.set_ptr = {var}\n'),
+                   ('if {cache_name} is None:\n'
+                    '    {proxy_name} = {t.cython_pytype}(False, False)\n'
+                    '    {proxy_name}.set_ptr = {var}\n'
                     '    {cache_name} = {proxy_name}\n'
                     )),
             'vector': (
@@ -1160,6 +1172,7 @@ class TypeSystem(object):
                 cython_functionnames={}, cython_classnames={}, cython_c2py_conv={}, 
                 cython_py2c_conv={})
         del x.extra_types
+        del x.dtypes
         del x.stlcontainers
         return x
 
@@ -2208,7 +2221,7 @@ class TypeSystem(object):
         self.clearmemo()
 
     def register_classname(self, classname, package, pxd_base, cpppxd_base, 
-                           cpp_classname=None):
+                           cpp_classname=None, make_dtypes=True):
         """Registers a class with the type system from only its name, 
         and relevant header file information.
 
@@ -2223,6 +2236,9 @@ class TypeSystem(object):
             Base name of the cpppxd file to cimport.
         cpp_classname : str or tuple, optional
             Name of class in C++, equiv. to apiname.srcname. Defaults to classname.
+        make_dtypes : bool, optional
+            Flag for registering dtypes for this class simeltaneously with 
+            registering the class itself.
         """
         # target classname
         baseclassname = classname
@@ -2301,11 +2317,12 @@ class TypeSystem(object):
             kwclassspec['name'] = self.canon(cpp_classname)
             self.register_class(**kwclassspec)
         # register numpy type
-        self.register_numpy_dtype(classname,
-            cython_cimport=class_cimport,
-            cython_cyimport=pxd_base,
-            cython_pyimport=pxd_base,
-            )
+        if make_dtypes:
+            self.register_numpy_dtype(classname,
+                cython_cimport=class_cimport,
+                cython_cyimport=pxd_base,
+                cython_pyimport=pxd_base,
+                )
         # register vector
         class_vector_py2c = ((
             '# {var} is a {t.type}\n'
@@ -2460,29 +2477,29 @@ class TypeSystem(object):
     def register_numpy_dtype(self, t, cython_cimport=None, cython_cyimport=None, 
                              cython_pyimport=None):
         """This function will add a type to the system as numpy dtype that lives in
-        the stlcontainers module.
+        the dtypes module.
         """
         t = self.canon(t)
         if t in self.numpy_types:
             return
         varname = self.cython_variablename(t)[1]
-        self.numpy_types[t] = '{stlcontainers}xd_' + varname + '.num'
+        self.numpy_types[t] = '{dtypes}xd_' + varname + '.num'
         self.type_aliases[self.numpy_types[t]] = t
         self.type_aliases['xd_' + varname] = t
         self.type_aliases['xd_' + varname + '.num'] = t
-        self.type_aliases['{stlcontainers}xd_' + varname] = t
-        self.type_aliases['{stlcontainers}xd_' + varname + '.num'] = t
+        self.type_aliases['{dtypes}xd_' + varname] = t
+        self.type_aliases['{dtypes}xd_' + varname + '.num'] = t
         if cython_cimport is not None:
             x = _ensure_importable(self.cython_cimports._d.get(t, None))
             x = x + _ensure_importable(cython_cimport)
             self.cython_cimports[t] = x
         # cython imports
-        x = (('{stlcontainers}',),)
+        x = (('{dtypes}',),)
         x = x + _ensure_importable(self.cython_cyimports._d.get(t, None))
         x = x + _ensure_importable(cython_cyimport)
         self.cython_cyimports[t] = x
         # python imports
-        x = (('{stlcontainers}',),)
+        x = (('{dtypes}',),)
         x = x + _ensure_importable(self.cython_pyimports._d.get(t, None))
         x = x + _ensure_importable(cython_pyimport)
         self.cython_pyimports[t] = x
@@ -2501,6 +2518,17 @@ class TypeSystem(object):
         if hasattr(self, '_cache'):
             meth = getattr(self, meth )if isinstance(meth, basestring) else meth
             del self._cache[meth.func.meth, args, tuple(sorted(kwargs.items()))]
+
+    @contextmanager
+    def swap_dtypes(self, s):
+        """A context manager for temporarily swapping out the dtypes value
+        with a new value and replacing the original value before exiting."""
+        old = self.dtypes
+        self.dtypes = s
+        self.clearmemo()
+        yield
+        self.clearmemo()
+        self.dtypes = old
 
     @contextmanager
     def swap_stlcontainers(self, s):
@@ -2670,6 +2698,7 @@ class _LazyConfigDict(MutableMapping):
     def __getitem__(self, key):
         value = self._d[key]
         kw = {'extra_types': _ensuremoddot(self._ts.extra_types),
+              'dtypes': _ensuremoddot(self._ts.dtypes),
               'stlcontainers': _ensuremoddot(self._ts.stlcontainers), }
         for k, v in kw.items():
             value = _recurse_replace(value, '{' + k + '}', v)
@@ -2718,6 +2747,7 @@ class _LazyImportDict(MutableMapping):
         if callable(value):
             return value
         kw = {'extra_types': _ensuremod(self._ts.extra_types),
+              'dtypes': _ensuremod(self._ts.dtypes),
               'stlcontainers': _ensuremod(self._ts.stlcontainers),}
         newvalue = tuple(tuple(x.format(**kw) or None for x in imp if x is not None) \
                             for imp in value if imp is not None) or (None,)
@@ -2786,6 +2816,7 @@ class _LazyConverterDict(MutableMapping):
         if value is None or value is NotImplemented or callable(value):
             return value
         kw = {'extra_types': _ensuremoddot(self._ts.extra_types),
+              'dtypes': _ensuremoddot(self._ts.dtypes),
               'stlcontainers': _ensuremoddot(self._ts.stlcontainers),}
         newvalue = []
         for x in value:

@@ -36,9 +36,12 @@ GENERATED_PATHS = [
     [PROJDIR, PROJNAME, 'discovery.pyx'],
     [PROJDIR, PROJNAME, 'pybasics.pxd'],
     [PROJDIR, PROJNAME, 'pybasics.pyx'],
+    [PROJDIR, PROJNAME, 'dt.pxd'],
+    [PROJDIR, PROJNAME, 'dt.pyx'],
     [PROJDIR, PROJNAME, 'stlc.pxd'],
     [PROJDIR, PROJNAME, 'stlc.pyx'],
     [PROJDIR, PROJNAME, 'cppproj_extra_types.h'],
+    [TESTDIR, 'test_dt.py'],
     [TESTDIR, 'test_stlc.py'],
     [INSTDIR],
     ]
