@@ -215,7 +215,18 @@ def main():
         argcomplete.autocomplete(parser)
     ns = parser.parse_args()
     rc = plugins.merge_rcs()
-    rc._update(rcdict)
+    home = os.path.expanduser('~')
+    globalrcs = [os.path.join(home, '.xdressrc'),
+                 os.path.join(home, '.xdressrc.py'),
+                 os.path.join(home, '.config', 'xdressrc'),
+                 os.path.join(home, '.config', 'xdressrc.py'),
+                 ]
+    for globalrc in globalrcs:
+        if not os.path.isfile(globalrc):
+            continue
+        globalrcdict = {}
+        exec_file(globalrc, globalrcdict, globalrcdict)
+        rc._update(globalrcdict)
     rc._update([(k, v) for k, v in ns.__dict__.items()])
     plugins.setup()
     plugins.execute()
