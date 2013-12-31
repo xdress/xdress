@@ -9,6 +9,7 @@ import unittest
 import subprocess
 import tempfile
 from contextlib import contextmanager
+from pprint import pformat
 
 from nose.tools import assert_true, assert_equal
 from nose.plugins.attrib import attr
