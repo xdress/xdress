@@ -1,6 +1,5 @@
 from __future__ import print_function
 import os
-from pprint import pprint,pformat
 
 from xdress.typesystem import TypeSystem
 from xdress import cythongen as cg
@@ -66,6 +65,11 @@ exp_twice_desc = {
     'name': 'twice',
     'namespace': 'xdress',
     'signatures': {('twice', ('x', 'int32')): 'void'}}
+
+exp_conflict_desc = {
+    'name': 'conflict',
+    'namespace': 'xdress',
+    'signatures': {('conflict', ('good', 'int32')): 'void'}}
 
 def exp_lasso_desc(n):
     lasso_name = ('lasso',n,'int32','float32')
@@ -153,7 +157,8 @@ def test_describe_cpp():
         goals = (('class',('Base','int32',7,0),exp_base_desc(parser)),
                  ('class','Toaster',exp_toaster_desc),
                  ('func','simple',exp_simple_desc),
-                 # ('func','twice',exp_twice_desc), # TODO: Doesn't work yet for either clang or gccxml
+                 ('func','twice',exp_twice_desc), # Verify that we pick up parameter names from definitions
+                 ('func','conflict',exp_conflict_desc), # Verify that the first parameter name declaration wins
                  ('func',('lasso',17,'int32','float32'),exp_lasso_desc(17)),
                  ('func',('lasso',18,'int32','float32'),exp_lasso_desc(18)),
                  ('var','Choices',exp_choices_desc))

@@ -21,29 +21,29 @@ The Name Key
 The *name* key is a dictionary that represents the API name of the element
 being described.  This contains exactly the same keys that the utils.apiname()
 type has fields.  While apiname is used for user input and validation, the values
-here must truly describe the API element.  The following keys -- and only the 
+here must truly describe the API element.  The following keys -- and only the
 following keys -- are allowed in the name dictionary.
 
-:srcname: str or tuple, the element's API name in the original source code, 
+:srcname: str or tuple, the element's API name in the original source code,
     eg. MyClass.
-:srcfiles: tuple of str, this is a sequence of unique strings which represents 
-    the file paths where the API element *may* be defined. For example, ('myfile.c', 
-    'myfile.h').  If the element is defined outside of these files, then the automatic 
-    discovery or description may fail. Since these files are parsed they must 
+:srcfiles: tuple of str, this is a sequence of unique strings which represents
+    the file paths where the API element *may* be defined. For example, ('myfile.c',
+    'myfile.h').  If the element is defined outside of these files, then the automatic
+    discovery or description may fail. Since these files are parsed they must
     actually exist on the filesystem.
-:tarbase: str, the base portion of all automatically generated (target) files. 
-    This does not include the directory or the file extension.  For example, if you 
-    wanted cythongen to create a file name 'mynewfile.pyx' then the value here would 
+:tarbase: str, the base portion of all automatically generated (target) files.
+    This does not include the directory or the file extension.  For example, if you
+    wanted cythongen to create a file name 'mynewfile.pyx' then the value here would
     be simply 'mynewfile'.
-:tarname: str or tuple, the element's API name in the automatically generated 
+:tarname: str or tuple, the element's API name in the automatically generated
     (target) files, e.g. MyNewClass.
-:incfiles: tuple of str, this is a sequence of all files which must be #include'd 
-    to access the srcname at compile time.  This should be as minimal of a set as 
-    possible, preferably only one file.  For example, 'hdf5.h'. 
-:sidecars: tuple of str, this is a sequence of all sidecar files to use for 
-    this API element. Like srcfiles, these files must exist for xdress to run. 
+:incfiles: tuple of str, this is a sequence of all files which must be #include'd
+    to access the srcname at compile time.  This should be as minimal of a set as
+    possible, preferably only one file.  For example, 'hdf5.h'.
+:sidecars: tuple of str, this is a sequence of all sidecar files to use for
+    this API element. Like srcfiles, these files must exist for xdress to run.
     For example, 'myfile.py'.
-:language: str, flag for the language that the srcfiles are implemented in. Valid 
+:language: str, flag for the language that the srcfiles are implemented in. Valid
     options are: 'c', 'c++', 'f', 'fortran', 'f77', 'f90', 'python', and 'cython'.
 
 Variable Description Top-Level Keys
@@ -124,12 +124,12 @@ toast.  A valid description dictionary for this class would be as follows::
     class_desc = {
         'name': {
             'language': 'c++',
-            'incfiles': ('toaster.h',), 
-            'srcfiles': ('src/toaster.h', 'src/toaster.cpp'), 
-            'srcname': 'Toaster', 
-            'sidecars': ('src/toaster.py',), 
+            'incfiles': ('toaster.h',),
+            'srcfiles': ('src/toaster.h', 'src/toaster.cpp'),
+            'srcname': 'Toaster',
+            'sidecars': ('src/toaster.py',),
             'tarbase': 'toaster',
-            'tarname': 'Toaster', 
+            'tarname': 'Toaster',
             },
         'parents': ['FCComp'],
         'namespace': 'bright',
@@ -1079,8 +1079,8 @@ def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         cls = clang_find_class(tu, name, ts=ts, filename=filename, onlyin=onlyin)
         desc = clang_describe_class(cls)
     elif kind == 'func':
-        fn = clang_find_function(tu, name, ts=ts, filename=filename, onlyin=onlyin)
-        desc = clang_describe_function(fn)
+        fns = clang_find_function(tu, name, ts=ts, filename=filename, onlyin=onlyin)
+        desc = clang_describe_functions(fns)
     elif kind == 'var':
         var = clang_find_var(tu, name, ts=ts, filename=filename, onlyin=onlyin)
         desc = clang_describe_var(var)
@@ -1124,17 +1124,14 @@ def clang_find_scopes(tu, onlyin, namespace=None):
                     scopes.append(n)
 
 def clang_find_decls(tu, name, kinds, onlyin, namespace=None):
-    """Find all declarations of the given name and kind in the given scopes.
-    Scopes are searched in reverse order for efficiency, since we usually don't
-    care about included files."""
+    """Find all declarations of the given name and kind in the given scopes."""
     scopes = clang_find_scopes(tu, onlyin, namespace=namespace)
-    decls = set()
+    decls = []
     for s in scopes[::-1]:
         for c in s.get_children():
             if c.kind in kinds and c.spelling == name:
                 if onlyin is None or c.location.file.name in onlyin:
-                    # If a definition is available, always use that
-                    decls.add(c.get_definition() or c)
+                    decls.append(c)
     return decls
 
 # TODO: This functionality belongs in TypeSystem
@@ -1164,6 +1161,7 @@ def clang_find_class(tu, name, ts, namespace=None, filename=None, onlyin=None):
         basename = name
         kinds = CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL
     decls = clang_find_decls(tu, basename, kinds=kinds, onlyin=onlyin, namespace=namespace)
+    decls = frozenset(c.get_definition() or c for c in decls) # Use definitions if available
     if len(decls)==1:
         decl, = decls
         if not templated:
@@ -1179,14 +1177,15 @@ def clang_find_class(tu, name, ts, namespace=None, filename=None, onlyin=None):
     # Nothing found, time to complain
     where = clang_where(namespace, filename)
     if not decls:
-        raise ValueError("class {0} could not be found{1}".format(name, where))
+        raise ValueError("class '{0}' could not be found{1}".format(name, where))
     elif len(decls)>1:
-        raise ValueError("class {0} found more than once ({2} times) {1}".format(name, len(decls), where))
+        raise ValueError("class '{0}' found more than once ({2} times) {1}".format(name, len(decls), where))
     else:
-        raise ValueError("class {0} found, but specialization {1} not found{1}".format(cls, name, where))
+        raise ValueError("class '{0}' found, but specialization {1} not found{1}".format(cls, name, where))
 
 def clang_find_function(tu, name, ts, namespace=None, filename=None, onlyin=None):
-    """Find the node for a given function."""
+    """Find all nodes corresponding to a given function.  If there is a separate declaration
+    and definition, they will be returned as separate nodes, in the order given in the file."""
     templated = isinstance(name, tuple)
     if templated:
         basename = name[0]
@@ -1196,41 +1195,42 @@ def clang_find_function(tu, name, ts, namespace=None, filename=None, onlyin=None
         basename = name
         kinds = CursorKind.FUNCTION_DECL,
     decls = clang_find_decls(tu, basename, kinds=kinds, onlyin=onlyin, namespace=namespace)
-    if len(decls)==1:
-        decl, = decls
+    if decls:
         if not templated:
             # No templates, so we're done
-            return decl
+            return decls
         else:
             # Search for the desired function specialization
+            decl, = decls # TODO: Support multiple decl case
             args = clang_expand_template_args(decl, args)
             for spec in decl.get_specializations():
                 if args == tuple(canon_template_arg(ts,a) for a in clang_describe_template_args(spec)):
-                    return spec
+                    return [spec]
 
     # Nothing found, time to complain
     where = clang_where(namespace, filename)
     if not decls:
-        raise ValueError("function {0} could not be found{1}".format(name, where))
+        raise ValueError("function '{0}' could not be found{1}".format(name, where))
     elif len(decls)>1:
-        raise ValueError("function {0} found more than once ({2} times) {1}".format(name, len(decls), where))
+        raise ValueError("function '{0}' found more than once ({2} times) {1}".format(name, len(decls), where))
     else:
-        raise ValueError("function {0} found, but specialization {1} not found{1}".format(cls, name, where))
+        raise ValueError("function '{0}' found, but specialization {1} not found{1}".format(basename, name, where))
 
 def clang_find_var(tu, name, ts, namespace=None, filename=None, onlyin=None):
     """Find the node for a given var."""
     assert isinstance(name, basestring)
     kinds = CursorKind.ENUM_DECL,
-    decls = list(clang_find_decls(tu, name, kinds=kinds, onlyin=onlyin, namespace=namespace))
+    decls = clang_find_decls(tu, name, kinds=kinds, onlyin=onlyin, namespace=namespace)
+    decls = list(set(c.get_definition() or c for c in decls)) # Use definitions if available
     if len(decls)==1:
         return decls[0]
 
     # Nothing found, time to complain
     where = clang_where(namespace, filename)
     if not decls:
-        raise ValueError("var {0} could not be found{1}".format(name, where))
+        raise ValueError("var '{0}' could not be found{1}".format(name, where))
     else:
-        raise ValueError("var {0} found more than once ({2} times) {1}".format(name, len(decls), where))
+        raise ValueError("var '{0}' found more than once ({2} times) {1}".format(name, len(decls), where))
 
 def clang_dump(node, indent=0, onlyin=None):
     try:
@@ -1326,8 +1326,60 @@ def clang_describe_var(var):
     else:
         raise NotImplementedError('var kind {0}: {1}'.format(var.kind, var.spelling))
 
+def clang_str_location(loc):
+    s = '%d:%d'%(loc.line,loc.column)
+    return '%s:%s'%(loc.file.name,s) if loc.file else s
+
+def clang_describe_functions(funcs):
+    """Describe the function at the given clang AST nodes.  If more than one
+    node is given, we verify that they match and find argument names where we can."""
+    descs = map(clang_describe_function,funcs)
+    if len(descs)==1:
+        return descs[0]
+    def merge(d0,d1):
+        """Merge two descriptions, checking that they describe the same function
+        except possibly for argument name differences.  If argument names conflict,
+        the name from d0 is kept."""
+        def check(name,v0,v1):
+            if v0 != v1:
+                raise ValueError("{0} mismatch: {1} != {2}".format(name,v0,v1))
+        for s in 'name','namespace':
+            check(s,d0[s],d1[s])
+        (args0,r0), = d0['signatures'].items()
+        (args1,r1), = d1['signatures'].items()
+        check('return type',r0,r1)
+        check('name',args0[0],args1[0])
+        check('arity',len(args0)-1,len(args1)-1)
+        args = [args0[0]]
+        for i,(a0,a1) in enumerate(zip(args0[1:],args1[1:])):
+            check('argument %d type'%i,a0[1],a1[1])
+            a = [a0[0] or a1[0],a0[1]]
+            if len(a0)>2:
+                if len(a1)>2:
+                    check('argument %d default'%i,a0[2],a1[2])
+                a.append(a0[2])
+            elif len(a1)>2:
+                a.append(a1[2])
+            args.append(tuple(a))
+        return {'name':d0['name'],'namespace':d0['namespace'],'signatures':{tuple(args):r0}}
+    try:
+        return reduce(merge,descs)
+    except ValueError:
+        for j in xrange(len(funcs)):
+            for i in xrange(j):
+                try:
+                    merge(descs[i],descs[j])
+                except ValueError,e:
+                    from pprint import pprint
+                    pprint(descs[i])
+                    pprint(descs[j])
+                    raise ValueError("mismatch between declarations of '{0}' at {1} and {2}: {3}"
+                        .format(descs[0]['name'],clang_str_location(funcs[i].location),
+                                                 clang_str_location(funcs[j].location),e))
+        raise
+
 def clang_describe_function(func):
-    """Describe the function at the given clang AST node"""
+    """Describe the function at the given clang AST node."""
     assert func.kind == CursorKind.FUNCTION_DECL
     signatures = {clang_describe_args(func): clang_describe_type(func.result_type)}
     name = next(iter(signatures))[0]
@@ -1911,7 +1963,7 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
 #
 
 def _make_includer(filenames, builddir, language, verbose=False):
-    """Creates a source file made up of #include pre-processor statements for 
+    """Creates a source file made up of #include pre-processor statements for
     all of the files in filenames.  Returns the path to the newly made file.
     """
     newfile = ""
@@ -1943,7 +1995,7 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     filename : str or container of strs
         The path to the file or a list of file paths.  If this is a list to many
         files, a temporary file will be created that #includes all of the files
-        in this list in order.  This temporary file is the one which will be 
+        in this list in order.  This temporary file is the one which will be
         parsed.
     name : str
         The name to describe.
@@ -2061,7 +2113,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         for i, cls in enumerate(rc.classes):
             print("autodescribe: registering {0}".format(cls.srcname))
             fnames = extra_filenames(cls)
-            ts.register_classname(cls.srcname, rc.package, fnames['pxd_base'], 
+            ts.register_classname(cls.srcname, rc.package, fnames['pxd_base'],
                                   fnames['cpppxd_base'], make_dtypes=rc.make_dtypes)
             if cls.srcname != cls.tarname:
                 ts.register_classname(cls.tarname, rc.package, fnames['pxd_base'],
@@ -2125,10 +2177,10 @@ class XDressPlugin(astparsers.ParserPlugin):
         if cache.isvalid(name, kind):
             srcdesc = cache[name, kind]
         else:
-            srcdesc = describe(name.srcfiles, name=name.srcname, kind=kind, 
-                               includes=rc.includes, defines=rc.defines, 
-                               undefines=rc.undefines, parsers=rc.parsers, ts=rc.ts, 
-                               verbose=rc.verbose, debug=rc.debug, 
+            srcdesc = describe(name.srcfiles, name=name.srcname, kind=kind,
+                               includes=rc.includes, defines=rc.defines,
+                               undefines=rc.undefines, parsers=rc.parsers, ts=rc.ts,
+                               verbose=rc.verbose, debug=rc.debug,
                                builddir=rc.builddir, language=name.language)
             srcdesc['name'] = dict(zip(name._fields, name))
             cache[name, kind] = srcdesc
@@ -2138,7 +2190,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         desc = merge_descriptions(descs)
         return desc
 
-    _extrajoinkeys = ['pxd_header', 'pxd_footer', 'pyx_header', 'pyx_footer', 
+    _extrajoinkeys = ['pxd_header', 'pxd_footer', 'pyx_header', 'pyx_footer',
                       'cpppxd_header', 'cpppxd_footer']
 
     def adddesc2env(self, desc, env, name):
@@ -2160,7 +2212,7 @@ class XDressPlugin(astparsers.ParserPlugin):
         if tarbase not in env:
             env[tarbase] = mod
             env[tarbase]["name"] = tarbase
-            env[tarbase]['extra'] = modextra = dict(zip(extrajoinkeys, 
+            env[tarbase]['extra'] = modextra = dict(zip(extrajoinkeys,
                                                         ['']*len(extrajoinkeys)))
         else:
             #env[tarbase].update(mod)

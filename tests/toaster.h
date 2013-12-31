@@ -56,6 +56,8 @@ extern template int lasso<17>(int,const float&);
 extern template int lasso<18>(int,const float&);
 void twice(int); // declaration without argument name
 void twice(int x) {} // definition with argument name
+void conflict(int good); // first declaration with correct argument name
+void conflict(int bad); // second declaration with wrong argument name
 
 // Enums
 enum Choices { CA, CB = 18-1 };
