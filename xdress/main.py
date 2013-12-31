@@ -227,6 +227,7 @@ def main():
         globalrcdict = {}
         exec_file(globalrc, globalrcdict, globalrcdict)
         rc._update(globalrcdict)
+    rc._update(rcdict)
     rc._update([(k, v) for k, v in ns.__dict__.items()])
     plugins.setup()
     plugins.execute()
