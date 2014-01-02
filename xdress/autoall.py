@@ -161,7 +161,7 @@ class GccxmlFinder(object):
             
 
 def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
-                   verbose=False, debug=False, builddir='build', language='c++'):
+                   verbose=False, debug=False, builddir='build', language='c++', clang_includes=()):
     """Automatically finds all API elements in a file via GCC-XML.
 
     Parameters
@@ -182,6 +182,7 @@ def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         Location of -- often temporary -- build files.
     language : str
         Valid language flag.
+    clang_includes : ignored
 
     Returns
     -------
@@ -207,7 +208,8 @@ def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
 
 
 def clang_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
-                  verbose=False, debug=False, builddir='build', language='c++'):
+                  verbose=False, debug=False, builddir='build', language='c++',
+                  clang_includes=()):
     """Automatically finds all API elements in a file via clang.
 
     Parameters
@@ -225,6 +227,8 @@ def clang_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
     verbose : Ignored
     debug : Ignored
     builddir : Ignored
+    clang_includes : list of str, optional
+        clang-specific include paths.
 
     Returns
     -------
@@ -238,7 +242,7 @@ def clang_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
     """
     tu = astparsers.clang_parse(filename, includes=includes, defines=defines,
                                 undefines=undefines, verbose=verbose, debug=debug,
-                                language=language)
+                                language=language, clang_includes=clang_includes)
     basename = filename.rsplit('.', 1)[0]
     onlyin = frozenset([filename] +
                        [basename + '.' + h for h in utils._hdr_exts if h.startswith('h')])
@@ -365,7 +369,8 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
 
 
 def pycparser_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
-                      verbose=False, debug=False, builddir='build', language='c'):
+                      verbose=False, debug=False, builddir='build', language='c',
+                      clang_includes=()):
     """Automatically finds all API elements in a file via GCC-XML.
 
     Parameters
@@ -386,6 +391,7 @@ def pycparser_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         Location of -- often temporary -- build files.
     language : str
         Valid language flag.
+    clang_includes : ignored
 
     Returns
     -------
@@ -418,7 +424,7 @@ _finders = {
 
 def findall(filename, includes=(), defines=('XDRESS',), undefines=(), 
             parsers='gccxml', verbose=False, debug=False, builddir='build',
-            language='c++'):
+            language='c++', clang_includes=()):
     """Automatically finds all API elements in a file.  This is the main entry point.
 
     Parameters
@@ -446,6 +452,8 @@ def findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         Location of -- often temporary -- build files.
     language : str
         Valid language flag.
+    clang_includes : list of str, optional
+        clang-specific include paths.
 
     Returns
     -------
@@ -460,7 +468,8 @@ def findall(filename, includes=(), defines=('XDRESS',), undefines=(),
     parser = astparsers.pick_parser(language, parsers)
     finder = _finders[parser]
     rtn = finder(filename, includes=includes, defines=defines, undefines=undefines, 
-                 verbose=verbose, debug=debug, builddir=builddir, language=language)
+                 verbose=verbose, debug=debug, builddir=builddir, language=language,
+                 clang_includes=clang_includes)
     return rtn
 
 
@@ -611,7 +620,8 @@ class XDressPlugin(astparsers.ParserPlugin):
                 found = findall(srcfile, includes=rc.includes, defines=rc.defines, 
                                 undefines=rc.undefines, parsers=rc.parsers, 
                                 verbose=rc.verbose, debug=rc.debug, 
-                                builddir=rc.builddir, language=lang)
+                                builddir=rc.builddir, language=lang,
+                                clang_includes=rc.clang_includes)
                 autonamecache[srcfile] = found
                 autonamecache.dump()
             allfiles[srcfile] = found

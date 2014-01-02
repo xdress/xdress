@@ -5,6 +5,7 @@ from xdress.typesystem import TypeSystem
 from xdress import cythongen as cg
 from xdress import autodescribe as ad
 from xdress.astparsers import PARSERS_AVAILABLE
+from xdress.utils import parse_global_rc
 
 from tools import unit, assert_equal_or_diff
 
@@ -150,6 +151,8 @@ full_merge_desc = {
 
 @unit
 def test_describe_cpp():
+    rc = parse_global_rc()
+    clang_includes = rc.clang_includes if 'clang_includes' in rc else None
     fname = os.path.join(os.path.split(__file__)[0], 'toaster.h')
     ts.register_class('Base', ('T', 'i'), cpp_type='Base')
     ts.register_classname('Toaster', 'toaster', 'toaster', 'cpp_toaster')
@@ -163,7 +166,8 @@ def test_describe_cpp():
                  ('func',('lasso',18,'int32','float32'),exp_lasso_desc(18)),
                  ('var','Choices',exp_choices_desc))
         for kind,name,exp in goals:
-            obs = ad.describe(fname, name=name, kind=kind, parsers=parser, verbose=False, ts=ts)
+            obs = ad.describe(fname, name=name, kind=kind, parsers=parser, verbose=False, ts=ts,
+                              clang_includes=clang_includes)
             assert_equal_or_diff(obs, exp)
     for parser in 'gccxml','clang':
         if parser in PARSERS_AVAILABLE:

@@ -331,7 +331,8 @@ hack_template_args = {
 
 def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                     undefines=(), ts=None, verbose=False, debug=False,
-                    builddir='build', onlyin=None, language='c++'):
+                    builddir='build', onlyin=None, language='c++',
+                    clang_includes=()):
     """Use GCC-XML to describe the class.
 
     Parameters
@@ -360,6 +361,7 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         The paths to the files that the definition is allowed to exist in.
     language : str
         Valid language flag.
+    clang_includes : ignored
 
     Returns
     -------
@@ -1033,7 +1035,7 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 
 def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                    undefines=(), ts=None, verbose=False, debug=False,
-                   builddir=None, onlyin=None, language='c++'):
+                   builddir=None, onlyin=None, language='c++', clang_includes=()):
     """Use Clang to describe the class.
 
     Parameters
@@ -1071,7 +1073,7 @@ def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     """
     tu = astparsers.clang_parse(filename, includes=includes, defines=defines,
                                 undefines=undefines, verbose=verbose, debug=debug,
-                                language=language)
+                                language=language, clang_includes=clang_includes)
     ts = ts or TypeSystem()
     if onlyin is None:
         onlyin = None if filename is None else frozenset([filename])
@@ -1910,7 +1912,8 @@ _pycparser_describers = {
 
 def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
                        undefines=(), ts=None, verbose=False, debug=False,
-                       builddir='build', onlyin=None, language='c'):
+                       builddir='build', onlyin=None, language='c',
+                       clang_includes=()):
     """Use pycparser to describe the fucntion or struct (class).
 
     Parameters
@@ -1939,6 +1942,7 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         The paths to the files that the definition is allowed to exist in.
     language : str
         Must be 'c'.
+    clang_includes : ignored
 
     Returns
     -------
@@ -1987,7 +1991,7 @@ _describers = {
 
 def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',),
              undefines=(), parsers='gccxml', ts=None, verbose=False, debug=False,
-             builddir='build', language='c++'):
+             builddir='build', language='c++', clang_includes=()):
     """Automatically describes an API element in a file.  This is the main entry point.
 
     Parameters
@@ -2024,6 +2028,8 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
         Location of -- often temporary -- build files.
     language : str
         Valid language flag.
+    clang_includes : list of str, optional
+        clang-specific include paths.
 
     Returns
     -------
@@ -2043,7 +2049,8 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, defines=defines,
                      undefines=undefines, ts=ts, verbose=verbose, debug=debug,
-                     builddir=builddir, onlyin=onlyin, language=language)
+                     builddir=builddir, onlyin=onlyin, language=language,
+                     clang_includes=clang_includes)
     return desc
 
 
@@ -2181,7 +2188,8 @@ class XDressPlugin(astparsers.ParserPlugin):
                                includes=rc.includes, defines=rc.defines,
                                undefines=rc.undefines, parsers=rc.parsers, ts=rc.ts,
                                verbose=rc.verbose, debug=rc.debug,
-                               builddir=rc.builddir, language=name.language)
+                               builddir=rc.builddir, language=name.language,
+                               clang_includes=rc.clang_includes)
             srcdesc['name'] = dict(zip(name._fields, name))
             cache[name, kind] = srcdesc
         descs = [srcdesc]
