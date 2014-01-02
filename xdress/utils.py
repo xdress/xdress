@@ -312,6 +312,24 @@ class RunControl(object):
                 v = self._updaters[k](getattr(self, k), v)
             setattr(self, k, v)
 
+def parse_global_rc():
+    '''Search a global xdressrc file and parse if it exists.
+    If nothing is found, an empty RunControl is returned.'''
+    home = os.path.expanduser('~')
+    globalrcs = [os.path.join(home, '.xdressrc'),
+                 os.path.join(home, '.xdressrc.py'),
+                 os.path.join(home, '.config', 'xdressrc'),
+                 os.path.join(home, '.config', 'xdressrc.py'),
+                 ]
+    rc = RunControl()
+    for globalrc in globalrcs:
+        if not os.path.isfile(globalrc):
+            continue
+        globalrcdict = {}
+        exec_file(globalrc, globalrcdict, globalrcdict)
+        rc._update(globalrcdict)
+    return rc
+
 _lang_exts = {
     'c': 'c',
     'c++': 'cpp',
