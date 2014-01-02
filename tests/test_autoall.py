@@ -3,7 +3,7 @@ import os
 from xdress import autoall
 from xdress.astparsers import PARSERS_AVAILABLE
 from xdress.utils import parse_global_rc
-from tools import unit, assert_equal_or_diff
+from tools import unit, assert_equal_or_diff, skip_then_continue
 
 @unit
 def test_autoall():
@@ -19,8 +19,10 @@ def test_autoall():
         assert_equal_or_diff(obs_fun, exp_fun)
         assert_equal_or_diff(obs_cls, exp_cls)
     for parser in 'gccxml','clang':
-        if parser in PARSERS_AVAILABLE:
+        if PARSERS_AVAILABLE[parser]:
             yield check_all, parser
+        else:
+            yield skip_then_continue, parser + ' unavailable'
 
 if __name__ == '__main__':
     import nose

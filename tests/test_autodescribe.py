@@ -7,7 +7,7 @@ from xdress import autodescribe as ad
 from xdress.astparsers import PARSERS_AVAILABLE
 from xdress.utils import parse_global_rc
 
-from tools import unit, assert_equal_or_diff
+from tools import unit, assert_equal_or_diff, skip_then_continue
 
 from numpy.testing import dec
 
@@ -170,8 +170,10 @@ def test_describe_cpp():
                               clang_includes=clang_includes)
             assert_equal_or_diff(obs, exp)
     for parser in 'gccxml','clang':
-        if parser in PARSERS_AVAILABLE:
+        if PARSERS_AVAILABLE[parser]:
             yield check, parser
+        else:
+            yield skip_then_continue, parser + ' unavailable'
 
 @unit
 def test_merge_descriptions():
