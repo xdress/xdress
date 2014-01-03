@@ -1077,6 +1077,7 @@ def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     ts = ts or TypeSystem()
     if onlyin is None:
         onlyin = None if filename is None else frozenset([filename])
+    onlyin = clang_fix_onlyin(onlyin)
     if kind == 'class':
         cls = clang_find_class(tu, name, ts=ts, filename=filename, onlyin=onlyin)
         desc = clang_describe_class(cls)
@@ -1090,6 +1091,18 @@ def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         raise ValueError('bad description kind {0}, name {1}'.format(kind,name))
     linecache.clearcache() # Clean up results of clang_range_str
     return desc
+
+def clang_fix_onlyin(onlyin):
+    '''Make sure onlyin is a set and add ./path versions for each relative path'''
+    if onlyin is not None:
+        onlyin = set(onlyin)
+        for f in tuple(onlyin):
+            if not os.path.isabs(f):
+                onlyin.add('./'+f)
+                if os.sep != '/': # I'm not sure if clang lists paths with / or \ on windows
+                    onlyin.add(os.path.join('.',f))
+        onlyin = frozenset(onlyin)
+    return onlyin
 
 def clang_range_str(source_range):
     """Get the text present on a source range."""
@@ -1124,6 +1137,7 @@ def clang_find_scopes(tu, onlyin, namespace=None):
             if n.kind == namespace_kind and n.spelling == namespace:
                 if onlyin is None or n.location.file.name in onlyin:
                     scopes.append(n)
+        return scopes
 
 def clang_find_decls(tu, name, kinds, onlyin, namespace=None):
     """Find all declarations of the given name and kind in the given scopes."""
@@ -1234,7 +1248,7 @@ def clang_find_var(tu, name, ts, namespace=None, filename=None, onlyin=None):
     else:
         raise ValueError("var '{0}' found more than once ({2} times) {1}".format(name, len(decls), where))
 
-def clang_dump(node, indent=0, onlyin=None):
+def clang_dump(node, indent=0, onlyin=None, file=sys.stdout):
     try:
         spelling = node.spelling
     except AttributeError:
@@ -1248,15 +1262,15 @@ def clang_dump(node, indent=0, onlyin=None):
             s += ' : '+clang_range_str(r)
         except AttributeError:
             pass
-    print(s)
+    print(s,file=file)
     if onlyin is None:
         for c in node.get_children():
-            clang_dump(c,indent+2)
+            clang_dump(c,indent+2,file=file)
     else:
         for c in node.get_children():
-            file = c.extent.start.file
-            if file and file.name in onlyin:
-                clang_dump(c,indent+2)
+            f = c.extent.start.file
+            if f and f.name in onlyin:
+                clang_dump(c,indent+2,file=file)
 
 def clang_parent_namespace(node):
     if node.semantic_parent.kind == CursorKind.NAMESPACE:

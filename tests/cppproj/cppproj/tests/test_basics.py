@@ -11,12 +11,22 @@ def test_a_better_name():
     assert_array_almost_equal(exp, obs)
 
 def test_func1():
-    assert_true(basics.func1({1: 10.0}, {2: 42.0}))
+    a = {1: 10.0}
+    b = {2: 42.0, 3: 4}
+    assert_true (basics.func1(a, b))
+    assert_false(basics.func1(b, a))
+    # Check that keyword arguments work in any order
+    assert_true (basics.func1(i=a, j=b))
+    assert_true (basics.func1(j=b, i=a))
+    assert_false(basics.func1(i=b, j=a))
+    assert_false(basics.func1(j=a, i=b))
 
 def test_func2():
     # FIXME
-    #exp = 0.0
-    #obs = basics.func2([13], [14])[0][0]
+    #exp = [[0.0,0.0]]
+    #obs = basics.func2([13], [14,15])
+    #obs2 = basics.func2(b=[14,15], a=[13])
+    #assert_equal(exp, obs)
     exp = []
     obs = basics.func2([], [])
     assert_equal(len(exp), len(obs))
