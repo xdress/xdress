@@ -37,7 +37,8 @@ exp_point_desc = {
     'parents': [],
     'construct': 'class',
     'attrs': {},
-    'methods': {(('Point', True),): None, (('~Point', True),): None},
+    'methods': {(( 'Point', True),): None,
+                (('~Point', True),): None},
     'type': ('Point', True, 0)}
 
 exp_toaster_desc = {
@@ -54,7 +55,7 @@ exp_toaster_desc = {
         },
     'methods': {
         ('Toaster', ('slices', 'int32', 7), ('flag', 'bool', False)): None,
-        ('Toaster', ('d', 'float64'), ('arg', 'str', '"\\n"' )): None,
+        ('Toaster', ('d', 'float64'), ('arg', 'str', '\n')): None,
         ('~Toaster',): None,
         ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1), ('dub', 'float64', 3e-8)): 'int32',
         ('templates', ('strange', ('Base', 'int32', 3, 0))): ('Base', 'float32', 0, 0),
@@ -168,7 +169,7 @@ def test_describe_cpp():
     ts.register_classname('Toaster', 'toaster', 'toaster', 'cpp_toaster')
     def check(parser):
         goals = (('class',('Base','int32',7,0),exp_base_desc(parser)),
-                 ('class', ('Point', True, 0), exp_point_desc),
+                 ('class',('Point',True,0),exp_point_desc),
                  ('class','Toaster',exp_toaster_desc),
                  ('func','simple',exp_simple_desc),
                  ('func','twice',exp_twice_desc), # Verify that we pick up parameter names from definitions

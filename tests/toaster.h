@@ -21,20 +21,16 @@ template<class T, int i=0> struct Base {
   void base(int a=1);
 };
 
-// boolean template params
-template< bool B = false>
-class Point {};
-
-template<>
-class Point< true > {};
-
+// Boolean template params
+template<bool B=false> class Point {};
+template<> class Point<true> {};
 
 // Toaster class
 class Toaster : Base<int,6+1> {
 public:
   // Toaster Constructors
   Toaster(int slices=7, bool flag=false);
-  //constructor with with string literal default arg
+  // Constructor with string literal default arg
   Toaster(double d, std::string arg = "\n");
   ~Toaster();
 

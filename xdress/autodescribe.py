@@ -189,6 +189,7 @@ import os
 import io
 import re
 import sys
+import ast
 from copy import deepcopy
 import linecache
 import subprocess
@@ -1475,10 +1476,7 @@ def clang_describe_template_args(node):
         if defaults[-1-i] == args[-1]:
             args.pop()
     return tuple(args)'''
-    try:
-        args = tuple(clang_describe_template_arg(a) for a in node.get_template_args())
-    except:
-        raise NotImplementedError('template arguments at {0}'.format(node.location))
+    args = tuple(clang_describe_template_arg(a) for a in node.get_template_args())
     if node.spelling in hack_template_args:
         return args[:len(hack_template_args[node.spelling])]
     else:
@@ -1498,36 +1496,31 @@ _clang_expressions = {'true': True, 'false': False}
 def clang_describe_template_arg(arg):
     if arg.kind == CursorKind.TYPE_TEMPLATE_ARG:
         return clang_describe_type(arg.type)
-    elif arg.kind == CursorKind.INTEGRAL_TEMPLATE_ARG:
-        try:
-            return _clang_expressions[arg.spelling]
-        except KeyError:
-            return int(arg.spelling)
-    elif arg.kind == CursorKind.EXPRESSION_TEMPLATE_ARG:
-        try:
-            return _clang_expressions[arg.spelling]
-        except KeyError:
-            return int(arg.spelling)
-    else:
-        raise NotImplementedError('template argument kind {0} at {1}'.format(arg.kind.name, arg.location))
+    try:
+        # ast.literal_eval isn't precisely correct, since there are Python
+        # literals which aren't valid C++, but it should be close enough.
+        return ast.literal_eval(arg.spelling.strip())
+    except:
+        pass
+    try:
+        return _clang_expressions[arg.spelling]
+    except KeyError:
+        raise NotImplementedError('template argument kind {0} at {1}'
+            .format(arg.kind.name, clang_str_location(arg.location)))
 
 def clang_describe_expression(exp):
     # For now, we just use clang_range_str to pull the expression out of the file.
     # This is because clang doesn't seem to have any mechanism for printing expressions.
     s = clang_range_str(exp.extent)
     try:
-        return int(s)
-    except ValueError:
-        pass
-    try:
-        return float(s)
-    except ValueError:
+        # ast.literal_eval isn't precisely correct, since there are Python
+        # literals which aren't valid C++, but it should be close enough.
+        return ast.literal_eval(s.strip())
+    except:
         pass
     try:
         return _clang_expressions[s]
     except KeyError:
-        if s[0] == "\"" and s[-1] == "\"":
-             return s;
         raise NotImplementedError('unhandled expression "{0}" at {1}'.format(s, exp.location))
 
 
