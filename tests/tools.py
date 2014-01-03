@@ -119,6 +119,7 @@ def show_diff(a,b,key=None):
 
 def assert_equal_or_diff(obs, exp):
     try:
+        assert_equal.im_class.maxDiff = None
         assert_equal(obs, exp)
     except:
         key = '\n\n# only expected = {0}, only computed = {1}\n'

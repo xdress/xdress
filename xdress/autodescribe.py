@@ -1475,7 +1475,10 @@ def clang_describe_template_args(node):
         if defaults[-1-i] == args[-1]:
             args.pop()
     return tuple(args)'''
-    args = tuple(clang_describe_template_arg(a) for a in node.get_template_args())
+    try:
+        args = tuple(clang_describe_template_arg(a) for a in node.get_template_args())
+    except:
+        raise NotImplementedError('template arguments at {0}'.format(node.location))
     if node.spelling in hack_template_args:
         return args[:len(hack_template_args[node.spelling])]
     else:
@@ -1490,15 +1493,23 @@ def clang_expand_template_args(node, args):
     return tuple(args)+defaults[  count-len(args)] '''
     return args
 
+_clang_expressions = {'true': True, 'false': False}
+
 def clang_describe_template_arg(arg):
     if arg.kind == CursorKind.TYPE_TEMPLATE_ARG:
         return clang_describe_type(arg.type)
     elif arg.kind == CursorKind.INTEGRAL_TEMPLATE_ARG:
-        return int(arg.spelling)
+        try:
+            return _clang_expressions[arg.spelling]
+        except KeyError:
+            return int(arg.spelling)
+    elif arg.kind == CursorKind.EXPRESSION_TEMPLATE_ARG:
+        try:
+            return _clang_expressions[arg.spelling]
+        except KeyError:
+            return int(arg.spelling)
     else:
-        raise NotImplementedError('template argument kind {0}'.format(arg.kind.name))
-
-_clang_expressions = {'true': True, 'false': False}
+        raise NotImplementedError('template argument kind {0} at {1}'.format(arg.kind.name, arg.location))
 
 def clang_describe_expression(exp):
     # For now, we just use clang_range_str to pull the expression out of the file.
@@ -1515,7 +1526,9 @@ def clang_describe_expression(exp):
     try:
         return _clang_expressions[s]
     except KeyError:
-        raise NotImplementedError('unhandled expression "{0}"'.format(s))
+        if s[0] == "\"" and s[-1] == "\"":
+             return s;
+        raise NotImplementedError('unhandled expression "{0}" at {1}'.format(s, exp.location))
 
 
 #
