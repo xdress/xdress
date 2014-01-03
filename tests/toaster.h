@@ -25,7 +25,7 @@ template<class T, int i=0> struct Base {
 class Toaster : Base<int,6+1> {
 public:
   // Toaster Constructors
-  Toaster(int slices=7);
+  Toaster(int slices=7, bool flag=false);
   ~Toaster();
 
   // Public fields

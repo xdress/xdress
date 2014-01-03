@@ -44,7 +44,7 @@ exp_toaster_desc = {
         'vec': ('vector', 'char', 0),
         },
     'methods': {
-        ('Toaster', ('slices', 'int32', 7)): None,
+        ('Toaster', ('slices', 'int32', 7), ('flag', 'bool', False)): None,
         ('~Toaster',): None,
         ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1), ('dub', 'float64', 3e-8)): 'int32',
         ('templates', ('strange', ('Base', 'int32', 3, 0))): ('Base', 'float32', 0, 0),

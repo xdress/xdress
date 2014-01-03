@@ -1498,6 +1498,8 @@ def clang_describe_template_arg(arg):
     else:
         raise NotImplementedError('template argument kind {0}'.format(arg.kind.name))
 
+_clang_expressions = {'true': True, 'false': False}
+
 def clang_describe_expression(exp):
     # For now, we just use clang_range_str to pull the expression out of the file.
     # This is because clang doesn't seem to have any mechanism for printing expressions.
@@ -1505,10 +1507,15 @@ def clang_describe_expression(exp):
     try:
         return int(s)
     except ValueError:
-        try:
-            return float(s)
-        except ValueError:
-            raise NotImplementedError('unhandled expression "{0}"'.format(s))
+        pass
+    try:
+        return float(s)
+    except ValueError:
+        pass
+    try:
+        return _clang_expressions[s]
+    except KeyError:
+        raise NotImplementedError('unhandled expression "{0}"'.format(s))
 
 
 #

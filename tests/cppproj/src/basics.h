@@ -96,6 +96,7 @@ class TClass0 {
 
 template <class T> class TClass2 : public TClass0<T> {
   public:
+    TClass2( bool default_Arg = true) {}
     T bob;
 };
 
