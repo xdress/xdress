@@ -7,7 +7,7 @@ from xdress import autodescribe as ad
 from xdress.astparsers import PARSERS_AVAILABLE
 from xdress.utils import parse_global_rc
 
-from tools import unit, assert_equal_or_diff, skip_then_continue
+from tools import unit, assert_equal_or_diff, skip_then_continue, cleanfs
 
 from numpy.testing import dec
 
@@ -164,24 +164,30 @@ full_merge_desc = {
 def test_describe_cpp():
     rc = parse_global_rc()
     clang_includes = rc.clang_includes if 'clang_includes' in rc else None
-    fname = os.path.join(os.path.split(__file__)[0], 'toaster.h')
+    testdir = os.path.dirname(__file__)
+    fname = os.path.join(testdir, 'toaster.h')
+    buildbase = os.path.join(testdir, 'build')
     ts.register_class('Base', ('T', 'i'), cpp_type='Base')
     ts.register_classname('Toaster', 'toaster', 'toaster', 'cpp_toaster')
     def check(parser):
-        goals = (('class',('Base','int32',7,0),exp_base_desc(parser)),
-                 ('class',('Point',True,0),exp_point_desc),
-                 ('class','Toaster',exp_toaster_desc),
-                 ('func','simple',exp_simple_desc),
-                 ('func','twice',exp_twice_desc), # Verify that we pick up parameter names from definitions
-                 ('func','conflict',exp_conflict_desc), # Verify that the first parameter name declaration wins
-                 ('func',('lasso',17,'int32','float32'),exp_lasso_desc(17)),
-                 ('func',('lasso',18,'int32','float32'),exp_lasso_desc(18)),
-                 ('var','Choices',exp_choices_desc))
-        for kind,name,exp in goals:
-            obs = ad.describe(fname, name=name, kind=kind, parsers=parser, verbose=False, ts=ts,
-                              clang_includes=clang_includes)
+        goals = (('class', ('Base', 'int32', 7, 0), exp_base_desc(parser)),
+                 ('class', ('Point', True, 0), exp_point_desc),
+                 ('class', 'Toaster', exp_toaster_desc),
+                 ('func', 'simple', exp_simple_desc),
+                 # Verify that we pick up parameter names from definitions
+                 ('func', 'twice', exp_twice_desc), 
+                 # Verify that the first parameter name declaration wins
+                 ('func', 'conflict', exp_conflict_desc), 
+                 ('func', ('lasso', 17, 'int32', 'float32'), exp_lasso_desc(17)),
+                 ('func', ('lasso', 18, 'int32', 'float32'), exp_lasso_desc(18)),
+                 ('var', 'Choices', exp_choices_desc))
+        for kind, name, exp in goals:
+            obs = ad.describe(fname, name=name, kind=kind, parsers=parser, 
+                              builddir=buildbase + '-' + parser, verbose=False, 
+                              ts=ts, clang_includes=clang_includes)
             assert_equal_or_diff(obs, exp)
-    for parser in 'gccxml','clang':
+    for parser in 'gccxml', 'clang':
+        cleanfs(buildbase + '-' + parser)
         if PARSERS_AVAILABLE[parser]:
             yield check, parser
         else:
