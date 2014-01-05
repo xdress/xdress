@@ -68,7 +68,7 @@ except ImportError:
     clang = None
 
 from . import utils
-from .utils import guess_language, RunControl, NotSpecified
+from .utils import guess_language, RunControl, NotSpecified, ensuredirs
 from .plugins import Plugin
 
 PARSERS_AVAILABLE = {
@@ -182,6 +182,7 @@ def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     if os.path.isfile(xmlname):
         f = io.open(xmlname, 'r+b')
     else:
+        ensuredirs(xmlname)
         f = io.open(xmlname, 'w+b')
         subprocess.call(cmd)
     f.seek(0)

@@ -22,7 +22,7 @@ def test_autoall():
         assert_equal_or_diff(obs_var, exp_var)
         assert_equal_or_diff(obs_fun, exp_fun)
         assert_equal_or_diff(obs_cls, exp_cls)
-    for parser in 'gccxml','clang':
+    for parser in 'gccxml', 'clang':
         cleanfs(buildbase + '-' + parser)
         if PARSERS_AVAILABLE[parser]:
             yield check_all, parser
