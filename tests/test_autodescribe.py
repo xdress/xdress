@@ -168,6 +168,7 @@ def test_describe_cpp():
     fname = os.path.join(testdir, 'toaster.h')
     buildbase = os.path.join(testdir, 'build')
     ts.register_class('Base', ('T', 'i'), cpp_type='Base')
+    ts.register_class('Point', ('T',), cpp_type='Point')
     ts.register_classname('Toaster', 'toaster', 'toaster', 'cpp_toaster')
     def check(parser):
         goals = (('class', ('Base', 'int32', 7, 0), exp_base_desc(parser)),

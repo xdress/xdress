@@ -271,6 +271,7 @@ def _make_c_to_xdress():
         for c in cs if isinstance(cs,tuple) else (cs,):
             c_to_xdress[c] = n
     return c_to_xdress
+
 _c_to_xdress = _make_c_to_xdress()
 _integer_types = frozenset(s+i for i in 'int16 int32 int64 short intc int longlong'.split() for s in ('','u'))
 _float_types = frozenset('float double float32 float64'.split())
@@ -658,6 +659,8 @@ class GccxmlBaseDescriber(object):
                 default = True
             elif default == 'false':
                 default = False
+            elif default.startswith('"') and default.endswith('"'):
+                default = eval(default)  # raw string
             arg = (name, t, default)
         self._currfuncsig.append(arg)
 
