@@ -23,6 +23,8 @@ integration = attr('integration')
 
 def cleanfs(paths):
     """Removes the paths from the file system."""
+    if isinstance(paths, basestring):
+        paths = [paths]
     for p in paths:
         p = os.path.join(*p)
         if os.path.isfile(p):
