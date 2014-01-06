@@ -660,7 +660,7 @@ class GccxmlBaseDescriber(object):
             elif default == 'false':
                 default = False
             elif default.startswith('"') and default.endswith('"'):
-                default = eval(default)  # raw string
+                default = ast.literal_eval(default)  # raw string
             arg = (name, t, default)
         self._currfuncsig.append(arg)
 
