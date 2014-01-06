@@ -41,6 +41,12 @@ exp_point_desc = {
                 (('~Point', True),): None},
     'type': ('Point', True, 0)}
 
+choices = ('enum', 'Choices', (('CA', '0'), ('CB', '17')))
+exp_choices_desc = {
+    'name': 'Choices',
+    'namespace': 'xdress',
+    'type': choices}
+
 exp_toaster_desc = {
     'name': 'Toaster',
     'namespace': 'xdress',
@@ -57,6 +63,7 @@ exp_toaster_desc = {
         ('Toaster', ('slices', 'int32', 7), ('flag', 'bool', False)): None,
         ('Toaster', ('d', 'float64'), ('arg', 'str', '\n')): None,
         ('~Toaster',): None,
+        ('make_choice', ('a', choices, 'CA'), ('b', choices, 'CB')): 'void',
         ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1), ('dub', 'float64', 3e-8)): 'int32',
         ('templates', ('strange', ('Base', 'int32', 3, 0))): ('Base', 'float32', 0, 0),
         ('const_', ('c', ('int32', 'const'))): ('int32', 'const'),
@@ -88,11 +95,6 @@ def exp_lasso_desc(n):
     return {'name': lasso_name,
             'namespace': 'xdress',
             'signatures': {(lasso_name, ('a', 'int32'), ('b', (('float32', 'const'), '&'))): 'int32'}}
-
-exp_choices_desc = {
-    'name': 'Choices',
-    'namespace': 'xdress',
-    'type': ('enum', 'Choices', (('CA', '0'), ('CB', '17')))}
 
 exp_merge_desc = {
     'name': 'Toaster',

@@ -25,6 +25,9 @@ template<class T, int i=0> struct Base {
 template<bool B=false> class Point {};
 template<> class Point<true> {};
 
+// Enums
+enum Choices { CA, CB = 18-1 };
+
 // Toaster class
 class Toaster : Base<int,6+1> {
 public:
@@ -40,6 +43,9 @@ public:
   float rate;
   int (*fp)(float);
   std::vector<char> vec;
+
+  // Default enum values
+  void make_choice(Choices a=CA, Choices b=CB);
 
   // Public access functions
   int make_toast(std::string when, unsigned int nslices=1, double dub=3e-8);
@@ -64,9 +70,6 @@ void twice(int); // declaration without argument name
 void twice(int x) {} // definition with argument name
 void conflict(int good); // first declaration with correct argument name
 void conflict(int bad); // second declaration with wrong argument name
-
-// Enums
-enum Choices { CA, CB = 18-1 };
 
 } // end namespace xdress
 

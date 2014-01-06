@@ -1340,9 +1340,8 @@ def clang_describe_class(cls):
 def clang_describe_var(var):
     """Describe the var at the given clang AST node"""
     if var.kind == CursorKind.ENUM_DECL:
-        options = tuple((v.spelling, str(v.enum_value)) for v in var.get_children())
         return {'name': var.spelling, 'namespace': clang_parent_namespace(var),
-                'type': ('enum', var.spelling, options)}
+                'type': clang_describe_enum(var)}
     else:
         raise NotImplementedError('var kind {0}: {1}'.format(var.kind, var.spelling))
 
@@ -1449,7 +1448,7 @@ def clang_describe_type(typ, loc):
                     tuple(('_{0}'.format(i),clang_describe_type(arg, loc)) for i,arg in enumerate(typ.argument_types())),
                     clang_describe_type(typ.get_result(), loc))
         elif kind == TypeKind.ENUM:
-            desc = typ.spelling
+            return clang_describe_enum(typ.get_declaration())
         else:
             raise NotImplementedError('type kind {0}: {1} at {2}'
                 .format(typ.kind, typ.spelling, clang_str_location(loc)))
@@ -1457,6 +1456,10 @@ def clang_describe_type(typ, loc):
         return (desc, 'const')
     else:
         return desc
+
+def clang_describe_enum(decl):
+    options = tuple((v.spelling, str(v.enum_value)) for v in decl.get_children())
+    return ('enum', decl.spelling, options)
 
 if 0:
     # TODO: Automatic support for default template arguments doesn't work yet
@@ -1528,8 +1531,15 @@ def clang_describe_expression(exp):
     try:
         return _clang_expressions[s]
     except KeyError:
-        raise NotImplementedError('unhandled expression "{0}" at {1}'
-            .format(s, clang_str_location(exp.location)))
+        pass
+    if exp.referenced:
+        exp = exp.referenced
+    if exp.kind == CursorKind.ENUM_CONSTANT_DECL:
+        return s
+    # Nothing worked, so bail
+    kind = exp.kind.name
+    raise NotImplementedError('unhandled expression "{0}" of kind {1} at {2}'
+        .format(s, kind, clang_str_location(exp.location)))
 
 
 #
