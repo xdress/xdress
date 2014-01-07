@@ -8,7 +8,7 @@ from tools import unit, assert_equal_or_diff, skip_then_continue, cleanfs
 @unit
 def test_autoall():
     rc = parse_global_rc()
-    clang_includes = rc.clang_includes if 'clang_includes' in rc else None
+    clang_includes = rc.clang_includes if 'clang_includes' in rc else ()
     exp_var = ['Choice']
     exp_fun = ['foo']
     exp_cls = ['Blah']

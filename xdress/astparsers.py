@@ -396,6 +396,7 @@ class ParserPlugin(Plugin):
 
     defaultrc = utils.RunControl(
         includes=['.'],
+        clang_includes=(),
         defines=["XDRESS"],
         undefines=[],
         variables=(),
@@ -454,7 +455,8 @@ class ParserPlugin(Plugin):
         if rc.dumpast is not NotSpecified:
             dumpast(rc.dumpast, rc.parsers, rc.sourcedir, includes=rc.includes,
                     defines=rc.defines, undefines=rc.undefines,
-                    verbose=rc.verbose, debug=rc.debug, builddir=rc.builddir)
+                    verbose=rc.verbose, debug=rc.debug, builddir=rc.builddir,
+                    clang_includes=rc.clang_includes)
             sys.exit()
 
     def execute(self, rc):

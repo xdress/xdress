@@ -165,7 +165,7 @@ full_merge_desc = {
 @unit
 def test_describe_cpp():
     rc = parse_global_rc()
-    clang_includes = rc.clang_includes if 'clang_includes' in rc else None
+    clang_includes = rc.clang_includes if 'clang_includes' in rc else ()
     testdir = os.path.dirname(__file__)
     fname = os.path.join(testdir, 'toaster.h')
     buildbase = os.path.join(testdir, 'build')
