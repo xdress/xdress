@@ -84,6 +84,7 @@ def setup():
         from setuptools import setup as setup_, Extension
     except ImportError:
         from distutils.core import setup as setup_, Extension
+    from distutils.sysconfig import get_config_vars
 
     scripts_dir = os.path.join(dir_name, 'scripts')
     if os.name == 'nt':
@@ -96,6 +97,11 @@ def setup():
     packages = ['xdress', 'xdress.clang']
     pack_dir = {'xdress': 'xdress', 'xdress.clang': 'xdress/clang'}
     pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp']}
+
+    # Remove -Wstrict-prototypes to prevent warnings in libclang C++ code,
+    # following http://stackoverflow.com/questions/8106258.
+    opt, = get_config_vars('OPT')
+    os.environ['OPT'] = ' '.join(f for f in opt.split() if f != '-Wstrict-prototypes')
 
     clang_dir = os.path.join(dir_name, 'xdress', 'clang')
     clang_src_dir = os.path.join(clang_dir, 'src')
