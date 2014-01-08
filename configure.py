@@ -4,6 +4,8 @@ import os
 import io
 import sys
 import json
+import glob
+import subprocess
 
 sys.path.insert(0, '')
 import xdress.version
@@ -79,9 +81,9 @@ long_desc = "\n".join([l for l in long_desc.splitlines()
 
 def setup():
     try:
-        from setuptools import setup as setup_
+        from setuptools import setup as setup_, Extension
     except ImportError:
-        from distutils.core import setup as setup_
+        from distutils.core import setup as setup_, Extension
 
     scripts_dir = os.path.join(dir_name, 'scripts')
     if os.name == 'nt':
@@ -91,9 +93,26 @@ def setup():
         scripts = [os.path.join(scripts_dir, f)
                    for f in os.listdir(scripts_dir)
                    if not f.endswith('.bat')]
-    packages = ['xdress',]
-    pack_dir = {'xdress': 'xdress', }
+    packages = ['xdress', 'xdress.clang']
+    pack_dir = {'xdress': 'xdress', 'xdress.clang': 'xdress/clang'}
     pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp']}
+
+    clang_dir = os.path.join(dir_name, 'xdress', 'clang')
+    clang_src_dir = os.path.join(clang_dir, 'src')
+    llvm_cppflags = subprocess.check_output(['llvm-config','--cppflags']).split()
+    llvm_ldflags = subprocess.check_output(['llvm-config','--ldflags','--libs']).split()
+    clang_libs = '''clangTooling clangFrontend clangDriver clangSerialization clangCodeGen
+                    clangParse clangSema clangStaticAnalyzerFrontend clangStaticAnalyzerCheckers
+                    clangStaticAnalyzerCore clangAnalysis clangARCMigrate clangEdit
+                    clangRewriteCore clangAST clangLex clangBasic'''.split()
+    module = Extension('xdress.clang.libclang',
+                       sources=glob.glob(os.path.join(clang_src_dir, '*.cpp')),
+                       define_macros=[('XDRESS', 1)],
+                       include_dirs=[clang_dir],
+                       extra_compile_args=llvm_cppflags+['-fno-rtti'],
+                       extra_link_args=llvm_ldflags,
+                       libraries=clang_libs)
+
     setup_kwargs = {
         "name": "xdress",
         "version": INFO['version'],
@@ -104,6 +123,7 @@ def setup():
         "packages": packages,
         "package_dir": pack_dir,
         "package_data": pack_data,
+        "ext_modules": [module],
         "scripts": scripts,
         "description": "Goes all J. Edgar Hoover on your code.",
         "long_description": long_desc,

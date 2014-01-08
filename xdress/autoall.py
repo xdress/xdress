@@ -47,8 +47,8 @@ except ImportError:
     pycparser = None
 
 try:
-    import clang
-    from clang.cindex import CursorKind
+    from . import clang
+    from .clang.cindex import CursorKind
 except ImportError:
     clang = None
 

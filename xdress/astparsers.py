@@ -63,7 +63,11 @@ except ImportError:
 
 # clang conditional imports
 try:
-    import clang.cindex
+    from . import clang
+    from .clang import cindex
+    # Make sure we use our own version of libclang.so
+    from .clang import libclang
+    cindex.Config.set_library_file(libclang.__file__)
 except ImportError:
     clang = None
 
@@ -224,8 +228,8 @@ def clang_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     -------
     tu : libclang TranslationUnit object
     """
-    index = clang.cindex.Index.create()
-    options = clang.cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES
+    index = cindex.Index.create()
+    options = cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES
     tu = index.parse(filename, options=options,
                      args=  ['-x',language]
                           + ['-I'+i for i in tuple(clang_includes)+tuple(includes)]
@@ -234,7 +238,7 @@ def clang_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     # Check for fatal errors
     failed = False
     for d in tu.diagnostics:
-        if d.severity >= clang.cindex.Diagnostic.Error:
+        if d.severity >= cindex.Diagnostic.Error:
             print(d.format())
             failed = True
     if failed:

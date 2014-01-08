@@ -222,8 +222,8 @@ from . import astparsers
 from .typesystem import TypeSystem
 
 try:
-    import clang.cindex
-    from clang.cindex import CursorKind, TypeKind, AccessKind
+    from . import clang
+    from .clang.cindex import CursorKind, TypeKind, AccessKind
 except ImportError:
     clang = None
 
