@@ -27,6 +27,10 @@ int func3(char * val, char ** arr, int arr_len) {
   return -1;
 };
 
+void call_with_void_fp_struct(VoidFPStruct x) {
+  x.op(10);
+};
+
 // FIXME #96
 //int func4(PersonID id)
 int func4(int id) {

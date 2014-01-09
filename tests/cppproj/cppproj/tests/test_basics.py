@@ -161,3 +161,11 @@ def test_lessthan_int_3():
     assert_true(basics.lessthan['int32', 3](-1))
     assert_true(basics.lessthan['int32', 3](2))
     assert_false(basics.lessthan['int32', 3](42))
+
+
+def test_void_fp_struct():
+    x = basics.VoidFPStruct()
+    q = []
+    x.op = q.append
+    basics.call_with_void_fp_struct(x)
+    assert_equal(q, [10])

@@ -43,6 +43,10 @@ typedef struct struct0 {
   double xs [63];
 } struct0;
 
+typedef struct VoidFPStruct { 
+  void (*op)(int); 
+} VoidFPStruct;
+
 // normal classes 
 
 class A {
@@ -173,6 +177,8 @@ std::vector<double> func0(double, std::vector<double>);
 bool func1(std::map<int, double>, std::map<int, double>);
 std::vector< std::vector<int> > func2(std::vector<int> a, std::vector<int> b);
 int func3(char *, char **, int = -1);
+
+void call_with_void_fp_struct(VoidFPStruct x);
 
 // FIXME when enums are implemented properly in C++, see #96
 //int func4(PersonID id);
