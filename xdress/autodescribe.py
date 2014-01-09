@@ -201,6 +201,7 @@ from hashlib import md5
 from numbers import Number
 from pprint import pprint, pformat
 from warnings import warn
+from functools import reduce
 
 if os.name == 'nt':
     import ntpath
@@ -1352,7 +1353,7 @@ def clang_str_location(loc):
 def clang_describe_functions(funcs):
     """Describe the function at the given clang AST nodes.  If more than one
     node is given, we verify that they match and find argument names where we can."""
-    descs = map(clang_describe_function,funcs)
+    descs = tuple(map(clang_describe_function,funcs))
     if len(descs)==1:
         return descs[0]
     def merge(d0,d1):
@@ -1388,7 +1389,7 @@ def clang_describe_functions(funcs):
             for i in xrange(j):
                 try:
                     merge(descs[i],descs[j])
-                except ValueError,e:
+                except ValueError as e:
                     from pprint import pprint
                     pprint(descs[i])
                     pprint(descs[j])
@@ -1509,11 +1510,12 @@ def clang_describe_template_arg(arg, loc):
     try:
         # ast.literal_eval isn't precisely correct, since there are Python
         # literals which aren't valid C++, but it should be close enough.
-        return ast.literal_eval(arg.spelling.strip())
+        s = arg.spelling.strip()
+        return ast.literal_eval(s)
     except:
         pass
     try:
-        return _clang_expressions[arg.spelling]
+        return _clang_expressions[s]
     except KeyError:
         raise NotImplementedError('template argument kind {0} at {1}'
             .format(arg.kind.name, clang_str_location(loc)))
