@@ -844,9 +844,12 @@ class TypeSystem(object):
                 cached=False, proxy_name=rtnprox, existing_name=rtncall)
             if rtndecl is None and rtnbody is None:
                 rtnprox = rtnname
-            rtndecl = indent([rtndecl, 
-                              "cdef {0} {1}".format(ts.cython_ctype(t[2][2]), 
-                              rtncall)])
+            rtndecls = [rtndecl]
+            returns_void = (t[2][2] == 'void')
+            if not returns_void:
+                 rtndecls.append("cdef {0} {1}".format(ts.cython_ctype(t[2][2]), 
+                                                       rtncall))
+            rtndecl = indent(rtndecls)
             rtnbody = indent(rtnbody)
             s = ('def {{proxy_name}}({arglist}):\n'
                  '{argdecls}\n'
@@ -854,15 +857,16 @@ class TypeSystem(object):
                  '    if {{var}} == NULL:\n'
                  '        raise RuntimeError("{{var}} is NULL and may not be '
                                              'safely called!")\n'
-                 '{argbodys}\n'
+                 '{argbodys}\n')
+            s += '    {{var}}({carglist})\n' if returns_void else \
                  '    {rtncall} = {{var}}({carglist})\n'
-                 '{rtnbody}\n')
+            s += '{rtnbody}\n'
             s = s.format(arglist=", ".join(argnames), argdecls=argdecls,
                          cvartypeptr=ts.cython_ctype(t_).format(type_name='cvartype'),
                          argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
                          rtncall=rtncall, carglist=", ".join(argrtns), rtnbody=rtnbody)
             caches = 'if {cache_name} is None:\n' + indent(s)
-            if t[2][2] != 'void':
+            if not returns_void:
                 caches += "\n        return {rtnrtn}".format(rtnrtn=rtnrtn)
                 caches += '\n    {cache_name} = {proxy_name}\n'
             return s, s, caches
@@ -1051,14 +1055,18 @@ class TypeSystem(object):
                 rtnprox = rtnname
             rtndecl = indent([rtndecl])
             rtnbody = indent([rtnbody])
+            returns_void = (t[2][2] == 'void')
+            if returns_void:
+                rtnrtn = ''
             s = ('cdef {rtnct} {{proxy_name}}({arglist}):\n'
                  '{argdecls}\n'
                  '{rtndecl}\n'
                  '    global {{var}}\n'
-                 '{argbodys}\n'
+                 '{argbodys}\n')
+            s += '    {{var}}({pyarglist})\n' if returns_void else \
                  '    {rtncall} = {{var}}({pyarglist})\n'
-                 '{rtnbody}\n'
-                 '    return {rtnrtn}\n')
+            s += ('{rtnbody}\n'
+                  '    return {rtnrtn}\n')
             arglist = ", ".join(["{0} {1}".format(*x) for x in zip(argcts, argnames)])
             pyarglist=", ".join(argrtns)
             s = s.format(rtnct=rtnct, arglist=arglist, argdecls=argdecls, 
