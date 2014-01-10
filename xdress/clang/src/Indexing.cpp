@@ -25,7 +25,7 @@
 #include "clang/Frontend/Utils.h"
 #include "clang/Lex/HeaderSearch.h"
 #include "clang/Lex/PPCallbacks.h"
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
 #include "clang/Lex/PPConditionalDirectiveRecord.h"
 #endif
 #include "clang/Lex/Preprocessor.h"
@@ -40,6 +40,10 @@ using namespace clang;
 using namespace cxtu;
 using namespace cxindex;
 
+#if !CLANG_VERSION_GE(3,3)
+#define MacroDirective MacroInfo
+#endif
+
 static void indexDiagnostics(CXTranslationUnit TU, IndexingContext &IdxCtx);
 
 namespace {
@@ -48,7 +52,7 @@ namespace {
 // Skip Parsed Bodies
 //===----------------------------------------------------------------------===//
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
 
 #ifdef LLVM_ON_WIN32
 
@@ -93,6 +97,8 @@ public:
 ///   #2 is identified as the location of "#ifdef BLAH"
 ///   #3 is identified as the location of "#ifdef CAKE"
 ///
+#if CLANG_VERSION_GE(3,3)
+#if CLANG_VERSION_GE(3,4)
 class PPRegion {
   llvm::sys::fs::UniqueID UniqueID;
   time_t ModTime;
@@ -113,11 +119,37 @@ public:
            lhs.ModTime == rhs.ModTime;
   }
 };
+#else
+class PPRegion {
+  ino_t ino;
+  time_t ModTime;
+  dev_t dev;
+  unsigned Offset;
+public:
+  PPRegion() : ino(), ModTime(), dev(), Offset() {}
+  PPRegion(dev_t dev, ino_t ino, unsigned offset, time_t modTime)
+    : ino(ino), ModTime(modTime), dev(dev), Offset(offset) {} 
+
+  ino_t getIno() const { return ino; }
+  dev_t getDev() const { return dev; }
+  unsigned getOffset() const { return Offset; }
+  time_t getModTime() const { return ModTime; }
+
+  bool isInvalid() const { return *this == PPRegion(); }
+
+  friend bool operator==(const PPRegion &lhs, const PPRegion &rhs) {
+    return lhs.dev == rhs.dev && lhs.ino == rhs.ino &&
+        lhs.Offset == rhs.Offset && lhs.ModTime == rhs.ModTime;
+  }
+};
+#endif
 
 typedef llvm::DenseSet<PPRegion> PPRegionSetTy;
+#endif // CLANG_VERSION_GE(3,3)
 
 } // end anonymous namespace
 
+#if CLANG_VERSION_GE(3,3)
 namespace llvm {
   template <> struct isPodLike<PPRegion> {
     static const bool value = true;
@@ -126,19 +158,34 @@ namespace llvm {
   template <>
   struct DenseMapInfo<PPRegion> {
     static inline PPRegion getEmptyKey() {
+#if CLANG_VERSION_GE(3,4)
       return PPRegion(llvm::sys::fs::UniqueID(0, 0), unsigned(-1), 0);
+#else
+      return PPRegion(0, 0, unsigned(-1), 0);
+#endif
     }
     static inline PPRegion getTombstoneKey() {
+#if CLANG_VERSION_GE(3,4)
       return PPRegion(llvm::sys::fs::UniqueID(0, 0), unsigned(-2), 0);
+#else
+      return PPRegion(0, 0, unsigned(-2), 0);
+#endif
     }
 
     static unsigned getHashValue(const PPRegion &S) {
       llvm::FoldingSetNodeID ID;
+#if CLANG_VERSION_GE(3,4)
       const llvm::sys::fs::UniqueID &UniqueID = S.getUniqueID();
       ID.AddInteger(UniqueID.getFile());
       ID.AddInteger(UniqueID.getDevice());
       ID.AddInteger(S.getOffset());
       ID.AddInteger(S.getModTime());
+#else
+      ID.AddInteger(S.getIno());
+      ID.AddInteger(S.getDev());
+      ID.AddInteger(S.getOffset());
+      ID.AddInteger(S.getModTime());
+#endif
       return ID.ComputeHash();
     }
 
@@ -147,6 +194,7 @@ namespace llvm {
     }
   };
 }
+#endif
 
 namespace {
 
@@ -214,8 +262,13 @@ private:
     SourceLocation RegionLoc = PPRec.findConditionalDirectiveRegionLoc(Loc);
     if (RegionLoc.isInvalid()) {
       if (isParsedOnceInclude(FE)) {
+#if CLANG_VERSION_GE(3,4)
         const llvm::sys::fs::UniqueID &ID = FE->getUniqueID();
         return PPRegion(ID, 0, FE->getModificationTime());
+#else
+        return PPRegion(FE->getDevice(), FE->getInode(), 0,
+                        FE->getModificationTime());
+#endif
       }
       return PPRegion();
     }
@@ -228,14 +281,24 @@ private:
 
     if (RegionFID != FID) {
       if (isParsedOnceInclude(FE)) {
+#if CLANG_VERSION_GE(3,4)
         const llvm::sys::fs::UniqueID &ID = FE->getUniqueID();
         return PPRegion(ID, 0, FE->getModificationTime());
+#else
+        return PPRegion(FE->getDevice(), FE->getInode(), 0,
+                        FE->getModificationTime());
+#endif
       }
       return PPRegion();
     }
 
+#if CLANG_VERSION_GE(3,4)
     const llvm::sys::fs::UniqueID &ID = FE->getUniqueID();
     return PPRegion(ID, RegionOffset, FE->getModificationTime());
+#else
+    return PPRegion(FE->getDevice(), FE->getInode(), RegionOffset,
+                    FE->getModificationTime());
+#endif
   }
 
   bool isParsedOnceInclude(const FileEntry *FE) {
@@ -244,7 +307,7 @@ private:
 };
 
 #endif
-#endif // !XDRESS
+#endif // CLANG_VERSION_GE(3,3)
 
 //===----------------------------------------------------------------------===//
 // IndexPPCallbacks
@@ -288,7 +351,6 @@ public:
                             Imported);
   }
 
-#ifndef XDRESS
   /// MacroDefined - This hook is called whenever a macro definition is seen.
   virtual void MacroDefined(const Token &Id, const MacroDirective *MD) {
   }
@@ -300,10 +362,15 @@ public:
   }
 
   /// MacroExpands - This is called by when a macro invocation is found.
+#if CLANG_VERSION_GE(3,3)
   virtual void MacroExpands(const Token &MacroNameTok, const MacroDirective *MD,
                             SourceRange Range, const MacroArgs *Args) {
   }
-#endif // !XDRESS
+#else
+  virtual void MacroExpands(const Token &MacroNameTok, const MacroDirective *MD,
+                            SourceRange Range) {
+  }
+#endif
 
   /// SourceRangeSkipped - This hook is called when a source range is skipped.
   /// \param Range The SourceRange that was skipped. The range begins at the
@@ -318,17 +385,17 @@ public:
 
 class IndexingConsumer : public ASTConsumer {
   IndexingContext &IndexCtx;
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   TUSkipBodyControl *SKCtrl;
 #endif
 
 public:
-#ifdef XDRESS
-  IndexingConsumer(IndexingContext &indexCtx)
-    : IndexCtx(indexCtx) { }
-#else
+#if CLANG_VERSION_GE(3,3)
   IndexingConsumer(IndexingContext &indexCtx, TUSkipBodyControl *skCtrl)
     : IndexCtx(indexCtx), SKCtrl(skCtrl) { }
+#else
+  explicit IndexingConsumer(IndexingContext &indexCtx)
+    : IndexCtx(indexCtx) { }
 #endif
 
   // ASTConsumer Implementation
@@ -377,7 +444,7 @@ public:
     IndexCtx.indexDecl(D);
   }
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   virtual bool shouldSkipFunctionBody(Decl *D) {
     if (!SKCtrl) {
       // Always skip bodies.
@@ -420,7 +487,7 @@ public:
       Errors.push_back(StoredDiagnostic(level, Info));
   }
 
-#if CLANG_VERSION_LT(3,3)
+#if !CLANG_VERSION_GE(3,3)
   DiagnosticConsumer *clone(DiagnosticsEngine &Diags) const {
     return new IgnoringDiagConsumer();
   }
@@ -435,7 +502,7 @@ class IndexingFrontendAction : public ASTFrontendAction {
   IndexingContext IndexCtx;
   CXTranslationUnit CXTU;
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   SessionSkipBodyData *SKData;
   OwningPtr<TUSkipBodyControl> SKCtrl;
 #endif
@@ -445,13 +512,13 @@ public:
                          IndexerCallbacks &indexCallbacks,
                          unsigned indexOptions,
                          CXTranslationUnit cxTU
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
                          ,SessionSkipBodyData *skData
 #endif
                          )
     : IndexCtx(clientData, indexCallbacks, indexOptions, cxTU),
       CXTU(cxTU)
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
       , SKData(skData)
 #endif
       { }
@@ -470,19 +537,17 @@ public:
     PP.addPPCallbacks(new IndexPPCallbacks(PP, IndexCtx));
     IndexCtx.setPreprocessor(PP);
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
     if (SKData) {
       PPConditionalDirectiveRecord *
         PPRec = new PPConditionalDirectiveRecord(PP.getSourceManager());
       PP.addPPCallbacks(PPRec);
       SKCtrl.reset(new TUSkipBodyControl(*SKData, *PPRec, PP));
     }
-#endif
 
-#ifdef XDRESS
-    return new IndexingConsumer(IndexCtx);
-#else
     return new IndexingConsumer(IndexCtx, SKCtrl.get());
+#else
+    return new IndexingConsumer(IndexCtx);
 #endif
   }
 
@@ -505,15 +570,15 @@ public:
 
 struct IndexSessionData {
   CXIndex CIdx;
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   OwningPtr<SessionSkipBodyData> SkipBodyData;
 #endif
 
   explicit IndexSessionData(CXIndex cIdx)
-#ifdef XDRESS
-    : CIdx(cIdx) {}
-#else
+#if CLANG_VERSION_GE(3,3)
     : CIdx(cIdx), SkipBodyData(new SessionSkipBodyData) {}
+#else
+    : CIdx(cIdx) {}
 #endif
 };
 
@@ -592,7 +657,7 @@ static void clang_indexSourceFile_Impl(void *UserData) {
   // Configure the diagnostics.
   IntrusiveRefCntPtr<DiagnosticsEngine>
     Diags(CompilerInstance::createDiagnostics(new DiagnosticOptions,
-#if CLANG_VERSION_LT(3,3)
+#if !CLANG_VERSION_GE(3,3)
                                               num_command_line_args,
                                               command_line_args,
 #endif
@@ -678,7 +743,7 @@ static void clang_indexSourceFile_Impl(void *UserData) {
   OwningPtr<IndexingFrontendAction> IndexAction;
   IndexAction.reset(new IndexingFrontendAction(client_data, CB,
                                                index_options, CXTU->getTU()
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
                               , SkipBodies ? IdxSession->SkipBodyData.get() : 0
 #endif
                               ));
@@ -832,10 +897,10 @@ static void clang_indexTranslationUnit_Impl(void *UserData) {
     IndexCtxCleanup(IndexCtx.get());
 
   OwningPtr<IndexingConsumer> IndexConsumer;
-#ifdef XDRESS
-  IndexConsumer.reset(new IndexingConsumer(*IndexCtx));
-#else
+#if CLANG_VERSION_GE(3,3)
   IndexConsumer.reset(new IndexingConsumer(*IndexCtx, 0));
+#else
+  IndexConsumer.reset(new IndexingConsumer(*IndexCtx));
 #endif
 
   // Recover resources if we crash before exiting this method.
@@ -1026,7 +1091,7 @@ int clang_indexSourceFile(CXIndexAction idxAction,
                           unsigned num_unsaved_files,
                           CXTranslationUnit *out_TU,
                           unsigned TU_options) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   LOG_FUNC_SECTION {
     *Log << source_filename << ": ";
     for (int i = 0; i != num_command_line_args; ++i)
@@ -1083,7 +1148,7 @@ int clang_indexTranslationUnit(CXIndexAction idxAction,
                                unsigned index_callbacks_size,
                                unsigned index_options,
                                CXTranslationUnit TU) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   LOG_FUNC_SECTION {
     *Log << TU;
   }

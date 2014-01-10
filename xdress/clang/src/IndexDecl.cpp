@@ -16,7 +16,7 @@ using namespace cxindex;
 
 namespace {
 
-#if CLANG_VERSION_LT(3,3)
+#if !CLANG_VERSION_GE(3,3)
 #define ConstDeclVisitor DeclVisitor
 #endif
 
@@ -119,7 +119,7 @@ public:
     return true;
   }
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   bool VisitMSPropertyDecl(const MSPropertyDecl *D) {
     handleDeclarator(D);
     return true;

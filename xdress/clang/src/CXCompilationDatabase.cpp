@@ -1,3 +1,4 @@
+#include "xdress-clang.h"
 #include "clang-c/CXCompilationDatabase.h"
 #include "CXString.h"
 #include "clang/Tooling/CompilationDatabase.h"
@@ -59,7 +60,7 @@ clang_CompilationDatabase_getCompileCommands(CXCompilationDatabase CDb,
   return 0;
 }
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
 CXCompileCommands
 clang_CompilationDatabase_getAllCompileCommands(CXCompilationDatabase CDb) {
   if (CompilationDatabase *db = static_cast<CompilationDatabase *>(CDb)) {
@@ -70,7 +71,7 @@ clang_CompilationDatabase_getAllCompileCommands(CXCompilationDatabase CDb) {
 
   return 0;
 }
-#endif // !XDRESS
+#endif
 
 void
 clang_CompileCommands_dispose(CXCompileCommands Cmds)

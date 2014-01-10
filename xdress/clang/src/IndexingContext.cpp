@@ -95,11 +95,11 @@ AttrListInfo::AttrListInfo(const Decl *D, IndexingContext &IdxCtx)
 
     const IBOutletCollectionAttr *
       IBAttr = cast<IBOutletCollectionAttr>(IBInfo.A);
-#if CLANG_VERSION_LT(3,3)
-    SourceLocation InterfaceLocStart = IBAttr->getInterfaceLoc();
-#else
+#if CLANG_VERSION_GE(3,4)
     SourceLocation InterfaceLocStart =
         IBAttr->getInterfaceLoc()->getTypeLoc().getLocStart();
+#else
+    SourceLocation InterfaceLocStart = IBAttr->getInterfaceLoc();
 #endif
     IBInfo.IBCollInfo.attrInfo = &IBInfo;
     IBInfo.IBCollInfo.classLoc = IdxCtx.getIndexLoc(InterfaceLocStart);
@@ -173,18 +173,7 @@ SourceLocation IndexingContext::CXXBasesListInfo::getBaseLoc(
   if (TL.isNull())
     return Loc;
 
-#if CLANG_VERSION_LT(3,3)
-  if (const QualifiedTypeLoc *QL = dyn_cast<QualifiedTypeLoc>(&TL))
-    TL = QL->getUnqualifiedLoc();
-
-  if (const ElaboratedTypeLoc *EL = dyn_cast<ElaboratedTypeLoc>(&TL))
-    return EL->getNamedTypeLoc().getBeginLoc();
-  if (const DependentNameTypeLoc *DL = dyn_cast<DependentNameTypeLoc>(&TL))
-    return DL->getNameLoc();
-  if (const DependentTemplateSpecializationTypeLoc *
-        DTL = dyn_cast<DependentTemplateSpecializationTypeLoc>(&TL))
-    return DTL->getTemplateNameLoc();
-#else
+#if CLANG_VERSION_GE(3,3)
   if (QualifiedTypeLoc QL = TL.getAs<QualifiedTypeLoc>())
     TL = QL.getUnqualifiedLoc();
 
@@ -195,6 +184,17 @@ SourceLocation IndexingContext::CXXBasesListInfo::getBaseLoc(
   if (DependentTemplateSpecializationTypeLoc DTL =
           TL.getAs<DependentTemplateSpecializationTypeLoc>())
     return DTL.getTemplateNameLoc();
+#else
+  if (const QualifiedTypeLoc *QL = dyn_cast<QualifiedTypeLoc>(&TL))
+    TL = QL->getUnqualifiedLoc();
+
+  if (const ElaboratedTypeLoc *EL = dyn_cast<ElaboratedTypeLoc>(&TL))
+    return EL->getNamedTypeLoc().getBeginLoc();
+  if (const DependentNameTypeLoc *DL = dyn_cast<DependentNameTypeLoc>(&TL))
+    return DL->getNameLoc();
+  if (const DependentTemplateSpecializationTypeLoc *
+        DTL = dyn_cast<DependentTemplateSpecializationTypeLoc>(&TL))
+    return DTL->getTemplateNameLoc();
 #endif
 
   return Loc;
@@ -231,16 +231,7 @@ bool IndexingContext::isFunctionLocalDecl(const Decl *D) {
     return false;
 
   if (const NamedDecl *ND = dyn_cast<NamedDecl>(D)) {
-#if CLANG_VERSION_LT(3,3)
-    switch (ND->getLinkage()) {
-    case NoLinkage:
-    case InternalLinkage:
-      return true;
-    case UniqueExternalLinkage:
-    case ExternalLinkage:
-      return false;
-    }
-#else
+#if CLANG_VERSION_GE(3,4)
     switch (ND->getFormalLinkage()) {
     case NoLinkage:
     case VisibleNoLinkage:
@@ -248,6 +239,15 @@ bool IndexingContext::isFunctionLocalDecl(const Decl *D) {
       return true;
     case UniqueExternalLinkage:
       llvm_unreachable("Not a sema linkage");
+    case ExternalLinkage:
+      return false;
+    }
+#else
+    switch (ND->getLinkage()) {
+    case NoLinkage:
+    case InternalLinkage:
+      return true;
+    case UniqueExternalLinkage:
     case ExternalLinkage:
       return false;
     }
@@ -402,11 +402,12 @@ bool IndexingContext::handleObjCContainer(const ObjCContainerDecl *D,
   return handleDecl(D, Loc, Cursor, ContDInfo);
 }
 
+#if !CLANG_VERSION_GE(3,4)
+#define isFirstDecl isFirstDeclaration
+#endif 
+
 bool IndexingContext::handleFunction(const FunctionDecl *D) {
-#if CLANG_VERSION_LT(3,3)
-  DeclInfo DInfo(!D->isFirstDeclaration(), D->isThisDeclarationADefinition(),
-                 D->isThisDeclarationADefinition());
-#else
+#if CLANG_VERSION_GE(3,3)
   bool isDef = D->isThisDeclarationADefinition();
   bool isContainer = isDef;
   bool isSkipped = false;
@@ -419,13 +420,12 @@ bool IndexingContext::handleFunction(const FunctionDecl *D) {
   DeclInfo DInfo(!D->isFirstDecl(), isDef, isContainer);
   if (isSkipped)
     DInfo.flags |= CXIdxDeclFlag_Skipped;
+#else
+  DeclInfo DInfo(!D->isFirstDeclaration(), D->isThisDeclarationADefinition(),
+                 D->isThisDeclarationADefinition());
 #endif
   return handleDecl(D, D->getLocation(), getCursor(D), DInfo);
 }
-
-#if CLANG_VERSION_LT(3,3)
-#define isFirstDecl isFirstDeclaration
-#endif 
 
 bool IndexingContext::handleVar(const VarDecl *D) {
   DeclInfo DInfo(!D->isFirstDecl(), D->isThisDeclarationADefinition(),
@@ -439,7 +439,7 @@ bool IndexingContext::handleField(const FieldDecl *D) {
   return handleDecl(D, D->getLocation(), getCursor(D), DInfo);
 }
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
 bool IndexingContext::handleMSProperty(const MSPropertyDecl *D) {
   DeclInfo DInfo(/*isRedeclaration=*/false, /*isDefinition=*/true,
                  /*isContainer=*/false);
@@ -614,10 +614,7 @@ bool IndexingContext::handleObjCCategoryImpl(const ObjCCategoryImplDecl *D) {
 }
 
 bool IndexingContext::handleObjCMethod(const ObjCMethodDecl *D) {
-#if CLANG_VERSION_LT(3,3)
-  DeclInfo DInfo(!D->isCanonicalDecl(), D->isThisDeclarationADefinition(),
-                 D->isThisDeclarationADefinition());
-#else
+#if CLANG_VERSION_GE(3,3)
   bool isDef = D->isThisDeclarationADefinition();
   bool isContainer = isDef;
   bool isSkipped = false;
@@ -630,6 +627,9 @@ bool IndexingContext::handleObjCMethod(const ObjCMethodDecl *D) {
   DeclInfo DInfo(!D->isCanonicalDecl(), isDef, isContainer);
   if (isSkipped)
     DInfo.flags |= CXIdxDeclFlag_Skipped;
+#else
+  DeclInfo DInfo(!D->isCanonicalDecl(), D->isThisDeclarationADefinition(),
+                 D->isThisDeclarationADefinition());
 #endif
   return handleDecl(D, D->getLocation(), getCursor(D), DInfo);
 }
@@ -1155,9 +1155,7 @@ void IndexingContext::getEntityInfo(const NamedDecl *D,
   }
 
   {
-#ifdef XDRESS
-    XDRESS_FATAL("We've disabled USR support since part of it was hoisted out of libclang post-clang-3.2.");
-#else
+#if CLANG_VERSION_GE(3,4)
     SmallString<512> StrBuf;
     bool Ignore = getDeclCursorUSR(D, StrBuf);
     if (Ignore) {
@@ -1165,6 +1163,8 @@ void IndexingContext::getEntityInfo(const NamedDecl *D,
     } else {
       EntityInfo.USR = SA.copyCStr(StrBuf.str());
     }
+#else
+    XDRESS_FATAL("We've disabled USR support since part of it was hoisted out of libclang in clang-3.4.");
 #endif
   }
 }
