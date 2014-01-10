@@ -10,7 +10,7 @@ import tempfile
 from nose.tools import assert_true, assert_equal
 from tools import integration, cleanfs, check_cmd, clean_import, dirtests, \
     modtests, skip_then_continue
-    
+
 
 from xdress.astparsers import PARSERS_AVAILABLE
 
@@ -41,6 +41,7 @@ GENERATED_PATHS = [
     [PROJDIR, PROJNAME, 'stlc.pxd'],
     [PROJDIR, PROJNAME, 'stlc.pyx'],
     [PROJDIR, PROJNAME, 'cppproj_extra_types.h'],
+    [PROJDIR, 'src', 'basics.h.gch'],
     [TESTDIR, 'test_dt.py'],
     [TESTDIR, 'test_stlc.py'],
     [INSTDIR],
@@ -60,7 +61,7 @@ def test_all():
         path = path+':'+os.environ['PYTHONPATH']
     pyexec = sys.executable
     xdexec = os.path.join(base, 'scripts', 'xdress')
-    defaults = {'cwd': cwd, 'base': base, 'pyexec': pyexec, 'xdexec': xdexec, 
+    defaults = {'cwd': cwd, 'base': base, 'pyexec': pyexec, 'xdexec': xdexec,
                 'instdir': INSTDIR, 'rootdir': ROOTDIR, 'path': path}
 
     commands = (

@@ -15,6 +15,7 @@
 #ifndef LLVM_CLANG_CINDEXER_H
 #define LLVM_CLANG_CINDEXER_H
 
+#include "xdress-clang.h"
 #include "clang-c/Index.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Path.h"
@@ -89,7 +90,7 @@ public:
   namespace cxindex {
     void printDiagsToStderr(ASTUnit *Unit);
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
     /// \brief If \c MacroDefLoc points at a macro definition with \c II as
     /// its name, this retrieves its MacroInfo.
     MacroInfo *getMacroInfo(const IdentifierInfo &II,
