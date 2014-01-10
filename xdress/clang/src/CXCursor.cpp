@@ -218,8 +218,10 @@ CXCursor cxcursor::MakeCXCursor(const Stmt *S, const Decl *Parent,
   case Stmt::TypeTraitExprClass:
   case Stmt::CXXBindTemporaryExprClass:
   case Stmt::CXXDefaultArgExprClass:
-#if !CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,3)
   case Stmt::CXXDefaultInitExprClass:
+#endif
+#if CLANG_VERSION_GE(3,4)
   case Stmt::CXXStdInitializerListExprClass:
 #endif
   case Stmt::CXXScalarValueInitExprClass:
@@ -237,7 +239,7 @@ CXCursor cxcursor::MakeCXCursor(const Stmt *S, const Decl *Parent,
   case Stmt::ParenListExprClass:
   case Stmt::PredefinedExprClass:
   case Stmt::ShuffleVectorExprClass:
-#if !CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,4)
   case Stmt::ConvertVectorExprClass:
 #endif
   case Stmt::UnaryExprOrTypeTraitExprClass:
@@ -280,7 +282,7 @@ CXCursor cxcursor::MakeCXCursor(const Stmt *S, const Decl *Parent,
     K = CXCursor_DeclStmt;
     break;
 
-#if !CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,3)
   case Stmt::CapturedStmtClass:
     K = CXCursor_UnexposedStmt;
     break;
@@ -472,7 +474,7 @@ CXCursor cxcursor::MakeCXCursor(const Stmt *S, const Decl *Parent,
   case Stmt::CXXDependentScopeMemberExprClass:
   case Stmt::CXXPseudoDestructorExprClass:
   case Stmt::MemberExprClass:            
-#if !CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,3)
   case Stmt::MSPropertyRefExprClass:
 #endif
   case Stmt::ObjCIsaExprClass:
@@ -517,7 +519,7 @@ CXCursor cxcursor::MakeCXCursor(const Stmt *S, const Decl *Parent,
   case Stmt::MSDependentExistsStmtClass:
     K = CXCursor_UnexposedStmt;
     break;
-#if !CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,4)
   case Stmt::OMPParallelDirectiveClass:
     K = CXCursor_OMPParallelDirective;
     break;
@@ -961,10 +963,10 @@ CXCursor cxcursor::getTypeRefCursor(CXCursor cursor) {
 
   if (const ElaboratedType *ElabT = Ty->getAs<ElaboratedType>()) {
     Ty = ElabT->getNamedType();
-#if CLANG_VERSION_LT(3,3)
-    ElaboratedTypeLoc ElabTL = cast<ElaboratedTypeLoc>(TL);
-#else
+#if CLANG_VERSION_GE(3,3)
     ElaboratedTypeLoc ElabTL = TL.castAs<ElaboratedTypeLoc>();
+#else
+    ElaboratedTypeLoc ElabTL = cast<ElaboratedTypeLoc>(TL);
 #endif
     Loc = ElabTL.getNamedTypeLoc().getBeginLoc();
   }
@@ -1118,7 +1120,7 @@ int clang_visitSpecializations(CXCursor C,
       if (visitor(MakeCXCursor(*it, TU), C, client_data) == CXChildVisit_Break)
         return 1;
     }
-#if !CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,4)
   else if (const VarTemplateDecl* V = dyn_cast<VarTemplateDecl>(D))
     for (VarTemplateDecl::spec_iterator it = V->spec_begin(),
                                         end = V->spec_end(); it != end; ++it) {
@@ -1135,10 +1137,10 @@ int clang_Cursor_hasDefaultConstructor(CXCursor C) {
   if (clang_isDeclaration(C.kind)) {
     const Decl* D = getCursorDecl(C);
     if (const CXXRecordDecl* R = dyn_cast<CXXRecordDecl>(D))
-#if CLANG_VERSION_LT(3,3)
-      return R->hasTrivialDefaultConstructor() || R->hasDeclaredDefaultConstructor();
-#else
+#if CLANG_VERSION_GE(3,3)
       return R->hasDefaultConstructor();
+#else
+      return R->hasTrivialDefaultConstructor() || R->hasDeclaredDefaultConstructor();
 #endif
     else if (isa<RecordDecl>(D))
       return 1; // C structs always has (trivial) default constructors
@@ -1150,10 +1152,10 @@ int clang_Cursor_hasSimpleDestructor(CXCursor C) {
   if (clang_isDeclaration(C.kind)) {
     const Decl* D = getCursorDecl(C);
     if (const CXXRecordDecl* R = dyn_cast<CXXRecordDecl>(D))
-#if CLANG_VERSION_LT(3,3)
-      return R->hasUserDeclaredDestructor() || R->hasTrivialDestructor() || R->getDestructor();
-#else
+#if CLANG_VERSION_GE(3,3)
       return R->hasSimpleDestructor();
+#else
+      return R->hasUserDeclaredDestructor() || R->hasTrivialDestructor() || R->getDestructor();
 #endif
     else if (isa<RecordDecl>(D))
       return 1; // C structs always have (trivial) destructors
@@ -1233,10 +1235,10 @@ CXCompletionString clang_getCursorCompletionString(CXCursor cursor) {
     const Decl *decl = getCursorDecl(cursor);
     if (const NamedDecl *namedDecl = dyn_cast_or_null<NamedDecl>(decl)) {
       ASTUnit *unit = getCursorASTUnit(cursor);
-#if CLANG_VERSION_LT(3,3)
-      CodeCompletionResult Result(XDRESS_CONST_CAST(namedDecl));
-#else
+#if CLANG_VERSION_GE(3,3)
       CodeCompletionResult Result(namedDecl, CCP_Declaration);
+#else
+      CodeCompletionResult Result(XDRESS_CONST_CAST(namedDecl));
 #endif
       CodeCompletionString *String
         = Result.CreateCodeCompletionString(unit->getASTContext(),

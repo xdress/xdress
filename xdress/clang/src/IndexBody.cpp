@@ -86,7 +86,7 @@ public:
     return true;
   }
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   bool VisitMSPropertyRefExpr(MSPropertyRefExpr *E) {
     IndexCtx.handleReference(E->getPropertyDecl(), E->getMemberLoc(), Parent,
                              ParentDC, E, CXIdxEntityRef_Direct);

@@ -535,10 +535,10 @@ bool CursorVisitor::VisitChildren(CXCursor Cursor) {
     if (const ObjCObjectType *ObjT = A->getInterface()->getAs<ObjCObjectType>())
       return Visit(cxcursor::MakeCursorObjCClassRef(
           ObjT->getInterface(),
-#if CLANG_VERSION_LT(3,3)
-          A->getInterfaceLoc(),
-#else
+#if CLANG_VERSION_GE(3,4)
           A->getInterfaceLoc()->getTypeLoc().getLocStart(),
+#else
+          A->getInterfaceLoc(),
 #endif
           TU));
   }
@@ -698,18 +698,18 @@ bool CursorVisitor::VisitClassTemplateSpecializationDecl(
   // Visit the template arguments used in the specialization.
   if (TypeSourceInfo *SpecType = D->getTypeAsWritten()) {
     TypeLoc TL = SpecType->getTypeLoc();
-#if CLANG_VERSION_LT(3,3)
-    if (TemplateSpecializationTypeLoc *TSTLoc
-          = dyn_cast<TemplateSpecializationTypeLoc>(&TL)) {
-      for (unsigned I = 0, N = TSTLoc->getNumArgs(); I != N; ++I)
-        if (VisitTemplateArgumentLoc(TSTLoc->getArgLoc(I)))
-          return true;
-    }
-#else
+#if CLANG_VERSION_GE(3,3)
     if (TemplateSpecializationTypeLoc TSTLoc =
             TL.getAs<TemplateSpecializationTypeLoc>()) {
       for (unsigned I = 0, N = TSTLoc.getNumArgs(); I != N; ++I)
         if (VisitTemplateArgumentLoc(TSTLoc.getArgLoc(I)))
+          return true;
+    }
+#else
+    if (TemplateSpecializationTypeLoc *TSTLoc
+          = dyn_cast<TemplateSpecializationTypeLoc>(&TL)) {
+      for (unsigned I = 0, N = TSTLoc->getNumArgs(); I != N; ++I)
+        if (VisitTemplateArgumentLoc(TSTLoc->getArgLoc(I)))
           return true;
     }
 #endif
@@ -729,13 +729,13 @@ bool CursorVisitor::VisitClassTemplatePartialSpecializationDecl(
     return true;
 
   // Visit the partial specialization arguments.
-#if CLANG_VERSION_LT(3,3)
-  const TemplateArgumentLoc *TemplateArgs = D->getTemplateArgsAsWritten();
-  for (unsigned I = 0, N = D->getNumTemplateArgsAsWritten(); I != N; ++I)
-#else
+#if CLANG_VERSION_GE(3,4)
   const ASTTemplateArgumentListInfo *Info = D->getTemplateArgsAsWritten();
   const TemplateArgumentLoc *TemplateArgs = Info->getTemplateArgs();
   for (unsigned I = 0, N = Info->NumTemplateArgs; I != N; ++I)
+#else
+  const TemplateArgumentLoc *TemplateArgs = D->getTemplateArgsAsWritten();
+  for (unsigned I = 0, N = D->getNumTemplateArgsAsWritten(); I != N; ++I)
 #endif
     if (VisitTemplateArgumentLoc(TemplateArgs[I]))
       return true;
@@ -780,7 +780,12 @@ bool CursorVisitor::VisitDeclaratorDecl(DeclaratorDecl *DD) {
 }
 
 /// \brief Compare two base or member initializers based on their source order.
-#if CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,4)
+static int CompareCXXCtorInitializers(CXXCtorInitializer *const *X,
+                                      CXXCtorInitializer *const *Y) {
+  return (*X)->getSourceOrder() - (*Y)->getSourceOrder();
+}
+#else
 static int CompareCXXCtorInitializers(const void* Xp, const void *Yp) {
   CXXCtorInitializer const * const *X
     = static_cast<CXXCtorInitializer const * const *>(Xp);
@@ -793,11 +798,6 @@ static int CompareCXXCtorInitializers(const void* Xp, const void *Yp) {
     return 1;
   else
     return 0;
-}
-#else
-static int CompareCXXCtorInitializers(CXXCtorInitializer *const *X,
-                                      CXXCtorInitializer *const *Y) {
-  return (*X)->getSourceOrder() - (*Y)->getSourceOrder();
 }
 #endif
 
@@ -813,31 +813,7 @@ bool CursorVisitor::VisitFunctionDecl(FunctionDecl *ND) {
     // Visit the function declaration's syntactic components in the order
     // written. This requires a bit of work.
     TypeLoc TL = TSInfo->getTypeLoc().IgnoreParens();
-#if CLANG_VERSION_LT(3,3)
-    FunctionTypeLoc *FTL = dyn_cast<FunctionTypeLoc>(&TL);
-
-    // If we have a function declared directly (without the use of a typedef),
-    // visit just the return type. Otherwise, just visit the function's type
-    // now.
-    if ((FTL && !isa<CXXConversionDecl>(ND) && Visit(FTL->getResultLoc())) ||
-        (!FTL && Visit(TL)))
-      return true;
-
-    // Visit the nested-name-specifier, if present.
-    if (NestedNameSpecifierLoc QualifierLoc = ND->getQualifierLoc())
-      if (VisitNestedNameSpecifierLoc(QualifierLoc))
-        return true;
-
-    // Visit the declaration name.
-    if (VisitDeclarationNameInfo(ND->getNameInfo()))
-      return true;
-
-    // FIXME: Visit explicitly-specified template arguments!
-
-    // Visit the function parameters, if we have a function type.
-    if (FTL && VisitFunctionTypeLoc(*FTL, true))
-      return true;
-#else
+#if CLANG_VERSION_GE(3,3)
     FunctionTypeLoc FTL = TL.getAs<FunctionTypeLoc>();
     
     // If we have a function declared directly (without the use of a typedef),
@@ -860,6 +836,30 @@ bool CursorVisitor::VisitFunctionDecl(FunctionDecl *ND) {
     
     // Visit the function parameters, if we have a function type.
     if (FTL && VisitFunctionTypeLoc(FTL, true))
+      return true;
+#else
+    FunctionTypeLoc *FTL = dyn_cast<FunctionTypeLoc>(&TL);
+
+    // If we have a function declared directly (without the use of a typedef),
+    // visit just the return type. Otherwise, just visit the function's type
+    // now.
+    if ((FTL && !isa<CXXConversionDecl>(ND) && Visit(FTL->getResultLoc())) ||
+        (!FTL && Visit(TL)))
+      return true;
+
+    // Visit the nested-name-specifier, if present.
+    if (NestedNameSpecifierLoc QualifierLoc = ND->getQualifierLoc())
+      if (VisitNestedNameSpecifierLoc(QualifierLoc))
+        return true;
+
+    // Visit the declaration name.
+    if (VisitDeclarationNameInfo(ND->getNameInfo()))
+      return true;
+
+    // FIXME: Visit explicitly-specified template arguments!
+
+    // Visit the function parameters, if we have a function type.
+    if (FTL && VisitFunctionTypeLoc(*FTL, true))
       return true;
 #endif
     
@@ -1481,7 +1481,7 @@ bool CursorVisitor::VisitBuiltinTypeLoc(BuiltinTypeLoc TL) {
   case BuiltinType::Void:
   case BuiltinType::NullPtr:
   case BuiltinType::Dependent:
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   case BuiltinType::OCLImage1d:
   case BuiltinType::OCLImage1dArray:
   case BuiltinType::OCLImage1dBuffer:
@@ -1615,7 +1615,7 @@ bool CursorVisitor::VisitArrayTypeLoc(ArrayTypeLoc TL) {
   return false;
 }
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
 bool CursorVisitor::VisitDecayedTypeLoc(DecayedTypeLoc TL) {
   return Visit(TL.getOriginalLoc());
 }
@@ -1925,7 +1925,7 @@ public:
   void VisitPseudoObjectExpr(const PseudoObjectExpr *E);
   void VisitOpaqueValueExpr(const OpaqueValueExpr *E);
   void VisitLambdaExpr(const LambdaExpr *E);
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
   void VisitOMPExecutableDirective(const OMPExecutableDirective *D);
   void VisitOMPParallelDirective(const OMPParallelDirective *D);
 #endif
@@ -1939,7 +1939,7 @@ private:
   void AddDecl(const Decl *D, bool isFirst = true);
   void AddTypeLoc(TypeSourceInfo *TI);
   void EnqueueChildren(const Stmt *S);
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
   void EnqueueChildren(const OMPClause *S);
 #endif
 };
@@ -1990,7 +1990,7 @@ void EnqueueVisitor::EnqueueChildren(const Stmt *S) {
   VisitorWorkList::iterator I = WL.begin() + size, E = WL.end();
   std::reverse(I, E);
 }
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
 namespace {
 class OMPClauseEnqueue : public ConstOMPClauseVisitor<OMPClauseEnqueue> {
   EnqueueVisitor *Visitor;
@@ -2037,7 +2037,7 @@ void EnqueueVisitor::EnqueueChildren(const OMPClause *S) {
   VisitorWorkList::iterator I = WL.begin() + size, E = WL.end();
   std::reverse(I, E);
 }
-#endif // !XDRESS
+#endif // CLANG_VERSION_GE(3,4)
 void EnqueueVisitor::VisitAddrLabelExpr(const AddrLabelExpr *E) {
   WL.push_back(LabelRefVisit(E->getLabel(), E->getLabelLoc(), Parent));
 }
@@ -2315,7 +2315,7 @@ void EnqueueVisitor::VisitPseudoObjectExpr(const PseudoObjectExpr *E) {
   Visit(E->getSyntacticForm());
 }
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
 void EnqueueVisitor::VisitOMPExecutableDirective(
   const OMPExecutableDirective *D) {
   EnqueueChildren(D);
@@ -2328,7 +2328,7 @@ void EnqueueVisitor::VisitOMPExecutableDirective(
 void EnqueueVisitor::VisitOMPParallelDirective(const OMPParallelDirective *D) {
   VisitOMPExecutableDirective(D);
 }
-#endif // !XDRESS
+#endif
 
 void CursorVisitor::EnqueueWorkList(VisitorWorkList &WL, const Stmt *S) {
   EnqueueVisitor(WL, MakeCXCursor(S, StmtParent, TU,RegionOfInterest)).Visit(S);
@@ -2527,12 +2527,12 @@ bool CursorVisitor::RunVisitorWorkList(VisitorWorkList &WL) {
             // Visit the whole type.
             if (Visit(TL))
               return true;
-#if CLANG_VERSION_LT(3,3)
-          } else if (isa<FunctionProtoTypeLoc>(TL)) {
-            FunctionProtoTypeLoc Proto = cast<FunctionProtoTypeLoc>(TL);
-#else
+#if CLANG_VERSION_GE(3,3)
           } else if (FunctionProtoTypeLoc Proto =
                          TL.getAs<FunctionProtoTypeLoc>()) {
+#else
+          } else if (isa<FunctionProtoTypeLoc>(TL)) {
+            FunctionProtoTypeLoc Proto = cast<FunctionProtoTypeLoc>(TL);
 #endif
             if (E->hasExplicitParameters()) {
               // Visit parameters.
@@ -2623,11 +2623,11 @@ RefNamePieces buildPieces(unsigned NameFlags, bool IsMemberRefExpr,
 static llvm::sys::Mutex EnableMultithreadingMutex;
 static bool EnabledMultithreading;
 
-#if CLANG_VERSION_LT(3,3)
-static void fatal_error_handler(void *user_data, const std::string& reason)
-#else
+#if CLANG_VERSION_GE(3,3)
 static void fatal_error_handler(void *user_data, const std::string& reason,
                                 bool gen_crash_diag)
+#else
+static void fatal_error_handler(void *user_data, const std::string& reason)
 #endif
 {
   // Write the result out to stderr avoiding errs() because raw_ostreams can
@@ -2697,7 +2697,7 @@ CXTranslationUnit clang_createTranslationUnit(CXIndex CIdx,
   if (!CIdx || !ast_filename)
     return 0;
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   LOG_FUNC_SECTION {
     *Log << ast_filename;
   }
@@ -2778,12 +2778,12 @@ static void clang_parseTranslationUnit_Impl(void *UserData) {
 
   // Configure the diagnostics.
   IntrusiveRefCntPtr<DiagnosticsEngine>
-#if CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,3)
+    Diags(CompilerInstance::createDiagnostics(new DiagnosticOptions));
+#else
     Diags(CompilerInstance::createDiagnostics(new DiagnosticOptions,
                                               num_command_line_args,
                                               command_line_args));
-#else
-    Diags(CompilerInstance::createDiagnostics(new DiagnosticOptions));
 #endif
 
   // Recover resources if we crash before exiting this function.
@@ -2884,7 +2884,7 @@ CXTranslationUnit clang_parseTranslationUnit(CXIndex CIdx,
                                             struct CXUnsavedFile *unsaved_files,
                                              unsigned num_unsaved_files,
                                              unsigned options) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   LOG_FUNC_SECTION {
     *Log << source_filename << ": ";
     for (int i = 0; i != num_command_line_args; ++i)
@@ -2955,7 +2955,7 @@ static void clang_saveTranslationUnit_Impl(void *UserData) {
 
 int clang_saveTranslationUnit(CXTranslationUnit TU, const char *FileName,
                               unsigned options) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   LOG_FUNC_SECTION {
     *Log << TU << ' ' << FileName;
   }
@@ -3077,7 +3077,7 @@ int clang_reparseTranslationUnit(CXTranslationUnit TU,
                                  unsigned num_unsaved_files,
                                  struct CXUnsavedFile *unsaved_files,
                                  unsigned options) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   LOG_FUNC_SECTION {
     *Log << TU;
   }
@@ -3163,7 +3163,7 @@ unsigned clang_isFileMultipleIncludeGuarded(CXTranslationUnit TU, CXFile file) {
                                           .isFileMultipleIncludeGuarded(FEnt);
 }
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
 int clang_getFileUniqueID(CXFile file, CXFileUniqueID *outID) {
   if (!file || !outID)
     return 1;
@@ -4689,7 +4689,7 @@ CXCursor clang_getCursorDefinition(CXCursor C) {
   case Decl::TemplateTypeParm:
   case Decl::EnumConstant:
   case Decl::Field:
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   case Decl::MSProperty:
 #endif
   case Decl::IndirectField:
@@ -4707,20 +4707,20 @@ CXCursor clang_getCursorDefinition(CXCursor C) {
   case Decl::FileScopeAsm:
   case Decl::StaticAssert:
   case Decl::Block:
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   case Decl::Captured:
 #endif
   case Decl::Label:  // FIXME: Is this right??
   case Decl::ClassScopeFunctionSpecialization:
   case Decl::Import:
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   case Decl::OMPThreadPrivate:
 #endif
     return C;
 
   // Declaration kinds that don't make any sense here, but are
   // nonetheless harmless.
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   case Decl::Empty:
 #endif
   case Decl::TranslationUnit:
@@ -4759,7 +4759,7 @@ CXCursor clang_getCursorDefinition(CXCursor C) {
   }
 
   case Decl::Var:
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
   case Decl::VarTemplateSpecialization:
   case Decl::VarTemplatePartialSpecialization:
 #endif
@@ -4785,7 +4785,7 @@ CXCursor clang_getCursorDefinition(CXCursor C) {
     return clang_getNullCursor();
   }
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
   case Decl::VarTemplate: {
     if (VarDecl *Def =
             cast<VarTemplateDecl>(D)->getTemplatedDecl()->getDefinition())
@@ -5177,7 +5177,7 @@ static void getTokens(ASTUnit *CXXUnit, SourceRange Range,
 
 void clang_tokenize(CXTranslationUnit TU, CXSourceRange Range,
                     CXToken **Tokens, unsigned *NumTokens) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   LOG_FUNC_SECTION {
     *Log << TU << ' ' << Range;
   }
@@ -5640,12 +5640,14 @@ private:
 
 } // end anonymous namespace
 
+#ifndef XDRESS
 static CXChildVisitResult
 MarkMacroArgTokensVisitorDelegate(CXCursor cursor, CXCursor parent,
                                   CXClientData client_data) {
   return static_cast<MarkMacroArgTokensVisitor*>(client_data)->visit(cursor,
                                                                      parent);
 }
+#endif
 
 namespace {
   struct clang_annotateTokens_Data {
@@ -5944,17 +5946,17 @@ CXLinkageKind clang_getCursorLinkage(CXCursor cursor) {
 
   const Decl *D = cxcursor::getCursorDecl(cursor);
   if (const NamedDecl *ND = dyn_cast_or_null<NamedDecl>(D))
-#if CLANG_VERSION_LT(3,3)
-    switch (ND->getLinkage()) {
-      case NoLinkage: return CXLinkage_NoLinkage;
+#if CLANG_VERSION_GE(3,4)
+    switch (ND->getLinkageInternal()) {
+      case NoLinkage:
+      case VisibleNoLinkage: return CXLinkage_NoLinkage;
       case InternalLinkage: return CXLinkage_Internal;
       case UniqueExternalLinkage: return CXLinkage_UniqueExternal;
       case ExternalLinkage: return CXLinkage_External;
     };
 #else
-    switch (ND->getLinkageInternal()) {
-      case NoLinkage:
-      case VisibleNoLinkage: return CXLinkage_NoLinkage;
+    switch (ND->getLinkage()) {
+      case NoLinkage: return CXLinkage_NoLinkage;
       case InternalLinkage: return CXLinkage_Internal;
       case UniqueExternalLinkage: return CXLinkage_UniqueExternal;
       case ExternalLinkage: return CXLinkage_External;
@@ -6867,7 +6869,7 @@ CXString clang_getClangVersion() {
 
 } // end: extern "C"
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
 Logger &cxindex::Logger::operator<<(CXTranslationUnit TU) {
   if (TU) {
     if (ASTUnit *Unit = cxtu::getASTUnit(TU)) {
@@ -6967,4 +6969,4 @@ cxindex::Logger::~Logger() {
     OS << "--------------------------------------------------\n";
   }
 }
-#endif // !XDRESS
+#endif // CLANG_VERSION_GE(3,3)

@@ -127,7 +127,7 @@ CXSourceLocation clang_getLocation(CXTranslationUnit TU,
   if (line == 0 || column == 0)
     return clang_getNullLocation();
   
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   LogRef Log = Logger::make(LLVM_FUNCTION_NAME);
 #endif
   ASTUnit *CXXUnit = cxtu::getASTUnit(TU);
@@ -135,7 +135,7 @@ CXSourceLocation clang_getLocation(CXTranslationUnit TU,
   const FileEntry *File = static_cast<const FileEntry *>(file);
   SourceLocation SLoc = CXXUnit->getLocation(File, line, column);
   if (SLoc.isInvalid()) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
     if (Log)
       *Log << llvm::format("(\"%s\", %d, %d) = invalid",
                            File->getName(), line, column);
@@ -145,7 +145,7 @@ CXSourceLocation clang_getLocation(CXTranslationUnit TU,
   
   CXSourceLocation CXLoc =
       cxloc::translateSourceLocation(CXXUnit->getASTContext(), SLoc);
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   if (Log)
     *Log << llvm::format("(\"%s\", %d, %d) = ", File->getName(), line, column)
          << CXLoc;
@@ -217,7 +217,7 @@ int clang_Location_isInSystemHeader(CXSourceLocation location) {
   return SM.isInSystemHeader(Loc);
 }
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
 int clang_Location_isFromMainFile(CXSourceLocation location) {
   const SourceLocation Loc =
     SourceLocation::getFromRawEncoding(location.int_data);

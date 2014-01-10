@@ -105,19 +105,29 @@ def setup():
 
     clang_dir = os.path.join(dir_name, 'xdress', 'clang')
     clang_src_dir = os.path.join(clang_dir, 'src')
-    llvm_cppflags = subprocess.check_output(['llvm-config','--cppflags']).split()
-    llvm_ldflags = subprocess.check_output(['llvm-config','--ldflags','--libs']).split()
+    llvm_config = os.environ.get('llvm_config', 'llvm-config')
+    try:
+        llvm_cppflags = subprocess.check_output([llvm_config,'--cppflags']).split()
+    except OSError as e:
+        raise OSError(("xdress clang configuration failed: can't run '%s': %s\n"
+                       +"  To use a different executable, set the llvm_config environment variable")
+                      %(llvm_config, e))
+    llvm_ldflags  = subprocess.check_output([llvm_config,'--ldflags','--libs']).split()
     clang_libs = '''clangTooling clangFrontend clangDriver clangSerialization clangCodeGen
                     clangParse clangSema clangStaticAnalyzerFrontend clangStaticAnalyzerCheckers
                     clangStaticAnalyzerCore clangAnalysis clangARCMigrate clangEdit
                     clangRewriteCore clangAST clangLex clangBasic'''.split()
+    # If the user sets CFLAGS, make sure we still have our own include path first
+    if 'CFLAGS' in os.environ:
+        os.environ['CFLAGS'] = '-I%s '%clang_dir + os.environ['CFLAGS']
     module = Extension('xdress.clang.libclang',
                        sources=glob.glob(os.path.join(clang_src_dir, '*.cpp')),
                        define_macros=[('XDRESS', 1)],
                        include_dirs=[clang_dir],
                        extra_compile_args=llvm_cppflags+['-fno-rtti'],
                        extra_link_args=llvm_ldflags,
-                       libraries=clang_libs)
+                       libraries=clang_libs,
+                       language='c++')
 
     setup_kwargs = {
         "name": "xdress",

@@ -19,7 +19,7 @@
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclFriend.h"
 #include "clang/AST/DeclObjC.h"
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
 #include "clang/AST/DeclOpenMP.h"
 #endif
 #include "clang/AST/DeclTemplate.h"
@@ -30,7 +30,7 @@
 #include "clang/AST/Stmt.h"
 #include "clang/AST/StmtCXX.h"
 #include "clang/AST/StmtObjC.h"
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
 #include "clang/AST/StmtOpenMP.h"
 #endif
 #include "clang/AST/TemplateBase.h"
@@ -400,7 +400,7 @@ private:
   // These are helper methods used by more than one Traverse* method.
   bool TraverseTemplateParameterListHelper(TemplateParameterList *TPL);
   bool TraverseClassInstantiations(ClassTemplateDecl *D);
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
   bool TraverseVariableInstantiations(VarTemplateDecl *D);
 #endif
   bool TraverseFunctionInstantiations(FunctionTemplateDecl *D) ;
@@ -413,7 +413,7 @@ private:
   bool TraverseDeclContextHelper(DeclContext *DC);
   bool TraverseFunctionHelper(FunctionDecl *D);
   bool TraverseVarHelper(VarDecl *D);
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
   bool TraverseOMPClause(OMPClause *C);
 #define OPENMP_CLAUSE(Name, Class)                                      \
   bool Visit##Class(Class *C);
@@ -421,7 +421,7 @@ private:
   /// \brief Process clauses with list of variables.
   template <typename T>
   void VisitOMPClauseList(T *Node);
-#endif // !XDRESS
+#endif // CLANG_VERSION_GE(3,4)
 
   typedef SmallVector<Stmt *, 16> StmtsTy;
   typedef SmallVector<StmtsTy *, 4> QueuesTy;
@@ -552,14 +552,14 @@ bool RecursiveASTVisitor<Derived>::TraverseTypeLoc(TypeLoc TL) {
 
   switch (TL.getTypeLocClass()) {
 #define ABSTRACT_TYPELOC(CLASS, BASE)
-#if CLANG_VERSION_LT(3,3)
-#define TYPELOC(CLASS, BASE) \
-  case TypeLoc::CLASS: \
-    return getDerived().Traverse##CLASS##TypeLoc(cast<CLASS##TypeLoc>(TL));
-#else
+#if CLANG_VERSION_GE(3,3)
 #define TYPELOC(CLASS, BASE) \
   case TypeLoc::CLASS: \
     return getDerived().Traverse##CLASS##TypeLoc(TL.castAs<CLASS##TypeLoc>());
+#else
+#define TYPELOC(CLASS, BASE) \
+  case TypeLoc::CLASS: \
+    return getDerived().Traverse##CLASS##TypeLoc(cast<CLASS##TypeLoc>(TL));
 #endif
 #include "clang/AST/TypeLocNodes.def"
   }
@@ -809,7 +809,7 @@ DEF_TRAVERSE_TYPE(MemberPointerType, {
     TRY_TO(TraverseType(T->getPointeeType()));
   })
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
 DEF_TRAVERSE_TYPE(DecayedType, {
     TRY_TO(TraverseType(T->getOriginalType()));
   })
@@ -1021,7 +1021,7 @@ DEF_TRAVERSE_TYPELOC(MemberPointerType, {
     TRY_TO(TraverseTypeLoc(TL.getPointeeLoc()));
   })
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
 DEF_TRAVERSE_TYPELOC(DecayedType, {
     TRY_TO(TraverseTypeLoc(TL.getOriginalLoc()));
   })
@@ -1207,10 +1207,10 @@ bool RecursiveASTVisitor<Derived>::TraverseDeclContextHelper(DeclContext *DC) {
        Child != ChildEnd; ++Child) {
     // BlockDecls and CapturedDecls are traversed through BlockExprs and
     // CapturedStmts respectively.
-#ifdef XDRESS
-    if (!isa<BlockDecl>(*Child))
-#else
+#if CLANG_VERSION_GE(3,3)
     if (!isa<BlockDecl>(*Child) && !isa<CapturedDecl>(*Child))
+#else
+    if (!isa<BlockDecl>(*Child))
 #endif
       TRY_TO(TraverseDecl(*Child));
   }
@@ -1240,7 +1240,7 @@ DEF_TRAVERSE_DECL(BlockDecl, {
     return true;
   })
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
 DEF_TRAVERSE_DECL(CapturedDecl, {
     TRY_TO(TraverseStmt(D->getBody()));
     // This return statement makes sure the traversal of nodes in
@@ -1250,7 +1250,7 @@ DEF_TRAVERSE_DECL(CapturedDecl, {
   })
 
 DEF_TRAVERSE_DECL(EmptyDecl, { })
-#endif // !XDRESS
+#endif // CLANG_VERSION_GE(3,3)
 
 DEF_TRAVERSE_DECL(FileScopeAsmDecl, {
     TRY_TO(TraverseStmt(D->getAsmString()));
@@ -1376,7 +1376,7 @@ DEF_TRAVERSE_DECL(UsingDirectiveDecl, {
 
 DEF_TRAVERSE_DECL(UsingShadowDecl, { })
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
 DEF_TRAVERSE_DECL(OMPThreadPrivateDecl, {
     for (OMPThreadPrivateDecl::varlist_iterator I = D->varlist_begin(),
                                                 E = D->varlist_end();
@@ -1448,7 +1448,7 @@ DEF_TRAVERSE_DECL(ClassTemplateDecl, {
     // it was instantiated, and thus should not be traversed.
   })
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
 // A helper method for traversing the implicit instantiations of a
 // class template.
 template <typename Derived>
@@ -1499,7 +1499,7 @@ DEF_TRAVERSE_DECL(
       // from a template instantiation back to the template from which
       // it was instantiated, and thus should not be traversed.
 })
-#endif // !XDRESS
+#endif // CLANG_VERSION_GE(3,4)
 
 // A helper method for traversing the instantiations of a
 // function while skipping its specializations.
@@ -1668,13 +1668,13 @@ bool RecursiveASTVisitor<Derived>::TraverseTemplateArgumentLocsHelper(
   return true;
 }
 
-#if CLANG_VERSION_LT(3,3)
-#define TEMPLATE_ARGS_INFO \
-  D->getTemplateArgsAsWritten(), D->getNumTemplateArgsAsWritten()
-#else
+#if CLANG_VERSION_GE(3,4)
 #define TEMPLATE_ARGS_INFO \
   D->getTemplateArgsAsWritten()->getTemplateArgs(), \
   D->getTemplateArgsAsWritten()->NumTemplateArgs
+#else
+#define TEMPLATE_ARGS_INFO \
+  D->getTemplateArgsAsWritten(), D->getNumTemplateArgsAsWritten()
 #endif
 
 DEF_TRAVERSE_DECL(ClassTemplatePartialSpecializationDecl, {
@@ -1727,7 +1727,7 @@ DEF_TRAVERSE_DECL(FieldDecl, {
       TRY_TO(TraverseStmt(D->getInClassInitializer()));
   })
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
 DEF_TRAVERSE_DECL(MSPropertyDecl, {
     TRY_TO(TraverseDeclaratorHelper(D));
   })
@@ -1837,7 +1837,7 @@ DEF_TRAVERSE_DECL(VarDecl, {
     TRY_TO(TraverseVarHelper(D));
   })
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
 DEF_TRAVERSE_DECL(VarTemplateSpecializationDecl, {
   // For implicit instantiations, we don't want to
   // recurse at all, since the instatiated class isn't written in
@@ -1875,7 +1875,7 @@ DEF_TRAVERSE_DECL(VarTemplatePartialSpecializationDecl,
                     // Instantiations will have been visited with the primary
                     // template.
 })
-#endif // !XDRESS
+#endif // CLANG_VERSION_GE(3,4)
 
 DEF_TRAVERSE_DECL(ImplicitParamDecl, {
     TRY_TO(TraverseVarHelper(D));
@@ -2198,11 +2198,11 @@ bool RecursiveASTVisitor<Derived>::TraverseLambdaExpr(LambdaExpr *S) {
     if (S->hasExplicitParameters() && S->hasExplicitResultType()) {
       // Visit the whole type.
       TRY_TO(TraverseTypeLoc(TL));
-#if CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,3)
+    } else if (FunctionProtoTypeLoc Proto = TL.getAs<FunctionProtoTypeLoc>()) {
+#else
     } else if (isa<FunctionProtoTypeLoc>(TL)) {
       FunctionProtoTypeLoc Proto = cast<FunctionProtoTypeLoc>(TL);
-#else
-    } else if (FunctionProtoTypeLoc Proto = TL.getAs<FunctionProtoTypeLoc>()) {
 #endif
       if (S->hasExplicitParameters()) {
         // Visit parameters.
@@ -2244,13 +2244,13 @@ DEF_TRAVERSE_STMT(CompoundLiteralExpr, { })
 DEF_TRAVERSE_STMT(CXXBindTemporaryExpr, { })
 DEF_TRAVERSE_STMT(CXXBoolLiteralExpr, { })
 DEF_TRAVERSE_STMT(CXXDefaultArgExpr, { })
-#if !CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,3)
 DEF_TRAVERSE_STMT(CXXDefaultInitExpr, { })
 #endif
 DEF_TRAVERSE_STMT(CXXDeleteExpr, { })
 DEF_TRAVERSE_STMT(ExprWithCleanups, { })
 DEF_TRAVERSE_STMT(CXXNullPtrLiteralExpr, { })
-#if !CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,4)
 DEF_TRAVERSE_STMT(CXXStdInitializerListExpr, { })
 #endif
 DEF_TRAVERSE_STMT(CXXPseudoDestructorExpr, {
@@ -2290,7 +2290,7 @@ DEF_TRAVERSE_STMT(ParenExpr, { })
 DEF_TRAVERSE_STMT(ParenListExpr, { })
 DEF_TRAVERSE_STMT(PredefinedExpr, { })
 DEF_TRAVERSE_STMT(ShuffleVectorExpr, { })
-#if !CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,4)
 DEF_TRAVERSE_STMT(ConvertVectorExpr, { })
 #endif
 DEF_TRAVERSE_STMT(StmtExpr, { })
@@ -2310,13 +2310,13 @@ DEF_TRAVERSE_STMT(UnresolvedMemberExpr, {
   }
 })
 
-#if !CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,3)
 DEF_TRAVERSE_STMT(MSPropertyRefExpr, {})
 #endif
 DEF_TRAVERSE_STMT(SEHTryStmt, {})
 DEF_TRAVERSE_STMT(SEHExceptStmt, {})
 DEF_TRAVERSE_STMT(SEHFinallyStmt,{})
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
 DEF_TRAVERSE_STMT(CapturedStmt, {
   TRY_TO(TraverseDecl(S->getCapturedDecl()));
 })
@@ -2356,7 +2356,7 @@ DEF_TRAVERSE_STMT(ObjCDictionaryLiteral, { })
 // Traverse OpenCL: AsType, Convert.
 DEF_TRAVERSE_STMT(AsTypeExpr, { })
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,4)
 
 // OpenMP directives.
 DEF_TRAVERSE_STMT(OMPParallelDirective, {
@@ -2413,7 +2413,7 @@ bool RecursiveASTVisitor<Derived>::VisitOMPSharedClause(OMPSharedClause *C) {
   return true;
 }
 
-#endif // !XDRESS
+#endif // CLANG_VERSION_GE(3,4)
 
 // FIXME: look at the following tricky-seeming exprs to see if we
 // need to recurse on anything.  These are ones that have methods
