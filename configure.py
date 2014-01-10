@@ -11,6 +11,16 @@ sys.path.insert(0, '')
 import xdress.version
 sys.path.pop(0)
 
+# Fix bug in distutils for python 3
+if sys.version_info[0] >= 3:
+    def decode(s):
+        return s if isinstance(s,str) else bytes.decode(s)
+    import distutils.spawn
+    old_spawn_posix = distutils.spawn._spawn_posix
+    def hack_spawn_posix(cmd, search_path=1, verbose=0, dry_run=0):
+        return old_spawn_posix(list(map(decode, cmd)), search_path, verbose, dry_run)
+    distutils.spawn._spawn_posix = hack_spawn_posix
+
 INFO = {
     'version': xdress.version.xdress_version,
 }
