@@ -1394,14 +1394,22 @@ class Cursor(Structure):
         """Does the cursor have a default constructor?"""
         r = conf.lib.clang_Cursor_hasDefaultConstructor(self)
         if r < 0:
-            raise ValueError("Cursor is not a class declaration")
+            if r == -1:
+                raise ValueError("Cursor is not a class declaration")
+            elif r == -2:
+                raise ValueError("Cursor is an undefined class")
+            raise ValueError("Unknown error")
         return bool(r)
 
     def has_simple_destructor(self):
         """Are we sure the cursor has a destructor?"""
         r = conf.lib.clang_Cursor_hasSimpleDestructor(self)
         if r < 0:
-            raise ValueError("Cursor is not a class declaration")
+            if r == -1:
+                raise ValueError("Cursor is not a class declaration")
+            elif r == -2:
+                raise ValueError("Cursor is an undefined class")
+            raise ValueError("Unknown error")
         return bool(r)
 
     @property

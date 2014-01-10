@@ -1286,6 +1286,9 @@ _operator_pattern = re.compile(r'^operator\W')
 
 def clang_describe_class(cls):
     """Describe the class at the given clang AST node"""
+    if cls.get_definition() is None:
+        raise ValueError("can't describe undefined class '{0}' at {1}"
+            .format(cls.spelling, clang_str_location(cls.location)))
     parents = []
     attrs = {}
     methods = {}

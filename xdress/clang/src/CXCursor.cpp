@@ -1136,14 +1136,16 @@ int clang_visitSpecializations(CXCursor C,
 int clang_Cursor_hasDefaultConstructor(CXCursor C) {
   if (clang_isDeclaration(C.kind)) {
     const Decl* D = getCursorDecl(C);
-    if (const CXXRecordDecl* R = dyn_cast<CXXRecordDecl>(D))
+    if (const CXXRecordDecl* R = dyn_cast<CXXRecordDecl>(D)) {
+      if (!R->hasDefinition())
+        return -2;
 #if CLANG_VERSION_GE(3,3)
       return R->hasDefaultConstructor();
 #else
       return R->hasTrivialDefaultConstructor() || R->hasDeclaredDefaultConstructor();
 #endif
-    else if (isa<RecordDecl>(D))
-      return 1; // C structs always has (trivial) default constructors
+    } else if (isa<RecordDecl>(D))
+      return 1; // C structs always have (trivial) default constructors
   }
   return -1;
 }
@@ -1151,13 +1153,15 @@ int clang_Cursor_hasDefaultConstructor(CXCursor C) {
 int clang_Cursor_hasSimpleDestructor(CXCursor C) {
   if (clang_isDeclaration(C.kind)) {
     const Decl* D = getCursorDecl(C);
-    if (const CXXRecordDecl* R = dyn_cast<CXXRecordDecl>(D))
+    if (const CXXRecordDecl* R = dyn_cast<CXXRecordDecl>(D)) {
+      if (!R->hasDefinition())
+        return -2;
 #if CLANG_VERSION_GE(3,3)
       return R->hasSimpleDestructor();
 #else
       return R->hasUserDeclaredDestructor() || R->hasTrivialDestructor() || R->getDestructor();
 #endif
-    else if (isa<RecordDecl>(D))
+    } else if (isa<RecordDecl>(D))
       return 1; // C structs always have (trivial) destructors
   }
   return -1;
