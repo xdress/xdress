@@ -84,6 +84,7 @@ def setup():
         from setuptools import setup as setup_, Extension
     except ImportError:
         from distutils.core import setup as setup_, Extension
+    from distutils.spawn import find_executable
     from distutils.sysconfig import get_config_vars
 
     scripts_dir = os.path.join(dir_name, 'scripts')
@@ -98,36 +99,46 @@ def setup():
     pack_dir = {'xdress': 'xdress', 'xdress.clang': 'xdress/clang'}
     pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp']}
 
-    # Remove -Wstrict-prototypes to prevent warnings in libclang C++ code,
-    # following http://stackoverflow.com/questions/8106258.
-    opt, = get_config_vars('OPT')
-    os.environ['OPT'] = ' '.join(f for f in opt.split() if f != '-Wstrict-prototypes')
-
-    clang_dir = os.path.join(dir_name, 'xdress', 'clang')
-    clang_src_dir = os.path.join(clang_dir, 'src')
-    llvm_config = os.environ.get('llvm_config', 'llvm-config')
-    try:
+    if 'LLVM_CONFIG' in os.environ:
+        llvm_config = os.environ['LLVM_CONFIG']
+    else:
+        options = 'llvm-config llvm-config-3.5 llvm-config-3.4 llvm-config-3.3 llvm-config-3.2'.split()
+        for p in options:
+            p = find_executable(p)
+            if p is not None:
+                print('using llvm-config from %s'%p)
+                llvm_config = p
+                break
+        else:
+            print('Disabling clang since llvm-config not found: tried %s'%', '.join(options))
+            print('To override, set the LLVM_CONFIG environment variable.')
+            llvm_config = None
+    if llvm_config is not None:
         llvm_cppflags = subprocess.check_output([llvm_config,'--cppflags']).split()
-    except OSError as e:
-        raise OSError(("xdress clang configuration failed: can't run '%s': %s\n"
-                       +"  To use a different executable, set the llvm_config environment variable")
-                      %(llvm_config, e))
-    llvm_ldflags  = subprocess.check_output([llvm_config,'--ldflags','--libs']).split()
-    clang_libs = '''clangTooling clangFrontend clangDriver clangSerialization clangCodeGen
-                    clangParse clangSema clangStaticAnalyzerFrontend clangStaticAnalyzerCheckers
-                    clangStaticAnalyzerCore clangAnalysis clangARCMigrate clangEdit
-                    clangRewriteCore clangAST clangLex clangBasic'''.split()
-    # If the user sets CFLAGS, make sure we still have our own include path first
-    if 'CFLAGS' in os.environ:
-        os.environ['CFLAGS'] = '-I%s '%clang_dir + os.environ['CFLAGS']
-    module = Extension('xdress.clang.libclang',
-                       sources=glob.glob(os.path.join(clang_src_dir, '*.cpp')),
-                       define_macros=[('XDRESS', 1)],
-                       include_dirs=[clang_dir],
-                       extra_compile_args=llvm_cppflags+['-fno-rtti'],
-                       extra_link_args=llvm_ldflags,
-                       libraries=clang_libs,
-                       language='c++')
+        llvm_ldflags  = subprocess.check_output([llvm_config,'--ldflags','--libs']).split()
+        clang_dir = os.path.join(dir_name, 'xdress', 'clang')
+        clang_src_dir = os.path.join(clang_dir, 'src')
+        clang_libs = '''clangTooling clangFrontend clangDriver clangSerialization clangCodeGen
+                        clangParse clangSema clangStaticAnalyzerFrontend clangStaticAnalyzerCheckers
+                        clangStaticAnalyzerCore clangAnalysis clangARCMigrate clangEdit
+                        clangRewriteCore clangAST clangLex clangBasic'''.split()
+        # If the user sets CFLAGS, make sure we still have our own include path first
+        if 'CFLAGS' in os.environ:
+            os.environ['CFLAGS'] = '-I%s '%clang_dir + os.environ['CFLAGS']
+        # Remove -Wstrict-prototypes to prevent warnings in libclang C++ code,
+        # following http://stackoverflow.com/questions/8106258.
+        opt, = get_config_vars('OPT')
+        os.environ['OPT'] = ' '.join(f for f in opt.split() if f != '-Wstrict-prototypes')
+        modules = [Extension('xdress.clang.libclang',
+                             sources=glob.glob(os.path.join(clang_src_dir, '*.cpp')),
+                             define_macros=[('XDRESS', 1)],
+                             include_dirs=[clang_dir],
+                             extra_compile_args=llvm_cppflags+['-fno-rtti'],
+                             extra_link_args=llvm_ldflags,
+                             libraries=clang_libs,
+                             language='c++')]
+    else:
+        modules = ()
 
     setup_kwargs = {
         "name": "xdress",
@@ -139,7 +150,7 @@ def setup():
         "packages": packages,
         "package_dir": pack_dir,
         "package_data": pack_data,
-        "ext_modules": [module],
+        "ext_modules": modules,
         "scripts": scripts,
         "description": "Goes all J. Edgar Hoover on your code.",
         "long_description": long_desc,
