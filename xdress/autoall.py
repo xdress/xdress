@@ -161,7 +161,8 @@ class GccxmlFinder(object):
             
 
 def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
-                   verbose=False, debug=False, builddir='build', language='c++', clang_includes=()):
+                   extra_parser_args=(), verbose=False, debug=False, 
+                   builddir='build', language='c++', clang_includes=()):
     """Automatically finds all API elements in a file via GCC-XML.
 
     Parameters
@@ -174,6 +175,8 @@ def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         The list of extra macro definitions to apply.
     undefines : list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     verbose : bool, optional
         Flag to diplay extra information while describing the class.
     debug : bool, optional
@@ -198,7 +201,8 @@ def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         # GCC-XML and/or Cygwin wants posix paths on Windows.
         filename = posixpath.join(*ntpath.split(filename))
     root = astparsers.gccxml_parse(filename, includes=includes, defines=defines,
-            undefines=undefines, verbose=verbose, debug=debug, builddir=builddir)
+            undefines=undefines, extra_parser_args=extra_parser_args, verbose=verbose, 
+            debug=debug, builddir=builddir)
     basename = filename.rsplit('.', 1)[0]
     onlyin = set([filename] + 
                  [basename + '.' + h for h in utils._hdr_exts if h.startswith('h')])
@@ -208,8 +212,8 @@ def gccxml_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
 
 
 def clang_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
-                  verbose=False, debug=False, builddir='build', language='c++',
-                  clang_includes=()):
+                  extra_parser_args=(), verbose=False, debug=False, builddir='build', 
+                  language='c++', clang_includes=()):
     """Automatically finds all API elements in a file via clang.
 
     Parameters
@@ -222,6 +226,8 @@ def clang_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         The list of extra macro definitions to apply.
     undefines : list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     language : str
         Valid language flag.
     verbose : Ignored
@@ -241,8 +247,10 @@ def clang_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
 
     """
     tu = astparsers.clang_parse(filename, includes=includes, defines=defines,
-                                undefines=undefines, verbose=verbose, debug=debug,
-                                language=language, clang_includes=clang_includes)
+                                undefines=undefines, 
+                                extra_parser_args=extra_parser_args, verbose=verbose, 
+                                debug=debug, language=language, 
+                                clang_includes=clang_includes)
     basename = filename.rsplit('.', 1)[0]
     onlyin = frozenset([filename] +
                        [basename + '.' + h for h in utils._hdr_exts if h.startswith('h')])
@@ -369,8 +377,8 @@ class PycparserFinder(astparsers.PycparserNodeVisitor):
 
 
 def pycparser_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
-                      verbose=False, debug=False, builddir='build', language='c',
-                      clang_includes=()):
+                      extra_parser_args=(), verbose=False, debug=False, 
+                      builddir='build', language='c', clang_includes=()):
     """Automatically finds all API elements in a file via GCC-XML.
 
     Parameters
@@ -383,6 +391,8 @@ def pycparser_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         The list of extra macro definitions to apply.
     undefines : list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     verbose : bool, optional
         Flag to diplay extra information while describing the class.
     debug : bool, optional
@@ -404,7 +414,8 @@ def pycparser_findall(filename, includes=(), defines=('XDRESS',), undefines=(),
 
     """
     root = astparsers.pycparser_parse(filename, includes=includes, defines=defines,
-                undefines=undefines, verbose=verbose, debug=debug, builddir=builddir)
+                undefines=undefines, extra_parser_args=extra_parser_args, 
+                verbose=verbose, debug=debug, builddir=builddir)
     basename = filename.rsplit('.', 1)[0]
     onlyin = set([filename, basename + '.h'])
     finder = PycparserFinder(root, onlyin=onlyin, verbose=verbose)
@@ -423,8 +434,8 @@ _finders = {
     }
 
 def findall(filename, includes=(), defines=('XDRESS',), undefines=(), 
-            parsers='gccxml', verbose=False, debug=False, builddir='build',
-            language='c++', clang_includes=()):
+            extra_parser_args=(), parsers='gccxml', verbose=False, debug=False, 
+            builddir='build', language='c++', clang_includes=()):
     """Automatically finds all API elements in a file.  This is the main entry point.
 
     Parameters
@@ -437,6 +448,8 @@ def findall(filename, includes=(), defines=('XDRESS',), undefines=(),
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     parsers : str, list, or dict, optional
         The parser / AST to use to use for the file.  Currently 'clang', 'gccxml', 
         and 'pycparser' are supported, though others may be implemented in the 
@@ -468,8 +481,8 @@ def findall(filename, includes=(), defines=('XDRESS',), undefines=(),
     parser = astparsers.pick_parser(language, parsers)
     finder = _finders[parser]
     rtn = finder(filename, includes=includes, defines=defines, undefines=undefines, 
-                 verbose=verbose, debug=debug, builddir=builddir, language=language,
-                 clang_includes=clang_includes)
+                 extra_parser_args=extra_parser_args, verbose=verbose, debug=debug, 
+                 builddir=builddir, language=language, clang_includes=clang_includes)
     return rtn
 
 
@@ -618,9 +631,10 @@ class XDressPlugin(astparsers.ParserPlugin):
                 found = autonamecache[srcfile]
             else:
                 found = findall(srcfile, includes=rc.includes, defines=rc.defines, 
-                                undefines=rc.undefines, parsers=rc.parsers, 
-                                verbose=rc.verbose, debug=rc.debug, 
-                                builddir=rc.builddir, language=lang,
+                                undefines=rc.undefines, 
+                                extra_parser_args=rc.extra_parser_args, 
+                                parsers=rc.parsers, verbose=rc.verbose, 
+                                debug=rc.debug, builddir=rc.builddir, language=lang,
                                 clang_includes=rc.clang_includes)
                 autonamecache[srcfile] = found
                 autonamecache.dump()

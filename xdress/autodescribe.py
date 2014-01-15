@@ -333,8 +333,8 @@ hack_template_args = {
 #
 
 def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                    undefines=(), ts=None, verbose=False, debug=False,
-                    builddir='build', onlyin=None, language='c++',
+                    undefines=(), extra_parser_args=(), ts=None, verbose=False, 
+                    debug=False, builddir='build', onlyin=None, language='c++',
                     clang_includes=()):
     """Use GCC-XML to describe the class.
 
@@ -352,6 +352,8 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     ts : TypeSystem, optional
         A type system instance.
     verbose : bool, optional
@@ -376,8 +378,9 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     posixfilename = posixpath.join(*ntpath.split(filename)) if os.name == 'nt' \
                     else filename
     root = astparsers.gccxml_parse(posixfilename, includes=includes, defines=defines,
-                                   undefines=undefines, verbose=verbose, debug=debug,
-                                   builddir=builddir)
+                                   undefines=undefines, 
+                                   extra_parser_args=extra_parser_args, 
+                                   verbose=verbose, debug=debug, builddir=builddir)
     if onlyin is None:
         onlyin = set([filename])
     describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber,
@@ -1039,8 +1042,9 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 #
 
 def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                   undefines=(), ts=None, verbose=False, debug=False,
-                   builddir=None, onlyin=None, language='c++', clang_includes=()):
+                   undefines=(), extra_parser_args=(), ts=None, verbose=False, 
+                   debug=False, builddir=None, onlyin=None, language='c++', 
+                   clang_includes=()):
     """Use Clang to describe the class.
 
     Parameters
@@ -1057,6 +1061,8 @@ def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     ts : TypeSystem, optional
         A type system instance.
     verbose : bool, optional
@@ -1077,8 +1083,10 @@ def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         API bindings.
     """
     tu = astparsers.clang_parse(filename, includes=includes, defines=defines,
-                                undefines=undefines, verbose=verbose, debug=debug,
-                                language=language, clang_includes=clang_includes)
+                                undefines=undefines, 
+                                extra_parser_args=extra_parser_args, verbose=verbose, 
+                                debug=debug, language=language, 
+                                clang_includes=clang_includes)
     ts = ts or TypeSystem()
     if onlyin is None:
         onlyin = None if filename is None else frozenset([filename])
@@ -1961,8 +1969,8 @@ _pycparser_describers = {
     }
 
 def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                       undefines=(), ts=None, verbose=False, debug=False,
-                       builddir='build', onlyin=None, language='c',
+                       undefines=(), extra_parser_args=(), ts=None, verbose=False, 
+                       debug=False, builddir='build', onlyin=None, language='c',
                        clang_includes=()):
     """Use pycparser to describe the fucntion or struct (class).
 
@@ -1980,6 +1988,8 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     ts : TypeSystem, optional
         A type system instance.
     verbose : bool, optional
@@ -2002,8 +2012,9 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     """
     assert language=='c'
     root = astparsers.pycparser_parse(filename, includes=includes, defines=defines,
-                                      undefines=undefines, verbose=verbose,
-                                      debug=debug, builddir=builddir)
+                                      undefines=undefines, 
+                                      extra_parser_args=extra_parser_args, 
+                                      verbose=verbose, debug=debug, builddir=builddir)
     if onlyin is None:
         onlyin = set([filename])
     describer = _pycparser_describers[kind](name, root, onlyin=onlyin, ts=ts,
@@ -2040,8 +2051,9 @@ _describers = {
     }
 
 def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',),
-             undefines=(), parsers='gccxml', ts=None, verbose=False, debug=False,
-             builddir='build', language='c++', clang_includes=()):
+             undefines=(), extra_parser_args=(), parsers='gccxml', ts=None, 
+             verbose=False, debug=False, builddir='build', language='c++', 
+             clang_includes=()):
     """Automatically describes an API element in a file.  This is the main entry point.
 
     Parameters
@@ -2061,6 +2073,8 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     parsers : str, list, or dict, optional
         The parser / AST to use to use for the file.  Currently 'clang', 'gccxml',
         and 'pycparser' are supported, though others may be implemented in the
@@ -2098,9 +2112,9 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     parser = astparsers.pick_parser(language, parsers)
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, defines=defines,
-                     undefines=undefines, ts=ts, verbose=verbose, debug=debug,
-                     builddir=builddir, onlyin=onlyin, language=language,
-                     clang_includes=clang_includes)
+                     undefines=undefines, extra_parser_args=extra_parser_args, ts=ts, 
+                     verbose=verbose, debug=debug, builddir=builddir, onlyin=onlyin, 
+                     language=language, clang_includes=clang_includes)
     return desc
 
 
@@ -2236,9 +2250,11 @@ class XDressPlugin(astparsers.ParserPlugin):
         else:
             srcdesc = describe(name.srcfiles, name=name.srcname, kind=kind,
                                includes=rc.includes, defines=rc.defines,
-                               undefines=rc.undefines, parsers=rc.parsers, ts=rc.ts,
-                               verbose=rc.verbose, debug=rc.debug,
-                               builddir=rc.builddir, language=name.language,
+                               undefines=rc.undefines, 
+                               extra_parser_args=rc.extra_parser_args, 
+                               parsers=rc.parsers, ts=rc.ts, verbose=rc.verbose, 
+                               debug=rc.debug, builddir=rc.builddir, 
+                               language=name.language, 
                                clang_includes=rc.clang_includes)
             srcdesc['name'] = dict(zip(name._fields, name))
             cache[name, kind] = srcdesc
