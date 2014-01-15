@@ -241,7 +241,7 @@ def clang_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
                         + ['-I' + i for i in tuple(clang_includes) + tuple(includes)]
                         + ['-D' + d for d in defines]
                         + ['-U' + u for u in undefines]
-                        + extra_parser_args)
+                        + list(extra_parser_args))
     # Check for fatal errors
     failed = False
     for d in tu.diagnostics:
