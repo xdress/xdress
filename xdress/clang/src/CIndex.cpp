@@ -543,11 +543,14 @@ bool CursorVisitor::VisitChildren(CXCursor Cursor) {
           TU));
   }
 
-  // For now template arguments have no children.
-  // This should possibly change to account for general
-  // expression, parameter packs, etc.
-  if (clang_isTemplateArg(Cursor.kind))
+  if (clang_isTemplateArg(Cursor.kind)) {
+    if (Cursor.kind == CXCursor_ExpressionTemplateArg) {
+      const Expr* E = getCursorTemplateArg(Cursor)->getAsExpr();
+      return Visit(cxcursor::MakeCXCursor(E, getCursorDecl(Cursor), getCursorTU(Cursor)));
+    }
+    // In future, we may want to handle parameter packs, etc.
     return false;
+  }
 
 #ifndef XDRESS
   // If pointing inside a macro definition, check if the token is an identifier

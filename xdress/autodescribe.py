@@ -369,7 +369,7 @@ hack_template_args = {
 #
 
 def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                    undefines=(), extra_parser_args=(), ts=None, verbose=False, 
+                    undefines=(), extra_parser_args=(), ts=None, verbose=False,
                     debug=False, builddir='build', onlyin=None, language='c++',
                     clang_includes=()):
     """Use GCC-XML to describe the class.
@@ -414,8 +414,8 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     posixfilename = posixpath.join(*ntpath.split(filename)) if os.name == 'nt' \
                     else filename
     root = astparsers.gccxml_parse(posixfilename, includes=includes, defines=defines,
-                                   undefines=undefines, 
-                                   extra_parser_args=extra_parser_args, 
+                                   undefines=undefines,
+                                   extra_parser_args=extra_parser_args,
                                    verbose=verbose, debug=debug, builddir=builddir)
     if onlyin is None:
         onlyin = set([filename])
@@ -1086,8 +1086,8 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 #
 
 def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                   undefines=(), extra_parser_args=(), ts=None, verbose=False, 
-                   debug=False, builddir=None, onlyin=None, language='c++', 
+                   undefines=(), extra_parser_args=(), ts=None, verbose=False,
+                   debug=False, builddir=None, onlyin=None, language='c++',
                    clang_includes=()):
     """Use Clang to describe the class.
 
@@ -1127,9 +1127,9 @@ def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         API bindings.
     """
     tu = astparsers.clang_parse(filename, includes=includes, defines=defines,
-                                undefines=undefines, 
-                                extra_parser_args=extra_parser_args, verbose=verbose, 
-                                debug=debug, language=language, 
+                                undefines=undefines,
+                                extra_parser_args=extra_parser_args, verbose=verbose,
+                                debug=debug, language=language,
                                 clang_includes=clang_includes)
     ts = ts or TypeSystem()
     if onlyin is None:
@@ -1208,10 +1208,10 @@ def clang_find_decls(tu, name, kinds, onlyin, namespace=None):
     return decls
 
 # TODO: This functionality belongs in TypeSystem
-def canon_template_arg(ts, arg):
-    if isinstance(arg,int):
-        return arg
-    return ts.canon(arg)
+def canon_template_arg(ts, kind, arg):
+    if kind == Arg.TYPE:
+        return ts.canon(arg)
+    return arg
 
 def clang_where(namespace, filename):
     where = ''
@@ -1228,7 +1228,7 @@ def clang_find_class(tu, name, ts, namespace=None, filename=None, onlyin=None):
         basename = name[0]
         if name[-1] != 0:
             raise NotImplementedError('no predicate support in clang class description')
-        args = tuple(canon_template_arg(ts,a) for a in name[1:-1])
+        args = name[1:-1]
         kinds = CursorKind.CLASS_TEMPLATE,
     else:
         basename = name
@@ -1242,9 +1242,11 @@ def clang_find_class(tu, name, ts, namespace=None, filename=None, onlyin=None):
             return decl
         else:
             # Search for the desired template specialization
+            kinds = clang_template_arg_kinds(decl)
+            args = tuple(canon_template_arg(ts,k,a) for k,a in zip(kinds, args))
             args = clang_expand_template_args(decl, args)
             for spec in decl.get_specializations():
-                if args == tuple(canon_template_arg(ts,a) for a in clang_describe_template_args(spec)):
+                if args == tuple(canon_template_arg(ts,k,a) for k,a in zip(kinds, clang_describe_template_args(spec))):
                     return spec
 
     # Nothing found, time to complain
@@ -1254,7 +1256,7 @@ def clang_find_class(tu, name, ts, namespace=None, filename=None, onlyin=None):
     elif len(decls)>1:
         raise ValueError("class '{0}' found more than once ({2} times) {1}".format(name, len(decls), where))
     else:
-        raise ValueError("class '{0}' found, but specialization {1} not found{1}".format(cls, name, where))
+        raise ValueError("class '{0}' found, but specialization {1} not found{2}".format(basename, name, where))
 
 def clang_find_function(tu, name, ts, namespace=None, filename=None, onlyin=None):
     """Find all nodes corresponding to a given function.  If there is a separate declaration
@@ -1262,7 +1264,7 @@ def clang_find_function(tu, name, ts, namespace=None, filename=None, onlyin=None
     templated = isinstance(name, tuple)
     if templated:
         basename = name[0]
-        args = tuple(canon_template_arg(ts,a) for a in name[1:])
+        args = name[1:]
         kinds = CursorKind.FUNCTION_TEMPLATE,
     else:
         basename = name
@@ -1275,9 +1277,11 @@ def clang_find_function(tu, name, ts, namespace=None, filename=None, onlyin=None
         else:
             # Search for the desired function specialization
             decl, = decls # TODO: Support multiple decl case
+            kinds = clang_template_arg_kinds(decl)
+            args = tuple(canon_template_arg(ts,k,a) for k,a in zip(kinds, args))
             args = clang_expand_template_args(decl, args)
             for spec in decl.get_specializations():
-                if args == tuple(canon_template_arg(ts,a) for a in clang_describe_template_args(spec)):
+                if args == tuple(canon_template_arg(ts,k,a) for k,a in zip(kinds, clang_describe_template_args(spec))):
                     return [spec]
 
     # Nothing found, time to complain
@@ -1537,6 +1541,20 @@ if 0:
                 break
         return count,tuple(defaults)
 
+def clang_template_arg_kinds(node):
+    '''Find the Arg kind of each template argument of node'''
+    kinds = []
+    for kid in node.get_children():
+        if kid.kind == CursorKind.TEMPLATE_TYPE_PARAMETER:
+            kinds.append(Arg.TYPE)
+        elif kid.kind == CursorKind.TEMPLATE_NON_TYPE_PARAMETER:
+            type = clang_describe_type(kid.type, kid.location)
+            kinds.append(Arg.VAR if isinstance(type, tuple) and type[0]=='enum' else Arg.LIT)
+        else:
+            # Template arguments come first, so we're done
+            break
+    return kinds
+
 def clang_describe_template_args(node):
     ''' TODO: Broken version handling defaults automatically
     _,defaults = clang_template_arg_info(node.specialized_template)
@@ -1569,6 +1587,12 @@ def clang_describe_template_arg(arg, loc):
         return c_literal(s)
     except:
         pass
+    if arg.kind == CursorKind.EXPRESSION_TEMPLATE_ARG:
+        exp, = arg.get_children()
+        if exp.referenced:
+            exp = exp.referenced
+        if exp.kind == CursorKind.ENUM_CONSTANT_DECL:
+            return s
     # Nothing worked, so bail
     raise NotImplementedError('template argument {0}, kind {1} at {2}'
         .format(s, arg.kind.name, clang_str_location(loc)))
@@ -2012,7 +2036,7 @@ _pycparser_describers = {
     }
 
 def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                       undefines=(), extra_parser_args=(), ts=None, verbose=False, 
+                       undefines=(), extra_parser_args=(), ts=None, verbose=False,
                        debug=False, builddir='build', onlyin=None, language='c',
                        clang_includes=()):
     """Use pycparser to describe the fucntion or struct (class).
@@ -2055,8 +2079,8 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     """
     assert language=='c'
     root = astparsers.pycparser_parse(filename, includes=includes, defines=defines,
-                                      undefines=undefines, 
-                                      extra_parser_args=extra_parser_args, 
+                                      undefines=undefines,
+                                      extra_parser_args=extra_parser_args,
                                       verbose=verbose, debug=debug, builddir=builddir)
     if onlyin is None:
         onlyin = set([filename])
@@ -2094,8 +2118,8 @@ _describers = {
     }
 
 def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',),
-             undefines=(), extra_parser_args=(), parsers='gccxml', ts=None, 
-             verbose=False, debug=False, builddir='build', language='c++', 
+             undefines=(), extra_parser_args=(), parsers='gccxml', ts=None,
+             verbose=False, debug=False, builddir='build', language='c++',
              clang_includes=()):
     """Automatically describes an API element in a file.  This is the main entry point.
 
@@ -2155,8 +2179,8 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     parser = astparsers.pick_parser(language, parsers)
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, defines=defines,
-                     undefines=undefines, extra_parser_args=extra_parser_args, ts=ts, 
-                     verbose=verbose, debug=debug, builddir=builddir, onlyin=onlyin, 
+                     undefines=undefines, extra_parser_args=extra_parser_args, ts=ts,
+                     verbose=verbose, debug=debug, builddir=builddir, onlyin=onlyin,
                      language=language, clang_includes=clang_includes)
     return desc
 
@@ -2293,11 +2317,11 @@ class XDressPlugin(astparsers.ParserPlugin):
         else:
             srcdesc = describe(name.srcfiles, name=name.srcname, kind=kind,
                                includes=rc.includes, defines=rc.defines,
-                               undefines=rc.undefines, 
-                               extra_parser_args=rc.extra_parser_args, 
-                               parsers=rc.parsers, ts=rc.ts, verbose=rc.verbose, 
-                               debug=rc.debug, builddir=rc.builddir, 
-                               language=name.language, 
+                               undefines=rc.undefines,
+                               extra_parser_args=rc.extra_parser_args,
+                               parsers=rc.parsers, ts=rc.ts, verbose=rc.verbose,
+                               debug=rc.debug, builddir=rc.builddir,
+                               language=name.language,
                                clang_includes=rc.clang_includes)
             srcdesc['name'] = dict(zip(name._fields, name))
             cache[name, kind] = srcdesc

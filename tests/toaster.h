@@ -21,12 +21,12 @@ template<class T, int i=0> struct Base {
   void base(int a=1);
 };
 
-// Boolean template params
-template<bool B=false> class Point {};
-template<> class Point<true> {};
-
 // Enums
 enum Choices { CA, CB = 18-1 };
+
+// Boolean and enum template params
+template<bool B=false, Choices C=CA> class Point {};
+template<> class Point<true,CA> {};
 
 // Toaster class
 class Toaster : Base<int,6+1> {

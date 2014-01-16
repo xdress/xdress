@@ -32,14 +32,14 @@ def exp_base_desc(parser):
             }
 
 exp_point_desc = {
-    'name': ('Point', True, 0),
+    'name': ('Point', True, 'CA', 0),
     'namespace': 'xdress',
     'parents': [],
     'construct': 'class',
     'attrs': {},
-    'methods': {(('Point', True),): {'return': None, 'defaults': ()},
-                (('~Point', True),): {'return': None, 'defaults': ()}},
-    'type': ('Point', True, 0)}
+    'methods': {(( 'Point', True, 'CA'),): {'return': None, 'defaults': ()},
+                (('~Point', True, 'CA'),): {'return': None, 'defaults': ()}},
+    'type': ('Point', True, 'CA', 0)}
 
 exp_default_desc = {
     'name': 'Default',
@@ -216,13 +216,13 @@ def test_describe_cpp():
     fname = os.path.join(testdir, 'toaster.h')
     buildbase = os.path.join(testdir, 'build')
     ts.register_class('Base', ('T', 'i'), cpp_type='Base')
-    ts.register_class('Point', ('T',), cpp_type='Point')
+    ts.register_class('Point', ('B', 'C'), cpp_type='Point')
     ts.register_classname('Toaster', 'toaster', 'toaster', 'cpp_toaster')
     for name in 'NoDefaultBase', 'NoDefault', 'Default':
         ts.register_class(name, cpp_type=name)
     def check(parser):
         goals = (('class', ('Base', 'int32', 7, 0), exp_base_desc(parser)),
-                 ('class', ('Point', True, 0), exp_point_desc),
+                 ('class', ('Point', True, 'CA', 0), exp_point_desc),
                  ('class', 'Toaster', exp_toaster_desc),
                  ('func', 'simple', exp_simple_desc),
                  # Verify that we pick up parameter names from definitions
