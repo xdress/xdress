@@ -71,6 +71,17 @@ class C : public B {
   virtual void call() {c=1;};
 };
 
+
+class NoDefault {
+ public:
+  NoDefault( int a ) {};
+};
+
+class NoDefaultChild : public NoDefault {
+ public:
+  NoDefaultChild(int a) : NoDefault(a) {};
+};
+
 // templated classes
 template <class T>
 class TClass0 {

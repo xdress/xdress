@@ -400,6 +400,10 @@ def classcpppxd(desc, exceptions=True, ts=None):
     dargs = expand_default_args(desc['methods'].items())
     methitems = sorted(x for x in dargs if isinstance(x[0][0], basestring))
     methitems += sorted(x for x in dargs if not isinstance(x[0][0], basestring))
+    default_constructor =  ((d['name'],),  None)
+    if d['construct_kind'] == 'cppclass' and default_constructor not in methitems:
+        methitems.insert(0, default_constructor)
+
     for mkey, mrtn in methitems:
         mname, margs = mkey[0], mkey[1:]
         mbasename = mname if isinstance(mname, basestring) else mname[0]
