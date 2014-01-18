@@ -9,6 +9,7 @@ from __future__ import print_function
 import os
 import io
 import re
+import ast
 import sys
 import glob
 import functools
@@ -17,6 +18,7 @@ from pprint import pformat
 from collections import Mapping, Iterable, Hashable, Sequence, namedtuple
 from hashlib import md5
 from warnings import warn
+from numpy import float32, float128
 try:
     import cPickle as pickle
 except ImportError:
@@ -82,27 +84,35 @@ def expand_default_args(methods):
             methitems.add((mkey, mrtn))
     return methitems
 
+_bool_literals = {'true': True, 'false': False}
+_c_literal_int = re.compile(r'^([+-]?([1-9][0-9]*|0o?[0-7]+|0x[0-9a-f]+|'
+                                   r'0b[01]+|0))u?(l{1,2})?u?$')
+_c_int_bases = {'0x': 16, '0o': 8, '0b': 2, '0': 8,
+                '00': 8, '01': 8, '02': 8, '03': 8, '04': 8, '05': 8, '06': 8, '07': 8}
+_c_float = re.compile(r'^([+-]?([0-9]+\.[0-9]*|\.[0-9]+)(e[+-]?[0-9]+)?)([lf]?)$')
+_c_float_types = {'': float, 'f': float32, 'l': float128}
 
-_CPP_LITERAL_INT = re.compile('[+-]?([1-9][0-9]*|0o?[0-7]+|0x[0-9a-f]+|'
-                              '0b[01]+|0)u?(l{1,2})?u?')
-
-def cppint(s):
-    """Converts a C++ literal integer string to a Python int.
-    """
-    s = s.lower()
-    m = _CPP_LITERAL_INT.match(s.lower())
-    g1 = m.group(1)
-    if g1.startswith('0x'):
-        base = 16
-    elif g1.startswith('0o'):
-        base = 8
-    elif g1.startswith('0b'):
-        base = 2
-    elif g1.startswith('0'):
-        base = 8
-    else:
-        base = 10
-    return int(s.replace('u', "").replace('l', ""), base)
+def c_literal(s):
+    "Convert a C/C++ literal to the corresponding Python value"
+    s = s.strip()
+    try:
+        # ast.literal_eval isn't precisely correct, since there are Python
+        # literals which aren't valid C++, but it is close enough and faster
+        # than the custom code below in the common case.
+        return ast.literal_eval(s)
+    except:
+        pass
+    if s in _bool_literals:
+        return _bool_literals[s]
+    lo = s.lower()
+    m = _c_literal_int.match(lo)
+    if m:
+        base = _c_int_bases.get(m.group(2)[:2], 10)
+        return int(m.group(1), base)
+    m = _c_float.match(lo)
+    if m:
+        return _c_float_types[m.group(4)](m.group(1))
+    raise ValueError('unknown literal: %s'%s)
     
 def newoverwrite(s, filename, verbose=False):
     """Useful for not forcing re-compiles and thus playing nicely with the

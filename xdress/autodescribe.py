@@ -218,7 +218,7 @@ except ImportError:
 from . import utils
 from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
     find_source, FORBIDDEN_NAMES, find_filenames, warn_forbidden_name, \
-    apiname, ensure_apiname, cppint, extra_filenames, newoverwrite, _lang_exts
+    apiname, ensure_apiname, c_literal, extra_filenames, newoverwrite, _lang_exts
 from . import astparsers
 from .typesystem import TypeSystem
 
@@ -326,7 +326,6 @@ hack_template_args = {
     'unordered_multiset': ('key_type',),
     'vector': ('value_type',),
     }
-
 
 #
 # GCC-XML Describers
@@ -655,16 +654,10 @@ class GccxmlBaseDescriber(object):
         if default is None:
             arg = (name, t)
         else:
-            if t in _integer_types:
-                default = cppint(default)
-            elif t in _float_types:
-                default = float(default)
-            elif default == 'true':
-                default = True
-            elif default == 'false':
-                default = False
-            elif default.startswith('"') and default.endswith('"'):
-                default = ast.literal_eval(default)  # raw string
+            try:
+                default = c_literal(default)
+            except ValueError:
+                pass # Leave default as is
             arg = (name, t, default)
         self._currfuncsig.append(arg)
 
@@ -1513,42 +1506,30 @@ def clang_expand_template_args(node, args):
     return tuple(args)+defaults[  count-len(args)] '''
     return args
 
-_clang_expressions = {'true': True, 'false': False}
-
 def clang_describe_template_arg(arg, loc):
     if arg.kind == CursorKind.TYPE_TEMPLATE_ARG:
         return clang_describe_type(arg.type, loc)
     try:
-        # ast.literal_eval isn't precisely correct, since there are Python
-        # literals which aren't valid C++, but it should be close enough.
         s = arg.spelling.strip()
-        return ast.literal_eval(s)
+        return c_literal(s)
     except:
         pass
-    try:
-        return _clang_expressions[s]
-    except KeyError:
-        raise NotImplementedError('template argument kind {0} at {1}'
-            .format(arg.kind.name, clang_str_location(loc)))
+    # Nothing worked, so bail
+    raise NotImplementedError('template argument {0}, kind {1} at {2}'
+        .format(s, arg.kind.name, clang_str_location(loc)))
 
 def clang_describe_expression(exp):
     # For now, we just use clang_range_str to pull the expression out of the file.
     # This is because clang doesn't seem to have any mechanism for printing expressions.
     s = clang_range_str(exp.extent)
     try:
-        # ast.literal_eval isn't precisely correct, since there are Python
-        # literals which aren't valid C++, but it should be close enough.
-        return ast.literal_eval(s.strip())
+        return c_literal(s)
     except:
-        pass
-    try:
-        return _clang_expressions[s]
-    except KeyError:
         pass
     if exp.referenced:
         exp = exp.referenced
     if exp.kind == CursorKind.ENUM_CONSTANT_DECL:
-        return s
+        return s.strip()
     # Nothing worked, so bail
     kind = exp.kind.name
     raise NotImplementedError('unhandled expression "{0}" of kind {1} at {2}'
