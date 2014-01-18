@@ -93,14 +93,14 @@ _c_float = re.compile(r'^([+-]?([0-9]+\.[0-9]*|\.[0-9]+)(e[+-]?[0-9]+)?)([lf]?)$
 _c_float_types = {'': float, 'f': float32, 'l': float128}
 
 def c_literal(s):
-    "Convert a C/C++ literal to the corresponding Python value"
+    """Convert a C/C++ literal to the corresponding Python value."""
     s = s.strip()
     try:
         # ast.literal_eval isn't precisely correct, since there are Python
         # literals which aren't valid C++, but it is close enough and faster
         # than the custom code below in the common case.
         return ast.literal_eval(s)
-    except:
+    except (ValueError, SyntaxError):
         pass
     if s in _bool_literals:
         return _bool_literals[s]
@@ -112,7 +112,7 @@ def c_literal(s):
     m = _c_float.match(lo)
     if m:
         return _c_float_types[m.group(4)](m.group(1))
-    raise ValueError('unknown literal: %s'%s)
+    raise ValueError('unknown literal: {0!r}'.format(s))
     
 def newoverwrite(s, filename, verbose=False):
     """Useful for not forcing re-compiles and thus playing nicely with the
