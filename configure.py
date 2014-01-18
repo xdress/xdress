@@ -4,10 +4,22 @@ import os
 import io
 import sys
 import json
+import glob
+import subprocess
 
 sys.path.insert(0, '')
 import xdress.version
 sys.path.pop(0)
+
+# Fix bug in distutils for python 3
+if sys.version_info[0] >= 3:
+    def decode(s):
+        return s if isinstance(s,str) else bytes.decode(s)
+    import distutils.spawn
+    old_spawn_posix = distutils.spawn._spawn_posix
+    def hack_spawn_posix(cmd, search_path=1, verbose=0, dry_run=0):
+        return old_spawn_posix(list(map(decode, cmd)), search_path, verbose, dry_run)
+    distutils.spawn._spawn_posix = hack_spawn_posix
 
 INFO = {
     'version': xdress.version.xdress_version,
@@ -79,9 +91,11 @@ long_desc = "\n".join([l for l in long_desc.splitlines()
 
 def setup():
     try:
-        from setuptools import setup as setup_
+        from setuptools import setup as setup_, Extension
     except ImportError:
-        from distutils.core import setup as setup_
+        from distutils.core import setup as setup_, Extension
+    from distutils.spawn import find_executable
+    from distutils.sysconfig import get_config_vars
 
     scripts_dir = os.path.join(dir_name, 'scripts')
     if os.name == 'nt':
@@ -91,9 +105,51 @@ def setup():
         scripts = [os.path.join(scripts_dir, f)
                    for f in os.listdir(scripts_dir)
                    if not f.endswith('.bat')]
-    packages = ['xdress',]
-    pack_dir = {'xdress': 'xdress', }
+    packages = ['xdress', 'xdress.clang']
+    pack_dir = {'xdress': 'xdress', 'xdress.clang': 'xdress/clang'}
     pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp']}
+
+    if 'LLVM_CONFIG' in os.environ:
+        llvm_config = os.environ['LLVM_CONFIG']
+    else:
+        options = 'llvm-config llvm-config-3.5 llvm-config-3.4 llvm-config-3.3 llvm-config-3.2'.split()
+        for p in options:
+            p = find_executable(p)
+            if p is not None:
+                print('using llvm-config from %s'%p)
+                llvm_config = p
+                break
+        else:
+            print('Disabling clang since llvm-config not found: tried %s'%', '.join(options))
+            print('To override, set the LLVM_CONFIG environment variable.')
+            llvm_config = None
+    if llvm_config is not None:
+        llvm_cppflags = subprocess.check_output([llvm_config,'--cppflags']).split()
+        llvm_ldflags  = subprocess.check_output([llvm_config,'--ldflags','--libs']).split()
+        clang_dir = os.path.join(dir_name, 'xdress', 'clang')
+        clang_src_dir = os.path.join(clang_dir, 'src')
+        clang_libs = '''clangTooling clangFrontend clangDriver clangSerialization clangCodeGen
+                        clangParse clangSema clangStaticAnalyzerFrontend clangStaticAnalyzerCheckers
+                        clangStaticAnalyzerCore clangAnalysis clangARCMigrate clangEdit
+                        clangRewriteCore clangAST clangLex clangBasic'''.split()
+        # If the user sets CFLAGS, make sure we still have our own include path first
+        if 'CFLAGS' in os.environ:
+            os.environ['CFLAGS'] = '-I%s '%clang_dir + os.environ['CFLAGS']
+        # Remove -Wstrict-prototypes to prevent warnings in libclang C++ code,
+        # following http://stackoverflow.com/questions/8106258.
+        opt, = get_config_vars('OPT')
+        os.environ['OPT'] = ' '.join(f for f in opt.split() if f != '-Wstrict-prototypes')
+        modules = [Extension('xdress.clang.libclang',
+                             sources=glob.glob(os.path.join(clang_src_dir, '*.cpp')),
+                             define_macros=[('XDRESS', 1)],
+                             include_dirs=[clang_dir],
+                             extra_compile_args=llvm_cppflags+['-fno-rtti'],
+                             extra_link_args=llvm_ldflags,
+                             libraries=clang_libs,
+                             language='c++')]
+    else:
+        modules = ()
+
     setup_kwargs = {
         "name": "xdress",
         "version": INFO['version'],
@@ -104,6 +160,7 @@ def setup():
         "packages": packages,
         "package_dir": pack_dir,
         "package_data": pack_data,
+        "ext_modules": modules,
         "scripts": scripts,
         "description": "Goes all J. Edgar Hoover on your code.",
         "long_description": long_desc,

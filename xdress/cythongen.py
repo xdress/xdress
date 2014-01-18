@@ -400,6 +400,10 @@ def classcpppxd(desc, exceptions=True, ts=None):
     dargs = expand_default_args(desc['methods'].items())
     methitems = sorted(x for x in dargs if isinstance(x[0][0], basestring))
     methitems += sorted(x for x in dargs if not isinstance(x[0][0], basestring))
+    default_constructor =  ((d['name'],),  None)
+    if d['construct_kind'] == 'cppclass' and default_constructor not in methitems:
+        methitems.insert(0, default_constructor)
+
     for mkey, mrtn in methitems:
         mname, margs = mkey[0], mkey[1:]
         mbasename = mname if isinstance(mname, basestring) else mname[0]
@@ -966,30 +970,47 @@ def _gen_function_pointer_wrapper(name, t, ts, classname='', max_callbacks=8):
     lines += ['', ""]
     return lines
 
+def _gen_argfill(args):
+    '''Generate argument list for a function, and return (argfill, names).
+    If any argument names or empty, the corresponding entry in names will
+    be '_n' for some integer n.'''
+    counter = 0
+    taken = frozenset(a[0] for a in args)
+    names = []
+    afill = []
+    for a in args:
+        name = a[0]
+        if not name: # Empty name, generate a fresh dummy symbol
+            while 1:
+                name = '_%d'%counter
+                counter += 1
+                if name not in taken:
+                    break
+        names.append(name)
+        afill.append(name if 2 == len(a) else "%s=%s"%(name,a[2]))
+    return ", ".join(afill), names
+
 def _gen_function(name, name_mangled, args, rtn, ts, doc=None, inst_name="self._inst",
                   is_method=False):
+    argfill, names = _gen_argfill(args)
     if is_method:
-        argfill = ", ".join(['self'] + [a[0] for a in args if 2 == len(a)] + \
-                        ["{0}={1}".format(a[0], a[2]) for a in args if 3 == len(a)])
-    else:
-        argfill = ", ".join([a[0] for a in args if 2 == len(a)] + \
-                        ["{0}={1}".format(a[0], a[2]) for a in args if 3 == len(a)])
+        argfill = "self, " + argfill
     lines  = ['def {0}({1}):'.format(name_mangled, argfill)]
     lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
     decls = []
     argbodies = []
     argrtns = {}
-    for a in args:
-        adecl, abody, artn = ts.cython_py2c(a[0], a[1])
+    for n,a in zip(names, args):
+        adecl, abody, artn = ts.cython_py2c(n, a[1])
         if adecl is not None:
             decls += indent(adecl, join=False)
         if abody is not None:
             argbodies += indent(abody, join=False)
-        argrtns[a[0]] = artn
+        argrtns[n] = artn
     rtype_orig = ts.cython_ctype(rtn)
     rtype = rtype_orig.replace('const ', "").replace(' &', '')
     hasrtn = rtype not in set(['None', None, 'NULL', 'void'])
-    argvals = ', '.join([argrtns[a[0]] for a in args])
+    argvals = ', '.join(argrtns[n] for n in names)
     fcall = '{0}.{1}({2})'.format(inst_name, name, argvals)
     if hasrtn:
         fcdecl, fcbody, fcrtn, fccached = ts.cython_c2py('rtnval', rtn, cached=False)
@@ -1035,21 +1056,20 @@ def _gen_default_constructor(desc, attrs, ts, doc=None, srcpxd_filename=None):
 
 def _gen_constructor(name, name_mangled, classname, args, ts, doc=None,
                      srcpxd_filename=None, inst_name="self._inst", construct="class"):
-    argfill = ", ".join(['self'] + [a[0] for a in args if 2 == len(a)] + \
-                        ["{0}={1}".format(a[0], a[2]) for a in args if 3 == len(a)])
-    lines  = ['def {0}({1}):'.format(name_mangled, argfill)]
+    argfill, names = _gen_argfill(args)
+    lines  = ['def {0}(self, {1}):'.format(name_mangled, argfill)]
     lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
     decls = []
     argbodies = []
     argrtns = {}
-    for a in args:
-        adecl, abody, artn = ts.cython_py2c(a[0], a[1])
+    for n,a in zip(names, args):
+        adecl, abody, artn = ts.cython_py2c(n, a[1])
         if adecl is not None:
             decls += indent(adecl, join=False)
         if abody is not None:
             argbodies += indent(abody, join=False)
-        argrtns[a[0]] = artn
-    argvals = ', '.join([argrtns[a[0]] for a in args])
+        argrtns[n] = artn
+    argvals = ', '.join(argrtns[n] for n in names)
     classname = classname if srcpxd_filename is None else \
                     "{0}.{1}".format(srcpxd_filename.rsplit('.', 1)[0], classname)
     if construct == 'class':

@@ -115,9 +115,10 @@ projects.
 ==========
 Contact Us
 ==========
-If you have questions or comments, please send them to the mailing list
-xdress@googlegroups.com or contact the author directly or open an issue on
-GitHub.
+If you have questions or comments, please sign up for the the mailing list
+at https://groups.google.com/forum/#!forum/xdress and send an email to
+xdress@googlegroups.com. Alternatively, please contact the authors directly or 
+open an issue on GitHub.
 
 ============
 Contributing
@@ -132,7 +133,8 @@ Helpful Links
 =============
 
 * `Documentation <http://xdress.org>`_
-* `Mailing list <mailto:xdress@googlegroups.com>`_
+* `Mailing list website <https://groups.google.com/forum/#!forum/xdress>`_
+* `Mailing list address <mailto:xdress@googlegroups.com>`_
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`

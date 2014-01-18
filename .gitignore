@@ -16,6 +16,7 @@ MANIFEST
 *.DS_Store
 
 # Test files to ignore
+tests/build*
 tests/cproj/install
 tests/cproj/cproj/*.pxd
 tests/cproj/cproj/*.pyx

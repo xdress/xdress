@@ -79,7 +79,7 @@ class NoDefault {
 
 class NoDefaultChild : public NoDefault {
  public:
-  NoDefaultChild( int a ) : NoDefault( a ) {};
+  NoDefaultChild(int a) : NoDefault(a) {};
 };
 
 // templated classes
@@ -107,6 +107,7 @@ class TClass0 {
 
 template <class T> class TClass2 : public TClass0<T> {
   public:
+    TClass2( bool default_Arg = true) {}
     T bob;
 };
 

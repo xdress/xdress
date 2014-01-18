@@ -175,7 +175,7 @@ except ImportError:
     argcomplete = None
 
 from .utils import NotSpecified, RunControl, DEFAULT_RC_FILE, DEFAULT_PLUGINS, \
-    exec_file
+    exec_file, parse_global_rc
 
 from .plugins import Plugins
 
@@ -215,18 +215,7 @@ def main():
         argcomplete.autocomplete(parser)
     ns = parser.parse_args()
     rc = plugins.merge_rcs()
-    home = os.path.expanduser('~')
-    globalrcs = [os.path.join(home, '.xdressrc'),
-                 os.path.join(home, '.xdressrc.py'),
-                 os.path.join(home, '.config', 'xdressrc'),
-                 os.path.join(home, '.config', 'xdressrc.py'),
-                 ]
-    for globalrc in globalrcs:
-        if not os.path.isfile(globalrc):
-            continue
-        globalrcdict = {}
-        exec_file(globalrc, globalrcdict, globalrcdict)
-        rc._update(globalrcdict)
+    rc._update(parse_global_rc())
     rc._update(rcdict)
     rc._update([(k, v) for k, v in ns.__dict__.items()])
     plugins.setup()

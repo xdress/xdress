@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import filecmp
+import shutil
+import sys
+import os
+import re
+
+usage = '''usage: %s <llvm-dir>
+Copy libclang and its python bindings out of an llvm+clang repo.
+Files under xdress/clang that aren't under clang generate warnings,
+but are left alone.'''
+if len(sys.argv) != 2:
+    print(usage,file=sys.stderr)
+    sys.exit(1)
+llvm = os.path.abspath(sys.argv[1])
+clang = os.path.join(llvm,'tools','clang')
+if not os.path.exists(clang):
+    print('fatal: %s does not contain tools/clang, probably not an llvm+clang checkout'%llvm)
+    sys.exit(1)
+
+# Make sure we're in the right directory
+os.chdir(os.path.dirname(__file__))
+
+pairs = {'bindings/python/clang': '.',
+         'include/clang-c': 'clang-c',
+         'tools/libclang': 'src',
+         '.': '.'}
+relevant = re.compile(r'^(.*\.(h|cpp|py)|LICENSE\.TXT)$')
+
+for src,dst in pairs.items():
+    if not os.path.exists(dst):
+        os.mkdir(dst)
+    src = os.path.join(clang,src)
+    for f in os.listdir(src):
+        if relevant.match(f):
+            s = os.path.join(src,f)
+            d = os.path.join(dst,f)
+            if not os.path.exists(d) or not filecmp.cmp(s,d):
+                print('cp %s %s'%(s,d))
+                shutil.copy(s,d)
