@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "xdress-clang.h"
 #include "CursorVisitor.h"
 #include "CLog.h"
 #include "CXCursor.h"
@@ -411,40 +412,40 @@ extern "C" {
 
 CXResult clang_findReferencesInFile(CXCursor cursor, CXFile file,
                                     CXCursorAndRangeVisitor visitor) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   LogRef Log = Logger::make(LLVM_FUNCTION_NAME);
 #endif
 
   if (clang_Cursor_isNull(cursor)) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
     if (Log)
       *Log << "Null cursor";
 #endif
     return CXResult_Invalid;
   }
   if (cursor.kind == CXCursor_NoDeclFound) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
     if (Log)
       *Log << "Got CXCursor_NoDeclFound";
 #endif
     return CXResult_Invalid;
   }
   if (!file) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
     if (Log)
       *Log << "Null file";
 #endif
     return CXResult_Invalid;
   }
   if (!visitor.visit) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
     if (Log)
       *Log << "Null visitor";
 #endif
     return CXResult_Invalid;
   }
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   if (Log)
     *Log << cursor << " @" << static_cast<const FileEntry *>(file);
 #endif
@@ -477,7 +478,7 @@ CXResult clang_findReferencesInFile(CXCursor cursor, CXFile file,
   CXCursor refCursor = clang_getCursorReferenced(cursor);
 
   if (!clang_isDeclaration(refCursor.kind)) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
     if (Log)
       *Log << "cursor is not referencing a declaration";
 #endif
@@ -494,33 +495,33 @@ CXResult clang_findReferencesInFile(CXCursor cursor, CXFile file,
 
 CXResult clang_findIncludesInFile(CXTranslationUnit TU, CXFile file,
                              CXCursorAndRangeVisitor visitor) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   LogRef Log = Logger::make(LLVM_FUNCTION_NAME);
 #endif
 
   if (!TU) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
     if (Log)
       *Log << "Null CXTranslationUnit";
 #endif
     return CXResult_Invalid;
   }
   if (!file) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
     if (Log)
       *Log << "Null file";
 #endif
     return CXResult_Invalid;
   }
   if (!visitor.visit) {
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
     if (Log)
       *Log << "Null visitor";
 #endif
     return CXResult_Invalid;
   }
 
-#ifndef XDRESS
+#if CLANG_VERSION_GE(3,3)
   if (Log)
     *Log << TU << " @" << static_cast<const FileEntry *>(file);
 #endif

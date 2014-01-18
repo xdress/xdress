@@ -8,6 +8,7 @@ import shutil
 import unittest
 import subprocess
 import tempfile
+from glob import glob
 from contextlib import contextmanager
 from pprint import pformat
 
@@ -25,12 +26,15 @@ def cleanfs(paths):
     """Removes the paths from the file system."""
     if isinstance(paths, basestring):
         paths = [paths]
-    for p in paths:
-        p = os.path.join(*p)
-        if os.path.isfile(p):
-            os.remove(p)
-        elif os.path.isdir(p):
-            shutil.rmtree(p)
+    for path in paths:
+        path = os.path.join(*path)
+        for p in glob(path):
+            if os.path.isfile(p):
+                os.remove(p)
+                print(' -- removed {0!r}'.format(p))
+            elif os.path.isdir(p):
+                shutil.rmtree(p)
+                print(' -- removed {0!r}'.format(p))
 
 def check_cmd(args, cwd, holdsrtn, suppress=True):
     """Runs a command in a subprocess and verifies that it executed properly.
@@ -121,7 +125,6 @@ def show_diff(a,b,key=None):
 
 def assert_equal_or_diff(obs, exp):
     try:
-        assert_equal.im_class.maxDiff = None
         assert_equal(obs, exp)
     except:
         key = '\n\n# only expected = {0}, only computed = {1}\n'

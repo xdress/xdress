@@ -130,6 +130,8 @@ classes = [
     apiname('*', **_indiscovery),
     apiname(('TClass0', 'float32'), **_inbasics), 
     apiname(('TClass2', 'float32'), **_inbasics), 
+    apiname('NoDefault', **_inbasics), 
+    apiname('NoDefaultChild', **_inbasics), 
     ]
 
 del os

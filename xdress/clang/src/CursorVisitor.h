@@ -22,7 +22,7 @@ namespace clang {
 
 namespace cxcursor {
 
-#ifdef XDRESS
+#if !CLANG_VERSION_GE(3,3)
 using llvm::Optional;
 #endif
 

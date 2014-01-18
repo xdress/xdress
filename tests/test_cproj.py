@@ -21,9 +21,10 @@ PROJDIR = os.path.abspath(PROJNAME)
 INSTDIR = os.path.join(PROJDIR, 'install')
 ROOTDIR = os.path.splitdrive(INSTDIR)[0] or '/'
 TESTDIR = os.path.join(PROJDIR, PROJNAME, 'tests')
+THISDIR = os.path.dirname(__file__)
 
 GENERATED_PATHS = [
-    [PROJDIR, 'build'],
+    [PROJDIR, 'build*'],
     [PROJDIR, PROJNAME, 'basics.pxd'],
     [PROJDIR, PROJNAME, 'basics.pyx'],
     [PROJDIR, PROJNAME, 'c_basics.pxd'],
@@ -36,7 +37,11 @@ GENERATED_PATHS = [
     [PROJDIR, PROJNAME, 'pybasics.pxd'],
     [PROJDIR, PROJNAME, 'pybasics.pyx'],
     [PROJDIR, PROJNAME, 'cproj_extra_types.h'],
-    [INSTDIR],
+    [PROJDIR, PROJNAME, '*.pyc'],
+    [TESTDIR, '*.pyc'],
+    [TESTDIR, '__pycache__'],
+    [THISDIR, '__pycache__'],
+    [INSTDIR + '*'],
     ]
 
 # Because we want to guarentee build and test order, we can only have one 
@@ -54,15 +59,18 @@ def test_all():
     pyexec = sys.executable
     xdexec = os.path.join(base, 'scripts', 'xdress')
     defaults = {'cwd': cwd, 'base': base, 'pyexec': pyexec, 'xdexec': xdexec, 
-                'instdir': INSTDIR, 'rootdir': ROOTDIR, 'path': path}
+                'instdir': INSTDIR, 'rootdir': ROOTDIR, 'path': path,
+                'builddir': os.path.join(PROJDIR, 'build')}
 
     commands = (
-        'PYTHONPATH="{path}" {pyexec} {xdexec} --debug -p={parser}\n'
+        'PYTHONPATH="{path}" {pyexec} {xdexec} --debug -p={parser} --builddir="{builddir}"\n'
         '{pyexec} setup.py install --prefix="{instdir}" --root="{rootdir}" -- --\n'
         )
 
     for case in cases:
         parser = case['parser']
+        instdir = case['instdir'] = defaults['instdir'] + '-' + parser
+        builddir = case['builddir'] = defaults['builddir'] + '-' + parser
         if not PARSERS_AVAILABLE[parser]:
             yield skip_then_continue, parser + " unavailable"
             continue
@@ -82,7 +90,7 @@ def test_all():
 
         # we have now run xdress and build the project
         # What follow are project unit tests, no need to break on these
-        instsite = os.path.join(INSTDIR, 'lib', 'python*', 'site-packages')
+        instsite = os.path.join(instdir, 'lib', 'python*', 'site-packages')
         instsite = glob.glob(instsite)[0]
         instproj = os.path.join(instsite, PROJNAME)
 

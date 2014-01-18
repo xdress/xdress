@@ -416,12 +416,12 @@ LoadResult DiagLoader::readMetaBlock(llvm::BitstreamCursor &Stream) {
     }
     
     RecordData Record;
-#if CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,3)
+    unsigned recordID = Stream.readRecord(blockOrCode, Record);
+#else
     const char *Blob;
     unsigned BlobLen;
     unsigned recordID = Stream.ReadRecord(blockOrCode, Record, &Blob, &BlobLen);
-#else
-    unsigned recordID = Stream.readRecord(blockOrCode, Record);
 #endif
     
     if (recordID == serialized_diags::RECORD_VERSION) {
@@ -575,15 +575,15 @@ LoadResult DiagLoader::readDiagnosticBlock(llvm::BitstreamCursor &Stream,
     
     // Read the record.
     Record.clear();
-#if CLANG_VERSION_LT(3,3)
+#if CLANG_VERSION_GE(3,3)
+    StringRef Blob;
+    unsigned recID = Stream.readRecord(blockOrCode, Record, &Blob);
+#else
     const char *BlobStart = 0;
     unsigned BlobLen = 0;
     unsigned recID = Stream.ReadRecord(blockOrCode, Record,
                                        BlobStart, BlobLen);
     StringRef Blob(BlobStart, BlobLen);
-#else
-    StringRef Blob;
-    unsigned recID = Stream.readRecord(blockOrCode, Record, &Blob);
 #endif
     
     if (recID < serialized_diags::RECORD_FIRST ||

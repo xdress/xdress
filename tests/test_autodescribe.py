@@ -41,6 +41,36 @@ exp_point_desc = {
                 (('~Point', True),): None},
     'type': ('Point', True, 0)}
 
+exp_default_desc = {
+    'name': 'Default',
+    'type': 'Default',
+    'namespace': 'xdress',
+    'parents': [base],
+    'construct': 'struct',
+    'attrs': {},
+    'methods': {( 'Default',): None,
+                ('~Default',): None}}
+
+exp_nodefault_base_desc = {
+    'name': 'NoDefaultBase',
+    'type': 'NoDefaultBase',
+    'namespace': 'xdress',
+    'parents': [],
+    'construct': 'struct',
+    'attrs': {},
+    'methods': {( 'NoDefaultBase', ('i', 'int32')): None,
+                ('~NoDefaultBase',): None}}
+
+exp_nodefault_desc = {
+    'name': 'NoDefault',
+    'type': 'NoDefault',
+    'namespace': 'xdress',
+    'parents': ['NoDefaultBase'],
+    'construct': 'struct',
+    'attrs': {},
+    'methods': {( 'NoDefault', ('i', 'int32')): None,
+                ('~NoDefault',): None}}
+
 choices = ('enum', 'Choices', (('CA', '0'), ('CB', '17')))
 exp_choices_desc = {
     'name': 'Choices',
@@ -172,6 +202,8 @@ def test_describe_cpp():
     ts.register_class('Base', ('T', 'i'), cpp_type='Base')
     ts.register_class('Point', ('T',), cpp_type='Point')
     ts.register_classname('Toaster', 'toaster', 'toaster', 'cpp_toaster')
+    for name in 'NoDefaultBase', 'NoDefault', 'Default':
+        ts.register_class(name, cpp_type=name)
     def check(parser):
         goals = (('class', ('Base', 'int32', 7, 0), exp_base_desc(parser)),
                  ('class', ('Point', True, 0), exp_point_desc),
@@ -183,6 +215,9 @@ def test_describe_cpp():
                  ('func', 'conflict', exp_conflict_desc), 
                  ('func', ('lasso', 17, 'int32', 'float32'), exp_lasso_desc(17)),
                  ('func', ('lasso', 18, 'int32', 'float32'), exp_lasso_desc(18)),
+                 ('class', 'Default', exp_default_desc),
+                 ('class', 'NoDefaultBase', exp_nodefault_base_desc),
+                 ('class', 'NoDefault', exp_nodefault_desc),
                  ('var', 'Choices', exp_choices_desc))
         for kind, name, exp in goals:
             obs = ad.describe(fname, name=name, kind=kind, parsers=parser, 

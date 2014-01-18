@@ -71,6 +71,11 @@ void twice(int x) {} // definition with argument name
 void conflict(int good); // first declaration with correct argument name
 void conflict(int bad); // second declaration with wrong argument name
 
+// Classes should have implicit default constructors only if their parents do
+struct Default : Base<int,7> {};
+struct NoDefaultBase { NoDefaultBase(int i); };
+struct NoDefault : NoDefaultBase { NoDefault(int i); };
+
 } // end namespace xdress
 
 #endif

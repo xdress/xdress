@@ -201,6 +201,7 @@ from hashlib import md5
 from numbers import Number
 from pprint import pprint, pformat
 from warnings import warn
+from functools import reduce
 
 if os.name == 'nt':
     import ntpath
@@ -217,7 +218,7 @@ except ImportError:
 from . import utils
 from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
     find_source, FORBIDDEN_NAMES, find_filenames, warn_forbidden_name, \
-    apiname, ensure_apiname, cppint, extra_filenames, newoverwrite, _lang_exts
+    apiname, ensure_apiname, c_literal, extra_filenames, newoverwrite, _lang_exts
 from . import astparsers
 from .typesystem import TypeSystem
 
@@ -326,14 +327,13 @@ hack_template_args = {
     'vector': ('value_type',),
     }
 
-
 #
 # GCC-XML Describers
 #
 
 def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                    undefines=(), ts=None, verbose=False, debug=False,
-                    builddir='build', onlyin=None, language='c++',
+                    undefines=(), extra_parser_args=(), ts=None, verbose=False, 
+                    debug=False, builddir='build', onlyin=None, language='c++',
                     clang_includes=()):
     """Use GCC-XML to describe the class.
 
@@ -351,6 +351,8 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     ts : TypeSystem, optional
         A type system instance.
     verbose : bool, optional
@@ -375,8 +377,9 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     posixfilename = posixpath.join(*ntpath.split(filename)) if os.name == 'nt' \
                     else filename
     root = astparsers.gccxml_parse(posixfilename, includes=includes, defines=defines,
-                                   undefines=undefines, verbose=verbose, debug=debug,
-                                   builddir=builddir)
+                                   undefines=undefines, 
+                                   extra_parser_args=extra_parser_args, 
+                                   verbose=verbose, debug=debug, builddir=builddir)
     if onlyin is None:
         onlyin = set([filename])
     describers = {'class': GccxmlClassDescriber, 'func': GccxmlFuncDescriber,
@@ -651,16 +654,10 @@ class GccxmlBaseDescriber(object):
         if default is None:
             arg = (name, t)
         else:
-            if t in _integer_types:
-                default = cppint(default)
-            elif t in _float_types:
-                default = float(default)
-            elif default == 'true':
-                default = True
-            elif default == 'false':
-                default = False
-            elif default.startswith('"') and default.endswith('"'):
-                default = ast.literal_eval(default)  # raw string
+            try:
+                default = c_literal(default)
+            except ValueError:
+                pass # Leave default as is
             arg = (name, t, default)
         self._currfuncsig.append(arg)
 
@@ -1038,8 +1035,9 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 #
 
 def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                   undefines=(), ts=None, verbose=False, debug=False,
-                   builddir=None, onlyin=None, language='c++', clang_includes=()):
+                   undefines=(), extra_parser_args=(), ts=None, verbose=False, 
+                   debug=False, builddir=None, onlyin=None, language='c++', 
+                   clang_includes=()):
     """Use Clang to describe the class.
 
     Parameters
@@ -1056,6 +1054,8 @@ def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     ts : TypeSystem, optional
         A type system instance.
     verbose : bool, optional
@@ -1076,8 +1076,10 @@ def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         API bindings.
     """
     tu = astparsers.clang_parse(filename, includes=includes, defines=defines,
-                                undefines=undefines, verbose=verbose, debug=debug,
-                                language=language, clang_includes=clang_includes)
+                                undefines=undefines, 
+                                extra_parser_args=extra_parser_args, verbose=verbose, 
+                                debug=debug, language=language, 
+                                clang_includes=clang_includes)
     ts = ts or TypeSystem()
     if onlyin is None:
         onlyin = None if filename is None else frozenset([filename])
@@ -1285,6 +1287,9 @@ _operator_pattern = re.compile(r'^operator\W')
 
 def clang_describe_class(cls):
     """Describe the class at the given clang AST node"""
+    if cls.get_definition() is None:
+        raise ValueError("can't describe undefined class '{0}' at {1}"
+            .format(cls.spelling, clang_str_location(cls.location)))
     parents = []
     attrs = {}
     methods = {}
@@ -1352,7 +1357,7 @@ def clang_str_location(loc):
 def clang_describe_functions(funcs):
     """Describe the function at the given clang AST nodes.  If more than one
     node is given, we verify that they match and find argument names where we can."""
-    descs = map(clang_describe_function,funcs)
+    descs = tuple(map(clang_describe_function,funcs))
     if len(descs)==1:
         return descs[0]
     def merge(d0,d1):
@@ -1388,7 +1393,7 @@ def clang_describe_functions(funcs):
             for i in xrange(j):
                 try:
                     merge(descs[i],descs[j])
-                except ValueError,e:
+                except ValueError as e:
                     from pprint import pprint
                     pprint(descs[i])
                     pprint(descs[j])
@@ -1501,41 +1506,30 @@ def clang_expand_template_args(node, args):
     return tuple(args)+defaults[  count-len(args)] '''
     return args
 
-_clang_expressions = {'true': True, 'false': False}
-
 def clang_describe_template_arg(arg, loc):
     if arg.kind == CursorKind.TYPE_TEMPLATE_ARG:
         return clang_describe_type(arg.type, loc)
     try:
-        # ast.literal_eval isn't precisely correct, since there are Python
-        # literals which aren't valid C++, but it should be close enough.
-        return ast.literal_eval(arg.spelling.strip())
+        s = arg.spelling.strip()
+        return c_literal(s)
     except:
         pass
-    try:
-        return _clang_expressions[arg.spelling]
-    except KeyError:
-        raise NotImplementedError('template argument kind {0} at {1}'
-            .format(arg.kind.name, clang_str_location(loc)))
+    # Nothing worked, so bail
+    raise NotImplementedError('template argument {0}, kind {1} at {2}'
+        .format(s, arg.kind.name, clang_str_location(loc)))
 
 def clang_describe_expression(exp):
     # For now, we just use clang_range_str to pull the expression out of the file.
     # This is because clang doesn't seem to have any mechanism for printing expressions.
     s = clang_range_str(exp.extent)
     try:
-        # ast.literal_eval isn't precisely correct, since there are Python
-        # literals which aren't valid C++, but it should be close enough.
-        return ast.literal_eval(s.strip())
+        return c_literal(s)
     except:
-        pass
-    try:
-        return _clang_expressions[s]
-    except KeyError:
         pass
     if exp.referenced:
         exp = exp.referenced
     if exp.kind == CursorKind.ENUM_CONSTANT_DECL:
-        return s
+        return s.strip()
     # Nothing worked, so bail
     kind = exp.kind.name
     raise NotImplementedError('unhandled expression "{0}" of kind {1} at {2}'
@@ -1956,8 +1950,8 @@ _pycparser_describers = {
     }
 
 def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                       undefines=(), ts=None, verbose=False, debug=False,
-                       builddir='build', onlyin=None, language='c',
+                       undefines=(), extra_parser_args=(), ts=None, verbose=False, 
+                       debug=False, builddir='build', onlyin=None, language='c',
                        clang_includes=()):
     """Use pycparser to describe the fucntion or struct (class).
 
@@ -1975,6 +1969,8 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     ts : TypeSystem, optional
         A type system instance.
     verbose : bool, optional
@@ -1997,8 +1993,9 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     """
     assert language=='c'
     root = astparsers.pycparser_parse(filename, includes=includes, defines=defines,
-                                      undefines=undefines, verbose=verbose,
-                                      debug=debug, builddir=builddir)
+                                      undefines=undefines, 
+                                      extra_parser_args=extra_parser_args, 
+                                      verbose=verbose, debug=debug, builddir=builddir)
     if onlyin is None:
         onlyin = set([filename])
     describer = _pycparser_describers[kind](name, root, onlyin=onlyin, ts=ts,
@@ -2035,8 +2032,9 @@ _describers = {
     }
 
 def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',),
-             undefines=(), parsers='gccxml', ts=None, verbose=False, debug=False,
-             builddir='build', language='c++', clang_includes=()):
+             undefines=(), extra_parser_args=(), parsers='gccxml', ts=None, 
+             verbose=False, debug=False, builddir='build', language='c++', 
+             clang_includes=()):
     """Automatically describes an API element in a file.  This is the main entry point.
 
     Parameters
@@ -2056,6 +2054,8 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     parsers : str, list, or dict, optional
         The parser / AST to use to use for the file.  Currently 'clang', 'gccxml',
         and 'pycparser' are supported, though others may be implemented in the
@@ -2093,9 +2093,9 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     parser = astparsers.pick_parser(language, parsers)
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, defines=defines,
-                     undefines=undefines, ts=ts, verbose=verbose, debug=debug,
-                     builddir=builddir, onlyin=onlyin, language=language,
-                     clang_includes=clang_includes)
+                     undefines=undefines, extra_parser_args=extra_parser_args, ts=ts, 
+                     verbose=verbose, debug=debug, builddir=builddir, onlyin=onlyin, 
+                     language=language, clang_includes=clang_includes)
     return desc
 
 
@@ -2231,9 +2231,11 @@ class XDressPlugin(astparsers.ParserPlugin):
         else:
             srcdesc = describe(name.srcfiles, name=name.srcname, kind=kind,
                                includes=rc.includes, defines=rc.defines,
-                               undefines=rc.undefines, parsers=rc.parsers, ts=rc.ts,
-                               verbose=rc.verbose, debug=rc.debug,
-                               builddir=rc.builddir, language=name.language,
+                               undefines=rc.undefines, 
+                               extra_parser_args=rc.extra_parser_args, 
+                               parsers=rc.parsers, ts=rc.ts, verbose=rc.verbose, 
+                               debug=rc.debug, builddir=rc.builddir, 
+                               language=name.language, 
                                clang_includes=rc.clang_includes)
             srcdesc['name'] = dict(zip(name._fields, name))
             cache[name, kind] = srcdesc

@@ -149,19 +149,22 @@ def not_implemented(obj):
 
 @_memoize_parser
 def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
-                  verbose=False, debug=False, builddir='build', clang_includes=()):
+                 extra_parser_args=(), verbose=False, debug=False, builddir='build', 
+                 clang_includes=()):
     """Use GCC-XML to parse a file. This function is automatically memoized.
 
     Parameters
     ----------
     filename : str
         The path to the file.
-    includes: list of str, optional
+    includes : list of str, optional
         The list of extra include directories to search for header files.
-    defines: list of str, optional
+    defines : list of str, optional
         The list of extra macro definitions to apply.
-    undefines: list of str, optional
+    undefines : list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     verbose : bool, optional
         Flag to display extra information while describing the class.
     debug : bool, optional
@@ -181,6 +184,7 @@ def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     cmd += ['-I' + i for i in includes]
     cmd += ['-D' + d for d in defines]
     cmd += ['-U' + u for u in undefines]
+    cmd += extra_parser_args
     if verbose:
         print(" ".join(cmd))
     if os.path.isfile(xmlname):
@@ -199,8 +203,8 @@ def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
 #
 @_memoize_parser
 def clang_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
-                verbose=False, debug=False, builddir='build', language='c++',
-                clang_includes=()):
+                extra_parser_args=(), verbose=False, debug=False, builddir='build', 
+                language='c++', clang_includes=()):
     """Use clang to parse a file.
 
     Parameters
@@ -213,6 +217,8 @@ def clang_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
         The list of extra macro definitions to apply.
     undefines: list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     verbose : bool, optional
         Flag to display extra information while describing the class.  Ignored.
     debug : bool, optional
@@ -231,10 +237,11 @@ def clang_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     index = cindex.Index.create()
     options = cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES
     tu = index.parse(filename, options=options,
-                     args=  ['-x',language]
-                          + ['-I'+i for i in tuple(clang_includes)+tuple(includes)]
-                          + ['-D'+d for d in defines]
-                          + ['-U'+u for u in undefines])
+                     args=['-x', language]
+                        + ['-I' + i for i in tuple(clang_includes) + tuple(includes)]
+                        + ['-D' + d for d in defines]
+                        + ['-U' + u for u in undefines]
+                        + list(extra_parser_args))
     # Check for fatal errors
     failed = False
     for d in tu.diagnostics:
@@ -251,19 +258,22 @@ def clang_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
 
 @_memoize_parser
 def pycparser_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
-                    verbose=False, debug=False, builddir='build', clang_includes=()):
+                    extra_parser_args=(), verbose=False, debug=False, 
+                    builddir='build', clang_includes=()):
     """Use pycparser to parse a file.  This functions is automatically memoized.
 
     Parameters
     ----------
     filename : str
         The path to the file.
-    includes: list of str, optional
+    includes : list of str, optional
         The list of extra include directories to search for header files.
-    defines: list of str, optional
+    defines : list of str, optional
         The list of extra macro definitions to apply.
-    undefines: list of str, optional
+    undefines : list of str, optional
         The list of extra macro undefinitions to apply.
+    extra_parser_args : list of str, optional
+        Further command line arguments to pass to the parser.
     verbose : bool, optional
         Flag to display extra information while describing the class.
     debug : bool, optional
@@ -293,6 +303,7 @@ def pycparser_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     kwargs['cpp_args'] += ['-I' + i for i in includes]
     kwargs['cpp_args'] += ['-D' + d for d in defines]
     kwargs['cpp_args'] += ['-U' + u for u in undefines]
+    kwargs['cpp_args'] += extra_parser_args
     root = pycparser.parse_file(filename, use_cpp=True, **kwargs)
     with gzip.open(pklgzname, 'wb') as f:
         f.write(pickle.dumps(root, pickle.HIGHEST_PROTOCOL))
@@ -406,13 +417,16 @@ class ParserPlugin(Plugin):
         variables=(),
         functions=(),
         classes=(),
-        parsers={'c': ['pycparser', 'gccxml', 'clang'],
-                 'c++':['gccxml', 'clang', 'pycparser']},
+        parsers={'c': ['pycparser', 'clang', 'gccxml'],
+                 'c++':['clang', 'gccxml', 'pycparser']},
         clear_parser_cache_period=50,
         dumpast=NotSpecified,
+        extra_parser_args=(),
         )
 
-    rcupdaters = {'includes': lambda old, new: list(new) + list(old)}
+    rcupdaters = {'includes': (lambda old, new: list(new) + list(old)),
+        'extra_parser_args': (lambda old, new: list(old) + list(new)),
+        }
 
     rcdocs = {
         'includes': "Additional include directories",
@@ -430,6 +444,7 @@ class ParserPlugin(Plugin):
                                       "nasty memory overflow issues."),
         'dumpast': "Prints the abstract syntax tree of a file.",
         'clang_includes': "clang-specific include paths",
+        'extra_parser_args': "Further command line arguments to pass to the parser"
         }
 
     def update_argparser(self, parser):
@@ -449,6 +464,9 @@ class ParserPlugin(Plugin):
                             metavar="FILE", help=rcdocs["dumpast"])
         parser.add_argument('--clang-includes', action='store', dest='clang_includes',
                             nargs="+", help=rcdocs["clang_includes"])
+        parser.add_argument('--extra-parser-args', action='store', 
+                            dest='extra_parser_args', nargs="+", 
+                            help=rcdocs["extra_parser_args"])
 
     def setup(self, rc):
         """Remember to call super() on subclasses!"""

@@ -2825,6 +2825,7 @@ CINDEX_LINKAGE CXCursor clang_Cursor_getTemplateArg(CXCursor C, unsigned i);
  * \brief Check if a class definition has a default constructor.
  *
  * Returns 1 for yes, 0 for no, and -1 if the cursor isn't a class definition.
+ * If the cursor is an undefined class, returns -2.
  */
 CINDEX_LINKAGE int clang_Cursor_hasDefaultConstructor(CXCursor C);
 
@@ -2832,6 +2833,7 @@ CINDEX_LINKAGE int clang_Cursor_hasDefaultConstructor(CXCursor C);
  * \brief Check if a class has a simple destructor.
  *
  * Returns 1 for yes, 0 for no, and -1 if the cursor isn't a class definition.
+ * If the cursor is an undefined class, returns -2.
  */
 CINDEX_LINKAGE int clang_Cursor_hasSimpleDestructor(CXCursor C);
 
