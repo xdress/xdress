@@ -1193,7 +1193,6 @@ def _doc_add_sig(doc, name, args, ismethod=True):
         return doc
     sig = ['self'] if ismethod else []
     sig.append(_gen_argfill(args)[0])
-#[a[0] if len(a) < 3 else "{0}={2}".format(*a) for a in args]
     newdoc = "{0}({1})\n{2}".format(name, ", ".join(sig), doc)
     return newdoc
 
