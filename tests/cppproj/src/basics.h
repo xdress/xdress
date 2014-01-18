@@ -52,6 +52,7 @@ class A {
   ~A() {};
   int a;
   virtual void call() {a=1;};
+  void writeBCOutput(std::string file_name, std::string linefeed = "\n") const {}
 };
 
 class B : public A {
