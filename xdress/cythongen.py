@@ -971,9 +971,10 @@ def _gen_function_pointer_wrapper(name, t, ts, classname='', max_callbacks=8):
     return lines
 
 def _gen_argfill(args):
-    '''Generate argument list for a function, and return (argfill, names).
+    """Generate argument list for a function, and return (argfill, names).
     If any argument names or empty, the corresponding entry in names will
-    be '_n' for some integer n.'''
+    be '_n' for some integer n.
+    """
     counter = 0
     taken = frozenset(a[0] for a in args)
     names = []
@@ -987,7 +988,13 @@ def _gen_argfill(args):
                 if name not in taken:
                     break
         names.append(name)
-        afill.append(name if 2 == len(a) else "%s=%s"%(name,a[2]))
+        if 2 == len(a): 
+            afillval = name
+        elif isinstance(a[2], basestring): 
+            afillval = "{0}={1!r}".format(name, a[2])
+        else: 
+            afillval = "{0}={1}".format(name, a[2])
+        afill.append(afillval)
     return ", ".join(afill), names
 
 def _gen_function(name, name_mangled, args, rtn, ts, doc=None, inst_name="self._inst",
@@ -1185,7 +1192,8 @@ def _doc_add_sig(doc, name, args, ismethod=True):
     if doc.startswith(name):
         return doc
     sig = ['self'] if ismethod else []
-    sig += [a[0] if len(a) < 3 else "{0}={2}".format(*a) for a in args]
+    sig.append(_gen_argfill(args)[0])
+#[a[0] if len(a) < 3 else "{0}={2}".format(*a) for a in args]
     newdoc = "{0}({1})\n{2}".format(name, ", ".join(sig), doc)
     return newdoc
 
