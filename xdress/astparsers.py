@@ -178,7 +178,11 @@ def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     root : XML etree
         An in memory tree representing the parsed file.
     """
-    xmlname = filename.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.xml'
+    drive, xmlname = os.path.splitdrive(filename)  
+    if len(drive) > 0:
+        # Windows drive handling, 'C:' -> 'C_'
+        xmlname = drive.replace(':', '_') + xmlname
+    xmlname = xmlname.replace(os.path.sep, '_').rsplit('.', 1)[0] + '.xml'
     xmlname = os.path.join(builddir, xmlname)
     cmd = ['gccxml', filename, '-fxml=' + xmlname]
     cmd += ['-I' + i for i in includes]
