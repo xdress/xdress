@@ -18,11 +18,13 @@ from pprint import pformat
 from collections import Mapping, Iterable, Hashable, Sequence, namedtuple
 from hashlib import md5
 from warnings import warn
-from numpy import float32, float128
+
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
+
+import numpy as np
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -90,7 +92,7 @@ _c_literal_int = re.compile(r'^([+-]?([1-9][0-9]*|0o?[0-7]+|0x[0-9a-f]+|'
 _c_int_bases = {'0x': 16, '0o': 8, '0b': 2, '0': 8,
                 '00': 8, '01': 8, '02': 8, '03': 8, '04': 8, '05': 8, '06': 8, '07': 8}
 _c_float = re.compile(r'^([+-]?([0-9]+\.[0-9]*|\.[0-9]+)(e[+-]?[0-9]+)?)([lf]?)$')
-_c_float_types = {'': float, 'f': float32, 'l': float128}
+_c_float_types = {'': float, 'f': np.float32, 'l': np.longfloat}
 
 def c_literal(s):
     """Convert a C/C++ literal to the corresponding Python value."""
