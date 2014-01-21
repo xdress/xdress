@@ -22,6 +22,7 @@ tests/cproj/cproj/*.pxd
 tests/cproj/cproj/*.pyx
 tests/cproj/cproj/cproj_extra_types.h
 
+tests/cppproj/build*
 tests/cppproj/install
 tests/cppproj/cppproj/*.pxd
 tests/cppproj/cppproj/*.pyx
