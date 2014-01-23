@@ -58,24 +58,6 @@ def metadata(path="xdress/metadata.json"):
     return md
 
 
-def final_message(success=True):
-    if success:
-        return
-
-    metadata = None
-    mdpath = os.path.join('xdress', 'metadata.json')
-    if os.path.exists(mdpath):
-        with open(mdpath) as f:
-            metadata = json.load(f)
-    if metadata is not None:
-        msg = "\n\nCURRENT METADATA:\n"
-        for k, v in sorted(metadata.items()):
-            msg += "  {0} = {1}\n".format(k, repr(v))
-        print(msg[:-1])
-
-    if os.name != 'nt':
-        return
-    print(msg)
 
 dir_name = os.path.dirname(os.path.abspath(__file__))
 fname = os.path.join(dir_name, 'docs', 'index.rst')
