@@ -1,7 +1,8 @@
 from __future__ import print_function
 import os
 
-from numpy import float32, float128
+import numpy as np
+
 from xdress.utils import NotSpecified, RunControl, flatten, split_template_args, \
     ishashable, memoize, memoize_method, apiname, ensure_apiname, sortedbytype, \
     c_literal, touch
@@ -186,9 +187,9 @@ def test_literal():
         '-0x2A': -42,
         '3.141592653589793': 3.141592653589793,
         '-3.141592653589793': -3.141592653589793,
-        '3.141592653589793f': float32('3.1415927'),
-        '-314.1592653589793e-2f': float32('-3.1415927'),
-        '.31415926535897932385e1l': float128('3.1415926535897932385'),
+        '3.141592653589793f': np.float32('3.1415927'),
+        '-314.1592653589793e-2f': np.float32('-3.1415927'),
+        '.31415926535897932385e1l': np.longfloat('3.1415926535897932385'),
         'true': True,
         'false': False,
         r'"\tk\012" ': '\tk\012',
