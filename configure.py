@@ -91,29 +91,42 @@ def setup():
     pack_dir = {'xdress': 'xdress', 'xdress.clang': 'xdress/clang'}
     pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp']}
 
-    if 'LLVM_CONFIG' in os.environ:
-        llvm_config = os.environ['LLVM_CONFIG']
+    # llvm+clang configuration can be controlled by the environment variables
+    # LLVM_CONFIG, LLVM_CPPFLAGS, LLVM_LDFLAGS, and CLANG_LIBS.  LLVM_CONFIG is
+    # not used if both LLVM_CPPFLAGS and LLVM_LDFLAGS are set.
+
+    if 'LLVM_CPPFLAGS' in os.environ and 'LLVM_LDFLAGS' in os.environ:
+        llvm_config = True # Will be unused below
     else:
-        options = 'llvm-config llvm-config-3.5 llvm-config-3.4 llvm-config-3.3 llvm-config-3.2'.split()
-        for p in options:
-            p = find_executable(p)
-            if p is not None:
-                print('using llvm-config from %s'%p)
-                llvm_config = p
-                break
+        if 'LLVM_CONFIG' in os.environ:
+            llvm_config = os.environ['LLVM_CONFIG']
         else:
-            print('Disabling clang since llvm-config not found: tried %s'%', '.join(options))
-            print('To override, set the LLVM_CONFIG environment variable.')
-            llvm_config = None
+            options = 'llvm-config llvm-config-3.5 llvm-config-3.4 llvm-config-3.3 llvm-config-3.2'.split()
+            for p in options:
+                p = find_executable(p)
+                if p is not None:
+                    print('using llvm-config from %s'%p)
+                    llvm_config = p
+                    break
+            else:
+                print('Disabling clang since llvm-config not found: tried %s'%', '.join(options))
+                print('To override, set the LLVM_CONFIG environment variable.')
+                llvm_config = None
     if llvm_config is not None:
-        llvm_cppflags = subprocess.check_output([llvm_config,'--cppflags']).split()
-        llvm_ldflags  = subprocess.check_output([llvm_config,'--ldflags','--libs']).split()
+        try:
+            llvm_cppflags = (   os.environ.get('LLVM_CPPFLAGS')
+                             or subprocess.check_output([llvm_config,'--cppflags'])).split()
+            llvm_ldflags  = (   os.environ.get('LLVM_LDFLAGS')
+                             or subprocess.check_output([llvm_config,'--ldflags','--libs'])).split()
+        except OSError as e:
+            raise OSError("Failed to run llvm-config program '%s': %s" % (llvm_config, e))
         clang_dir = os.path.join(dir_name, 'xdress', 'clang')
         clang_src_dir = os.path.join(clang_dir, 'src')
-        clang_libs = '''clangTooling clangFrontend clangDriver clangSerialization clangCodeGen
-                        clangParse clangSema clangStaticAnalyzerFrontend clangStaticAnalyzerCheckers
-                        clangStaticAnalyzerCore clangAnalysis clangARCMigrate clangEdit
-                        clangRewriteCore clangAST clangLex clangBasic'''.split()
+        clang_libs = (   os.environ.get('CLANG_LIBS')
+                      or '''clangTooling clangFrontend clangDriver clangSerialization clangCodeGen
+                            clangParse clangSema clangStaticAnalyzerFrontend clangStaticAnalyzerCheckers
+                            clangStaticAnalyzerCore clangAnalysis clangARCMigrate clangEdit
+                            clangRewriteCore clangAST clangLex clangBasic''').split()
         # If the user sets CFLAGS, make sure we still have our own include path first
         if 'CFLAGS' in os.environ:
             os.environ['CFLAGS'] = '-I%s '%clang_dir + os.environ['CFLAGS']
