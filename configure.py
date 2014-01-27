@@ -87,9 +87,11 @@ def setup():
         scripts = [os.path.join(scripts_dir, f)
                    for f in os.listdir(scripts_dir)
                    if not f.endswith('.bat')]
-    packages = ['xdress', 'xdress.clang']
-    pack_dir = {'xdress': 'xdress', 'xdress.clang': 'xdress/clang'}
-    pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp']}
+    packages = ['xdress', 'xdress.clang', 'xdress._enum']
+    pack_dir = {'xdress': 'xdress', 'xdress.clang': 'xdress/clang', 
+                'xdress._enum': 'xdress/_enum'}
+    pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp'], 
+                 'xdress._enum': ['LICENSE', 'README']}
 
     # llvm+clang configuration can be controlled by the environment variables
     # LLVM_CONFIG, LLVM_CPPFLAGS, LLVM_LDFLAGS, and CLANG_LIBS.  LLVM_CONFIG is
