@@ -87,7 +87,7 @@ def strip_args(name):
     ('lasso', (<Arg.LIT: 1>, 17), (<Arg.TYPE: 0>, 'int32')) becomes
     ('lasso', 17, 'int32').
     """
-    if isinstance(name, basestring):
+    if isinstance(name, basestring) or not isinstance(name, Sequence):
         return name
     newname = []
     for x in name:
@@ -96,6 +96,11 @@ def strip_args(name):
         else: 
             newname.append(x)
     return tuple(newname)
+
+
+def isarg(x):
+    return isinstance(x, Sequence) and (len(x) == 2) and (x[0] in Arg)
+
 
 def expand_default_args(methods):
     """This function takes a collection of method tuples and expands all of

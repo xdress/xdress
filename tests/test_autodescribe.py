@@ -231,8 +231,7 @@ def test_describe_cpp():
                               builddir=buildbase + '-' + parser, verbose=False, 
                               ts=ts, clang_includes=clang_includes)
             assert_equal_or_diff(obs, exp)
-    #for parser in 'gccxml', 'clang':
-    for parser in 'gccxml',:
+    for parser in 'gccxml', 'clang':
         cleanfs(buildbase + '-' + parser)
         if PARSERS_AVAILABLE[parser]:
             yield check, parser

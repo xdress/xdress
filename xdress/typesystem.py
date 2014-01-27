@@ -266,7 +266,7 @@ try:
 except ImportError:
     import pickle
 
-from .utils import flatten, indent, memoize_method, infer_format
+from .utils import Arg, flatten, indent, memoize_method, infer_format, isarg
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -1416,6 +1416,10 @@ class TypeSystem(object):
                 _raise_type_error(t)
             last_val = 0 if tlen == 1 else t[-1]
             if not isinstance(t0, basestring) and not isinstance(t0, Sequence):
+                #if len(t) == 2 and t[0] is Arg.TYPE:
+                #    return self.canon(t[1])
+                #else:            
+                #    _raise_type_error(t)
                 _raise_type_error(t)
             if self.isdependent(t0):
                 return self._resolve_dependent_type(t0, t)
@@ -1435,7 +1439,11 @@ class TypeSystem(object):
                             raise
                         filledt.append(canontt)
                     elif isinstance(tt, Sequence):
-                        filledt.append(self.canon(tt))
+                        if len(tt) == 2 and tt[0] in Arg:
+                            filledt.append(self.canon(tt[1]))
+                        else:
+                            filledt.append(self.canon(tt))
+                        #filledt.append(self.canon(tt))
                     else:
                         _raise_type_error(tt)
                 filledt.append(last_val)
@@ -1533,6 +1541,18 @@ class TypeSystem(object):
             return cppt
 
     @memoize_method
+    def cpp_literal(self, lit):
+        """Converts a literal value to it C++ form.
+        """
+        if isinstance(lit, bool):
+            cpp_lit = self.cpp_types[lit]
+        elif isinstance(lit, Number):
+            cpp_lit = str(lit)
+        elif isinstance(lit, basestring):
+            cpp_lit = repr(lit)
+        return cpp_lit
+
+    @memoize_method
     def cpp_funcname(self, name):
         """This returns a name for a function based on its name, rather than
         its type.  The name may be either a string or a tuple of the form 
@@ -1544,13 +1564,16 @@ class TypeSystem(object):
         fname = name[0]
         cts = []
         for x in name[1:]:
-            if isinstance(x, bool):
-                x = self.cpp_types[x]
+            if isarg(x):
+                if x[0] is Arg.TYPE:
+                    ct = self.cpp_type(x[1])
+                elif x[0] is Arg.LIT:
+                    ct = self.cpp_literal(x[1])
             elif isinstance(x, Number):
-                x = str(x)
+                ct = self.cpp_literal(x)
             else:
-                x = self.cpp_type(x)
-            cts.append(x)
+                ct = self.cpp_type(x)
+            cts.append(ct)
         fname += '' if 0 == len(cts) else "< " + ", ".join(cts) + " >"
         return fname
 
@@ -1907,6 +1930,18 @@ class TypeSystem(object):
         return set([self._cython_import_cases[len(tup)](tup) for tup in x])
 
     @memoize_method
+    def cython_literal(self, lit):
+        """Converts a literal to a Cython compatible form.
+        """
+        if isinstance(lit, Number):
+            cy_lit = str(lit).replace('-', 'Neg').replace('+', 'Pos')\
+                             .replace('.', 'point')
+        elif isinstance(lit, basestring):
+            cy_lit = repr(lit)
+        return cy_lit
+    
+
+    @memoize_method
     def cython_funcname(self, name):
         """This returns a name for a function based on its name, rather than
         its type.  The name may be either a string or a tuple of the form 
@@ -1918,12 +1953,16 @@ class TypeSystem(object):
         fname = name[0] 
         cfs = [] 
         for x in name[1:]:
-            if isinstance(x, Number):
-                x = str(x).replace('-', 'Neg').replace('+', 'Pos')\
-                          .replace('.', 'point')
+            if isarg(x):
+                if x[0] is Arg.TYPE:
+                    cf = self.cython_functionname(x[1])[1]
+                elif x[0] is Arg.LIT:
+                    cf = self.cython_literal(x[1])
+            elif isinstance(x, Number):
+                cf = self.cython_literal(x)
             else:
-                x = self.cython_functionname(x)[1]
-            cfs.append(x) 
+                cf = self.cython_functionname(x)[1]
+            cfs.append(cf) 
         fname += '' if 0 == len(cfs) else "_" + "_".join(cfs)
         return fname
 

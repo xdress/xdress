@@ -22,7 +22,7 @@ from copy import deepcopy
 from pprint import pprint
 
 from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
-    isvardesc, newoverwrite, sortedbytype, _lang_exts, Arg
+    isvardesc, newoverwrite, sortedbytype, _lang_exts, Arg, strip_args
 from .plugins import Plugin
 from .typesystem import TypeSystem, TypeMatcher, MatchAny
 from .version import cython_version, cython_version_info
@@ -1377,7 +1377,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
         mdocs = desc.get('docstrings', {}).get('methods', {})
         mdoc = mdocs.get(desc['name']['tarname'], False) or mdocs.get('__init__', '')
         mdoc = _doc_add_sig(mdoc, '__init__',
-                            [(_a, _t, "None") for _a, _t in attritems])
+                            [(_a, _t, (Arg.LIT, "None")) for _a, _t in attritems])
         clines += _gen_default_constructor(desc, attritems, ts, doc=mdoc)
         cimport_tups.add(('libc.stdlib', 'malloc'))
     if not desc['parents']:
