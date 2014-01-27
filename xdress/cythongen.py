@@ -22,7 +22,7 @@ from copy import deepcopy
 from pprint import pprint
 
 from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
-    isvardesc, newoverwrite, sortedbytype, _lang_exts
+    isvardesc, newoverwrite, sortedbytype, _lang_exts, Arg
 from .plugins import Plugin
 from .typesystem import TypeSystem, TypeMatcher, MatchAny
 from .version import cython_version, cython_version_info
@@ -990,10 +990,15 @@ def _gen_argfill(args):
         names.append(name)
         if 2 == len(a): 
             afillval = name
-        elif isinstance(a[2], basestring): 
-            afillval = "{0}={1!r}".format(name, a[2])
-        else: 
-            afillval = "{0}={1}".format(name, a[2])
+        elif a[2][0] is Arg.LIT: 
+            afillval = "{0}={1!r}".format(name, a[2][1])
+        elif a[2][0] is Arg.VAR: 
+            afillval = "{0}={1}".format(name, a[2][1])
+        elif a[2][0] is Arg.TYPE: 
+            raise ValueError("default argument value cannot be a type: {0}".format(a))
+        else:
+            raise ValueError("default argument value cannot be determined: "
+                             "{0}".format(a))
         afill.append(afillval)
     return ", ".join(afill), names
 

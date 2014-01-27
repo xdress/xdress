@@ -216,9 +216,9 @@ except ImportError:
     PycparserNodeVisitor = object  # fake this for class definitions
 
 from . import utils
-from .utils import exec_file, RunControl, NotSpecified, merge_descriptions, \
-    find_source, FORBIDDEN_NAMES, find_filenames, warn_forbidden_name, \
-    apiname, ensure_apiname, c_literal, extra_filenames, newoverwrite, _lang_exts
+from .utils import exec_file, RunControl, NotSpecified, Arg, merge_descriptions, \
+    find_source, FORBIDDEN_NAMES, find_filenames, warn_forbidden_name, apiname, \
+    ensure_apiname, c_literal, extra_filenames, newoverwrite, _lang_exts, strip_args
 from . import astparsers
 from .typesystem import TypeSystem
 
@@ -494,10 +494,10 @@ class GccxmlBaseDescriber(object):
             targ_nodes.append(targ_node)
         for targ_node, targ_lit in zip(targ_nodes, targ_islit):
             if targ_lit:
-                targ_type = targ_node
+                targ_tup = (Arg.LIT, targ_node)
             else:
-                targ_type = self.type(targ_node.attrib['id'])
-            inst.append(targ_type)
+                targ_tup = (Arg.TYPE, self.type(targ_node.attrib['id']))
+            inst.append(targ_tup)
         self._level -= 1
         #inst.append(0) This doesn't apply to top-level functions, only function types
         return tuple(inst)
@@ -538,10 +538,10 @@ class GccxmlBaseDescriber(object):
                 targ_nodes.append(targ_node)
         for targ_node, targ_lit in zip(targ_nodes, targ_islit):
             if targ_lit:
-                targ_type = targ_node
+                targ_tup = (Arg.LIT, targ_node)
             else:
-                targ_type = self.type(targ_node.attrib['id'])
-            inst.append(targ_type)
+                targ_tup = (Arg.TYPE, self.type(targ_node.attrib['id']))
+            inst.append(targ_tup)
         self._level -= 1
         inst.append(0)
         return tuple(inst)
@@ -561,7 +561,7 @@ class GccxmlBaseDescriber(object):
             bases = node.attrib['bases'].split()
             # TODO: Record whether bases are public, private, or protected
             bases = [self.type(b.replace('private:','')) for b in bases]
-            self.desc['parents'] = bases
+            self.desc['parents'] = [strip_args(b) for b in bases]
             ns = self.context(node.attrib['context'])
             if ns is not None and ns != "::":
                 self.desc['namespace'] = ns
@@ -656,9 +656,10 @@ class GccxmlBaseDescriber(object):
         else:
             try:
                 default = c_literal(default)
+                islit = True
             except ValueError:
-                pass # Leave default as is
-            arg = (name, t, default)
+                islit = False  # Leave default as is
+            arg = (name, t, (Arg.LIT if islit else Arg.VAR, default))
         self._currfuncsig.append(arg)
 
     def visit_field(self, node):
@@ -1021,7 +1022,7 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
                 if not pattern.search(nodename):
                     continue
                 nodet = self._visit_template_function(n)
-                if nodet != namet:
+                if nodet != namet and strip_args(nodet) != namet:
                     continue
             if n.attrib['file'] not in self.onlyin:
                 msg = ("{0} autodescribing failed: found function in {1!r} but "

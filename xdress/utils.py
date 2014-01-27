@@ -24,6 +24,11 @@ try:
 except ImportError:
     import pickle
 
+try:
+    from enum import Enum, IntEnum
+except ImportError:
+    from ._enum import Enum, IntEnum
+
 import numpy as np
 
 if sys.version_info[0] >= 3:
@@ -67,6 +72,30 @@ class indentstr(str):
             return indent(self, n=int(key[6:]))
         return getattr(super(indentstr, self), key)
 
+
+class Arg(IntEnum):
+    TYPE = 0
+    LIT = 1
+    VAR = 2
+
+    def __str__(self):
+        return self.name
+
+
+def strip_args(name):
+    """For a name tuple with Arg flags, remove the Arg flag.  For example, 
+    ('lasso', (<Arg.LIT: 1>, 17), (<Arg.TYPE: 0>, 'int32')) becomes
+    ('lasso', 17, 'int32').
+    """
+    if isinstance(name, basestring):
+        return name
+    newname = []
+    for x in name:
+        if isinstance(x, Sequence) and len(x) == 2 and x[0] in Arg:
+            newname.append(x[1])
+        else: 
+            newname.append(x)
+    return tuple(newname)
 
 def expand_default_args(methods):
     """This function takes a collection of method tuples and expands all of
