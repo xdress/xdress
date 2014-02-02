@@ -1416,10 +1416,6 @@ class TypeSystem(object):
                 _raise_type_error(t)
             last_val = 0 if tlen == 1 else t[-1]
             if not isinstance(t0, basestring) and not isinstance(t0, Sequence):
-                #if len(t) == 2 and t[0] is Arg.TYPE:
-                #    return self.canon(t[1])
-                #else:            
-                #    _raise_type_error(t)
                 _raise_type_error(t)
             if self.isdependent(t0):
                 return self._resolve_dependent_type(t0, t)
@@ -1443,14 +1439,11 @@ class TypeSystem(object):
                             filledt.append(self.canon(tt[1]))
                         else:
                             filledt.append(self.canon(tt))
-                        #filledt.append(self.canon(tt))
                     else:
                         _raise_type_error(tt)
                 filledt.append(last_val)
                 return tuple(filledt)
             else:
-                #if 2 < tlen:
-                #    _raise_type_error(t)
                 return (self.canon(t0), last_val)
         else:
             _raise_type_error(t)
