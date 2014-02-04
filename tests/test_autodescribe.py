@@ -41,8 +41,8 @@ exp_point_desc = {
     'parents': [],
     'construct': 'class',
     'attrs': {},
-    'methods': {(('Point', True),): None,
-                (('~Point', True),): None},
+    'methods': {(('Point', True),): {'return_type': None, 'default_args': ()},
+                (('~Point', True),): {'return_type': None, 'default_args': ()}},
     'type': ('Point', True, 0)}
 
 exp_default_desc = {
@@ -52,8 +52,8 @@ exp_default_desc = {
     'parents': [base],
     'construct': 'struct',
     'attrs': {},
-    'methods': {( 'Default',): None,
-                ('~Default',): None}}
+    'methods': {( 'Default',): {'return_type': None, 'default_args': ()},
+                ('~Default',): {'return_type': None, 'default_args': ()}}}
 
 exp_nodefault_base_desc = {
     'name': 'NoDefaultBase',
@@ -62,8 +62,9 @@ exp_nodefault_base_desc = {
     'parents': [],
     'construct': 'struct',
     'attrs': {},
-    'methods': {( 'NoDefaultBase', ('i', 'int32')): None,
-                ('~NoDefaultBase',): None}}
+    'methods': {('NoDefaultBase', ('i', 'int32')): {'return_type': None, 
+                    'default_args': ((Arg.NONE, None),)},
+                ('~NoDefaultBase',): {'return_type': None, 'default_args': ()}}}
 
 exp_nodefault_desc = {
     'name': 'NoDefault',
@@ -72,8 +73,9 @@ exp_nodefault_desc = {
     'parents': ['NoDefaultBase'],
     'construct': 'struct',
     'attrs': {},
-    'methods': {( 'NoDefault', ('i', 'int32')): None,
-                ('~NoDefault',): None}}
+    'methods': {( 'NoDefault', ('i', 'int32')): {'return_type': None, 
+                                                 'default_args': ((Arg.NONE, None),)},
+                ('~NoDefault',): {'return_type': None, 'default_args': ()}}}
 
 choices = ('enum', 'Choices', (('CA', '0'), ('CB', '17')))
 exp_choices_desc = {
@@ -92,24 +94,33 @@ exp_toaster_desc = {
         'toastiness': 'str',
         'rate': 'float32',
         'fp': ('function_pointer', (('_0', 'float32'),), 'int32'),
-        'vec': ('vector', (Arg.TYPE, 'char'), 0),
+        'vec': ('vector', 'char', 0),
         },
     'methods': {
-        ('Toaster', ('slices', 'int32', (Arg.LIT, 7)), 
-                    ('flag', 'bool', (Arg.LIT, False))): None,
-        ('Toaster', ('d', 'float64'), ('arg', 'str', (Arg.LIT, '\n'))): None,
-        ('~Toaster',): None,
-        ('make_choice', ('a', choices, (Arg.VAR, 'CA')), 
-                        ('b', choices, (Arg.VAR, 'CB'))): 'void',
-        ('make_toast', ('when', 'str'), ('nslices', 'uint32', (Arg.LIT, 1)), 
-                       ('dub', 'float64', (Arg.LIT, 3e-8))): 'int32',
-        ('templates', ('strange', ('Base', (Arg.TYPE, 'int32'), (Arg.LIT, 3), 0))): 
-                                  ('Base', (Arg.TYPE, 'float32'), (Arg.LIT, 0), 0),
-        ('const_', ('c', ('int32', 'const'))): ('int32', 'const'),
+        ('Toaster', ('slices', 'int32'), ('flag', 'bool')): {'return_type': None, 
+            'default_args': ((Arg.LIT, 7), (Arg.LIT, False))},
+        ('Toaster', ('d', 'float64'), ('arg', 'str')): {'return_type': None, 
+            'default_args': ((Arg.NONE, None), (Arg.LIT, '\n'))},
+        ('~Toaster',): {'return_type': None, 'default_args': ()},
+        ('make_choice', ('a', choices), ('b', choices)): {'return_type': 'void',
+            'default_args': ((Arg.VAR, 'CA'), (Arg.VAR, 'CB'))},
+        ('make_toast', ('when', 'str'), ('nslices', 'uint32'), ('dub', 'float64')): {
+            'return_type': 'int32',
+            'default_args': ((Arg.NONE, None), (Arg.LIT, 1), (Arg.LIT, 3e-8))},
+        ('templates', ('strange', ('Base', 'int32', 3, 0))): {
+            'return_type': ('Base', 'float32', 0, 0), 
+            'default_args': ((Arg.NONE, None),)},
+        ('const_', ('c', ('int32', 'const'))): {'return_type': ('int32', 'const'), 
+                                                'default_args': ((Arg.NONE, None),)},
         ('pointers', ('a', ('int32', '*')), ('b', (('int32', 'const'), '*')),
                      ('c', (('int32', '*'), 'const')),
-                     ('d', ((('int32', 'const'), '*'), 'const'))): ('int32', '*'),
-        ('reference', ('a', ('int32', '&')), ('b', (('int32', 'const'), '&'))): ('int32', '&'),
+                     ('d', ((('int32', 'const'), '*'), 'const'))): {
+            'return_type': ('int32', '*'), 
+            'default_args': ((Arg.NONE, None), (Arg.NONE, None), 
+                             (Arg.NONE, None), (Arg.NONE, None))},
+        ('reference', ('a', ('int32', '&')), ('b', (('int32', 'const'), '&'))): {
+            'return_type': ('int32', '&'),
+            'default_args': ((Arg.NONE, None), (Arg.NONE, None))},
         },
     'type': 'Toaster',
     }
@@ -117,25 +128,28 @@ exp_toaster_desc = {
 exp_simple_desc = {
     'name': 'simple',
     'namespace': 'xdress',
-    'signatures': {('simple', ('s', 'float32')): 'int32'}}
+    'signatures': {('simple', ('s', 'float32')): {'return_type': 'int32', 
+        'default_args': ((Arg.NONE, None),)}}}
 
 exp_twice_desc = {
     'name': 'twice',
     'namespace': 'xdress',
-    'signatures': {('twice', ('x', 'int32')): 'void'}}
+    'signatures': {('twice', ('x', 'int32')): {'return_type': 'void', 
+        'default_args': ((Arg.NONE, None),)}}}
 
 exp_conflict_desc = {
     'name': 'conflict',
     'namespace': 'xdress',
-    'signatures': {('conflict', ('good', 'int32')): 'void'}}
+    'signatures': {('conflict', ('good', 'int32')): {'return_type': 'void', 
+        'default_args': ((Arg.NONE, None),)}}}
 
 def exp_lasso_desc(n):
     lasso_name = ('lasso', n, 'int32', 'float32')
     return {'name': lasso_name,
             'namespace': 'xdress',
-            'signatures': {(('lasso', (Arg.LIT, n), (Arg.TYPE, 'int32'), 
-                                      (Arg.TYPE, 'float32')), ('a', 'int32'), 
-                                        ('b', (('float32', 'const'), '&'))): 'int32'}}
+            'signatures': {(('lasso', n, 'int32', 'float32'), ('a', 'int32'), 
+                ('b', (('float32', 'const'), '&'))): {'return_type': 'int32', 
+                    'default_args': ((Arg.NONE, None), (Arg.NONE, None))}}}
 
 exp_merge_desc = {
     'name': 'Toaster',

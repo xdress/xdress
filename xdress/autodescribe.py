@@ -527,16 +527,18 @@ class GccxmlBaseDescriber(object):
             else:
                 targ_islit.append(False)
             targ_nodes.append(targ_node)
+        argkinds = []  # just in case it is needed
         for targ_node, targ_lit in zip(targ_nodes, targ_islit):
             if targ_lit:
-                targ_tup = (Arg.LIT, targ_node)
+                targ_kind, targ_value = Arg.LIT, targ_node
             else:
-                targ_tup = (Arg.TYPE, self.type(targ_node.attrib['id']))
-            inst.append(targ_tup)
+                targ_kind, targ_value = Arg.TYPE, self.type(targ_node.attrib['id'])
+            argkinds.append(targ_kind)
+            inst.append(targ_value)
         self._level -= 1
         #inst.append(0) This doesn't apply to top-level functions, only function types
-        return tuple(inst)
-
+        inst = tuple(inst)
+        return inst
 
     def _visit_template_class(self, node):
         name = node.attrib['name']
@@ -600,7 +602,7 @@ class GccxmlBaseDescriber(object):
             bases = node.attrib['bases'].split()
             # TODO: Record whether bases are public, private, or protected
             bases = [self.type(b.replace('private:','')) for b in bases]
-            self.desc['parents'] = [strip_args(b) for b in bases]
+            self.desc['parents'] = bases
             ns = self.context(node.attrib['context'])
             if ns is not None and ns != "::":
                 self.desc['namespace'] = ns
@@ -1067,7 +1069,7 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
                 if not pattern.search(nodename):
                     continue
                 nodet = self._visit_template_function(n)
-                if nodet != namet and strip_args(nodet) != namet:
+                if nodet != namet:
                     continue
             if n.attrib['file'] not in self.onlyin:
                 msg = ("{0} autodescribing failed: found function in {1!r} but "
