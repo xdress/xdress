@@ -69,13 +69,24 @@ name, namespace, signatures, docstring, and extra.
 :name: dict, the function name, see above
 :namespace: str or None, the namespace or module the function lives in.
 :signatures: dict or dict-like, the keys of this dictionary are function call
-    signatures and the values are the function return types. The signatures
-    themselves are tuples. The first element of these tuples is the function name.
-    The remaining elements (if any) are the function arguments.  Arguments are
-    themselves length-2 or -3 tuples whose first elements are the argument names,
-    the second element is the argument type, and the third element (if present) is
-    the default value. Unlike class constuctors and destructors, the return type may
-    not be None (only 'void' values are allowed).
+    signatures and the values are dicts of non-signature information.  
+    The signatures themselves are tuples. The first element of these tuples is the 
+    method name. The remaining elements (if any) are the function arguments.  
+    Arguments are themselves length-2 tuples whose first elements are the argument 
+    names and the second element is the argument type. The values are themselves 
+    dicts with the following keys:
+
+        :return_type: the return type of this function. Unlike class constuctors 
+            and destructors, the return type may not be None (only 'void' values 
+            are allowed).
+        :default_args: a length-N tuple of length-2 tuples of the default argument 
+            kinds and values. N must be the number of arguments in the signature. 
+            In the length-2 tuples, the first element must be a member of the 
+            utils.Arg enum and the second element is the associated default value. 
+            If no default argument exists use utils.Args.NONE as the kind and 
+            by convention set the value to None, though this should be ignored in all
+            cases.
+
 :docstring: str, optional, this is a documentation string for the function.
 :extra: dict, optional, this stores arbitrary metadata that may be used with
     different backends. It is not added by any auto-describe routine but may be
@@ -95,13 +106,24 @@ name, parents, namespace, attrs, methods, docstrings, and extra.
 :attrs: dict or dict-like, the names of the attributes (member variables) of the
     class mapped to their types, given in the format of the type system.
 :methods: dict or dict-like, similar to the attrs except that the keys are now
-    function signatures and the values are the method return types.  The signatures
-    themselves are tuples. The first element of these tuples is the method name.
-    The remaining elements (if any) are the function arguments.  Arguments are
-    themselves length-2 or -3 tuples whose first elements are the argument names,
-    the second element is the argument type, and the third element (if present) is
-    the default value.  If the return type is None (as opposed to 'void'), then
-    this method is assumed to be a constructor or destructor.
+    function signatures and the values are dicts of non-signature information.  
+    The signatures themselves are tuples. The first element of these tuples is the 
+    method name. The remaining elements (if any) are the function arguments.  
+    Arguments are themselves length-2 tuples whose first elements are the argument 
+    names and the second element is the argument type. The values are themselves 
+    dicts with the following keys:
+
+        :return_type: the return type of this function. If the return type is None 
+            (as opposed to 'void'), then this method is assumed to be a constructor 
+            or destructor.
+        :default_args: a length-N tuple of length-2 tuples of the default argument 
+            kinds and values. N must be the number of arguments in the signature. 
+            In the length-2 tuples, the first element must be a member of the 
+            utils.Arg enum and the second element is the associated default value. 
+            If no default argument exists use utils.Args.NONE as the kind and 
+            by convention set the value to None, though this should be ignored in all
+            cases.
+
 :construct: str, optional, this is a flag for how the class is implemented.
     Accepted values are 'class' and 'struct'.  If this is not present, then 'class'
     is assumed.  This is most useful from wrapping C structs as Python classes.
@@ -133,22 +155,34 @@ toast.  A valid description dictionary for this class would be as follows::
             },
         'parents': ['FCComp'],
         'namespace': 'bright',
+        'construct': 'class',
         'attrs': {
             'n_slices': 'int32',
             'rate': 'float64',
             'toastiness': 'str',
             },
         'methods': {
-            ('Toaster',): None,
-            ('Toaster', ('name', 'str', '""')): None,
-            ('Toaster', ('paramtrack', ('set', 'str')), ('name', 'str', '""')): None,
-            ('~Toaster',): None,
-            ('tostring',): 'str',
-            ('calc',): 'Material',
-            ('calc', ('incomp', ('map', 'int32', 'float64'))): 'Material',
-            ('calc', ('mat', 'Material')): 'Material',
-            ('write', ('filename', 'str', '"toaster.txt"')): 'void',
-            ('write', ('filename', ('char' '*'), '"toaster.txt"')): 'void',
+            ('Toaster',): {'return_type': None, 'default_args': ()},
+            ('Toaster', ('name', 'str')): {'return_type': None,  
+                'default_args': ((Args.LIT, ""),)},
+            ('Toaster', ('paramtrack', ('set', 'str')), ('name', 'str', '""')): {
+                'return_type': None,  
+                'default_args': ((Args.NONE, None), (Args.LIT, ""))},
+            ('~Toaster',): {'return_type': None, 'default_args': ()},
+            ('tostring',): {'return_type': 'str', 'default_args': ()},
+            ('calc',): {'return_type': 'Material', 'default_args': ()},
+            ('calc', ('incomp', ('map', 'int32', 'float64'))): {
+                'return_type': 'Material', 
+                'default_args': ((Args.NONE, None),)},
+            ('calc', ('mat', 'Material')): {
+                'return_type': 'Material', 
+                'default_args': ((Args.NONE, None),)},
+            ('write', ('filename', 'str')): {
+                'return_type': 'void',
+                'default_args': ((Args.LIT, "toaster.txt"),)},
+            ('write', ('filename', ('char' '*'), '"toaster.txt"')): {
+                'return_type': 'void',
+                'default_args': ((Args.LIT, "toaster.txt"),)},
             },
         'docstrings': {
             'class': "I am a toaster!",

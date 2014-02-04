@@ -284,7 +284,8 @@ class TypeSystem(object):
 
     def __init__(self, base_types=None, template_types=None, refined_types=None, 
                  humannames=None, extra_types='xdress_extra_types', dtypes='dtypes',
-                 stlcontainers='stlcontainers', type_aliases=None, cpp_types=None, 
+                 stlcontainers='stlcontainers', argument_kinds=None, 
+                 type_aliases=None, cpp_types=None, 
                  numpy_types=None, from_pytypes=None, cython_ctypes=None, 
                  cython_cytypes=None, cython_pytypes=None, cython_cimports=None, 
                  cython_cyimports=None, cython_pyimports=None, 
@@ -309,6 +310,11 @@ class TypeSystem(object):
             The name of the xdress numpy dtypes wrapper module.
         stlcontainers : str, optional
             The name of the xdress C++ standard library containers wrapper module.
+        argument_kinds : dict, optional
+            Templates types have arguments. This is a mapping from type name to a 
+            tuple of utils.Arg kind flags.  The order in the tuple matches the value
+            in template_types. This is only vaid for concrete types, ie 
+            ('vector', 'int', 0) and not just 'vector'.
         type_aliases : dict, optional
             Aliases that may be used to substitute one type name for another.
         cpp_types : dict, optional
@@ -405,6 +411,10 @@ class TypeSystem(object):
         self.extra_types = extra_types
         self.dtypes = dtypes
         self.stlcontainers = stlcontainers
+        self.argument_kinds = argument_kinds if argument_kinds is not None else {
+            ('vector', 'bool', 0): (Arg.TYPE,),
+            ('vector', 'char', 0): (Arg.TYPE,),
+            }
         self.type_aliases = _LazyConfigDict(type_aliases if type_aliases is not \
                                                                       None else {
             'i': 'int32',
