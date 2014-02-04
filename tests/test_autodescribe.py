@@ -25,9 +25,13 @@ def exp_base_desc(parser):
             'parents': [],
             'construct': 'struct',
             'attrs': {} if bad else {'field': 'int32'},
-            'methods': {(( 'Base', (Arg.TYPE, 'int32'), (Arg.LIT, 7)),): None,
-                        (('~Base', (Arg.TYPE, 'int32'), (Arg.LIT, 7)),): None,
-                        ('base', ('a', 'int32', (Arg.LIT, 1))): 'void'},
+            'methods': {(( 'Base', 'int32', 7),): {'return_type': None, 
+                                                   'default_args': ()},
+                        (('~Base', 'int32', 7),): {'return_type': None, 
+                                                   'default_args': ()},
+                        ('base', ('a', 'int32')): {
+                            'return_type': 'void', 
+                            'default_args': ((Arg.LIT, 1),)},},
             'type': base,
             }
 
@@ -37,8 +41,8 @@ exp_point_desc = {
     'parents': [],
     'construct': 'class',
     'attrs': {},
-    'methods': {(( 'Point', (Arg.LIT, True)),): None,
-                (('~Point', (Arg.LIT, True)),): None},
+    'methods': {(('Point', True),): None,
+                (('~Point', True),): None},
     'type': ('Point', True, 0)}
 
 exp_default_desc = {

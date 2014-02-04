@@ -22,7 +22,7 @@ from copy import deepcopy
 from pprint import pprint
 
 from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
-    isvardesc, newoverwrite, sortedbytype, _lang_exts, Arg, strip_args
+    isvardesc, newoverwrite, sortedbytype, _lang_exts, Arg
 from .plugins import Plugin
 from .typesystem import TypeSystem, TypeMatcher, MatchAny
 from .version import cython_version, cython_version_info

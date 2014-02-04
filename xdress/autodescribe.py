@@ -252,7 +252,7 @@ except ImportError:
 from . import utils
 from .utils import exec_file, RunControl, NotSpecified, Arg, merge_descriptions, \
     find_source, FORBIDDEN_NAMES, find_filenames, warn_forbidden_name, apiname, \
-    ensure_apiname, c_literal, extra_filenames, newoverwrite, _lang_exts, strip_args
+    ensure_apiname, c_literal, extra_filenames, newoverwrite, _lang_exts
 from . import astparsers
 from .typesystem import TypeSystem
 
@@ -476,6 +476,7 @@ class GccxmlBaseDescriber(object):
             warn(msg, RuntimeWarning)
         self._currfunc = []  # this must be a stack to handle nested functions
         self._currfuncsig = None
+        self._currargkind = None
         self._currclass = []  # this must be a stack to handle nested classes
         self._level = -1
         self._template_args = hack_template_args
@@ -570,15 +571,19 @@ class GccxmlBaseDescriber(object):
                 else:
                     targ_islit.append(False)
                 targ_nodes.append(targ_node)
+        argkinds = []
         for targ_node, targ_lit in zip(targ_nodes, targ_islit):
             if targ_lit:
-                targ_tup = (Arg.LIT, targ_node)
+                targ_kind, targ_value = Arg.LIT, targ_node
             else:
-                targ_tup = (Arg.TYPE, self.type(targ_node.attrib['id']))
-            inst.append(targ_tup)
+                targ_kind, targ_value = Arg.TYPE, self.type(targ_node.attrib['id'])
+            argkinds.append(targ_kind)
+            inst.append(targ_value)
         self._level -= 1
         inst.append(0)
-        return tuple(inst)
+        inst = tuple(inst)
+        self.ts.register_argument_kinds(inst, tuple(argkinds))
+        return inst
 
     def visit_class(self, node):
         """visits a class or struct."""
@@ -626,6 +631,7 @@ class GccxmlBaseDescriber(object):
             # template function
             self._currfunc.append(self._visit_template_function(node))
         self._currfuncsig = []
+        self._currargkind = []
         self._level += 1
         for child in node.iterfind('Argument'):
             self.visit_argument(child)
@@ -645,8 +651,10 @@ class GccxmlBaseDescriber(object):
         if self._currfuncsig is None:
             return
         key = (funcname,) + tuple(self._currfuncsig)
-        self.desc[self._funckey][key] = rtntype
+        self.desc[self._funckey][key] = {'return_type': rtntype, 
+                                         'default_args': tuple(self._currargkind)}
         self._currfuncsig = None
+        self._currargkind = None
 
     def visit_constructor(self, node):
         """visits a class constructor."""
@@ -677,6 +685,7 @@ class GccxmlBaseDescriber(object):
         name = node.attrib.get('name', None)
         if name is None:
             self._currfuncsig = None
+            self._currargkind = None
             return
         if name in FORBIDDEN_NAMES:
             rename = name + '__'
@@ -685,16 +694,18 @@ class GccxmlBaseDescriber(object):
         tid = node.attrib['type']
         t = self.type(tid)
         default = node.attrib.get('default', None)
+        arg = (name, t)
         if default is None:
-            arg = (name, t)
+            argkind = (Arg.NONE, None)
         else:
             try:
                 default = c_literal(default)
                 islit = True
             except ValueError:
                 islit = False  # Leave default as is
-            arg = (name, t, (Arg.LIT if islit else Arg.VAR, default))
+            argkind = (Arg.LIT if islit else Arg.VAR, default)
         self._currfuncsig.append(arg)
+        self._currargkind.append(argkind)
 
     def visit_field(self, node):
         """visits a member variable."""

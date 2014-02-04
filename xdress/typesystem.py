@@ -260,13 +260,14 @@ from contextlib import contextmanager
 from collections import Sequence, Set, Iterable, MutableMapping, Mapping
 from numbers import Number
 from pprint import pprint, pformat
+from warnings import warn
 import gzip
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
 
-from .utils import Arg, flatten, indent, memoize_method, infer_format, isarg
+from .utils import Arg, flatten, indent, memoize_method, infer_format
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -2553,6 +2554,25 @@ class TypeSystem(object):
         x = x + _ensure_importable(self.cython_pyimports._d.get(t, None))
         x = x + _ensure_importable(cython_pyimport)
         self.cython_pyimports[t] = x
+
+    def register_argument_kinds(self, t, argkinds):
+        """Registers an argument kind tuple into the type system for a template type.
+        """
+        t = self.canon(t)
+        if t in self.argument_kinds:
+            old = self.argument_kinds[t]
+            if old != argkinds:
+                msg = ("overwriting argument kinds for type {0}:\n"
+                       "  old: {1}\n"
+                       "  new: {2}")
+                warn(msg.format(t, old, argkinds), RuntimeWarning)
+        self.argument_kinds[t] = argkinds
+
+    def deregister_argument_kinds(self, t):
+        """Removes a type and its argument kind tuple from the type system."""
+        t = self.canon(t)
+        if t in self.argument_kinds:
+            del self.argument_kinds[t]
 
     #################### Type system helpers ###################################
 
