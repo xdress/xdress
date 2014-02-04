@@ -1557,22 +1557,24 @@ class TypeSystem(object):
         return cpp_lit
 
     @memoize_method
-    def cpp_funcname(self, name):
+    def cpp_funcname(self, name, argkinds=None):
         """This returns a name for a function based on its name, rather than
         its type.  The name may be either a string or a tuple of the form 
-        ('name', template_arg_type1, template_arg_type2, ...).  This is not ment
-        to replace cpp_type(), but complement it.
+        ('name', template_arg1, template_arg2, ...). The argkinds argument here 
+        refers only to the template arguments, not the function signature default 
+        arguments. This is not meant to replace cpp_type(), but complement it.
         """
         if isinstance(name, basestring):
             return name
+        if argkinds is None:
+            argkinds = [(Arg.NONE, None)] * (len(name) - 1)
         fname = name[0]
         cts = []
-        for x in name[1:]:
-            if isarg(x):
-                if x[0] is Arg.TYPE:
-                    ct = self.cpp_type(x[1])
-                elif x[0] is Arg.LIT:
-                    ct = self.cpp_literal(x[1])
+        for x, (argkind, argvalue) in zip(name[1:], argkinds):
+            if argkind is Arg.TYPE:
+                ct = self.cpp_type(x)
+            elif argkind is Arg.LIT:
+                ct = self.cpp_literal(x)
             elif isinstance(x, Number):
                 ct = self.cpp_literal(x)
             else:
@@ -1946,22 +1948,25 @@ class TypeSystem(object):
     
 
     @memoize_method
-    def cython_funcname(self, name):
+    def cython_funcname(self, name, argkinds=None):
         """This returns a name for a function based on its name, rather than
         its type.  The name may be either a string or a tuple of the form 
-        ('name', template_arg_type1, template_arg_type2, ...).  This is not ment
-        to replace cython_functionname(), but complement it.
+        ('name', template_arg1, template_arg2, ...). The argkinds argument here 
+        refers only to the template arguments, not the function signature default 
+        arguments. This is not meant to replace cython_functionname(), but 
+        complement it.
         """
         if isinstance(name, basestring):
             return name
+        if argkinds is None:
+            argkinds = [(Arg.NONE, None)] * (len(name) - 1)
         fname = name[0] 
         cfs = [] 
-        for x in name[1:]:
-            if isarg(x):
-                if x[0] is Arg.TYPE:
-                    cf = self.cython_functionname(x[1])[1]
-                elif x[0] is Arg.LIT:
-                    cf = self.cython_literal(x[1])
+        for x, (argkind, argvalue) in zip(name[1:], argkinds):
+            if argkind is Arg.TYPE:
+                cf = self.cython_functionname(x)[1]
+            elif argkind is Arg.LIT:
+                cf = self.cython_literal(x)
             elif isinstance(x, Number):
                 cf = self.cython_literal(x)
             else:
