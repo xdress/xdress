@@ -5,7 +5,7 @@ from xdress.typesystem import TypeSystem
 from xdress import cythongen as cg
 from xdress import autodescribe as ad
 from xdress.astparsers import PARSERS_AVAILABLE
-from xdress.utils import parse_global_rc
+from xdress.utils import parse_global_rc, Arg
 
 from tools import unit, assert_equal_or_diff, skip_then_continue, cleanfs
 
@@ -25,9 +25,9 @@ def exp_base_desc(parser):
             'parents': [],
             'construct': 'struct',
             'attrs': {} if bad else {'field': 'int32'},
-            'methods': {(( 'Base', 'int32', 7),): None,
-                        (('~Base', 'int32', 7),): None,
-                        ('base', ('a', 'int32', 1)): 'void'},
+            'methods': {(( 'Base', 'int32', 7),): {'return': None, 'defaults': ()},
+                        (('~Base', 'int32', 7),): {'return': None, 'defaults': ()},
+                        ('base', ('a', 'int32')): {'return': 'void', 'defaults': ((Arg.LIT, 1),)},},
             'type': base,
             }
 
@@ -37,8 +37,8 @@ exp_point_desc = {
     'parents': [],
     'construct': 'class',
     'attrs': {},
-    'methods': {(( 'Point', True),): None,
-                (('~Point', True),): None},
+    'methods': {(('Point', True),): {'return': None, 'defaults': ()},
+                (('~Point', True),): {'return': None, 'defaults': ()}},
     'type': ('Point', True, 0)}
 
 exp_default_desc = {
@@ -48,8 +48,8 @@ exp_default_desc = {
     'parents': [base],
     'construct': 'struct',
     'attrs': {},
-    'methods': {( 'Default',): None,
-                ('~Default',): None}}
+    'methods': {( 'Default',): {'return': None, 'defaults': ()},
+                ('~Default',): {'return': None, 'defaults': ()}}}
 
 exp_nodefault_base_desc = {
     'name': 'NoDefaultBase',
@@ -58,8 +58,8 @@ exp_nodefault_base_desc = {
     'parents': [],
     'construct': 'struct',
     'attrs': {},
-    'methods': {( 'NoDefaultBase', ('i', 'int32')): None,
-                ('~NoDefaultBase',): None}}
+    'methods': {('NoDefaultBase', ('i', 'int32')): {'return': None, 'defaults': ((Arg.NONE, None),)},
+                ('~NoDefaultBase',): {'return': None, 'defaults': ()}}}
 
 exp_nodefault_desc = {
     'name': 'NoDefault',
@@ -68,8 +68,8 @@ exp_nodefault_desc = {
     'parents': ['NoDefaultBase'],
     'construct': 'struct',
     'attrs': {},
-    'methods': {( 'NoDefault', ('i', 'int32')): None,
-                ('~NoDefault',): None}}
+    'methods': {( 'NoDefault', ('i', 'int32')): {'return': None, 'defaults': ((Arg.NONE, None),)},
+                ('~NoDefault',): {'return': None, 'defaults': ()}}}
 
 choices = ('enum', 'Choices', (('CA', '0'), ('CB', '17')))
 exp_choices_desc = {
@@ -80,7 +80,8 @@ exp_choices_desc = {
 exp_toaster_desc = {
     'name': 'Toaster',
     'namespace': 'xdress',
-    'parents': [base],
+#    'parents': [base],
+    'parents': [('Base', 'int32', 7, 0)],
     'construct': 'class',
     'attrs': {
         'nslices': 'uint32',
@@ -90,17 +91,30 @@ exp_toaster_desc = {
         'vec': ('vector', 'char', 0),
         },
     'methods': {
-        ('Toaster', ('slices', 'int32', 7), ('flag', 'bool', False)): None,
-        ('Toaster', ('d', 'float64'), ('arg', 'str', '\n')): None,
-        ('~Toaster',): None,
-        ('make_choice', ('a', choices, 'CA'), ('b', choices, 'CB')): 'void',
-        ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1), ('dub', 'float64', 3e-8)): 'int32',
-        ('templates', ('strange', ('Base', 'int32', 3, 0))): ('Base', 'float32', 0, 0),
-        ('const_', ('c', ('int32', 'const'))): ('int32', 'const'),
+        ('Toaster', ('slices', 'int32'), ('flag', 'bool')): {'return': None, 
+            'defaults': ((Arg.LIT, 7), (Arg.LIT, False))},
+        ('Toaster', ('d', 'float64'), ('arg', 'str')): {'return': None, 
+            'defaults': ((Arg.NONE, None), (Arg.LIT, '\n'))},
+        ('~Toaster',): {'return': None, 'defaults': ()},
+        ('make_choice', ('a', choices), ('b', choices)): {'return': 'void',
+            'defaults': ((Arg.VAR, 'CA'), (Arg.VAR, 'CB'))},
+        ('make_toast', ('when', 'str'), ('nslices', 'uint32'), ('dub', 'float64')): {
+            'return': 'int32',
+            'defaults': ((Arg.NONE, None), (Arg.LIT, 1), (Arg.LIT, 3e-8))},
+        ('templates', ('strange', ('Base', 'int32', 3, 0))): {
+            'return': ('Base', 'float32', 0, 0), 
+            'defaults': ((Arg.NONE, None),)},
+        ('const_', ('c', ('int32', 'const'))): {'return': ('int32', 'const'), 
+                                                'defaults': ((Arg.NONE, None),)},
         ('pointers', ('a', ('int32', '*')), ('b', (('int32', 'const'), '*')),
                      ('c', (('int32', '*'), 'const')),
-                     ('d', ((('int32', 'const'), '*'), 'const'))): ('int32', '*'),
-        ('reference', ('a', ('int32', '&')), ('b', (('int32', 'const'), '&'))): ('int32', '&'),
+                     ('d', ((('int32', 'const'), '*'), 'const'))): {
+            'return': ('int32', '*'), 
+            'defaults': ((Arg.NONE, None), (Arg.NONE, None), 
+                         (Arg.NONE, None), (Arg.NONE, None))},
+        ('reference', ('a', ('int32', '&')), ('b', (('int32', 'const'), '&'))): {
+            'return': ('int32', '&'),
+            'defaults': ((Arg.NONE, None), (Arg.NONE, None))},
         },
     'type': 'Toaster',
     }
@@ -108,23 +122,25 @@ exp_toaster_desc = {
 exp_simple_desc = {
     'name': 'simple',
     'namespace': 'xdress',
-    'signatures': {('simple', ('s', 'float32')): 'int32'}}
+    'signatures': {('simple', ('s', 'float32')): {'return': 'int32', 'defaults': ((Arg.NONE, None),)}}}
 
 exp_twice_desc = {
     'name': 'twice',
     'namespace': 'xdress',
-    'signatures': {('twice', ('x', 'int32')): 'void'}}
+    'signatures': {('twice', ('x', 'int32')): {'return': 'void', 'defaults': ((Arg.NONE, None),)}}}
 
 exp_conflict_desc = {
     'name': 'conflict',
     'namespace': 'xdress',
-    'signatures': {('conflict', ('good', 'int32')): 'void'}}
+    'signatures': {('conflict', ('good', 'int32')): {'return': 'void', 'defaults': ((Arg.NONE, None),)}}}
 
 def exp_lasso_desc(n):
-    lasso_name = ('lasso',n,'int32','float32')
+    lasso_name = ('lasso', n, 'int32', 'float32')
     return {'name': lasso_name,
             'namespace': 'xdress',
-            'signatures': {(lasso_name, ('a', 'int32'), ('b', (('float32', 'const'), '&'))): 'int32'}}
+            'signatures': {(('lasso', n, 'int32', 'float32'), ('a', 'int32'), 
+                ('b', (('float32', 'const'), '&'))): {'return': 'int32', 
+                    'defaults': ((Arg.NONE, None), (Arg.NONE, None))}}}
 
 exp_merge_desc = {
     'name': 'Toaster',
@@ -139,7 +155,7 @@ exp_merge_desc = {
     'methods': {
         ('Toaster', ('slices', 'int32', 7)): None,
         ('~Toaster',): None,
-        ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1)): 'int32',
+        ('make_toast', ('when', 'str'), ('nslices', 'uint32', (Arg.LIT, 1))): 'int32',
         },
     'type': 'Toaster',
     }
@@ -187,7 +203,7 @@ full_merge_desc = {
     'methods': {
         ('Toaster', ('slices', 'int32', 7)): None,
         ('~Toaster',): None,
-        ('make_toast', ('when', 'str'), ('nslices', 'uint32', 1)): 'int32',
+        ('make_toast', ('when', 'str'), ('nslices', 'uint32', (Arg.LIT, 1))): 'int32',
         },
     'type': 'Toaster',
     }
@@ -245,20 +261,24 @@ def test_pycparser_describe_device_measure():
            'name': 'Device_measure',
            'namespace': None,
            'signatures': {
-            ('Device_measure', ('_0', ('uint32', '*'))): ('enum', 
-                                    'ErrorStatusTag', (('ERROR_OK', 0), 
-                                                       ('ERROR_FAILED_INIT', 1))),
-            ('Device_measure', ('aiValue', ('uint32', '*'))): ('enum', 
-                                    'ErrorStatusTag', (('ERROR_OK', 0), 
-                                                       ('ERROR_FAILED_INIT', 1))),
+            ('Device_measure', ('_0', ('uint32', '*'))): {
+                'return': ('enum', 'ErrorStatusTag', (('ERROR_OK', 0), 
+                          ('ERROR_FAILED_INIT', 1))),
+                'defaults': ((Arg.NONE, None),)},
+            ('Device_measure', ('aiValue', ('uint32', '*'))): {
+                'return': ('enum', 'ErrorStatusTag', (('ERROR_OK', 0), 
+                          ('ERROR_FAILED_INIT', 1))),
+                'defaults': ((Arg.NONE, None),)},
             ('Device_measure', ('deviceNumber', 'uchar'), 
-                               ('aiValue', ('uint32', '*'))): ('enum', 
-                                    'ErrorStatusTag', (('ERROR_OK', 0), 
-                                                       ('ERROR_FAILED_INIT', 1))),
+                               ('aiValue', ('uint32', '*'))): {
+                'return': ('enum', 'ErrorStatusTag', (('ERROR_OK', 0), 
+                          ('ERROR_FAILED_INIT', 1))),
+                'defaults': ((Arg.NONE, None), (Arg.NONE, None))},
             ('Device_measure', ('_0', 'uchar'), 
-                               ('_1', ('uint32', '*'))): ('enum', 
-                                    'ErrorStatusTag', (('ERROR_OK', 0), 
-                                                       ('ERROR_FAILED_INIT', 1))),
+                               ('_1', ('uint32', '*'))): {
+                'return': ('enum', 'ErrorStatusTag', (('ERROR_OK', 0), 
+                          ('ERROR_FAILED_INIT', 1))),
+                'defaults': ((Arg.NONE, None), (Arg.NONE, None))},
             }
            }
     assert_equal_or_diff(obs, exp)
@@ -271,12 +291,14 @@ def test_pycparser_describe_device_init():
            'name': 'Device_Init',
            'namespace': None,
            'signatures': {
-            ('Device_Init', ('_0', ('DeviceParamTag', '*'))): ('enum', 
-                                    'ErrorStatusTag', (('ERROR_OK', 0), 
-                                                       ('ERROR_FAILED_INIT', 1))),
-            ('Device_Init', ('param', ('DeviceParamTag', '*'))): ('enum', 
-                                    'ErrorStatusTag', (('ERROR_OK', 0), 
-                                                       ('ERROR_FAILED_INIT', 1))),
+            ('Device_Init', ('_0', ('DeviceParamTag', '*'))): {
+                'return': ('enum', 'ErrorStatusTag', (('ERROR_OK', 0), 
+                                                      ('ERROR_FAILED_INIT', 1))),
+                'defaults': ((Arg.NONE, None),)},
+            ('Device_Init', ('param', ('DeviceParamTag', '*'))): {
+                'return': ('enum', 'ErrorStatusTag', (('ERROR_OK', 0), 
+                                                      ('ERROR_FAILED_INIT', 1))),
+                'defaults': ((Arg.NONE, None),)},
             }
            }
     assert_equal_or_diff(obs, exp)

@@ -3,6 +3,7 @@ import pprint
 import os
 
 from xdress.typesystem import MatchAny, TypeSystem, TypeMatcher, matches
+from xdress.utils import Arg
 
 from nose.tools import assert_equal, with_setup
 from tools import unit
@@ -169,6 +170,21 @@ def test_cython_funcname():
     for t, exp in cases:
         yield check_cython_funcname, t, exp  # Check that the case works,
 
+def check_cython_template_funcname(name, argkinds, exp):
+    obs = ts.cython_funcname(name, argkinds=argkinds)
+    assert_equal(exp, obs)
+
+@unit
+@with_setup(add_new_refined, del_new_refined)
+def test_cython_template_funcname():
+    cases = (
+        (('brienne', 'complex'), [(Arg.TYPE, 'complex')], 'brienne_complex'),
+        (('mulan', 'int', 'float'), [(Arg.TYPE, 'int'), (Arg.TYPE, 'float')], 
+            'mulan_int_double'),
+        (('leslie', 3, True), [(Arg.LIT, 3), (Arg.LIT, True)], 'leslie_3_True'),
+    )
+    for t, ak, exp in cases:
+        yield check_cython_template_funcname, t, ak, exp  # Check that the case works,
 
 def check_cython_cimport_tuples_no_cy(t, exp):
     obs = ts.cython_cimport_tuples(t, inc=set(['c']))
@@ -570,6 +586,23 @@ def test_cpp_funcname():
     )
     for t, exp in cases:
         yield check_cpp_funcname, t, exp  # Check that the case works,
+
+def check_cpp_template_funcname(name, argkinds, exp):
+    obs = ts.cpp_funcname(name, argkinds=argkinds)
+    assert_equal(exp, obs)
+
+@unit
+@with_setup(add_new_refined, del_new_refined)
+def test_cpp_template_funcname():
+    cases = (
+        (('brienne', 'complex'), [(Arg.TYPE, 'complex')], 
+            'brienne< xdress_extra_types.complex_t >'),
+        (('mulan', 'int', 'float'), [(Arg.TYPE, 'int'), (Arg.TYPE, 'float')], 
+            'mulan< int, double >'),
+        (('leslie', 3, True), [(Arg.LIT, 3), (Arg.LIT, True)], 'leslie< 3, true >'),
+    )
+    for t, ak, exp in cases:
+        yield check_cpp_template_funcname, t, ak, exp  # Check that the case works,
 
 def check_gccxml_type(t, exp):
     obs = ts.gccxml_type(t)

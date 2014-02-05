@@ -24,6 +24,11 @@ try:
 except ImportError:
     import pickle
 
+try:
+    from enum import Enum, IntEnum
+except ImportError:
+    from ._enum import Enum, IntEnum
+
 import numpy as np
 
 if sys.version_info[0] >= 3:
@@ -68,18 +73,30 @@ class indentstr(str):
         return getattr(super(indentstr, self), key)
 
 
+class Arg(IntEnum):
+    NONE = 0
+    TYPE = 1
+    LIT = 2
+    VAR = 3
+
+    def __str__(self):
+        return self.name
+
+
 def expand_default_args(methods):
     """This function takes a collection of method tuples and expands all of
     the default arguments, returning a set of all methods possible."""
     methitems = set()
-    for mkey, mrtn in methods:
+    for mkey, mval in methods:
         mname, margs = mkey[0], mkey[1:]
-        havedefaults = [3 == len(arg) for arg in margs]
+        mrtn = mval['return']
+        mdefargs = mval['defaults']
+        havedefaults = [arg is not Arg.NONE for arg in margs]
         if any(havedefaults):
             # expand default arguments
             n = havedefaults.index(True)
             items = [((mname,)+tuple(margs[:n]), mrtn)] + \
-                    [((mname,)+tuple(margs[:i]), mrtn) for i in range(n+1,len(margs)+1)]
+                [((mname,)+tuple(margs[:i]), mrtn) for i in range(n+1,len(margs)+1)]
             methitems.update(items)
         else:
             # no default args

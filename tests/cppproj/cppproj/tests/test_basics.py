@@ -89,7 +89,8 @@ def test_silly_bool_min():
     assert_false(basics.silly_bool_min(1, False))
 
 def test_a():
-    x = basics.A(10)
+    x = basics.A(5)
+    x.a = 10
     assert_equal(x.a, 10)
     x.a = 42
     assert_equal(x.a, 42)
@@ -97,8 +98,10 @@ def test_a():
     assert_equal(x.a, 1)
 
 def test_b():
-    x = basics.A(10)
-    y = basics.B(11)
+    x = basics.A()
+    x.a = 10
+    y = basics.B()
+    y.b = 11
     assert_equal(y.b, 11)
     y.b = 43
     assert_equal(y.b, 43)
@@ -109,9 +112,12 @@ def test_b():
     assert_true(isinstance(y, basics.A))
     
 def test_c():
-    x = basics.A(10)
-    y = basics.B(11)
-    z = basics.C(12)
+    x = basics.A()
+    x.a = 10
+    y = basics.B()
+    y.b = 11
+    z = basics.C()
+    z.c = 12
     assert_equal(z.c, 12)
     z.c = 44
     assert_equal(z.c, 44)

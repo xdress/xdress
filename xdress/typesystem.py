@@ -260,13 +260,14 @@ from contextlib import contextmanager
 from collections import Sequence, Set, Iterable, MutableMapping, Mapping
 from numbers import Number
 from pprint import pprint, pformat
+from warnings import warn
 import gzip
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
 
-from .utils import flatten, indent, memoize_method, infer_format
+from .utils import Arg, flatten, indent, memoize_method, infer_format
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -284,7 +285,8 @@ class TypeSystem(object):
 
     def __init__(self, base_types=None, template_types=None, refined_types=None, 
                  humannames=None, extra_types='xdress_extra_types', dtypes='dtypes',
-                 stlcontainers='stlcontainers', type_aliases=None, cpp_types=None, 
+                 stlcontainers='stlcontainers', argument_kinds=None, 
+                 type_aliases=None, cpp_types=None, 
                  numpy_types=None, from_pytypes=None, cython_ctypes=None, 
                  cython_cytypes=None, cython_pytypes=None, cython_cimports=None, 
                  cython_cyimports=None, cython_pyimports=None, 
@@ -309,6 +311,11 @@ class TypeSystem(object):
             The name of the xdress numpy dtypes wrapper module.
         stlcontainers : str, optional
             The name of the xdress C++ standard library containers wrapper module.
+        argument_kinds : dict, optional
+            Templates types have arguments. This is a mapping from type name to a 
+            tuple of utils.Arg kind flags.  The order in the tuple matches the value
+            in template_types. This is only vaid for concrete types, ie 
+            ('vector', 'int', 0) and not just 'vector'.
         type_aliases : dict, optional
             Aliases that may be used to substitute one type name for another.
         cpp_types : dict, optional
@@ -405,6 +412,10 @@ class TypeSystem(object):
         self.extra_types = extra_types
         self.dtypes = dtypes
         self.stlcontainers = stlcontainers
+        self.argument_kinds = argument_kinds if argument_kinds is not None else {
+            ('vector', 'bool', 0): (Arg.TYPE,),
+            ('vector', 'char', 0): (Arg.TYPE,),
+            }
         self.type_aliases = _LazyConfigDict(type_aliases if type_aliases is not \
                                                                       None else {
             'i': 'int32',
@@ -1435,14 +1446,15 @@ class TypeSystem(object):
                             raise
                         filledt.append(canontt)
                     elif isinstance(tt, Sequence):
-                        filledt.append(self.canon(tt))
+                        if len(tt) == 2 and tt[0] in Arg:
+                            filledt.append(self.canon(tt[1]))
+                        else:
+                            filledt.append(self.canon(tt))
                     else:
                         _raise_type_error(tt)
                 filledt.append(last_val)
                 return tuple(filledt)
             else:
-                #if 2 < tlen:
-                #    _raise_type_error(t)
                 return (self.canon(t0), last_val)
         else:
             _raise_type_error(t)
@@ -1533,24 +1545,41 @@ class TypeSystem(object):
             return cppt
 
     @memoize_method
-    def cpp_funcname(self, name):
+    def cpp_literal(self, lit):
+        """Converts a literal value to it C++ form.
+        """
+        if isinstance(lit, bool):
+            cpp_lit = self.cpp_types[lit]
+        elif isinstance(lit, Number):
+            cpp_lit = str(lit)
+        elif isinstance(lit, basestring):
+            cpp_lit = repr(lit)
+        return cpp_lit
+
+    @memoize_method
+    def cpp_funcname(self, name, argkinds=None):
         """This returns a name for a function based on its name, rather than
         its type.  The name may be either a string or a tuple of the form 
-        ('name', template_arg_type1, template_arg_type2, ...).  This is not ment
-        to replace cpp_type(), but complement it.
+        ('name', template_arg1, template_arg2, ...). The argkinds argument here 
+        refers only to the template arguments, not the function signature default 
+        arguments. This is not meant to replace cpp_type(), but complement it.
         """
         if isinstance(name, basestring):
             return name
+        if argkinds is None:
+            argkinds = [(Arg.NONE, None)] * (len(name) - 1)
         fname = name[0]
         cts = []
-        for x in name[1:]:
-            if isinstance(x, bool):
-                x = self.cpp_types[x]
+        for x, (argkind, argvalue) in zip(name[1:], argkinds):
+            if argkind is Arg.TYPE:
+                ct = self.cpp_type(x)
+            elif argkind is Arg.LIT:
+                ct = self.cpp_literal(x)
             elif isinstance(x, Number):
-                x = str(x)
+                ct = self.cpp_literal(x)
             else:
-                x = self.cpp_type(x)
-            cts.append(x)
+                ct = self.cpp_type(x)
+            cts.append(ct)
         fname += '' if 0 == len(cts) else "< " + ", ".join(cts) + " >"
         return fname
 
@@ -1907,23 +1936,42 @@ class TypeSystem(object):
         return set([self._cython_import_cases[len(tup)](tup) for tup in x])
 
     @memoize_method
-    def cython_funcname(self, name):
+    def cython_literal(self, lit):
+        """Converts a literal to a Cython compatible form.
+        """
+        if isinstance(lit, Number):
+            cy_lit = str(lit).replace('-', 'Neg').replace('+', 'Pos')\
+                             .replace('.', 'point')
+        elif isinstance(lit, basestring):
+            cy_lit = repr(lit)
+        return cy_lit
+    
+
+    @memoize_method
+    def cython_funcname(self, name, argkinds=None):
         """This returns a name for a function based on its name, rather than
         its type.  The name may be either a string or a tuple of the form 
-        ('name', template_arg_type1, template_arg_type2, ...).  This is not ment
-        to replace cython_functionname(), but complement it.
+        ('name', template_arg1, template_arg2, ...). The argkinds argument here 
+        refers only to the template arguments, not the function signature default 
+        arguments. This is not meant to replace cython_functionname(), but 
+        complement it.
         """
         if isinstance(name, basestring):
             return name
+        if argkinds is None:
+            argkinds = [(Arg.NONE, None)] * (len(name) - 1)
         fname = name[0] 
         cfs = [] 
-        for x in name[1:]:
-            if isinstance(x, Number):
-                x = str(x).replace('-', 'Neg').replace('+', 'Pos')\
-                          .replace('.', 'point')
+        for x, (argkind, argvalue) in zip(name[1:], argkinds):
+            if argkind is Arg.TYPE:
+                cf = self.cython_functionname(x)[1]
+            elif argkind is Arg.LIT:
+                cf = self.cython_literal(x)
+            elif isinstance(x, Number):
+                cf = self.cython_literal(x)
             else:
-                x = self.cython_functionname(x)[1]
-            cfs.append(x) 
+                cf = self.cython_functionname(x)[1]
+            cfs.append(cf) 
         fname += '' if 0 == len(cfs) else "_" + "_".join(cfs)
         return fname
 
@@ -2511,6 +2559,25 @@ class TypeSystem(object):
         x = x + _ensure_importable(self.cython_pyimports._d.get(t, None))
         x = x + _ensure_importable(cython_pyimport)
         self.cython_pyimports[t] = x
+
+    def register_argument_kinds(self, t, argkinds):
+        """Registers an argument kind tuple into the type system for a template type.
+        """
+        t = self.canon(t)
+        if t in self.argument_kinds:
+            old = self.argument_kinds[t]
+            if old != argkinds:
+                msg = ("overwriting argument kinds for type {0}:\n"
+                       "  old: {1}\n"
+                       "  new: {2}")
+                warn(msg.format(t, old, argkinds), RuntimeWarning)
+        self.argument_kinds[t] = argkinds
+
+    def deregister_argument_kinds(self, t):
+        """Removes a type and its argument kind tuple from the type system."""
+        t = self.canon(t)
+        if t in self.argument_kinds:
+            del self.argument_kinds[t]
 
     #################### Type system helpers ###################################
 
