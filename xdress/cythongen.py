@@ -101,7 +101,7 @@ def cpppxd_sorted_names(mod, ts):
             _addotherclsnames(atype, classes, name, othercls, ts)
         for mkey, mval in desc['methods'].items():
             mname, margs = mkey[0], mkey[1:]
-            _addotherclsnames(mval['return_type'], classes, name, othercls, ts)
+            _addotherclsnames(mval['return'], classes, name, othercls, ts)
             for marg in margs:
                 _addotherclsnames(marg[1], classes, name, othercls, ts)
     clssort.sort(key=lambda x: len(othercls[x]))
@@ -1175,7 +1175,7 @@ def _method_instance_names(desc, classes, key, rtn, ts):
     _class_heirarchy(desc['name']['tarname'], classnames, classes)
     for classname in classnames:
         classrtn = classes.get(classname, {}).get('methods', {})\
-                          .get(key, {}).get('return_type', NotImplemented)
+                          .get(key, {}).get('return', NotImplemented)
         if rtn != classrtn:
             continue
         class_ctype = ts.cython_ctype(classname)
@@ -1318,8 +1318,8 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
     methitems += sorted(x for x in mitems if not isinstance(x[0][0], basestring))
     for mkey, mval in methitems:
         mname, margs = mkey[0], mkey[1:]
-        mrtn = mval['return_type']
-        mdefs = mval['default_args']
+        mrtn = mval['return']
+        mdefs = mval['defaults']
         mbasename = mname if isinstance(mname, basestring) else mname[0]
         mcyname = ts.cython_funcname(mname)
         if mbasename.startswith('_'):
@@ -1496,8 +1496,8 @@ def funcpyx(desc, ts=None):
     funcitems = sorted(desc['signatures'].items())
     for fkey, fval in funcitems:
         fname, fargs = fkey[0], fkey[1:]
-        frtn = fval['return_type']
-        fdefs = fval['default_args']
+        frtn = fval['return']
+        fdefs = fval['defaults']
         fbasename = fname if isinstance(fname, basestring) else fname[0]
         #fcppname = ts.cpp_funcname(fname)
         fcyname = ts.cython_funcname(fname)
@@ -1661,7 +1661,7 @@ def _template_method_names(methods):
         name = sig[0]
         if isinstance(name, basestring):
             continue
-        elif val['return_type'] is None:  # ignore constructor / destructors
+        elif val['return'] is None:  # ignore constructor / destructors
             continue
         methnames.add(name)
     return methnames

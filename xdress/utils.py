@@ -89,8 +89,8 @@ def expand_default_args(methods):
     methitems = set()
     for mkey, mval in methods:
         mname, margs = mkey[0], mkey[1:]
-        mrtn = mval['return_type']
-        mdefargs = mval['default_args']
+        mrtn = mval['return']
+        mdefargs = mval['defaults']
         havedefaults = [arg is not Arg.NONE for arg in margs]
         if any(havedefaults):
             # expand default arguments

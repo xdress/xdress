@@ -76,10 +76,10 @@ name, namespace, signatures, docstring, and extra.
     names and the second element is the argument type. The values are themselves 
     dicts with the following keys:
 
-        :return_type: the return type of this function. Unlike class constuctors 
+        :return: the return type of this function. Unlike class constuctors 
             and destructors, the return type may not be None (only 'void' values 
             are allowed).
-        :default_args: a length-N tuple of length-2 tuples of the default argument 
+        :defaults: a length-N tuple of length-2 tuples of the default argument 
             kinds and values. N must be the number of arguments in the signature. 
             In the length-2 tuples, the first element must be a member of the 
             utils.Arg enum and the second element is the associated default value. 
@@ -113,10 +113,10 @@ name, parents, namespace, attrs, methods, docstrings, and extra.
     names and the second element is the argument type. The values are themselves 
     dicts with the following keys:
 
-        :return_type: the return type of this function. If the return type is None 
+        :return: the return type of this function. If the return type is None 
             (as opposed to 'void'), then this method is assumed to be a constructor 
             or destructor.
-        :default_args: a length-N tuple of length-2 tuples of the default argument 
+        :defaults: a length-N tuple of length-2 tuples of the default argument 
             kinds and values. N must be the number of arguments in the signature. 
             In the length-2 tuples, the first element must be a member of the 
             utils.Arg enum and the second element is the associated default value. 
@@ -162,27 +162,27 @@ toast.  A valid description dictionary for this class would be as follows::
             'toastiness': 'str',
             },
         'methods': {
-            ('Toaster',): {'return_type': None, 'default_args': ()},
-            ('Toaster', ('name', 'str')): {'return_type': None,  
-                'default_args': ((Args.LIT, ""),)},
+            ('Toaster',): {'return': None, 'defaults': ()},
+            ('Toaster', ('name', 'str')): {'return': None,  
+                'defaults': ((Args.LIT, ""),)},
             ('Toaster', ('paramtrack', ('set', 'str')), ('name', 'str', '""')): {
-                'return_type': None,  
-                'default_args': ((Args.NONE, None), (Args.LIT, ""))},
-            ('~Toaster',): {'return_type': None, 'default_args': ()},
-            ('tostring',): {'return_type': 'str', 'default_args': ()},
-            ('calc',): {'return_type': 'Material', 'default_args': ()},
+                'return': None,  
+                'defaults': ((Args.NONE, None), (Args.LIT, ""))},
+            ('~Toaster',): {'return': None, 'defaults': ()},
+            ('tostring',): {'return': 'str', 'defaults': ()},
+            ('calc',): {'return': 'Material', 'defaults': ()},
             ('calc', ('incomp', ('map', 'int32', 'float64'))): {
-                'return_type': 'Material', 
-                'default_args': ((Args.NONE, None),)},
+                'return': 'Material', 
+                'defaults': ((Args.NONE, None),)},
             ('calc', ('mat', 'Material')): {
-                'return_type': 'Material', 
-                'default_args': ((Args.NONE, None),)},
+                'return': 'Material', 
+                'defaults': ((Args.NONE, None),)},
             ('write', ('filename', 'str')): {
-                'return_type': 'void',
-                'default_args': ((Args.LIT, "toaster.txt"),)},
+                'return': 'void',
+                'defaults': ((Args.LIT, "toaster.txt"),)},
             ('write', ('filename', ('char' '*'), '"toaster.txt"')): {
-                'return_type': 'void',
-                'default_args': ((Args.LIT, "toaster.txt"),)},
+                'return': 'void',
+                'defaults': ((Args.LIT, "toaster.txt"),)},
             },
         'docstrings': {
             'class': "I am a toaster!",
@@ -653,8 +653,8 @@ class GccxmlBaseDescriber(object):
         if self._currfuncsig is None:
             return
         key = (funcname,) + tuple(self._currfuncsig)
-        self.desc[self._funckey][key] = {'return_type': rtntype, 
-                                         'default_args': tuple(self._currargkind)}
+        self.desc[self._funckey][key] = {'return': rtntype, 
+                                         'defaults': tuple(self._currargkind)}
         self._currfuncsig = None
         self._currargkind = None
 
@@ -1702,8 +1702,8 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
             self._currargkind = None
             return
         key = (funcname,) + tuple(self._currfuncsig)
-        self.desc[self._funckey][key] = {'return_type': rtntype, 
-                                         'default_args': tuple(self._currargkind)}
+        self.desc[self._funckey][key] = {'return': rtntype, 
+                                         'defaults': tuple(self._currargkind)}
         self._currfuncsig = None
         self._currargkind = None
 
@@ -1718,8 +1718,8 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         if isinstance(node.type, pycparser.c_ast.FuncDecl):
             self.visit(node.type)
             key = (node.name,) + self._currtype[1]
-            self.desc[self._funckey][key] = {'return_type': self._currtype[2], 
-                'default_args': ((Arg.NONE, None),) * len(self._currtype[1])}
+            self.desc[self._funckey][key] = {'return': self._currtype[2], 
+                'defaults': ((Arg.NONE, None),) * len(self._currtype[1])}
             self._currtype = None
         else:
             self.visit(node.type)
