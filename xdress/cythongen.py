@@ -758,7 +758,6 @@ def modpyx(mod, classes=None, ts=None, max_callbacks=8):
         m['imports'] += "\n\nnp.import_array()"
     m['attrs_block'] = "\n".join(attrs)
     t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
-    import sys; print(m['extra'], file=sys.stderr)
     pyx = _pyx_mod_template.format(**m)
     return pyx
 
@@ -1262,6 +1261,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
     d = {'parents': '('+pars+')' if pars else '',
          'namespace': desc['namespace'],
          }
+    srcname = desc['name']['srcname']
     name = desc['name']['tarname']
     d['name'] = ts.cython_classname(name)[1]
     class_doc = desc.get('docstrings', {}).get('class', nodocmsg.format(desc['name']))
@@ -1342,7 +1342,8 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
             ts.cython_cimport_tuples(mcname, cimport_tups)
         if mrtn is None:
             # this must be a constructor
-            if mname not in (d['name'], '__init__'):
+            if mname not in (d['name'], '__init__', 
+              srcname if isinstance(srcname, basestring) else srcname[:-1]):
                 continue  # skip destuctors
             if 1 == methcounts[mname]:
                 mname_mangled = '__init__'
@@ -1358,8 +1359,12 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
                         inst_name=minst_name, construct=construct)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
-                nm = dict([(k, v) for k, v in mangled_mnames.items() \
-                           if k[0] == mbasename])
+                nm = {}
+                for k, v in mangled_mnames.items():
+                    if isinstance(k[0], basestring) and k[0] == mbasename:
+                        nm[k] = v
+                    elif k[0] == srcname[:-1]:
+                        nm[k] = v
                 clines += _gen_dispatcher('__init__', nm, ts, doc=mdoc, hasrtn=False)
         else:
             # this is a normal method
@@ -1380,8 +1385,8 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
         # provide a default constructor
         mdocs = desc.get('docstrings', {}).get('methods', {})
         mdoc = mdocs.get(desc['name']['tarname'], False) or mdocs.get('__init__', '')
-        mdoc = _doc_add_sig(mdoc, '__init__',
-                  [(_a, _t, (Arg.LIT, "None")) for _a, _t in attritems], mdefs)
+        attrsargs = [(Arg.LIT, "None")] * len(attritems)
+        mdoc = _doc_add_sig(mdoc, '__init__', attritems, attrsargs)
         clines += _gen_default_constructor(desc, attritems, ts, doc=mdoc)
         cimport_tups.add(('libc.stdlib', 'malloc'))
     if not desc['parents']:
