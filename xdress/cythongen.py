@@ -99,9 +99,9 @@ def cpppxd_sorted_names(mod, ts):
             _addotherclsnames(pitem, classes, name, othercls, ts)
         for aname, atype in desc['attrs'].items():
             _addotherclsnames(atype, classes, name, othercls, ts)
-        for mkey, mtype in desc['methods'].items():
+        for mkey, mval in desc['methods'].items():
             mname, margs = mkey[0], mkey[1:]
-            _addotherclsnames(mtype, classes, name, othercls, ts)
+            _addotherclsnames(mval['return_type'], classes, name, othercls, ts)
             for marg in margs:
                 _addotherclsnames(marg[1], classes, name, othercls, ts)
     clssort.sort(key=lambda x: len(othercls[x]))
@@ -758,6 +758,7 @@ def modpyx(mod, classes=None, ts=None, max_callbacks=8):
         m['imports'] += "\n\nnp.import_array()"
     m['attrs_block'] = "\n".join(attrs)
     t = '\n\n'.join([AUTOGEN_WARNING, '{cimports}', '{attrs_block}', '{extra}'])
+    import sys; print(m['extra'], file=sys.stderr)
     pyx = _pyx_mod_template.format(**m)
     return pyx
 
@@ -970,7 +971,7 @@ def _gen_function_pointer_wrapper(name, t, ts, classname='', max_callbacks=8):
     lines += ['', ""]
     return lines
 
-def _gen_argfill(args):
+def _gen_argfill(args, defaults):
     """Generate argument list for a function, and return (argfill, names).
     If any argument names or empty, the corresponding entry in names will
     be '_n' for some integer n.
@@ -979,8 +980,7 @@ def _gen_argfill(args):
     taken = frozenset(a[0] for a in args)
     names = []
     afill = []
-    for a in args:
-        name = a[0]
+    for (name, t), (kind, default) in zip(args, defaults):
         if not name: # Empty name, generate a fresh dummy symbol
             while 1:
                 name = '_%d'%counter
@@ -988,13 +988,13 @@ def _gen_argfill(args):
                 if name not in taken:
                     break
         names.append(name)
-        if 2 == len(a): 
+        if kind is Arg.NONE: 
             afillval = name
-        elif a[2][0] is Arg.LIT: 
-            afillval = "{0}={1!r}".format(name, a[2][1])
-        elif a[2][0] is Arg.VAR: 
-            afillval = "{0}={1}".format(name, a[2][1])
-        elif a[2][0] is Arg.TYPE: 
+        elif kind is Arg.LIT: 
+            afillval = "{0}={1!r}".format(name, default)
+        elif kind is Arg.VAR: 
+            afillval = "{0}={1}".format(name, default)
+        elif kind is Arg.TYPE: 
             raise ValueError("default argument value cannot be a type: {0}".format(a))
         else:
             raise ValueError("default argument value cannot be determined: "
@@ -1002,9 +1002,9 @@ def _gen_argfill(args):
         afill.append(afillval)
     return ", ".join(afill), names
 
-def _gen_function(name, name_mangled, args, rtn, ts, doc=None, inst_name="self._inst",
-                  is_method=False):
-    argfill, names = _gen_argfill(args)
+def _gen_function(name, name_mangled, args, rtn, defaults, ts, doc=None,
+                  inst_name="self._inst", is_method=False):
+    argfill, names = _gen_argfill(args, defaults)
     if is_method:
         argfill = "self, " + argfill
     lines  = ['def {0}({1}):'.format(name_mangled, argfill)]
@@ -1066,9 +1066,10 @@ def _gen_default_constructor(desc, attrs, ts, doc=None, srcpxd_filename=None):
     lines += ['', ""]
     return lines
 
-def _gen_constructor(name, name_mangled, classname, args, ts, doc=None,
-                     srcpxd_filename=None, inst_name="self._inst", construct="class"):
-    argfill, names = _gen_argfill(args)
+def _gen_constructor(name, name_mangled, classname, args, defaults, ts,
+                     doc=None, srcpxd_filename=None, inst_name="self._inst",
+                     construct="class"):
+    argfill, names = _gen_argfill(args, defaults)
     lines  = ['def {0}(self, {1}):'.format(name_mangled, argfill)]
     lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
     decls = []
@@ -1174,11 +1175,10 @@ def _method_instance_names(desc, classes, key, rtn, ts):
     classnames = []
     _class_heirarchy(desc['name']['tarname'], classnames, classes)
     for classname in classnames:
-        classrtn = classes.get(classname, {}).get('methods', {}).get(key, 
-                                                                     NotImplemented)
+        classrtn = classes.get(classname, {}).get('methods', {})\
+                          .get(key, {}).get('return_type', NotImplemented)
         if rtn != classrtn:
             continue
-        #class_ctype = ts.cython_ctype(desc['name'])
         class_ctype = ts.cython_ctype(classname)
         inst_name = "(<{0} *> self._inst)".format(class_ctype)
         return inst_name, classname
@@ -1193,11 +1193,11 @@ def _count0(x):
         c[v0] = c.get(v0, 0) + 1
     return c
 
-def _doc_add_sig(doc, name, args, ismethod=True):
+def _doc_add_sig(doc, name, args, defaults, ismethod=True):
     if doc.startswith(name):
         return doc
     sig = ['self'] if ismethod else []
-    sig.append(_gen_argfill(args)[0])
+    sig.append(_gen_argfill(args, defaults)[0])
     newdoc = "{0}({1})\n{2}".format(name, ", ".join(sig), doc)
     return newdoc
 
@@ -1316,8 +1316,10 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
     mitems = list(desc['methods'].items())
     methitems = sorted(x for x in mitems if isinstance(x[0][0], basestring))
     methitems += sorted(x for x in mitems if not isinstance(x[0][0], basestring))
-    for mkey, mrtn in methitems:
+    for mkey, mval in methitems:
         mname, margs = mkey[0], mkey[1:]
+        mrtn = mval['return_type']
+        mdefs = mval['default_args']
         mbasename = mname if isinstance(mname, basestring) else mname[0]
         mcyname = ts.cython_funcname(mname)
         if mbasename.startswith('_'):
@@ -1346,12 +1348,13 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
                 mname_mangled = '__init__'
                 mangled_mnames[mkey] = mname_mangled
             mdoc = desc.get('docstrings', {}).get('methods', {}).get(mname, '')
-            mdoc = _doc_add_sig(mdoc, mcyname, margs)
+            mdoc = _doc_add_sig(mdoc, mcyname, margs, mdefs)
             construct = desc['construct']
             if construct == 'struct':
                 cimport_tups.add(('libc.stdlib', 'malloc'))
             clines += _gen_constructor(mcyname, mname_mangled, d['name'], margs,
-                        ts, doc=mdoc, srcpxd_filename=desc['srcpxd_filename'],
+                        mdefs, ts, doc=mdoc,
+                        srcpxd_filename=desc['srcpxd_filename'],
                         inst_name=minst_name, construct=construct)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
@@ -1364,9 +1367,10 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
             ts.cython_cimport_tuples(mrtn, cimport_tups)
             mdoc = desc.get('docstrings', {}).get('methods', {})\
                                              .get(mname, nodocmsg.format(mname))
-            mdoc = _doc_add_sig(mdoc, mcyname, margs)
-            mlines += _gen_function(mcyname, mname_mangled, margs, mrtn, ts, mdoc,
-                                  inst_name=minst_name, is_method=True)
+            mdoc = _doc_add_sig(mdoc, mcyname, margs, mdefs)
+            mlines += _gen_function(mcyname, mname_mangled, margs, mrtn, mdefs,
+                                    ts, mdoc, inst_name=minst_name,
+                                    is_method=True)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
                 nm = dict([(k, v) for k, v in mangled_mnames.items() \
@@ -1377,7 +1381,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
         mdocs = desc.get('docstrings', {}).get('methods', {})
         mdoc = mdocs.get(desc['name']['tarname'], False) or mdocs.get('__init__', '')
         mdoc = _doc_add_sig(mdoc, '__init__',
-                            [(_a, _t, (Arg.LIT, "None")) for _a, _t in attritems])
+                  [(_a, _t, (Arg.LIT, "None")) for _a, _t in attritems], mdefs)
         clines += _gen_default_constructor(desc, attritems, ts, doc=mdoc)
         cimport_tups.add(('libc.stdlib', 'malloc'))
     if not desc['parents']:
@@ -1485,8 +1489,10 @@ def funcpyx(desc, ts=None):
     currcounts = dict([(k, 0) for k in funccounts])
     mangled_fnames = {}
     funcitems = sorted(desc['signatures'].items())
-    for fkey, frtn in funcitems:
+    for fkey, fval in funcitems:
         fname, fargs = fkey[0], fkey[1:]
+        frtn = fval['return_type']
+        fdefs = fval['default_args']
         fbasename = fname if isinstance(fname, basestring) else fname[0]
         #fcppname = ts.cpp_funcname(fname)
         fcyname = ts.cython_funcname(fname)
@@ -1507,9 +1513,9 @@ def funcpyx(desc, ts=None):
         ts.cython_import_tuples(frtn, import_tups)
         ts.cython_cimport_tuples(frtn, cimport_tups)
         fdoc = desc.get('docstring', nodocmsg.format(fcyname))
-        fdoc = _doc_add_sig(fdoc, fcyname, fargs, ismethod=False)
-        flines += _gen_function(fcyname, fname_mangled, fargs, frtn, ts, fdoc,
-                                inst_name=inst_name, is_method=False)
+        fdoc = _doc_add_sig(fdoc, fcyname, fargs, fdefs, ismethod=False)
+        flines += _gen_function(fcyname, fname_mangled, fargs, frtn, fdefs, ts,
+                                fdoc, inst_name=inst_name, is_method=False)
         if 1 < funccounts[fname] and currcounts[fname] == funccounts[fname]:
             # write dispatcher
             nm = dict([(k, v) for k, v in mangled_fnames.items() if k[0] == fname])
@@ -1646,11 +1652,11 @@ def _exception_str(exceptions, lang, rtntype, ts):
 
 def _template_method_names(methods):
     methnames = set()
-    for sig, rtn in methods.items():
+    for sig, val in methods.items():
         name = sig[0]
         if isinstance(name, basestring):
             continue
-        elif rtn is None:  # ignore constructor / destructors
+        elif val['return_type'] is None:  # ignore constructor / destructors
             continue
         methnames.add(name)
     return methnames

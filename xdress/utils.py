@@ -87,14 +87,16 @@ def expand_default_args(methods):
     """This function takes a collection of method tuples and expands all of
     the default arguments, returning a set of all methods possible."""
     methitems = set()
-    for mkey, mrtn in methods:
+    for mkey, mval in methods:
         mname, margs = mkey[0], mkey[1:]
-        havedefaults = [3 == len(arg) for arg in margs]
+        mrtn = mval['return_type']
+        mdefargs = mval['default_args']
+        havedefaults = [arg is not Arg.NONE for arg in margs]
         if any(havedefaults):
             # expand default arguments
             n = havedefaults.index(True)
             items = [((mname,)+tuple(margs[:n]), mrtn)] + \
-                    [((mname,)+tuple(margs[:i]), mrtn) for i in range(n+1,len(margs)+1)]
+                [((mname,)+tuple(margs[:i]), mrtn) for i in range(n+1,len(margs)+1)]
             methitems.update(items)
         else:
             # no default args
