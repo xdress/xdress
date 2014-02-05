@@ -270,20 +270,24 @@ def test_pycparser_describe_device_measure():
            'name': 'Device_measure',
            'namespace': None,
            'signatures': {
-            ('Device_measure', ('_0', ('uint32', '*'))): ('enum', 
-                                    'ErrorStatusTag', (('ERROR_OK', 0), 
-                                                       ('ERROR_FAILED_INIT', 1))),
-            ('Device_measure', ('aiValue', ('uint32', '*'))): ('enum', 
-                                    'ErrorStatusTag', (('ERROR_OK', 0), 
-                                                       ('ERROR_FAILED_INIT', 1))),
+            ('Device_measure', ('_0', ('uint32', '*'))): {
+                'return_type': ('enum', 'ErrorStatusTag', (('ERROR_OK', 0), 
+                               ('ERROR_FAILED_INIT', 1))),
+                'default_args': ((Arg.NONE, None),)},
+            ('Device_measure', ('aiValue', ('uint32', '*'))): {
+                'return_type': ('enum', 'ErrorStatusTag', (('ERROR_OK', 0), 
+                               ('ERROR_FAILED_INIT', 1))),
+                'default_args': ((Arg.NONE, None),)},
             ('Device_measure', ('deviceNumber', 'uchar'), 
-                               ('aiValue', ('uint32', '*'))): ('enum', 
-                                    'ErrorStatusTag', (('ERROR_OK', 0), 
-                                                       ('ERROR_FAILED_INIT', 1))),
+                               ('aiValue', ('uint32', '*'))): {
+                'return_type': ('enum', 'ErrorStatusTag', (('ERROR_OK', 0), 
+                               ('ERROR_FAILED_INIT', 1))),
+                'default_args': ((Arg.NONE, None), (Arg.NONE, None))},
             ('Device_measure', ('_0', 'uchar'), 
-                               ('_1', ('uint32', '*'))): ('enum', 
-                                    'ErrorStatusTag', (('ERROR_OK', 0), 
-                                                       ('ERROR_FAILED_INIT', 1))),
+                               ('_1', ('uint32', '*'))): {
+                'return_type': ('enum', 'ErrorStatusTag', (('ERROR_OK', 0), 
+                               ('ERROR_FAILED_INIT', 1))),
+                'default_args': ((Arg.NONE, None), (Arg.NONE, None))},
             }
            }
     assert_equal_or_diff(obs, exp)
@@ -296,12 +300,15 @@ def test_pycparser_describe_device_init():
            'name': 'Device_Init',
            'namespace': None,
            'signatures': {
-            ('Device_Init', ('_0', ('DeviceParamTag', '*'))): ('enum', 
+            ('Device_Init', ('_0', ('DeviceParamTag', '*'))): {
+                'return_type': ('enum', 'ErrorStatusTag', (('ERROR_OK', 0), 
+                                                           ('ERROR_FAILED_INIT', 1))),
+                'default_args': ((Arg.NONE, None),)},
+            ('Device_Init', ('param', ('DeviceParamTag', '*'))): {
+                'return_type': ('enum', 
                                     'ErrorStatusTag', (('ERROR_OK', 0), 
                                                        ('ERROR_FAILED_INIT', 1))),
-            ('Device_Init', ('param', ('DeviceParamTag', '*'))): ('enum', 
-                                    'ErrorStatusTag', (('ERROR_OK', 0), 
-                                                       ('ERROR_FAILED_INIT', 1))),
+                'default_args': ((Arg.NONE, None),)},
             }
            }
     assert_equal_or_diff(obs, exp)

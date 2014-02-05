@@ -1617,6 +1617,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         self._root = root
         self._currfunc = []  # this must be a stack to handle nested functions
         self._currfuncsig = None
+        self._currargkind = None
         self._currclass = []  # this must be a stack to handle nested classes
         self._level = -1
         self._currtype = None
@@ -1678,6 +1679,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
             return
         self._currfunc.append(name)
         self._currfuncsig = []
+        self._currargkind = []
         self._level += 1
         children = () if ftype.args is None else ftype.args.children()
         for _, child in children:
@@ -1692,14 +1694,18 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
                 warn_forbidden_name(arg[0], self.name, rename)
                 arg = (rename, arg[1])
             self._currfuncsig.append(arg)
+            self._currargkind.append((Arg.NONE, None))
         self._level -= 1
         rtntype = self.type(ftype.type)
         funcname = self._currfunc.pop()
         if self._currfuncsig is None:
+            self._currargkind = None
             return
         key = (funcname,) + tuple(self._currfuncsig)
-        self.desc[self._funckey][key] = rtntype
+        self.desc[self._funckey][key] = {'return_type': rtntype, 
+                                         'default_args': tuple(self._currargkind)}
         self._currfuncsig = None
+        self._currargkind = None
 
     def visit_IdentifierType(self, node):
         self._pprint(node)
@@ -1712,7 +1718,8 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         if isinstance(node.type, pycparser.c_ast.FuncDecl):
             self.visit(node.type)
             key = (node.name,) + self._currtype[1]
-            self.desc[self._funckey][key] = self._currtype[2]
+            self.desc[self._funckey][key] = {'return_type': self._currtype[2], 
+                'default_args': ((Arg.NONE, None),) * len(self._currtype[1])}
             self._currtype = None
         else:
             self.visit(node.type)
