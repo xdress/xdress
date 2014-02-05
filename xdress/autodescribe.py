@@ -268,6 +268,9 @@ if sys.version_info[0] >= 3:
 # d = int64, u = uint64
 _GCCXML_LITERAL_INTS = re.compile('(\d+)([du]?)')
 
+_none_arg = Arg.NONE, None
+_none_return = {'return': None, 'defaults': ()}
+
 def clearmemo():
     """Clears all function memoizations for autodescribers."""
     for x in globals().values():
@@ -698,7 +701,7 @@ class GccxmlBaseDescriber(object):
         default = node.attrib.get('default', None)
         arg = (name, t)
         if default is None:
-            argkind = (Arg.NONE, None)
+            argkind = _none_arg
         else:
             try:
                 default = c_literal(default)
@@ -1364,28 +1367,31 @@ def clang_describe_class(cls):
             if kind == CursorKind.CXX_METHOD:
                 # TODO: For now, we ignore operators
                 if not _operator_pattern.match(kid.spelling):
-                    methods[clang_describe_args(kid)] = clang_describe_type(kid.result_type, kid.location)
+                    sig, defaults = clang_describe_args(kid)
+                    methods[sig] = {'return': clang_describe_type(kid.result_type, kid.location),
+                                    'defaults': defaults}
             elif kind == CursorKind.CONSTRUCTOR:
-                methods[(cons,)+clang_describe_args(kid)[1:]] = None
+                sig, defaults = clang_describe_args(kid)
+                methods[(cons,)+sig[1:]] = {'return': None, 'defaults': defaults}
             elif kind == CursorKind.DESTRUCTOR:
-                methods[(dest,)] = None
+                methods[(dest,)] = _none_return
             elif kind == CursorKind.FIELD_DECL:
                 attrs[kid.spelling] = clang_describe_type(kid.type, kid.location)
     # Make sure defaulted methods are described
     if cls.has_default_constructor():
         # Check if any user defined constructors act as a default constructor
-        for method in methods.keys():
-            if method[0] == cons:
-                for arg in method[1:]:
-                    if len(arg) < 3:
+        for sig, info in methods.items():
+            if sig[0] == cons:
+                for _,default in info['defaults']:
+                    if default is None:
                         break
                 else:
                     # All arguments have defaults, so no need to generate a default manually
                     break
         else:
-            methods[(cons,)] = None
+            methods[(cons,)] = _none_return
     if cls.has_simple_destructor():
-        methods[(dest,)] = None
+        methods[(dest,)] = _none_return
     # Put everything together
     return {'name': typ, 'type': typ, 'namespace': clang_parent_namespace(cls),
             'parents': parents, 'attrs': attrs, 'methods': methods, 'construct': construct}
@@ -1453,7 +1459,9 @@ def clang_describe_functions(funcs):
 def clang_describe_function(func):
     """Describe the function at the given clang AST node."""
     assert func.kind == CursorKind.FUNCTION_DECL
-    signatures = {clang_describe_args(func): clang_describe_type(func.result_type, func.location)}
+    sig, defaults = clang_describe_args(func)
+    signatures = {sig: {'return': clang_describe_type(func.result_type, func.location),
+                        'defaults': defaults}}
     name = next(iter(signatures))[0]
     return {'name': name, 'namespace': clang_parent_namespace(func), 'signatures': signatures}
 
@@ -1462,13 +1470,12 @@ def clang_describe_args(func):
         descs = [(func.spelling,) + clang_describe_template_args(func)]
     else:
         descs = [func.spelling]
+    defaults = []
     for arg in func.get_arguments():
-        desc = [arg.spelling,clang_describe_type(arg.type, arg.location)]
+        descs.append((arg.spelling, clang_describe_type(arg.type, arg.location)))
         default = arg.default_argument
-        if default is not None:
-            desc.append(clang_describe_expression(default))
-        descs.append(tuple(desc))
-    return tuple(descs)
+        defaults.append(_none_arg if default is None else clang_describe_expression(default))
+    return tuple(descs), tuple(defaults)
 
 def clang_describe_type(typ, loc):
     """Describe the type reference at the given cursor"""
@@ -1571,13 +1578,13 @@ def clang_describe_expression(exp):
     # This is because clang doesn't seem to have any mechanism for printing expressions.
     s = clang_range_str(exp.extent)
     try:
-        return c_literal(s)
+        return Arg.LIT, c_literal(s)
     except:
         pass
     if exp.referenced:
         exp = exp.referenced
     if exp.kind == CursorKind.ENUM_CONSTANT_DECL:
-        return s.strip()
+        return Arg.VAR, s.strip()
     # Nothing worked, so bail
     kind = exp.kind.name
     raise NotImplementedError('unhandled expression "{0}" of kind {1} at {2}'
@@ -1694,7 +1701,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
                 warn_forbidden_name(arg[0], self.name, rename)
                 arg = (rename, arg[1])
             self._currfuncsig.append(arg)
-            self._currargkind.append((Arg.NONE, None))
+            self._currargkind.append(_none_arg)
         self._level -= 1
         rtntype = self.type(ftype.type)
         funcname = self._currfunc.pop()
@@ -1719,7 +1726,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
             self.visit(node.type)
             key = (node.name,) + self._currtype[1]
             self.desc[self._funckey][key] = {'return': self._currtype[2], 
-                'defaults': ((Arg.NONE, None),) * len(self._currtype[1])}
+                'defaults': (_none_arg,) * len(self._currtype[1])}
             self._currtype = None
         else:
             self.visit(node.type)
