@@ -132,6 +132,7 @@ classes = [
     apiname(('TClass2', 'float32'), **_inbasics), 
     apiname('NoDefault', **_inbasics), 
     apiname('NoDefaultChild', **_inbasics), 
+    apiname(('EnumArg', 'JOAN'), **_inbasics),
     ]
 
 del os
