@@ -264,7 +264,7 @@ template <cppproj::PersonID> class EnumArg {};
 #ifdef XDRESS
 std::vector<double> _temp0;
 std::vector< std::vector<double> > _temp1;
-cppproj::EnumArg<cppproj::JOAN> _temp2;
+EnumArg<cppproj::JOAN> _temp2;
 #endif
 
 #endif

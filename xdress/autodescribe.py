@@ -2388,6 +2388,7 @@ class XDressPlugin(astparsers.ParserPlugin):
 
     def compute_variables(self, rc):
         """Computes variables descriptions and loads them into the environment."""
+        ts = rc.ts
         env = rc.env
         cache = rc._cache
         for i, var in enumerate(rc.variables):
@@ -2397,6 +2398,8 @@ class XDressPlugin(astparsers.ParserPlugin):
                 pprint(desc)
             cache.dump()
             self.adddesc2env(desc, env, var)
+            ts.register_variable_namespace(desc['name']['srcname'], desc['namespace'],
+                                           desc['type'])
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 

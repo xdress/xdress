@@ -277,7 +277,8 @@ class TypeSystem(object):
     """
 
     datafields = set(['base_types', 'template_types', 'refined_types', 'humannames', 
-        'extra_types', 'dtypes', 'stlcontainers', 'type_aliases', 'cpp_types', 
+        'extra_types', 'dtypes', 'stlcontainers', 'argument_kinds', 
+        'variable_namespace', 'type_aliases', 'cpp_types', 
         'numpy_types', 'from_pytypes', 'cython_ctypes', 'cython_cytypes', 
         'cython_pytypes', 'cython_cimports', 'cython_cyimports', 'cython_pyimports', 
         'cython_functionnames', 'cython_classnames', 'cython_c2py_conv', 
@@ -286,7 +287,7 @@ class TypeSystem(object):
     def __init__(self, base_types=None, template_types=None, refined_types=None, 
                  humannames=None, extra_types='xdress_extra_types', dtypes='dtypes',
                  stlcontainers='stlcontainers', argument_kinds=None, 
-                 type_aliases=None, cpp_types=None, 
+                 variable_namespace=None, type_aliases=None, cpp_types=None, 
                  numpy_types=None, from_pytypes=None, cython_ctypes=None, 
                  cython_cytypes=None, cython_pytypes=None, cython_cimports=None, 
                  cython_cyimports=None, cython_pyimports=None, 
@@ -316,6 +317,10 @@ class TypeSystem(object):
             tuple of utils.Arg kind flags.  The order in the tuple matches the value
             in template_types. This is only vaid for concrete types, ie 
             ('vector', 'int', 0) and not just 'vector'.
+        variable_namespace : dict, optional
+            Templates arguments may be variables. These variables may live in a 
+            namespace which is required for specifiying the type.  This is a 
+            dictionary mapping variable names to thier namespace.
         type_aliases : dict, optional
             Aliases that may be used to substitute one type name for another.
         cpp_types : dict, optional
@@ -416,6 +421,8 @@ class TypeSystem(object):
             ('vector', 'bool', 0): (Arg.TYPE,),
             ('vector', 'char', 0): (Arg.TYPE,),
             }
+        self.variable_namespace = variable_namespace if \
+                                  variable_namespace is not None else {}
         self.type_aliases = _LazyConfigDict(type_aliases if type_aliases is not \
                                                                       None else {
             'i': 'int32',
@@ -1322,7 +1329,10 @@ class TypeSystem(object):
 
     @memoize_method
     def isenum(self, t):
-        t = self.canon(t)
+        try:
+            t = self.canon(t)
+        except TypeError:
+            return False
         return isinstance(t, Sequence) and t[0] == 'int32' and \
            isinstance(t[1], Sequence) and t[1][0] == 'enum'
 
@@ -1499,11 +1509,17 @@ class TypeSystem(object):
             x, y = t, last
         return '{0} {1}'.format(x, y)
 
+    def _cpp_var_name(self, var):
+        ns = self.variable_namespace.get(var, '')
+        if len(ns) > 0:
+            name = ns + "::" + var
+        else:
+            name = var
+        return name
+
     @memoize_method
     def cpp_type(self, t):
         """Given a type t, returns the corresponding C++ type declaration."""
-        if t in self.cpp_types:
-            return self.cpp_types[t]
         t = self.canon(t)
         if isinstance(t, basestring):
             if  t in self.base_types:
@@ -1537,7 +1553,7 @@ class TypeSystem(object):
                 elif kind is Arg.TYPE:
                     x = self.cpp_type(x)
                 elif kind is Arg.VAR:
-                    pass
+                    x = self._cpp_var_name(x)
                 elif isinstance(x, bool):
                     x = self.cpp_types[x]
                 elif isinstance(x, Number):
@@ -1546,7 +1562,7 @@ class TypeSystem(object):
                     try:
                         x = self.cpp_type(x)  # Guess it is a type?
                     except TypeError:
-                        pass  # Guess it is a variable
+                        x = self._cpp_var_name(x)  # Guess it is a variable
                 template_filling.append(x)
             cppt = '{0}< {1} >'.format(template_name, ', '.join(template_filling))
             if 0 != t[-1]:
@@ -2596,6 +2612,23 @@ class TypeSystem(object):
         t = self.canon(t)
         if t in self.argument_kinds:
             del self.argument_kinds[t]
+
+    def register_variable_namespace(self, name, namespace, t=None):
+        """Registers a variable and its namespace in the typesystem.
+        """
+        if name in self.variable_namespace:
+            old = self.variable_namespace[name]
+            if old != namespace:
+                msg = ("overwriting namespace for variable {0}:\n"
+                       "  old: {1}\n"
+                       "  new: {2}")
+                warn(msg.format(name, old, namespace), RuntimeWarning)
+        self.variable_namespace[name] = namespace
+        if self.isenum(t):
+            t = self.canon(t)
+            for n, _ in t[1][2][2]:
+                self.register_variable_namespace(n, namespace)
+        
 
     #################### Type system helpers ###################################
 
