@@ -20,6 +20,7 @@ import math
 import warnings
 from copy import deepcopy
 from pprint import pprint
+from numbers import Number
 
 from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
     isvardesc, newoverwrite, sortedbytype, _lang_exts, Arg
@@ -761,6 +762,24 @@ def modpyx(mod, classes=None, ts=None, max_callbacks=8):
     pyx = _pyx_mod_template.format(**m)
     return pyx
 
+def _gen_template_pyfill(arg, kind, ts):
+    """Generates the fill values for an argument of a type into a template type t.
+    """
+    if kind is Arg.TYPE:
+        rtn = ts.cython_pytype(arg)
+    elif kind is Arg.LIT:
+        rnt = str(arg)
+    elif kind is Arg.VAR:
+        rtn = arg
+    elif isinstance(arg, Number):
+        rtn = str(arg)
+    elif isinstance(arg, basestring):
+        try:
+            rtn = ts.cython_pytype(arg)
+        except TypeError:
+            rtn = arg
+    return rtn
+
 def _gen_template_func_dispatcher(templates, ts):
     """Generates a dictionary-based dispacher for template functions.
     """
@@ -778,14 +797,16 @@ def _gen_template_func_dispatcher(templates, ts):
             alreadyinitd.add(initline)
         args = t[1:]
         pytype = ts.cython_funcname(t)
+        kinds = ts.argument_kinds.get(t, ((Arg.NONE,))*(len(t)-1))
         if 0 == len(args):
             raise ValueError("type {0!r} not a template".format(t))
         elif 1 == len(args):
             disp.append("{0}[{1!r}] = {2}".format(t[0], t[1], pytype))
-            disp.append("{0}[{1}] = {2}".format(t[0], ts.cython_pytype(t[1]), pytype))
+            disp.append("{0}[{1}] = {2}".format(t[0], 
+                _gen_template_pyfill(t[1], kinds[0], ts), pytype))
         else:
             rs = [repr(_) for _ in t[1:]]
-            pyts = [ts.cython_pytype(x) for x in t[1:]]
+            pyts = [_gen_template_pyfill(x, k, ts) for x, k in zip(t[1:], kinds)]
             disp.append("{0}[{1}] = {2}".format(t[0], ", ".join(rs), pytype))
             disp.append("{0}[{1}] = {2}".format(t[0], ", ".join(pyts), pytype))
     return "\n".join(disp)
@@ -807,14 +828,16 @@ def _gen_template_class_dispatcher(templates, ts):
             alreadyinitd.add(initline)
         args = t[1:-1]
         pytype = ts.cython_pytype(t)
+        kinds = ts.argument_kinds.get(t, ((Arg.NONE,))*(len(t)-1))
         if 0 == len(args):
             raise ValueError("type {0!r} not a template".format(t))
         elif 1 == len(args):
             disp.append("{0}[{1!r}] = {2}".format(t[0], t[1], pytype))
-            disp.append("{0}[{1}] = {2}".format(t[0], ts.cython_pytype(t[1]), pytype))
+            disp.append("{0}[{1}] = {2}".format(t[0], 
+                _gen_template_pyfill(t[1], kinds[0], ts), pytype))
         else:
             rs = [repr(_) for _ in t[1:-1]]
-            pyts = [ts.cython_pytype(x) for x in t[1:-1]]
+            pyts = [_gen_template_pyfill(x, k, ts) for x, k in zip(t[1:], kinds)]
             disp.append("{0}[{1}] = {2}".format(t[0], ", ".join(rs), pytype))
             disp.append("{0}[{1}] = {2}".format(t[0], ", ".join(pyts), pytype))
     return "\n".join(disp)

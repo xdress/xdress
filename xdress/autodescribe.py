@@ -584,7 +584,6 @@ class GccxmlBaseDescriber(object):
             for targ in targs:
                 targ_node = self._root.find(query.format(targ))
                 if targ_node is None:
-                    #targ_node = self._template_literal_arg(targ)
                     targ_node = c_literal(targ)
                     targ_islit.append(True)
                 else:

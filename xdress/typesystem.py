@@ -1543,7 +1543,10 @@ class TypeSystem(object):
                 elif isinstance(x, Number):
                     x = str(x)
                 else:
-                    x = self.cpp_type(x)
+                    try:
+                        x = self.cpp_type(x)  # Guess it is a type?
+                    except TypeError:
+                        pass  # Guess it is a variable
                 template_filling.append(x)
             cppt = '{0}< {1} >'.format(template_name, ', '.join(template_filling))
             if 0 != t[-1]:
@@ -1585,7 +1588,10 @@ class TypeSystem(object):
             elif isinstance(x, Number):
                 ct = self.cpp_literal(x)
             else:
-                ct = self.cpp_type(x)
+                try:
+                    ct = self.cpp_type(x)  # guess it is a type
+                except TypeError:
+                    ct = x  # guess it is a variable
             cts.append(ct)
         fname += '' if 0 == len(cts) else "< " + ", ".join(cts) + " >"
         return fname
@@ -1974,10 +1980,15 @@ class TypeSystem(object):
                 cf = self.cython_functionname(x)[1]
             elif argkind is Arg.LIT:
                 cf = self.cython_literal(x)
+            elif argkind is Arg.VAR:
+                cf = x
             elif isinstance(x, Number):
                 cf = self.cython_literal(x)
             else:
-                cf = self.cython_functionname(x)[1]
+                try:
+                    cf = self.cython_functionname(x)[1]  # guess type
+                except TypeError:
+                    cf = x  # guess variable
             cfs.append(cf) 
         fname += '' if 0 == len(cfs) else "_" + "_".join(cfs)
         return fname
