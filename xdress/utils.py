@@ -82,6 +82,9 @@ class Arg(IntEnum):
     def __str__(self):
         return self.name
 
+    def __repr__(self):
+        return self.name
+
 
 def expand_default_args(methods):
     """This function takes a collection of method tuples and expands all of

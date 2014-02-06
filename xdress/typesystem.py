@@ -1530,8 +1530,15 @@ class TypeSystem(object):
             template_name = self.cpp_types[t[0]]
             assert template_name is not NotImplemented
             template_filling = []
-            for x in t[1:-1]:
-                if isinstance(x, bool):
+            kinds = self.argument_kinds.get(t, ((Arg.NONE,),)*(tlen-2))
+            for x, kind in zip(t[1:-1], kinds):
+                if kind is Arg.LIT:
+                    x = self.cpp_literal(x)
+                elif kind is Arg.TYPE:
+                    x = self.cpp_type(x)
+                elif kind is Arg.VAR:
+                    pass
+                elif isinstance(x, bool):
                     x = self.cpp_types[x]
                 elif isinstance(x, Number):
                     x = str(x)

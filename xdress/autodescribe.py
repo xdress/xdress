@@ -267,6 +267,7 @@ if sys.version_info[0] >= 3:
 
 # d = int64, u = uint64
 _GCCXML_LITERAL_INTS = re.compile('(\d+)([du]?)')
+_GCCXML_LITERAL_ENUMS = re.compile('\(\w+::(\w+)\)(\d+)')
 
 _none_arg = Arg.NONE, None
 _none_return = {'return': None, 'defaults': ()}
@@ -497,16 +498,20 @@ class GccxmlBaseDescriber(object):
                                        node.attrib.get('id', ''),
                                        node.attrib.get('name', None)))
 
-    def _template_literal_arg(self, targ):
-        """Parses a literal template parameter."""
-        if targ == 'true':
-            return True
-        elif targ == 'false':
-            return False
-        m = _GCCXML_LITERAL_INTS.match(targ)
-        if m is not None:
-            return int(m.group(1))
-        return targ
+    def _template_literal_enum_val(self, targ):
+        """Finds the node associated with an enum value in a template"""
+        m = _GCCXML_LITERAL_ENUMS.match(targ)
+        if m is None:
+            return None
+        enumname, val = m.groups()
+        query = ".//*[@name='{0}']"
+        node = self._root.find(query.format(enumname))
+        if node is None:
+            return None
+        for child in node.iterfind('EnumValue'):
+            if  child.attrib['init'] == val:
+                return child
+        return None
 
     def _visit_template_function(self, node):
         nodename = node.attrib['name']
@@ -525,8 +530,14 @@ class GccxmlBaseDescriber(object):
         for targ in template_args:
             targ_node = self._root.find(query.format(targ))
             if targ_node is None:
-                targ_node = self._template_literal_arg(targ)
-                targ_islit.append(True)
+                try:
+                    targ_node = c_literal(targ)
+                    targ_islit.append(True)
+                except ValueError:
+                    targ_node = self._template_literal_enum_val(targ)
+                    if targ_node is None:
+                        continue
+                    targ_islit.append(False)
             else:
                 targ_islit.append(False)
             targ_nodes.append(targ_node)
@@ -534,8 +545,10 @@ class GccxmlBaseDescriber(object):
         for targ_node, targ_lit in zip(targ_nodes, targ_islit):
             if targ_lit:
                 targ_kind, targ_value = Arg.LIT, targ_node
-            else:
+            elif 'id' in targ_node.attrib:
                 targ_kind, targ_value = Arg.TYPE, self.type(targ_node.attrib['id'])
+            else:
+                targ_kind, targ_value = Arg.VAR, targ_node.attrib['name']
             argkinds.append(targ_kind)
             inst.append(targ_value)
         self._level -= 1
@@ -571,7 +584,8 @@ class GccxmlBaseDescriber(object):
             for targ in targs:
                 targ_node = self._root.find(query.format(targ))
                 if targ_node is None:
-                    targ_node = self._template_literal_arg(targ)
+                    #targ_node = self._template_literal_arg(targ)
+                    targ_node = c_literal(targ)
                     targ_islit.append(True)
                 else:
                     targ_islit.append(False)
@@ -580,8 +594,10 @@ class GccxmlBaseDescriber(object):
         for targ_node, targ_lit in zip(targ_nodes, targ_islit):
             if targ_lit:
                 targ_kind, targ_value = Arg.LIT, targ_node
-            else:
+            elif 'id' in targ_node.attrib:
                 targ_kind, targ_value = Arg.TYPE, self.type(targ_node.attrib['id'])
+            else:
+                targ_kind, targ_value = Arg.VAR, targ_node.attrib['name']
             argkinds.append(targ_kind)
             inst.append(targ_value)
         self._level -= 1
@@ -881,6 +897,26 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
         # maybe it should, but I think this will get us pretty far.
         self._name = None
 
+    def _find_class_node(self):
+        basename = self.name[0]
+        namet = self.desc['type']
+        query = "Class"
+        for node in self._root.iterfind(query):
+            if node.attrib['file'] not in self.onlyin:
+                continue
+            nodename = node.attrib['name']
+            if not nodename.startswith(basename):
+                continue
+            if '<' not in nodename or not nodename.endswith('>'):
+                continue
+            nodet = self._visit_template_class(node)
+            if nodet == namet:
+                self._name = nodename  # gross
+                break
+        else:
+            node = None
+        return node
+
     def visit(self, node=None):
         """Visits the class node and all sub-nodes, generating the description
         dictionary as it goes.
@@ -893,30 +929,17 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
 
         """
         if node is None:
-            query = "Class[@name='{0}']".format(self.ts.gccxml_type(self.name))
-            node = self._root.find(query)
+            if not isinstance(self.name, basestring) and self.name not in self.ts.argument_kinds:
+                node = self._find_class_node()
+            if node is None:                
+                query = "Class[@name='{0}']".format(self.ts.gccxml_type(self.name))
+                node = self._root.find(query)
             if node is None:
                 query = "Struct[@name='{0}']".format(self.ts.gccxml_type(self.name))
                 node = self._root.find(query)
             if node is None and not isinstance(self.name, basestring):
                 # Must be a template with some wacky argument values
-                basename = self.name[0]
-                namet = self.desc['type']
-                query = "Class"
-                for node in self._root.iterfind(query):
-                    if node.attrib['file'] not in self.onlyin:
-                        continue
-                    nodename = node.attrib['name']
-                    if not nodename.startswith(basename):
-                        continue
-                    if '<' not in nodename or not nodename.endswith('>'):
-                        continue
-                    nodet = self._visit_template_class(node)
-                    if nodet == namet:
-                        self._name = nodename  # gross
-                        break
-                else:
-                    node = None
+                node = self._find_class_node()
             if node is None:
                 raise RuntimeError("could not find class {0!r}".format(self.name))
             if node.attrib['file'] not in self.onlyin:
