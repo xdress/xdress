@@ -259,10 +259,12 @@ Untemplated unt = Untemplated();
 // Template member function also missed by GCC-XML
 int untrtn = unt.templated_method<float>(65.0);
 
+template <cppproj::PersonID> class EnumArg {};
+
 #ifdef XDRESS
 std::vector<double> _temp0;
 std::vector< std::vector<double> > _temp1;
+EnumArg<cppproj::JOAN> _temp2;
 #endif
-
 
 #endif

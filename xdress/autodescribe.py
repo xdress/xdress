@@ -69,21 +69,21 @@ name, namespace, signatures, docstring, and extra.
 :name: dict, the function name, see above
 :namespace: str or None, the namespace or module the function lives in.
 :signatures: dict or dict-like, the keys of this dictionary are function call
-    signatures and the values are dicts of non-signature information.  
-    The signatures themselves are tuples. The first element of these tuples is the 
-    method name. The remaining elements (if any) are the function arguments.  
-    Arguments are themselves length-2 tuples whose first elements are the argument 
-    names and the second element is the argument type. The values are themselves 
+    signatures and the values are dicts of non-signature information.
+    The signatures themselves are tuples. The first element of these tuples is the
+    method name. The remaining elements (if any) are the function arguments.
+    Arguments are themselves length-2 tuples whose first elements are the argument
+    names and the second element is the argument type. The values are themselves
     dicts with the following keys:
 
-        :return: the return type of this function. Unlike class constuctors 
-            and destructors, the return type may not be None (only 'void' values 
+        :return: the return type of this function. Unlike class constuctors
+            and destructors, the return type may not be None (only 'void' values
             are allowed).
-        :defaults: a length-N tuple of length-2 tuples of the default argument 
-            kinds and values. N must be the number of arguments in the signature. 
-            In the length-2 tuples, the first element must be a member of the 
-            utils.Arg enum and the second element is the associated default value. 
-            If no default argument exists use utils.Args.NONE as the kind and 
+        :defaults: a length-N tuple of length-2 tuples of the default argument
+            kinds and values. N must be the number of arguments in the signature.
+            In the length-2 tuples, the first element must be a member of the
+            utils.Arg enum and the second element is the associated default value.
+            If no default argument exists use utils.Args.NONE as the kind and
             by convention set the value to None, though this should be ignored in all
             cases.
 
@@ -106,21 +106,21 @@ name, parents, namespace, attrs, methods, docstrings, and extra.
 :attrs: dict or dict-like, the names of the attributes (member variables) of the
     class mapped to their types, given in the format of the type system.
 :methods: dict or dict-like, similar to the attrs except that the keys are now
-    function signatures and the values are dicts of non-signature information.  
-    The signatures themselves are tuples. The first element of these tuples is the 
-    method name. The remaining elements (if any) are the function arguments.  
-    Arguments are themselves length-2 tuples whose first elements are the argument 
-    names and the second element is the argument type. The values are themselves 
+    function signatures and the values are dicts of non-signature information.
+    The signatures themselves are tuples. The first element of these tuples is the
+    method name. The remaining elements (if any) are the function arguments.
+    Arguments are themselves length-2 tuples whose first elements are the argument
+    names and the second element is the argument type. The values are themselves
     dicts with the following keys:
 
-        :return: the return type of this function. If the return type is None 
-            (as opposed to 'void'), then this method is assumed to be a constructor 
+        :return: the return type of this function. If the return type is None
+            (as opposed to 'void'), then this method is assumed to be a constructor
             or destructor.
-        :defaults: a length-N tuple of length-2 tuples of the default argument 
-            kinds and values. N must be the number of arguments in the signature. 
-            In the length-2 tuples, the first element must be a member of the 
-            utils.Arg enum and the second element is the associated default value. 
-            If no default argument exists use utils.Args.NONE as the kind and 
+        :defaults: a length-N tuple of length-2 tuples of the default argument
+            kinds and values. N must be the number of arguments in the signature.
+            In the length-2 tuples, the first element must be a member of the
+            utils.Arg enum and the second element is the associated default value.
+            If no default argument exists use utils.Args.NONE as the kind and
             by convention set the value to None, though this should be ignored in all
             cases.
 
@@ -163,19 +163,19 @@ toast.  A valid description dictionary for this class would be as follows::
             },
         'methods': {
             ('Toaster',): {'return': None, 'defaults': ()},
-            ('Toaster', ('name', 'str')): {'return': None,  
+            ('Toaster', ('name', 'str')): {'return': None,
                 'defaults': ((Args.LIT, ""),)},
             ('Toaster', ('paramtrack', ('set', 'str')), ('name', 'str', '""')): {
-                'return': None,  
+                'return': None,
                 'defaults': ((Args.NONE, None), (Args.LIT, ""))},
             ('~Toaster',): {'return': None, 'defaults': ()},
             ('tostring',): {'return': 'str', 'defaults': ()},
             ('calc',): {'return': 'Material', 'defaults': ()},
             ('calc', ('incomp', ('map', 'int32', 'float64'))): {
-                'return': 'Material', 
+                'return': 'Material',
                 'defaults': ((Args.NONE, None),)},
             ('calc', ('mat', 'Material')): {
-                'return': 'Material', 
+                'return': 'Material',
                 'defaults': ((Args.NONE, None),)},
             ('write', ('filename', 'str')): {
                 'return': 'void',
@@ -267,6 +267,7 @@ if sys.version_info[0] >= 3:
 
 # d = int64, u = uint64
 _GCCXML_LITERAL_INTS = re.compile('(\d+)([du]?)')
+_GCCXML_LITERAL_ENUMS = re.compile('\(\w+::(\w+)\)(\d+)')
 
 _none_arg = Arg.NONE, None
 _none_return = {'return': None, 'defaults': ()}
@@ -369,7 +370,7 @@ hack_template_args = {
 #
 
 def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                    undefines=(), extra_parser_args=(), ts=None, verbose=False, 
+                    undefines=(), extra_parser_args=(), ts=None, verbose=False,
                     debug=False, builddir='build', onlyin=None, language='c++',
                     clang_includes=()):
     """Use GCC-XML to describe the class.
@@ -414,8 +415,8 @@ def gccxml_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     posixfilename = posixpath.join(*ntpath.split(filename)) if os.name == 'nt' \
                     else filename
     root = astparsers.gccxml_parse(posixfilename, includes=includes, defines=defines,
-                                   undefines=undefines, 
-                                   extra_parser_args=extra_parser_args, 
+                                   undefines=undefines,
+                                   extra_parser_args=extra_parser_args,
                                    verbose=verbose, debug=debug, builddir=builddir)
     if onlyin is None:
         onlyin = set([filename])
@@ -497,16 +498,20 @@ class GccxmlBaseDescriber(object):
                                        node.attrib.get('id', ''),
                                        node.attrib.get('name', None)))
 
-    def _template_literal_arg(self, targ):
-        """Parses a literal template parameter."""
-        if targ == 'true':
-            return True
-        elif targ == 'false':
-            return False
-        m = _GCCXML_LITERAL_INTS.match(targ)
-        if m is not None:
-            return int(m.group(1))
-        return targ
+    def _template_literal_enum_val(self, targ):
+        """Finds the node associated with an enum value in a template"""
+        m = _GCCXML_LITERAL_ENUMS.match(targ)
+        if m is None:
+            return None
+        enumname, val = m.groups()
+        query = ".//*[@name='{0}']"
+        node = self._root.find(query.format(enumname))
+        if node is None:
+            return None
+        for child in node.iterfind('EnumValue'):
+            if  child.attrib['init'] == val:
+                return child
+        return None
 
     def _visit_template_function(self, node):
         nodename = node.attrib['name']
@@ -525,8 +530,14 @@ class GccxmlBaseDescriber(object):
         for targ in template_args:
             targ_node = self._root.find(query.format(targ))
             if targ_node is None:
-                targ_node = self._template_literal_arg(targ)
-                targ_islit.append(True)
+                try:
+                    targ_node = c_literal(targ)
+                    targ_islit.append(True)
+                except ValueError:
+                    targ_node = self._template_literal_enum_val(targ)
+                    if targ_node is None:
+                        continue
+                    targ_islit.append(False)
             else:
                 targ_islit.append(False)
             targ_nodes.append(targ_node)
@@ -534,8 +545,10 @@ class GccxmlBaseDescriber(object):
         for targ_node, targ_lit in zip(targ_nodes, targ_islit):
             if targ_lit:
                 targ_kind, targ_value = Arg.LIT, targ_node
-            else:
+            elif 'id' in targ_node.attrib:
                 targ_kind, targ_value = Arg.TYPE, self.type(targ_node.attrib['id'])
+            else:
+                targ_kind, targ_value = Arg.VAR, targ_node.attrib['name']
             argkinds.append(targ_kind)
             inst.append(targ_value)
         self._level -= 1
@@ -571,7 +584,7 @@ class GccxmlBaseDescriber(object):
             for targ in targs:
                 targ_node = self._root.find(query.format(targ))
                 if targ_node is None:
-                    targ_node = self._template_literal_arg(targ)
+                    targ_node = c_literal(targ)
                     targ_islit.append(True)
                 else:
                     targ_islit.append(False)
@@ -580,8 +593,10 @@ class GccxmlBaseDescriber(object):
         for targ_node, targ_lit in zip(targ_nodes, targ_islit):
             if targ_lit:
                 targ_kind, targ_value = Arg.LIT, targ_node
-            else:
+            elif 'id' in targ_node.attrib:
                 targ_kind, targ_value = Arg.TYPE, self.type(targ_node.attrib['id'])
+            else:
+                targ_kind, targ_value = Arg.VAR, targ_node.attrib['name']
             argkinds.append(targ_kind)
             inst.append(targ_value)
         self._level -= 1
@@ -656,7 +671,7 @@ class GccxmlBaseDescriber(object):
         if self._currfuncsig is None:
             return
         key = (funcname,) + tuple(self._currfuncsig)
-        self.desc[self._funckey][key] = {'return': rtntype, 
+        self.desc[self._funckey][key] = {'return': rtntype,
                                          'defaults': tuple(self._currargkind)}
         self._currfuncsig = None
         self._currargkind = None
@@ -881,6 +896,26 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
         # maybe it should, but I think this will get us pretty far.
         self._name = None
 
+    def _find_class_node(self):
+        basename = self.name[0]
+        namet = self.desc['type']
+        query = "Class"
+        for node in self._root.iterfind(query):
+            if node.attrib['file'] not in self.onlyin:
+                continue
+            nodename = node.attrib['name']
+            if not nodename.startswith(basename):
+                continue
+            if '<' not in nodename or not nodename.endswith('>'):
+                continue
+            nodet = self._visit_template_class(node)
+            if nodet == namet:
+                self._name = nodename  # gross
+                break
+        else:
+            node = None
+        return node
+
     def visit(self, node=None):
         """Visits the class node and all sub-nodes, generating the description
         dictionary as it goes.
@@ -893,30 +928,17 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
 
         """
         if node is None:
-            query = "Class[@name='{0}']".format(self.ts.gccxml_type(self.name))
-            node = self._root.find(query)
+            if not isinstance(self.name, basestring) and self.name not in self.ts.argument_kinds:
+                node = self._find_class_node()
+            if node is None:
+                query = "Class[@name='{0}']".format(self.ts.gccxml_type(self.name))
+                node = self._root.find(query)
             if node is None:
                 query = "Struct[@name='{0}']".format(self.ts.gccxml_type(self.name))
                 node = self._root.find(query)
             if node is None and not isinstance(self.name, basestring):
                 # Must be a template with some wacky argument values
-                basename = self.name[0]
-                namet = self.desc['type']
-                query = "Class"
-                for node in self._root.iterfind(query):
-                    if node.attrib['file'] not in self.onlyin:
-                        continue
-                    nodename = node.attrib['name']
-                    if not nodename.startswith(basename):
-                        continue
-                    if '<' not in nodename or not nodename.endswith('>'):
-                        continue
-                    nodet = self._visit_template_class(node)
-                    if nodet == namet:
-                        self._name = nodename  # gross
-                        break
-                else:
-                    node = None
+                node = self._find_class_node()
             if node is None:
                 raise RuntimeError("could not find class {0!r}".format(self.name))
             if node.attrib['file'] not in self.onlyin:
@@ -1086,8 +1108,8 @@ class GccxmlFuncDescriber(GccxmlBaseDescriber):
 #
 
 def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                   undefines=(), extra_parser_args=(), ts=None, verbose=False, 
-                   debug=False, builddir=None, onlyin=None, language='c++', 
+                   undefines=(), extra_parser_args=(), ts=None, verbose=False,
+                   debug=False, builddir=None, onlyin=None, language='c++',
                    clang_includes=()):
     """Use Clang to describe the class.
 
@@ -1127,9 +1149,9 @@ def clang_describe(filename, name, kind, includes=(), defines=('XDRESS',),
         API bindings.
     """
     tu = astparsers.clang_parse(filename, includes=includes, defines=defines,
-                                undefines=undefines, 
-                                extra_parser_args=extra_parser_args, verbose=verbose, 
-                                debug=debug, language=language, 
+                                undefines=undefines,
+                                extra_parser_args=extra_parser_args, verbose=verbose,
+                                debug=debug, language=language,
                                 clang_includes=clang_includes)
     ts = ts or TypeSystem()
     if onlyin is None:
@@ -1208,10 +1230,10 @@ def clang_find_decls(tu, name, kinds, onlyin, namespace=None):
     return decls
 
 # TODO: This functionality belongs in TypeSystem
-def canon_template_arg(ts, arg):
-    if isinstance(arg,int):
-        return arg
-    return ts.canon(arg)
+def canon_template_arg(ts, kind, arg):
+    if kind == Arg.TYPE:
+        return ts.canon(arg)
+    return arg
 
 def clang_where(namespace, filename):
     where = ''
@@ -1228,7 +1250,7 @@ def clang_find_class(tu, name, ts, namespace=None, filename=None, onlyin=None):
         basename = name[0]
         if name[-1] != 0:
             raise NotImplementedError('no predicate support in clang class description')
-        args = tuple(canon_template_arg(ts,a) for a in name[1:-1])
+        args = name[1:-1]
         kinds = CursorKind.CLASS_TEMPLATE,
     else:
         basename = name
@@ -1242,9 +1264,11 @@ def clang_find_class(tu, name, ts, namespace=None, filename=None, onlyin=None):
             return decl
         else:
             # Search for the desired template specialization
+            kinds = clang_template_param_kinds(decl)
+            args = tuple(canon_template_arg(ts,k,a) for k,a in zip(kinds, args))
             args = clang_expand_template_args(decl, args)
             for spec in decl.get_specializations():
-                if args == tuple(canon_template_arg(ts,a) for a in clang_describe_template_args(spec)):
+                if args == tuple(canon_template_arg(ts,k,a) for k,a in zip(kinds, clang_describe_template_args(spec))):
                     return spec
 
     # Nothing found, time to complain
@@ -1254,7 +1278,7 @@ def clang_find_class(tu, name, ts, namespace=None, filename=None, onlyin=None):
     elif len(decls)>1:
         raise ValueError("class '{0}' found more than once ({2} times) {1}".format(name, len(decls), where))
     else:
-        raise ValueError("class '{0}' found, but specialization {1} not found{1}".format(cls, name, where))
+        raise ValueError("class '{0}' found, but specialization {1} not found{2}".format(basename, name, where))
 
 def clang_find_function(tu, name, ts, namespace=None, filename=None, onlyin=None):
     """Find all nodes corresponding to a given function.  If there is a separate declaration
@@ -1262,7 +1286,7 @@ def clang_find_function(tu, name, ts, namespace=None, filename=None, onlyin=None
     templated = isinstance(name, tuple)
     if templated:
         basename = name[0]
-        args = tuple(canon_template_arg(ts,a) for a in name[1:])
+        args = name[1:]
         kinds = CursorKind.FUNCTION_TEMPLATE,
     else:
         basename = name
@@ -1275,9 +1299,11 @@ def clang_find_function(tu, name, ts, namespace=None, filename=None, onlyin=None
         else:
             # Search for the desired function specialization
             decl, = decls # TODO: Support multiple decl case
+            kinds = clang_template_param_kinds(decl)
+            args = tuple(canon_template_arg(ts,k,a) for k,a in zip(kinds, args))
             args = clang_expand_template_args(decl, args)
             for spec in decl.get_specializations():
-                if args == tuple(canon_template_arg(ts,a) for a in clang_describe_template_args(spec)):
+                if args == tuple(canon_template_arg(ts,k,a) for k,a in zip(kinds, clang_describe_template_args(spec))):
                     return [spec]
 
     # Nothing found, time to complain
@@ -1537,6 +1563,20 @@ if 0:
                 break
         return count,tuple(defaults)
 
+def clang_template_param_kinds(node):
+    '''Find the Arg kind of each template argument of node'''
+    kinds = []
+    for kid in node.get_children():
+        if kid.kind == CursorKind.TEMPLATE_TYPE_PARAMETER:
+            kinds.append(Arg.TYPE)
+        elif kid.kind == CursorKind.TEMPLATE_NON_TYPE_PARAMETER:
+            typ = clang_describe_type(kid.type, kid.location)
+            kinds.append(Arg.VAR if isinstance(typ, tuple) and typ[0]=='enum' else Arg.LIT)
+        else:
+            # Template arguments come first, so we're done
+            break
+    return kinds
+
 def clang_describe_template_args(node):
     ''' TODO: Broken version handling defaults automatically
     _,defaults = clang_template_arg_info(node.specialized_template)
@@ -1562,16 +1602,37 @@ def clang_expand_template_args(node, args):
     return args
 
 def clang_describe_template_arg(arg, loc):
-    if arg.kind == CursorKind.TYPE_TEMPLATE_ARG:
+    '''Describe a template argument'''
+    kind = arg.kind
+    if kind == CursorKind.TYPE_TEMPLATE_ARG:
         return clang_describe_type(arg.type, loc)
     try:
         s = arg.spelling.strip()
-        return c_literal(s)
+        lit = c_literal(s)
     except:
         pass
+    else:
+        if kind == CursorKind.INTEGRAL_TEMPLATE_ARG:
+            typ = clang_describe_type(arg.type, loc)
+            if isinstance(typ, tuple) and typ[0]=='enum':
+                # Convert integers to enum names
+                lit = str(lit)
+                for n,v in typ[2]:
+                    if v == lit:
+                        return n
+                else:
+                    raise RuntimeError('template argument {0} is invalid, expected one of {1} at {2}'
+                        .format(lit, ', '.join('%s=%s'%(n,v) for n,v in typ[2]), clang_str_location(loc)))
+        return lit
+    if kind == CursorKind.EXPRESSION_TEMPLATE_ARG:
+        exp, = arg.get_children()
+        if exp.referenced:
+            exp = exp.referenced
+        if exp.kind == CursorKind.ENUM_CONSTANT_DECL:
+            return s
     # Nothing worked, so bail
     raise NotImplementedError('template argument {0}, kind {1} at {2}'
-        .format(s, arg.kind.name, clang_str_location(loc)))
+        .format(s, kind.name, clang_str_location(loc)))
 
 def clang_describe_expression(exp):
     # For now, we just use clang_range_str to pull the expression out of the file.
@@ -1709,7 +1770,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
             self._currargkind = None
             return
         key = (funcname,) + tuple(self._currfuncsig)
-        self.desc[self._funckey][key] = {'return': rtntype, 
+        self.desc[self._funckey][key] = {'return': rtntype,
                                          'defaults': tuple(self._currargkind)}
         self._currfuncsig = None
         self._currargkind = None
@@ -1725,7 +1786,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         if isinstance(node.type, pycparser.c_ast.FuncDecl):
             self.visit(node.type)
             key = (node.name,) + self._currtype[1]
-            self.desc[self._funckey][key] = {'return': self._currtype[2], 
+            self.desc[self._funckey][key] = {'return': self._currtype[2],
                 'defaults': (_none_arg,) * len(self._currtype[1])}
             self._currtype = None
         else:
@@ -2012,7 +2073,7 @@ _pycparser_describers = {
     }
 
 def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
-                       undefines=(), extra_parser_args=(), ts=None, verbose=False, 
+                       undefines=(), extra_parser_args=(), ts=None, verbose=False,
                        debug=False, builddir='build', onlyin=None, language='c',
                        clang_includes=()):
     """Use pycparser to describe the fucntion or struct (class).
@@ -2055,8 +2116,8 @@ def pycparser_describe(filename, name, kind, includes=(), defines=('XDRESS',),
     """
     assert language=='c'
     root = astparsers.pycparser_parse(filename, includes=includes, defines=defines,
-                                      undefines=undefines, 
-                                      extra_parser_args=extra_parser_args, 
+                                      undefines=undefines,
+                                      extra_parser_args=extra_parser_args,
                                       verbose=verbose, debug=debug, builddir=builddir)
     if onlyin is None:
         onlyin = set([filename])
@@ -2094,8 +2155,8 @@ _describers = {
     }
 
 def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',),
-             undefines=(), extra_parser_args=(), parsers='gccxml', ts=None, 
-             verbose=False, debug=False, builddir='build', language='c++', 
+             undefines=(), extra_parser_args=(), parsers='gccxml', ts=None,
+             verbose=False, debug=False, builddir='build', language='c++',
              clang_includes=()):
     """Automatically describes an API element in a file.  This is the main entry point.
 
@@ -2155,8 +2216,8 @@ def describe(filename, name=None, kind='class', includes=(), defines=('XDRESS',)
     parser = astparsers.pick_parser(language, parsers)
     describer = _describers[parser]
     desc = describer(filename, name, kind, includes=includes, defines=defines,
-                     undefines=undefines, extra_parser_args=extra_parser_args, ts=ts, 
-                     verbose=verbose, debug=debug, builddir=builddir, onlyin=onlyin, 
+                     undefines=undefines, extra_parser_args=extra_parser_args, ts=ts,
+                     verbose=verbose, debug=debug, builddir=builddir, onlyin=onlyin,
                      language=language, clang_includes=clang_includes)
     return desc
 
@@ -2293,11 +2354,11 @@ class XDressPlugin(astparsers.ParserPlugin):
         else:
             srcdesc = describe(name.srcfiles, name=name.srcname, kind=kind,
                                includes=rc.includes, defines=rc.defines,
-                               undefines=rc.undefines, 
-                               extra_parser_args=rc.extra_parser_args, 
-                               parsers=rc.parsers, ts=rc.ts, verbose=rc.verbose, 
-                               debug=rc.debug, builddir=rc.builddir, 
-                               language=name.language, 
+                               undefines=rc.undefines,
+                               extra_parser_args=rc.extra_parser_args,
+                               parsers=rc.parsers, ts=rc.ts, verbose=rc.verbose,
+                               debug=rc.debug, builddir=rc.builddir,
+                               language=name.language,
                                clang_includes=rc.clang_includes)
             srcdesc['name'] = dict(zip(name._fields, name))
             cache[name, kind] = srcdesc
@@ -2342,6 +2403,7 @@ class XDressPlugin(astparsers.ParserPlugin):
 
     def compute_variables(self, rc):
         """Computes variables descriptions and loads them into the environment."""
+        ts = rc.ts
         env = rc.env
         cache = rc._cache
         for i, var in enumerate(rc.variables):
@@ -2351,6 +2413,8 @@ class XDressPlugin(astparsers.ParserPlugin):
                 pprint(desc)
             cache.dump()
             self.adddesc2env(desc, env, var)
+            ts.register_variable_namespace(desc['name']['srcname'], desc['namespace'],
+                                           desc['type'])
             if 0 == i%rc.clear_parser_cache_period:
                 astparsers.clearmemo()
 
