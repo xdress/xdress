@@ -11,12 +11,22 @@ def test_a_better_name():
     assert_array_almost_equal(exp, obs)
 
 def test_func1():
-    assert_true(basics.func1({1: 10.0}, {2: 42.0}))
+    a = {1: 10.0}
+    b = {2: 42.0, 3: 4}
+    assert_true (basics.func1(a, b))
+    assert_false(basics.func1(b, a))
+    # Check that keyword arguments work in any order
+    assert_true (basics.func1(i=a, j=b))
+    assert_true (basics.func1(j=b, i=a))
+    assert_false(basics.func1(i=b, j=a))
+    assert_false(basics.func1(j=a, i=b))
 
 def test_func2():
     # FIXME
-    #exp = 0.0
-    #obs = basics.func2([13], [14])[0][0]
+    #exp = [[0.0,0.0]]
+    #obs = basics.func2([13], [14,15])
+    #obs2 = basics.func2(b=[14,15], a=[13])
+    #assert_equal(exp, obs)
     exp = []
     obs = basics.func2([], [])
     assert_equal(len(exp), len(obs))
@@ -79,7 +89,8 @@ def test_silly_bool_min():
     assert_false(basics.silly_bool_min(1, False))
 
 def test_a():
-    x = basics.A(10)
+    x = basics.A(5)
+    x.a = 10
     assert_equal(x.a, 10)
     x.a = 42
     assert_equal(x.a, 42)
@@ -87,8 +98,10 @@ def test_a():
     assert_equal(x.a, 1)
 
 def test_b():
-    x = basics.A(10)
-    y = basics.B(11)
+    x = basics.A()
+    x.a = 10
+    y = basics.B()
+    y.b = 11
     assert_equal(y.b, 11)
     y.b = 43
     assert_equal(y.b, 43)
@@ -99,9 +112,12 @@ def test_b():
     assert_true(isinstance(y, basics.A))
     
 def test_c():
-    x = basics.A(10)
-    y = basics.B(11)
-    z = basics.C(12)
+    x = basics.A()
+    x.a = 10
+    y = basics.B()
+    y.b = 11
+    z = basics.C()
+    z.c = 12
     assert_equal(z.c, 12)
     z.c = 44
     assert_equal(z.c, 44)
@@ -151,3 +167,11 @@ def test_lessthan_int_3():
     assert_true(basics.lessthan['int32', 3](-1))
     assert_true(basics.lessthan['int32', 3](2))
     assert_false(basics.lessthan['int32', 3](42))
+
+
+def test_void_fp_struct():
+    x = basics.VoidFPStruct()
+    q = []
+    x.op = q.append
+    basics.call_with_void_fp_struct(x)
+    assert_equal(q, [10])

@@ -13,7 +13,7 @@ std::vector<double> func0(double x, std::vector<double> vec) {
 
 
 bool func1(std::map<int, double> i, std::map<int, double> j) {
-  return true;
+  return i.size() < j.size();
 };
 
 
@@ -25,6 +25,10 @@ std::vector< std::vector<int> > func2(std::vector<int> a, std::vector<int> b) {
 
 int func3(char * val, char ** arr, int arr_len) {
   return -1;
+};
+
+void call_with_void_fp_struct(VoidFPStruct x) {
+  x.op(10);
 };
 
 // FIXME #96

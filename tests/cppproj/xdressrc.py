@@ -68,7 +68,7 @@ stlcontainers_module = 'stlc'
 
 _fromsrcdir = lambda x: os.path.join('src', x)
 _inbasics = {'srcfiles': _fromsrcdir('basics.[ch]*'),
-             'incfiles': 'basics.h',
+             'incfiles': 'basics.hpp',  # trick to get around cython generating *.h
              'language': 'c++',
              }
 _indiscovery = {'srcfiles': _fromsrcdir('discovery*'),
@@ -83,6 +83,7 @@ variables = [
 
 functions = [
     apiname('voided', **_inbasics),
+    apiname('call_with_void_fp_struct', **_inbasics), 
     {'srcname': 'func0', 
      'tarname': 'a_better_name',
      'incfiles': 'basics.h',
@@ -107,7 +108,8 @@ functions = [
     ]
 
 classes = [
-#    apiname('struct0', 'basics', 'pybasics', 'My_Struct_0'),  FIXME This needs more work
+    #apiname('struct0', 'basics', 'pybasics', 'My_Struct_0'),  FIXME This needs more work
+    apiname('VoidFPStruct', **_inbasics),
     apiname('A', **_inbasics),
     apiname('B', **_inbasics),
     apiname('C', **_inbasics),
@@ -130,6 +132,7 @@ classes = [
     apiname(('TClass2', 'float32'), **_inbasics), 
     apiname('NoDefault', **_inbasics), 
     apiname('NoDefaultChild', **_inbasics), 
+    apiname(('EnumArg', 'JOAN'), tarbase='pybasics', **_inbasics),
     ]
 
 del os

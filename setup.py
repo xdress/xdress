@@ -24,18 +24,9 @@ XXXXXXX       XXXXXXXDDDDDDDDDDDDD
 ]
 
 
-def main_body():
+def main():
     print(xdress_logos[0])
     configure.setup()
-
-
-def main():
-    success = False
-    try:
-        main_body()
-        success = True
-    finally:
-        configure.final_message(success)
 
 if __name__ == "__main__":
     main()

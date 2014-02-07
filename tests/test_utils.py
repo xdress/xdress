@@ -1,9 +1,11 @@
 from __future__ import print_function
 import os
 
+import numpy as np
+
 from xdress.utils import NotSpecified, RunControl, flatten, split_template_args, \
     ishashable, memoize, memoize_method, apiname, ensure_apiname, sortedbytype, \
-    cppint, touch
+    c_literal, touch
 
 from nose.tools import assert_equal, with_setup, assert_true, assert_false, \
     assert_not_equal
@@ -169,20 +171,29 @@ def test_sortedbytype():
     for x, exp in cases:
         yield check_sortedbytype, x, exp
 
-def check_cppint(s, exp):
-    obs = cppint(s)
+def check_literal(s, exp):
+    obs = c_literal(s)
     assert_equal(exp, obs)
 
 @unit
-def test_cppint():
-    cases = [
-        ('42', 42),
-        ('+42LLu', 42),
-        ('-0', 0),
-        ('0o52', 42),
-        ('-052', -42),
-        ('0B101010', 42),
-        ('-0x2A', -42),
-        ]
-    for s, x in cases:
-        yield check_cppint, s, x
+def test_literal():
+    cases = {
+        ' 42': 42,
+        '+42LLu': 42,
+        '-0': 0,
+        '0o52': 42,
+        '-052': -42,
+        '0B101010': 42,
+        '-0x2A': -42,
+        '3.141592653589793': 3.141592653589793,
+        '-3.141592653589793': -3.141592653589793,
+        '3.141592653589793f': np.float32('3.1415927'),
+        '-314.1592653589793e-2f': np.float32('-3.1415927'),
+        '.31415926535897932385e1l': np.longfloat('3.1415926535897932385'),
+        'true': True,
+        'false': False,
+        r'"\tk\012" ': '\tk\012',
+        r"'c'": 'c',
+        }
+    for s, x in cases.items():
+        yield check_literal, s, x

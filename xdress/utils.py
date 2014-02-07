@@ -9,6 +9,7 @@ from __future__ import print_function
 import os
 import io
 import re
+import ast
 import sys
 import glob
 import functools
@@ -17,10 +18,18 @@ from pprint import pformat
 from collections import Mapping, Iterable, Hashable, Sequence, namedtuple
 from hashlib import md5
 from warnings import warn
+
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
+
+try:
+    from enum import Enum, IntEnum
+except ImportError:
+    from ._enum import Enum, IntEnum
+
+import numpy as np
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -64,45 +73,68 @@ class indentstr(str):
         return getattr(super(indentstr, self), key)
 
 
+class Arg(IntEnum):
+    NONE = 0
+    TYPE = 1
+    LIT = 2
+    VAR = 3
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
+
 def expand_default_args(methods):
     """This function takes a collection of method tuples and expands all of
     the default arguments, returning a set of all methods possible."""
     methitems = set()
-    for mkey, mrtn in methods:
+    for mkey, mval in methods:
         mname, margs = mkey[0], mkey[1:]
-        havedefaults = [3 == len(arg) for arg in margs]
+        mrtn = mval['return']
+        mdefargs = mval['defaults']
+        havedefaults = [arg is not Arg.NONE for arg in margs]
         if any(havedefaults):
             # expand default arguments
             n = havedefaults.index(True)
             items = [((mname,)+tuple(margs[:n]), mrtn)] + \
-                    [((mname,)+tuple(margs[:i]), mrtn) for i in range(n+1,len(margs)+1)]
+                [((mname,)+tuple(margs[:i]), mrtn) for i in range(n+1,len(margs)+1)]
             methitems.update(items)
         else:
             # no default args
             methitems.add((mkey, mrtn))
     return methitems
 
+_bool_literals = {'true': True, 'false': False}
+_c_literal_int = re.compile(r'^([+-]?([1-9][0-9]*|0o?[0-7]+|0x[0-9a-f]+|'
+                                   r'0b[01]+|0))u?(l{1,2})?u?$')
+_c_int_bases = {'0x': 16, '0o': 8, '0b': 2, '0': 8,
+                '00': 8, '01': 8, '02': 8, '03': 8, '04': 8, '05': 8, '06': 8, '07': 8}
+_c_float = re.compile(r'^([+-]?([0-9]+\.[0-9]*|\.[0-9]+)(e[+-]?[0-9]+)?)([lf]?)$')
+_c_float_types = {'': float, 'f': np.float32, 'l': np.longfloat}
 
-_CPP_LITERAL_INT = re.compile('[+-]?([1-9][0-9]*|0o?[0-7]+|0x[0-9a-f]+|'
-                              '0b[01]+|0)u?(l{1,2})?u?')
-
-def cppint(s):
-    """Converts a C++ literal integer string to a Python int.
-    """
-    s = s.lower()
-    m = _CPP_LITERAL_INT.match(s.lower())
-    g1 = m.group(1)
-    if g1.startswith('0x'):
-        base = 16
-    elif g1.startswith('0o'):
-        base = 8
-    elif g1.startswith('0b'):
-        base = 2
-    elif g1.startswith('0'):
-        base = 8
-    else:
-        base = 10
-    return int(s.replace('u', "").replace('l', ""), base)
+def c_literal(s):
+    """Convert a C/C++ literal to the corresponding Python value."""
+    s = s.strip()
+    try:
+        # ast.literal_eval isn't precisely correct, since there are Python
+        # literals which aren't valid C++, but it is close enough and faster
+        # than the custom code below in the common case.
+        return ast.literal_eval(s)
+    except (ValueError, SyntaxError):
+        pass
+    if s in _bool_literals:
+        return _bool_literals[s]
+    lo = s.lower()
+    m = _c_literal_int.match(lo)
+    if m:
+        base = _c_int_bases.get(m.group(2)[:2], 10)
+        return int(m.group(1), base)
+    m = _c_float.match(lo)
+    if m:
+        return _c_float_types[m.group(4)](m.group(1))
+    raise ValueError('unknown literal: {0!r}'.format(s))
     
 def newoverwrite(s, filename, verbose=False):
     """Useful for not forcing re-compiles and thus playing nicely with the
@@ -311,6 +343,24 @@ class RunControl(object):
             elif k in self._updaters and k in self:
                 v = self._updaters[k](getattr(self, k), v)
             setattr(self, k, v)
+
+def parse_global_rc():
+    '''Search a global xdressrc file and parse if it exists.
+    If nothing is found, an empty RunControl is returned.'''
+    home = os.path.expanduser('~')
+    globalrcs = [os.path.join(home, '.xdressrc'),
+                 os.path.join(home, '.xdressrc.py'),
+                 os.path.join(home, '.config', 'xdressrc'),
+                 os.path.join(home, '.config', 'xdressrc.py'),
+                 ]
+    rc = RunControl()
+    for globalrc in globalrcs:
+        if not os.path.isfile(globalrc):
+            continue
+        globalrcdict = {}
+        exec_file(globalrc, globalrcdict, globalrcdict)
+        rc._update(globalrcdict)
+    return rc
 
 _lang_exts = {
     'c': 'c',
@@ -617,7 +667,7 @@ def parse_template(s, open_brace='<', close_brace='>', separator=','):
         return s
     if open_brace not in s and close_brace not in s:
         return s
-    t = [s.split(open_brace, 1)[0]]
+    t = [s.split(open_brace, 1)[0].split('::')[-1]]
     targs = split_template_args(s, open_brace=open_brace,
                                 close_brace=close_brace, separator=separator)
     for targ in targs:

@@ -260,13 +260,14 @@ from contextlib import contextmanager
 from collections import Sequence, Set, Iterable, MutableMapping, Mapping
 from numbers import Number
 from pprint import pprint, pformat
+from warnings import warn
 import gzip
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
 
-from .utils import flatten, indent, memoize_method, infer_format
+from .utils import Arg, flatten, indent, memoize_method, infer_format
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -276,7 +277,8 @@ class TypeSystem(object):
     """
 
     datafields = set(['base_types', 'template_types', 'refined_types', 'humannames', 
-        'extra_types', 'dtypes', 'stlcontainers', 'type_aliases', 'cpp_types', 
+        'extra_types', 'dtypes', 'stlcontainers', 'argument_kinds', 
+        'variable_namespace', 'type_aliases', 'cpp_types', 
         'numpy_types', 'from_pytypes', 'cython_ctypes', 'cython_cytypes', 
         'cython_pytypes', 'cython_cimports', 'cython_cyimports', 'cython_pyimports', 
         'cython_functionnames', 'cython_classnames', 'cython_c2py_conv', 
@@ -284,7 +286,8 @@ class TypeSystem(object):
 
     def __init__(self, base_types=None, template_types=None, refined_types=None, 
                  humannames=None, extra_types='xdress_extra_types', dtypes='dtypes',
-                 stlcontainers='stlcontainers', type_aliases=None, cpp_types=None, 
+                 stlcontainers='stlcontainers', argument_kinds=None, 
+                 variable_namespace=None, type_aliases=None, cpp_types=None, 
                  numpy_types=None, from_pytypes=None, cython_ctypes=None, 
                  cython_cytypes=None, cython_pytypes=None, cython_cimports=None, 
                  cython_cyimports=None, cython_pyimports=None, 
@@ -309,6 +312,15 @@ class TypeSystem(object):
             The name of the xdress numpy dtypes wrapper module.
         stlcontainers : str, optional
             The name of the xdress C++ standard library containers wrapper module.
+        argument_kinds : dict, optional
+            Templates types have arguments. This is a mapping from type name to a 
+            tuple of utils.Arg kind flags.  The order in the tuple matches the value
+            in template_types. This is only vaid for concrete types, ie 
+            ('vector', 'int', 0) and not just 'vector'.
+        variable_namespace : dict, optional
+            Templates arguments may be variables. These variables may live in a 
+            namespace which is required for specifiying the type.  This is a 
+            dictionary mapping variable names to thier namespace.
         type_aliases : dict, optional
             Aliases that may be used to substitute one type name for another.
         cpp_types : dict, optional
@@ -405,6 +417,12 @@ class TypeSystem(object):
         self.extra_types = extra_types
         self.dtypes = dtypes
         self.stlcontainers = stlcontainers
+        self.argument_kinds = argument_kinds if argument_kinds is not None else {
+            ('vector', 'bool', 0): (Arg.TYPE,),
+            ('vector', 'char', 0): (Arg.TYPE,),
+            }
+        self.variable_namespace = variable_namespace if \
+                                  variable_namespace is not None else {}
         self.type_aliases = _LazyConfigDict(type_aliases if type_aliases is not \
                                                                       None else {
             'i': 'int32',
@@ -844,9 +862,12 @@ class TypeSystem(object):
                 cached=False, proxy_name=rtnprox, existing_name=rtncall)
             if rtndecl is None and rtnbody is None:
                 rtnprox = rtnname
-            rtndecl = indent([rtndecl, 
-                              "cdef {0} {1}".format(ts.cython_ctype(t[2][2]), 
-                              rtncall)])
+            rtndecls = [rtndecl]
+            returns_void = (t[2][2] == 'void')
+            if not returns_void:
+                 rtndecls.append("cdef {0} {1}".format(ts.cython_ctype(t[2][2]), 
+                                                       rtncall))
+            rtndecl = indent(rtndecls)
             rtnbody = indent(rtnbody)
             s = ('def {{proxy_name}}({arglist}):\n'
                  '{argdecls}\n'
@@ -854,15 +875,16 @@ class TypeSystem(object):
                  '    if {{var}} == NULL:\n'
                  '        raise RuntimeError("{{var}} is NULL and may not be '
                                              'safely called!")\n'
-                 '{argbodys}\n'
+                 '{argbodys}\n')
+            s += '    {{var}}({carglist})\n' if returns_void else \
                  '    {rtncall} = {{var}}({carglist})\n'
-                 '{rtnbody}\n')
+            s += '{rtnbody}\n'
             s = s.format(arglist=", ".join(argnames), argdecls=argdecls,
                          cvartypeptr=ts.cython_ctype(t_).format(type_name='cvartype'),
                          argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
                          rtncall=rtncall, carglist=", ".join(argrtns), rtnbody=rtnbody)
             caches = 'if {cache_name} is None:\n' + indent(s)
-            if t[2][2] != 'void':
+            if not returns_void:
                 caches += "\n        return {rtnrtn}".format(rtnrtn=rtnrtn)
                 caches += '\n    {cache_name} = {proxy_name}\n'
             return s, s, caches
@@ -1051,14 +1073,18 @@ class TypeSystem(object):
                 rtnprox = rtnname
             rtndecl = indent([rtndecl])
             rtnbody = indent([rtnbody])
+            returns_void = (t[2][2] == 'void')
+            if returns_void:
+                rtnrtn = ''
             s = ('cdef {rtnct} {{proxy_name}}({arglist}):\n'
                  '{argdecls}\n'
                  '{rtndecl}\n'
                  '    global {{var}}\n'
-                 '{argbodys}\n'
+                 '{argbodys}\n')
+            s += '    {{var}}({pyarglist})\n' if returns_void else \
                  '    {rtncall} = {{var}}({pyarglist})\n'
-                 '{rtnbody}\n'
-                 '    return {rtnrtn}\n')
+            s += ('{rtnbody}\n'
+                  '    return {rtnrtn}\n')
             arglist = ", ".join(["{0} {1}".format(*x) for x in zip(argcts, argnames)])
             pyarglist=", ".join(argrtns)
             s = s.format(rtnct=rtnct, arglist=arglist, argdecls=argdecls, 
@@ -1290,7 +1316,7 @@ class TypeSystem(object):
         s += ")"
         return s
 
-    #################### Importnat Methods below ###############################
+    #################### Important Methods below ###############################
 
     @memoize_method
     def istemplate(self, t):
@@ -1303,7 +1329,10 @@ class TypeSystem(object):
 
     @memoize_method
     def isenum(self, t):
-        t = self.canon(t)
+        try:
+            t = self.canon(t)
+        except TypeError:
+            return False
         return isinstance(t, Sequence) and t[0] == 'int32' and \
            isinstance(t[1], Sequence) and t[1][0] == 'enum'
 
@@ -1427,14 +1456,15 @@ class TypeSystem(object):
                             raise
                         filledt.append(canontt)
                     elif isinstance(tt, Sequence):
-                        filledt.append(self.canon(tt))
+                        if len(tt) == 2 and tt[0] in Arg:
+                            filledt.append(self.canon(tt[1]))
+                        else:
+                            filledt.append(self.canon(tt))
                     else:
                         _raise_type_error(tt)
                 filledt.append(last_val)
                 return tuple(filledt)
             else:
-                #if 2 < tlen:
-                #    _raise_type_error(t)
                 return (self.canon(t0), last_val)
         else:
             _raise_type_error(t)
@@ -1479,11 +1509,17 @@ class TypeSystem(object):
             x, y = t, last
         return '{0} {1}'.format(x, y)
 
+    def _cpp_var_name(self, var):
+        ns = self.variable_namespace.get(var, '')
+        if len(ns) > 0:
+            name = ns + "::" + var
+        else:
+            name = var
+        return name
+
     @memoize_method
     def cpp_type(self, t):
         """Given a type t, returns the corresponding C++ type declaration."""
-        if t in self.cpp_types:
-            return self.cpp_types[t]
         t = self.canon(t)
         if isinstance(t, basestring):
             if  t in self.base_types:
@@ -1510,13 +1546,23 @@ class TypeSystem(object):
             template_name = self.cpp_types[t[0]]
             assert template_name is not NotImplemented
             template_filling = []
-            for x in t[1:-1]:
-                if isinstance(x, bool):
+            kinds = self.argument_kinds.get(t, ((Arg.NONE,),)*(tlen-2))
+            for x, kind in zip(t[1:-1], kinds):
+                if kind is Arg.LIT:
+                    x = self.cpp_literal(x)
+                elif kind is Arg.TYPE:
+                    x = self.cpp_type(x)
+                elif kind is Arg.VAR:
+                    x = self._cpp_var_name(x)
+                elif isinstance(x, bool):
                     x = self.cpp_types[x]
                 elif isinstance(x, Number):
                     x = str(x)
                 else:
-                    x = self.cpp_type(x)
+                    try:
+                        x = self.cpp_type(x)  # Guess it is a type?
+                    except TypeError:
+                        x = self._cpp_var_name(x)  # Guess it is a variable
                 template_filling.append(x)
             cppt = '{0}< {1} >'.format(template_name, ', '.join(template_filling))
             if 0 != t[-1]:
@@ -1525,24 +1571,44 @@ class TypeSystem(object):
             return cppt
 
     @memoize_method
-    def cpp_funcname(self, name):
+    def cpp_literal(self, lit):
+        """Converts a literal value to it C++ form.
+        """
+        if isinstance(lit, bool):
+            cpp_lit = self.cpp_types[lit]
+        elif isinstance(lit, Number):
+            cpp_lit = str(lit)
+        elif isinstance(lit, basestring):
+            cpp_lit = repr(lit)
+        return cpp_lit
+
+    @memoize_method
+    def cpp_funcname(self, name, argkinds=None):
         """This returns a name for a function based on its name, rather than
         its type.  The name may be either a string or a tuple of the form 
-        ('name', template_arg_type1, template_arg_type2, ...).  This is not ment
-        to replace cpp_type(), but complement it.
+        ('name', template_arg1, template_arg2, ...). The argkinds argument here 
+        refers only to the template arguments, not the function signature default 
+        arguments. This is not meant to replace cpp_type(), but complement it.
         """
         if isinstance(name, basestring):
             return name
+        if argkinds is None:
+            argkinds = [(Arg.NONE, None)] * (len(name) - 1)
         fname = name[0]
         cts = []
-        for x in name[1:]:
-            if isinstance(x, bool):
-                x = self.cpp_types[x]
+        for x, (argkind, argvalue) in zip(name[1:], argkinds):
+            if argkind is Arg.TYPE:
+                ct = self.cpp_type(x)
+            elif argkind is Arg.LIT:
+                ct = self.cpp_literal(x)
             elif isinstance(x, Number):
-                x = str(x)
+                ct = self.cpp_literal(x)
             else:
-                x = self.cpp_type(x)
-            cts.append(x)
+                try:
+                    ct = self.cpp_type(x)  # guess it is a type
+                except TypeError:
+                    ct = x  # guess it is a variable
+            cts.append(ct)
         fname += '' if 0 == len(cts) else "< " + ", ".join(cts) + " >"
         return fname
 
@@ -1899,23 +1965,47 @@ class TypeSystem(object):
         return set([self._cython_import_cases[len(tup)](tup) for tup in x])
 
     @memoize_method
-    def cython_funcname(self, name):
+    def cython_literal(self, lit):
+        """Converts a literal to a Cython compatible form.
+        """
+        if isinstance(lit, Number):
+            cy_lit = str(lit).replace('-', 'Neg').replace('+', 'Pos')\
+                             .replace('.', 'point')
+        elif isinstance(lit, basestring):
+            cy_lit = repr(lit)
+        return cy_lit
+    
+
+    @memoize_method
+    def cython_funcname(self, name, argkinds=None):
         """This returns a name for a function based on its name, rather than
         its type.  The name may be either a string or a tuple of the form 
-        ('name', template_arg_type1, template_arg_type2, ...).  This is not ment
-        to replace cython_functionname(), but complement it.
+        ('name', template_arg1, template_arg2, ...). The argkinds argument here 
+        refers only to the template arguments, not the function signature default 
+        arguments. This is not meant to replace cython_functionname(), but 
+        complement it.
         """
         if isinstance(name, basestring):
             return name
+        if argkinds is None:
+            argkinds = [(Arg.NONE, None)] * (len(name) - 1)
         fname = name[0] 
         cfs = [] 
-        for x in name[1:]:
-            if isinstance(x, Number):
-                x = str(x).replace('-', 'Neg').replace('+', 'Pos')\
-                          .replace('.', 'point')
+        for x, (argkind, argvalue) in zip(name[1:], argkinds):
+            if argkind is Arg.TYPE:
+                cf = self.cython_functionname(x)[1]
+            elif argkind is Arg.LIT:
+                cf = self.cython_literal(x)
+            elif argkind is Arg.VAR:
+                cf = x
+            elif isinstance(x, Number):
+                cf = self.cython_literal(x)
             else:
-                x = self.cython_functionname(x)[1]
-            cfs.append(x) 
+                try:
+                    cf = self.cython_functionname(x)[1]  # guess type
+                except TypeError:
+                    cf = x  # guess variable
+            cfs.append(cf) 
         fname += '' if 0 == len(cfs) else "_" + "_".join(cfs)
         return fname
 
@@ -2503,6 +2593,42 @@ class TypeSystem(object):
         x = x + _ensure_importable(self.cython_pyimports._d.get(t, None))
         x = x + _ensure_importable(cython_pyimport)
         self.cython_pyimports[t] = x
+
+    def register_argument_kinds(self, t, argkinds):
+        """Registers an argument kind tuple into the type system for a template type.
+        """
+        t = self.canon(t)
+        if t in self.argument_kinds:
+            old = self.argument_kinds[t]
+            if old != argkinds:
+                msg = ("overwriting argument kinds for type {0}:\n"
+                       "  old: {1}\n"
+                       "  new: {2}")
+                warn(msg.format(t, old, argkinds), RuntimeWarning)
+        self.argument_kinds[t] = argkinds
+
+    def deregister_argument_kinds(self, t):
+        """Removes a type and its argument kind tuple from the type system."""
+        t = self.canon(t)
+        if t in self.argument_kinds:
+            del self.argument_kinds[t]
+
+    def register_variable_namespace(self, name, namespace, t=None):
+        """Registers a variable and its namespace in the typesystem.
+        """
+        if name in self.variable_namespace:
+            old = self.variable_namespace[name]
+            if old != namespace:
+                msg = ("overwriting namespace for variable {0}:\n"
+                       "  old: {1}\n"
+                       "  new: {2}")
+                warn(msg.format(name, old, namespace), RuntimeWarning)
+        self.variable_namespace[name] = namespace
+        if self.isenum(t):
+            t = self.canon(t)
+            for n, _ in t[1][2][2]:
+                self.register_variable_namespace(n, namespace)
+        
 
     #################### Type system helpers ###################################
 

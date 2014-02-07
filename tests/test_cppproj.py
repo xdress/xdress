@@ -10,7 +10,7 @@ import tempfile
 from nose.tools import assert_true, assert_equal
 from tools import integration, cleanfs, check_cmd, clean_import, dirtests, \
     modtests, skip_then_continue
-    
+
 
 from xdress.astparsers import PARSERS_AVAILABLE
 
@@ -22,9 +22,10 @@ PROJDIR = os.path.abspath(PROJNAME)
 INSTDIR = os.path.join(PROJDIR, 'install')
 ROOTDIR = os.path.splitdrive(INSTDIR)[0] or '/'
 TESTDIR = os.path.join(PROJDIR, PROJNAME, 'tests')
+THISDIR = os.path.dirname(__file__)
 
 GENERATED_PATHS = [
-    [PROJDIR, 'build'],
+    [PROJDIR, 'build*'],
     [PROJDIR, PROJNAME, 'basics.pxd'],
     [PROJDIR, PROJNAME, 'basics.pyx'],
     [PROJDIR, PROJNAME, 'cpp_basics.pxd'],
@@ -41,12 +42,17 @@ GENERATED_PATHS = [
     [PROJDIR, PROJNAME, 'stlc.pxd'],
     [PROJDIR, PROJNAME, 'stlc.pyx'],
     [PROJDIR, PROJNAME, 'cppproj_extra_types.h'],
+    [PROJDIR, PROJNAME, '*.pyc'],
+    [PROJDIR, 'src', 'basics.h.gch'],
     [TESTDIR, 'test_dt.py'],
     [TESTDIR, 'test_stlc.py'],
-    [INSTDIR],
+    [TESTDIR, '*.pyc'],
+    [TESTDIR, '__pycache__'],
+    [THISDIR, '__pycache__'],
+    [INSTDIR + '*'],
     ]
 
-# Because we want to guarentee build and test order, we can only have one 
+# Because we want to guarantee build and test order, we can only have one
 # master test function which generates the individual tests.
 @integration
 def test_all():
@@ -55,18 +61,24 @@ def test_all():
 
     cwd = os.getcwd()
     base = os.path.dirname(cwd)
+    path = base
+    if 'PYTHONPATH' in os.environ:
+        path = path+':'+os.environ['PYTHONPATH']
     pyexec = sys.executable
     xdexec = os.path.join(base, 'scripts', 'xdress')
-    defaults = {'cwd': cwd, 'base': base, 'pyexec': pyexec, 'xdexec': xdexec, 
-                'instdir': INSTDIR, 'rootdir': ROOTDIR}
+    defaults = {'cwd': cwd, 'base': base, 'pyexec': pyexec, 'xdexec': xdexec,
+                'instdir': INSTDIR, 'rootdir': ROOTDIR, 'path': path,
+                'builddir': os.path.join(PROJDIR, 'build')}
 
     commands = (
-        'PYTHONPATH="{base}" {pyexec} {xdexec} --debug -p={parser}\n'
+        'PYTHONPATH="{path}" {pyexec} {xdexec} --debug -p={parser} --builddir="{builddir}"\n'
         '{pyexec} setup.py install --prefix="{instdir}" --root="{rootdir}" -- --\n'
         )
 
     for case in cases:
         parser = case['parser']
+        instdir = case['instdir'] = defaults['instdir'] + '-' + parser
+        builddir = case['builddir'] = defaults['builddir'] + '-' + parser
         if not PARSERS_AVAILABLE[parser]:
             yield skip_then_continue, parser + " unavailable"
             continue
@@ -86,7 +98,7 @@ def test_all():
 
         # we have now run xdress and build the project
         # What follow are project unit tests, no need to break on these
-        instsite = os.path.join(INSTDIR, 'lib', 'python*', 'site-packages')
+        instsite = os.path.join(instdir, 'lib', 'python*', 'site-packages')
         instsite = glob.glob(instsite)[0]
         instproj = os.path.join(instsite, PROJNAME)
 
