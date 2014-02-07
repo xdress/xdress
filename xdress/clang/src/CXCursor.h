@@ -287,10 +287,12 @@ static inline CXCursor getTypeRefedCallExprCursor(CXCursor cursor) {
 
 CXCursor getTypeRefCursor(CXCursor cursor);
 
+#ifndef XDRESS
 /// \brief Generate a USR for \arg D and put it in \arg Buf.
 /// \returns true if no USR was computed or the result should be ignored,
 /// false otherwise.
 bool getDeclCursorUSR(const Decl *D, SmallVectorImpl<char> &Buf);
+#endif
 
 bool operator==(CXCursor X, CXCursor Y);
   

@@ -69,21 +69,21 @@ name, namespace, signatures, docstring, and extra.
 :name: dict, the function name, see above
 :namespace: str or None, the namespace or module the function lives in.
 :signatures: dict or dict-like, the keys of this dictionary are function call
-    signatures and the values are dicts of non-signature information.  
-    The signatures themselves are tuples. The first element of these tuples is the 
-    method name. The remaining elements (if any) are the function arguments.  
-    Arguments are themselves length-2 tuples whose first elements are the argument 
-    names and the second element is the argument type. The values are themselves 
+    signatures and the values are dicts of non-signature information.
+    The signatures themselves are tuples. The first element of these tuples is the
+    method name. The remaining elements (if any) are the function arguments.
+    Arguments are themselves length-2 tuples whose first elements are the argument
+    names and the second element is the argument type. The values are themselves
     dicts with the following keys:
 
-        :return: the return type of this function. Unlike class constuctors 
-            and destructors, the return type may not be None (only 'void' values 
+        :return: the return type of this function. Unlike class constuctors
+            and destructors, the return type may not be None (only 'void' values
             are allowed).
-        :defaults: a length-N tuple of length-2 tuples of the default argument 
-            kinds and values. N must be the number of arguments in the signature. 
-            In the length-2 tuples, the first element must be a member of the 
-            utils.Arg enum and the second element is the associated default value. 
-            If no default argument exists use utils.Args.NONE as the kind and 
+        :defaults: a length-N tuple of length-2 tuples of the default argument
+            kinds and values. N must be the number of arguments in the signature.
+            In the length-2 tuples, the first element must be a member of the
+            utils.Arg enum and the second element is the associated default value.
+            If no default argument exists use utils.Args.NONE as the kind and
             by convention set the value to None, though this should be ignored in all
             cases.
 
@@ -106,21 +106,21 @@ name, parents, namespace, attrs, methods, docstrings, and extra.
 :attrs: dict or dict-like, the names of the attributes (member variables) of the
     class mapped to their types, given in the format of the type system.
 :methods: dict or dict-like, similar to the attrs except that the keys are now
-    function signatures and the values are dicts of non-signature information.  
-    The signatures themselves are tuples. The first element of these tuples is the 
-    method name. The remaining elements (if any) are the function arguments.  
-    Arguments are themselves length-2 tuples whose first elements are the argument 
-    names and the second element is the argument type. The values are themselves 
+    function signatures and the values are dicts of non-signature information.
+    The signatures themselves are tuples. The first element of these tuples is the
+    method name. The remaining elements (if any) are the function arguments.
+    Arguments are themselves length-2 tuples whose first elements are the argument
+    names and the second element is the argument type. The values are themselves
     dicts with the following keys:
 
-        :return: the return type of this function. If the return type is None 
-            (as opposed to 'void'), then this method is assumed to be a constructor 
+        :return: the return type of this function. If the return type is None
+            (as opposed to 'void'), then this method is assumed to be a constructor
             or destructor.
-        :defaults: a length-N tuple of length-2 tuples of the default argument 
-            kinds and values. N must be the number of arguments in the signature. 
-            In the length-2 tuples, the first element must be a member of the 
-            utils.Arg enum and the second element is the associated default value. 
-            If no default argument exists use utils.Args.NONE as the kind and 
+        :defaults: a length-N tuple of length-2 tuples of the default argument
+            kinds and values. N must be the number of arguments in the signature.
+            In the length-2 tuples, the first element must be a member of the
+            utils.Arg enum and the second element is the associated default value.
+            If no default argument exists use utils.Args.NONE as the kind and
             by convention set the value to None, though this should be ignored in all
             cases.
 
@@ -163,19 +163,19 @@ toast.  A valid description dictionary for this class would be as follows::
             },
         'methods': {
             ('Toaster',): {'return': None, 'defaults': ()},
-            ('Toaster', ('name', 'str')): {'return': None,  
+            ('Toaster', ('name', 'str')): {'return': None,
                 'defaults': ((Args.LIT, ""),)},
             ('Toaster', ('paramtrack', ('set', 'str')), ('name', 'str', '""')): {
-                'return': None,  
+                'return': None,
                 'defaults': ((Args.NONE, None), (Args.LIT, ""))},
             ('~Toaster',): {'return': None, 'defaults': ()},
             ('tostring',): {'return': 'str', 'defaults': ()},
             ('calc',): {'return': 'Material', 'defaults': ()},
             ('calc', ('incomp', ('map', 'int32', 'float64'))): {
-                'return': 'Material', 
+                'return': 'Material',
                 'defaults': ((Args.NONE, None),)},
             ('calc', ('mat', 'Material')): {
-                'return': 'Material', 
+                'return': 'Material',
                 'defaults': ((Args.NONE, None),)},
             ('write', ('filename', 'str')): {
                 'return': 'void',
@@ -671,7 +671,7 @@ class GccxmlBaseDescriber(object):
         if self._currfuncsig is None:
             return
         key = (funcname,) + tuple(self._currfuncsig)
-        self.desc[self._funckey][key] = {'return': rtntype, 
+        self.desc[self._funckey][key] = {'return': rtntype,
                                          'defaults': tuple(self._currargkind)}
         self._currfuncsig = None
         self._currargkind = None
@@ -930,7 +930,7 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
         if node is None:
             if not isinstance(self.name, basestring) and self.name not in self.ts.argument_kinds:
                 node = self._find_class_node()
-            if node is None:                
+            if node is None:
                 query = "Class[@name='{0}']".format(self.ts.gccxml_type(self.name))
                 node = self._root.find(query)
             if node is None:
@@ -1264,7 +1264,7 @@ def clang_find_class(tu, name, ts, namespace=None, filename=None, onlyin=None):
             return decl
         else:
             # Search for the desired template specialization
-            kinds = clang_template_arg_kinds(decl)
+            kinds = clang_template_param_kinds(decl)
             args = tuple(canon_template_arg(ts,k,a) for k,a in zip(kinds, args))
             args = clang_expand_template_args(decl, args)
             for spec in decl.get_specializations():
@@ -1299,7 +1299,7 @@ def clang_find_function(tu, name, ts, namespace=None, filename=None, onlyin=None
         else:
             # Search for the desired function specialization
             decl, = decls # TODO: Support multiple decl case
-            kinds = clang_template_arg_kinds(decl)
+            kinds = clang_template_param_kinds(decl)
             args = tuple(canon_template_arg(ts,k,a) for k,a in zip(kinds, args))
             args = clang_expand_template_args(decl, args)
             for spec in decl.get_specializations():
@@ -1563,15 +1563,15 @@ if 0:
                 break
         return count,tuple(defaults)
 
-def clang_template_arg_kinds(node):
+def clang_template_param_kinds(node):
     '''Find the Arg kind of each template argument of node'''
     kinds = []
     for kid in node.get_children():
         if kid.kind == CursorKind.TEMPLATE_TYPE_PARAMETER:
             kinds.append(Arg.TYPE)
         elif kid.kind == CursorKind.TEMPLATE_NON_TYPE_PARAMETER:
-            type = clang_describe_type(kid.type, kid.location)
-            kinds.append(Arg.VAR if isinstance(type, tuple) and type[0]=='enum' else Arg.LIT)
+            typ = clang_describe_type(kid.type, kid.location)
+            kinds.append(Arg.VAR if isinstance(typ, tuple) and typ[0]=='enum' else Arg.LIT)
         else:
             # Template arguments come first, so we're done
             break
@@ -1602,14 +1602,29 @@ def clang_expand_template_args(node, args):
     return args
 
 def clang_describe_template_arg(arg, loc):
-    if arg.kind == CursorKind.TYPE_TEMPLATE_ARG:
+    '''Describe a template argument'''
+    kind = arg.kind
+    if kind == CursorKind.TYPE_TEMPLATE_ARG:
         return clang_describe_type(arg.type, loc)
     try:
         s = arg.spelling.strip()
-        return c_literal(s)
+        lit = c_literal(s)
     except:
         pass
-    if arg.kind == CursorKind.EXPRESSION_TEMPLATE_ARG:
+    else:
+        if kind == CursorKind.INTEGRAL_TEMPLATE_ARG:
+            typ = clang_describe_type(arg.type, loc)
+            if isinstance(typ, tuple) and typ[0]=='enum':
+                # Convert integers to enum names
+                lit = str(lit)
+                for n,v in typ[2]:
+                    if v == lit:
+                        return n
+                else:
+                    raise RuntimeError('template argument {0} is invalid, expected one of {1} at {2}'
+                        .format(lit, ', '.join('%s=%s'%(n,v) for n,v in typ[2]), clang_str_location(loc)))
+        return lit
+    if kind == CursorKind.EXPRESSION_TEMPLATE_ARG:
         exp, = arg.get_children()
         if exp.referenced:
             exp = exp.referenced
@@ -1617,7 +1632,7 @@ def clang_describe_template_arg(arg, loc):
             return s
     # Nothing worked, so bail
     raise NotImplementedError('template argument {0}, kind {1} at {2}'
-        .format(s, arg.kind.name, clang_str_location(loc)))
+        .format(s, kind.name, clang_str_location(loc)))
 
 def clang_describe_expression(exp):
     # For now, we just use clang_range_str to pull the expression out of the file.
@@ -1755,7 +1770,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
             self._currargkind = None
             return
         key = (funcname,) + tuple(self._currfuncsig)
-        self.desc[self._funckey][key] = {'return': rtntype, 
+        self.desc[self._funckey][key] = {'return': rtntype,
                                          'defaults': tuple(self._currargkind)}
         self._currfuncsig = None
         self._currargkind = None
@@ -1771,7 +1786,7 @@ class PycparserBaseDescriber(PycparserNodeVisitor):
         if isinstance(node.type, pycparser.c_ast.FuncDecl):
             self.visit(node.type)
             key = (node.name,) + self._currtype[1]
-            self.desc[self._funckey][key] = {'return': self._currtype[2], 
+            self.desc[self._funckey][key] = {'return': self._currtype[2],
                 'defaults': (_none_arg,) * len(self._currtype[1])}
             self._currtype = None
         else:

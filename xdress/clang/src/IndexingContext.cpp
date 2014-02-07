@@ -1155,7 +1155,9 @@ void IndexingContext::getEntityInfo(const NamedDecl *D,
   }
 
   {
-#if CLANG_VERSION_GE(3,4)
+#ifdef XDRESS
+    XDRESS_FATAL("We've disabled USR support since part of it was hoisted out of libclang in clang-3.4.");
+#else
     SmallString<512> StrBuf;
     bool Ignore = getDeclCursorUSR(D, StrBuf);
     if (Ignore) {
@@ -1163,8 +1165,6 @@ void IndexingContext::getEntityInfo(const NamedDecl *D,
     } else {
       EntityInfo.USR = SA.copyCStr(StrBuf.str());
     }
-#else
-    XDRESS_FATAL("We've disabled USR support since part of it was hoisted out of libclang in clang-3.4.");
 #endif
   }
 }
