@@ -1578,13 +1578,18 @@ def clang_template_param_kinds(node):
     return kinds
 
 def clang_describe_template_args(node):
-    ''' TODO: Broken version handling defaults automatically
-    _,defaults = clang_template_arg_info(node.specialized_template)
-    args = [clang_describe_template_arg(a) for a in node.get_template_args()]
-    for i in xrange(len(defaults)):
-        if defaults[-1-i] == args[-1]:
-            args.pop()
-    return tuple(args)'''
+    """TODO: Broken version handling defaults 
+    automatically::
+
+        _, defaults = clang_template_arg_info(node.specialized_template)
+        args = [clang_describe_template_arg(a) for a in node.get_template_args()]
+        for i in xrange(len(defaults)):
+            if defaults[-1-i] == args[-1]:
+                args.pop()
+        return tuple(args)
+
+    TODO: Needs a better docstring.
+    """
     loc = node.location
     args = tuple(clang_describe_template_arg(a, loc) for a in node.get_template_args())
     if node.spelling in hack_template_args:
@@ -1593,12 +1598,17 @@ def clang_describe_template_args(node):
         return args
 
 def clang_expand_template_args(node, args):
-    ''' TODO: Broken version handling defaults automatically
-    count,defaults = clang_template_arg_info(node)
-    print('SP %s, COUNT %s, %s, %s'%(node.spelling,count,defaults,args))
-    if len(args) < count:
-        return tuple(args) + defaults[(count-len(args)):]
-    return tuple(args)+defaults[  count-len(args)] '''
+    """TODO: Broken version handling defaults 
+    automatically::
+
+        count,defaults = clang_template_arg_info(node)
+        print('SP %s, COUNT %s, %s, %s'%(node.spelling,count,defaults,args))
+        if len(args) < count:
+            return tuple(args) + defaults[(count-len(args)):]
+        return tuple(args)+defaults[count-len(args)]
+
+    TODO: Needs a better docstring.
+    """
     return args
 
 def clang_describe_template_arg(arg, loc):

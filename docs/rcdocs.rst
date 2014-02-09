@@ -2,6 +2,25 @@
 
 Run Control Parameters
 ----------------------
+Run control parameters (rc params, for short) determine how xdress is run in 
+and allow the user to customize execution for their project or their system.
+Typically each project will have an ``xdressrc.py`` file in the directory where 
+they intend to run xdress.  Alternative paths to this file may be specified on 
+the command line with ``--rc`` option.  This file is simply a python file 
+whose module-level variables are the run control parameters.  See below for 
+information on specific parameters and their effects.
+
+Additionally, it is sometimes useful to be able to set global run control parameters
+on a system.  XDress will search the following files in order of increasing 
+precedence.
+
+* ``$HOME/.xdressrc``
+* ``$HOME/.xdressrc.py``
+* ``$HOME/.config/xdressrc``
+* ``$HOME/.config/xdressrc.py``
+
+``$HOME`` is the user's home directory.  Settings in the project run control file 
+take precedence over the values here. 
 
 xdress.base
 ===========
@@ -9,6 +28,7 @@ xdress.base
     relevant when using argcomplete., *default:* True.
 :builddir: Path to build directory, *default:* 'build'.
 :debug: Build in debugging mode, *default:* False.
+:dtypes_module: Module name for numpy dtype wrappers., *default:* 'dtypes'.
 :dumpdesc: Print the description cache, *default:* False.
 :package: The Python package name for the generated wrappers, *default:*
     NotSpecified.
@@ -18,6 +38,8 @@ xdress.base
     'xdress.stlwrap').
 :rc: Path to run control file, *default:* 'xdressrc.py'.
 :sourcedir: Path to source directory (deprecated), *default:* NotSpecified.
+:stlcontainers_module: Module name for C++ standard library container wrappers.,
+    *default:* 'stlcontainers'.
 :ts: The xdress type system., *default:* xdress.typesystem.TypeSystem instance.
 :verbose: Print more output., *default:* False.
 :version: Print version information., *default:* False.
@@ -26,6 +48,7 @@ xdress.base
 
 xdress.autoall
 ==============
+:clang_includes: clang-specific include paths, *default:* ().
 :classes: A list of class names in sequence, mapping, or apiname format,
     *default:* ().
 :clear_parser_cache_period: Number of parser calls to perform before clearing
@@ -33,11 +56,13 @@ xdress.autoall
     50.
 :defines: Set additional macro definitions, *default:* ['XDRESS'].
 :dumpast: Prints the abstract syntax tree of a file., *default:* NotSpecified.
+:extra_parser_args: Further command line arguments to pass to the parser,
+    *default:* ().
 :functions: A list of function names in sequence, mapping, or apiname format,
     *default:* ().
 :includes: Additional include directories, *default:* ['.'].
-:parsers: Parser(s) name, list, or dict, *default:* {'c': ['pycparser',
-    'gccxml', 'clang'], 'c++': ['gccxml', 'clang', 'pycparser']}.
+:parsers: Parser(s) name, list, or dict, *default:* {'c': ['pycparser', 'clang',
+    'gccxml'], 'c++': ['clang', 'gccxml', 'pycparser']}.
 :undefines: Unset additional macro definitions, *default:* [].
 :variables: A list of variable names in sequence, mapping, or apiname format,
     *default:* ().
@@ -46,6 +71,7 @@ xdress.autoall
 
 xdress.autodescribe
 ===================
+:clang_includes: clang-specific include paths, *default:* ().
 :classes: A list of class names in sequence, mapping, or apiname format,
     *default:* ().
 :clear_parser_cache_period: Number of parser calls to perform before clearing
@@ -54,11 +80,13 @@ xdress.autodescribe
 :defines: Set additional macro definitions, *default:* ['XDRESS'].
 :dumpast: Prints the abstract syntax tree of a file., *default:* NotSpecified.
 :env: The target environment computed by the autodescriber., *default:* {}.
+:extra_parser_args: Further command line arguments to pass to the parser,
+    *default:* ().
 :functions: A list of function names in sequence, mapping, or apiname format,
     *default:* ().
 :includes: Additional include directories, *default:* ['.'].
-:parsers: Parser(s) name, list, or dict, *default:* {'c': ['pycparser',
-    'gccxml', 'clang'], 'c++': ['gccxml', 'clang', 'pycparser']}.
+:parsers: Parser(s) name, list, or dict, *default:* {'c': ['pycparser', 'clang',
+    'gccxml'], 'c++': ['clang', 'gccxml', 'pycparser']}.
 :undefines: Unset additional macro definitions, *default:* [].
 :variables: A list of variable names in sequence, mapping, or apiname format,
     *default:* ().
@@ -101,10 +129,16 @@ xdress.extratypes
 
 
 
+xdress.dtypes
+=============
+:dtypes: List of types to create numpy dtypes for., *default:* [].
+:make_dtypes: Flag for enabling / disabling the generation of numpy dtype
+    wrappers., *default:* True.
+
+
+
 xdress.stlwrap
 ==============
 :make_stlcontainers: Flag for enabling / disabling creating the C++ standard
     library container wrappers., *default:* True.
 :stlcontainers: List of C++ standard library containers to wrap., *default:* [].
-:stlcontainers_module: Module name for C++ standard library container wrappers.,
-    *default:* 'stlcontainers'.
