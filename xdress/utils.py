@@ -135,7 +135,7 @@ def c_literal(s):
     if m:
         return _c_float_types[m.group(4)](m.group(1))
     raise ValueError('unknown literal: {0!r}'.format(s))
-    
+
 def newoverwrite(s, filename, verbose=False):
     """Useful for not forcing re-compiles and thus playing nicely with the
     build system.  This is acomplished by not writing the file if the existsing
@@ -416,12 +416,12 @@ def find_source(basename, sourcedir='.', language=None):
     """Finds a source filename, header filename, language name, and language
     source extension given a basename and source directory."""
     if isinstance(basename, list):
-      files = [ os.path.abspath(x) for x in basename ]
+        files = [ os.path.abspath(x) for x in basename ]
     elif os.path.isabs(basename):
-      files = [ basename ]
+        files = [ basename ]
     else:
-      files = os.listdir(sourcedir)
-      files = [f for f in files if f.startswith(basename + '.')]
+        files = os.listdir(sourcedir)
+        files = [f for f in files if f.startswith(basename + '.')]
     langs = dict([(f, guess_language(f, None)) for f in files])
     lang = src = hdr = srcext = None
     for f, l in langs.items():
@@ -460,7 +460,7 @@ def find_filenames(srcname, tarname=None, sourcedir='src', language=None):
 
     """
     desc = {}
-    srcfname, hdrfname, lang, ext = find_source(srcname, sourcedir=sourcedir, 
+    srcfname, hdrfname, lang, ext = find_source(srcname, sourcedir=sourcedir,
                                                 language=language)
     desc['source_filename'] = srcfname
     desc['header_filename'] = hdrfname
@@ -688,7 +688,7 @@ def ishashable(x):
         elif isinstance(x, Iterable):
             return all(map(ishashable, x))
         else:
-         return True
+            return True
     else:
         return False
 
@@ -744,16 +744,16 @@ class memoize_method(object):
 # API Name Tuples and Functions
 #
 
-class apiname(namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname', 
+class apiname(namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname',
                                      'incfiles', 'sidecars', 'language'])):
-    """apiname(srcname=NotSpecified, srcfiles=NotSpecified, tarbase=NotSpecified, 
-               tarname=NotSpecified, incfiles=NotSpecified, sidecars=NotSpecified, 
+    """apiname(srcname=NotSpecified, srcfiles=NotSpecified, tarbase=NotSpecified,
+               tarname=NotSpecified, incfiles=NotSpecified, sidecars=NotSpecified,
                language=NotSpecified)
 
-    This is a type, based on a named tuple, that represents the API element 
-    names and is used to declare or discover where variables, functions, and 
-    classes live for the rest of xdress.  All of the fields default to 
-    NotSpecified if not given.  These feilds are the sames as what appear in 
+    This is a type, based on a named tuple, that represents the API element
+    names and is used to declare or discover where variables, functions, and
+    classes live for the rest of xdress.  All of the fields default to
+    NotSpecified if not given.  These feilds are the sames as what appear in
     description dictionaries under the 'name' key.
 
     Parameters
@@ -762,34 +762,34 @@ class apiname(namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname'
         The element's API name in the original source code, eg. MyClass.
     srcfiles : str, tuple of str, or NotSpecified
         This is a sequence of unique strings which represents the file paths where
-        the API element *may* be defined. For example, ('myfile.c', 'myfile.h').  
-        If the element is defined outside of these files, then the automatic 
+        the API element *may* be defined. For example, ('myfile.c', 'myfile.h').
+        If the element is defined outside of these files, then the automatic
         discovery or description may fail. When using ensure_apiname(), all strings
-        are automatically globbed, so 'src/myfile.*' will be converted to 
-        ('src/myfile.c', 'src/myfile.h').  Since these files are parsed they must 
+        are automatically globbed, so 'src/myfile.*' will be converted to
+        ('src/myfile.c', 'src/myfile.h').  Since these files are parsed they must
         actually exist on the filesystem.
     tarbase : str or NotSpecified
-        The base portion of all automatically generated (target) files. This does 
-        not include the directory or the file extension.  For example, if you 
+        The base portion of all automatically generated (target) files. This does
+        not include the directory or the file extension.  For example, if you
         wanted cythongen to create a file name 'mynewfile.pyx' then the value here
         would be simply 'mynewfile'.
     tarname : str, tuple, or NotSpecified
-        The element's API name in the automatically generated (target) files, 
+        The element's API name in the automatically generated (target) files,
         e.g. MyNewClass.
     incfiles : tuple of str or NotSpecified
-        This is a sequence of all files which must be #include'd to access the 
-        srcname at compile time.  This should be as minimal of a set as possible, 
-        preferably only one file.  For example even though most HDF5 API 
-        declarations are split across multiple files, to use the public API you 
-        only ever need to include 'hdf5.h'. Because these files are not parsed they 
-        do not need to exist for xdress to run.  Thus the strings in incfiles are 
+        This is a sequence of all files which must be #include'd to access the
+        srcname at compile time.  This should be as minimal of a set as possible,
+        preferably only one file.  For example even though most HDF5 API
+        declarations are split across multiple files, to use the public API you
+        only ever need to include 'hdf5.h'. Because these files are not parsed they
+        do not need to exist for xdress to run.  Thus the strings in incfiles are
         not globbed.
     sidecars : str, tuple of str, or NotSpecified
         This is a sequence of all sidecar files to use for this API element. Like
-        srcfiles, these files must exist for xdress to run.  They similarly 
+        srcfiles, these files must exist for xdress to run.  They similarly
         globbed.  For example, 'myfile.py'.
     language : str or NotSpecified
-        Flag for the language that the srcfiles are implemented in. Valid options 
+        Flag for the language that the srcfiles are implemented in. Valid options
         are: 'c', 'c++', 'f', 'fortran', 'f77', 'f90', 'python', and 'cython'.
 
     See Also
@@ -797,7 +797,7 @@ class apiname(namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname'
     ensure_apiname
 
     """
-    def __new__(cls, srcname=NotSpecified, srcfiles=NotSpecified, 
+    def __new__(cls, srcname=NotSpecified, srcfiles=NotSpecified,
                 tarbase=NotSpecified, tarname=NotSpecified, incfiles=NotSpecified,
                 sidecars=NotSpecified, language=NotSpecified):
         return super(apiname, cls).__new__(cls, srcname, srcfiles, tarbase, tarname,
@@ -806,7 +806,7 @@ class apiname(namedtuple('apiname', ['srcname', 'srcfiles', 'tarbase', 'tarname'
 notspecified_apiname = apiname(*([NotSpecified]*len(apiname._fields)))
 
 def _ensure_srcfiles(inp):
-    """This ensures that srcsfiles is a tuple of filenames that has been 
+    """This ensures that srcsfiles is a tuple of filenames that has been
     expanded out and the files actually exist on the file system.
     """
     if isinstance(inp, basestring):
@@ -820,7 +820,7 @@ def _ensure_srcfiles(inp):
     return tuple(out)
 
 def _guess_base(srcfiles, default=None):
-    """Guesses the base name for target files from source file names, or 
+    """Guesses the base name for target files from source file names, or
     failing that, a default value."""
     basefiles = [os.path.basename(f) for f in srcfiles]
     basename = os.path.splitext(os.path.commonprefix(basefiles))[0]
@@ -829,14 +829,14 @@ def _guess_base(srcfiles, default=None):
     return basename
 
 def _guess_incfiles(srcfiles):
-    """This function guess potential include files from the headers that are 
+    """This function guess potential include files from the headers that are
     present in the source files.
     """
     incs = [s for s in srcfiles if os.path.splitext(s)[-1][1:] in _hdr_exts]
     return tuple(incs)
 
 def _ensure_incfiles(inp):
-    """This ensures that incfiles is a tuple of unique filenames. This does not 
+    """This ensures that incfiles is a tuple of unique filenames. This does not
     test that the files actually exist on the file system nor glob the filenames.
     """
     if isinstance(inp, basestring):
@@ -865,7 +865,7 @@ def _guess_sidecars(srcfiles):
     return tuple(sorted(scs))
 
 def _find_language(lang, srcfiles):
-    """Tries to discover the canonical language that the srcfiles are 
+    """Tries to discover the canonical language that the srcfiles are
     implmenetd in."""
     if isinstance(lang, basestring):
         lang = lang.lower()
@@ -904,7 +904,7 @@ def ensure_apiname(name):
     if name.tarname is NotSpecified:
         updates['tarname'] = name.srcname
     if name.tarbase is NotSpecified:
-        updates['tarbase'] = _guess_base(updates['srcfiles'], 
+        updates['tarbase'] = _guess_base(updates['srcfiles'],
                                          updates.get('tarname', name.tarname))
     if name.incfiles is NotSpecified:
         updates['incfiles'] = _guess_incfiles(updates['srcfiles'])

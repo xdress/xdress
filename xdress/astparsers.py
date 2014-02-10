@@ -40,16 +40,16 @@ except ImportError:
         import xml.etree.cElementTree as etree
     except ImportError:
         try:
-          # Python 2.5
-          import xml.etree.ElementTree as etree
+            # Python 2.5
+            import xml.etree.ElementTree as etree
         except ImportError:
             try:
                 # normal cElementTree install
                 import cElementTree as etree
             except ImportError:
                 try:
-                  # normal ElementTree install
-                  import elementtree.ElementTree as etree
+                    # normal ElementTree install
+                    import elementtree.ElementTree as etree
                 except ImportError:
                     pass
 
@@ -149,7 +149,7 @@ def not_implemented(obj):
 
 @_memoize_parser
 def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
-                 extra_parser_args=(), verbose=False, debug=False, builddir='build', 
+                 extra_parser_args=(), verbose=False, debug=False, builddir='build',
                  clang_includes=()):
     """Use GCC-XML to parse a file. This function is automatically memoized.
 
@@ -178,7 +178,7 @@ def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
     root : XML etree
         An in memory tree representing the parsed file.
     """
-    drive, xmlname = os.path.splitdrive(filename)  
+    drive, xmlname = os.path.splitdrive(filename)
     if len(drive) > 0:
         # Windows drive handling, 'C:' -> 'C_'
         xmlname = drive.replace(':', '_') + xmlname
@@ -207,7 +207,7 @@ def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
 #
 @_memoize_parser
 def clang_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
-                extra_parser_args=(), verbose=False, debug=False, builddir='build', 
+                extra_parser_args=(), verbose=False, debug=False, builddir='build',
                 language='c++', clang_includes=()):
     """Use clang to parse a file.
 
@@ -262,7 +262,7 @@ def clang_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
 
 @_memoize_parser
 def pycparser_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
-                    extra_parser_args=(), verbose=False, debug=False, 
+                    extra_parser_args=(), verbose=False, debug=False,
                     builddir='build', clang_includes=()):
     """Use pycparser to parse a file.  This functions is automatically memoized.
 
@@ -468,14 +468,14 @@ class ParserPlugin(Plugin):
                             metavar="FILE", help=rcdocs["dumpast"])
         parser.add_argument('--clang-includes', action='store', dest='clang_includes',
                             nargs="+", help=rcdocs["clang_includes"])
-        parser.add_argument('--extra-parser-args', action='store', 
-                            dest='extra_parser_args', nargs="+", 
+        parser.add_argument('--extra-parser-args', action='store',
+                            dest='extra_parser_args', nargs="+",
                             help=rcdocs["extra_parser_args"])
 
     def setup(self, rc):
         """Remember to call super() on subclasses!"""
         if isinstance(rc.parsers, basestring):
-            if '[' in rc.parsers or '{' in  rc.parsers:
+            if '[' in rc.parsers or '{' in rc.parsers:
                 rc.parsers = eval(rc.parsers)
         # This should go last
         if rc.dumpast is not NotSpecified:

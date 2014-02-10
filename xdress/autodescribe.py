@@ -509,7 +509,7 @@ class GccxmlBaseDescriber(object):
         if node is None:
             return None
         for child in node.iterfind('EnumValue'):
-            if  child.attrib['init'] == val:
+            if child.attrib['init'] == val:
                 return child
         return None
 
@@ -1474,7 +1474,6 @@ def clang_describe_functions(funcs):
                 try:
                     merge(descs[i],descs[j])
                 except ValueError as e:
-                    from pprint import pprint
                     pprint(descs[i])
                     pprint(descs[j])
                     raise ValueError("mismatch between declarations of '{0}' at {1} and {2}: {3}"
@@ -1578,7 +1577,7 @@ def clang_template_param_kinds(node):
     return kinds
 
 def clang_describe_template_args(node):
-    """TODO: Broken version handling defaults 
+    """TODO: Broken version handling defaults
     automatically::
 
         _, defaults = clang_template_arg_info(node.specialized_template)
@@ -1598,7 +1597,7 @@ def clang_describe_template_args(node):
         return args
 
 def clang_expand_template_args(node, args):
-    """TODO: Broken version handling defaults 
+    """TODO: Broken version handling defaults
     automatically::
 
         count,defaults = clang_template_arg_info(node)
