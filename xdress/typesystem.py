@@ -276,22 +276,22 @@ class TypeSystem(object):
     """A class representing a type system.
     """
 
-    datafields = set(['base_types', 'template_types', 'refined_types', 'humannames', 
-        'extra_types', 'dtypes', 'stlcontainers', 'argument_kinds', 
-        'variable_namespace', 'type_aliases', 'cpp_types', 
-        'numpy_types', 'from_pytypes', 'cython_ctypes', 'cython_cytypes', 
-        'cython_pytypes', 'cython_cimports', 'cython_cyimports', 'cython_pyimports', 
-        'cython_functionnames', 'cython_classnames', 'cython_c2py_conv', 
+    datafields = set(['base_types', 'template_types', 'refined_types', 'humannames',
+        'extra_types', 'dtypes', 'stlcontainers', 'argument_kinds',
+        'variable_namespace', 'type_aliases', 'cpp_types',
+        'numpy_types', 'from_pytypes', 'cython_ctypes', 'cython_cytypes',
+        'cython_pytypes', 'cython_cimports', 'cython_cyimports', 'cython_pyimports',
+        'cython_functionnames', 'cython_classnames', 'cython_c2py_conv',
         'cython_py2c_conv'])
 
-    def __init__(self, base_types=None, template_types=None, refined_types=None, 
+    def __init__(self, base_types=None, template_types=None, refined_types=None,
                  humannames=None, extra_types='xdress_extra_types', dtypes='dtypes',
-                 stlcontainers='stlcontainers', argument_kinds=None, 
-                 variable_namespace=None, type_aliases=None, cpp_types=None, 
-                 numpy_types=None, from_pytypes=None, cython_ctypes=None, 
-                 cython_cytypes=None, cython_pytypes=None, cython_cimports=None, 
-                 cython_cyimports=None, cython_pyimports=None, 
-                 cython_functionnames=None, cython_classnames=None, 
+                 stlcontainers='stlcontainers', argument_kinds=None,
+                 variable_namespace=None, type_aliases=None, cpp_types=None,
+                 numpy_types=None, from_pytypes=None, cython_ctypes=None,
+                 cython_cytypes=None, cython_pytypes=None, cython_cimports=None,
+                 cython_cyimports=None, cython_pyimports=None,
+                 cython_functionnames=None, cython_classnames=None,
                  cython_c2py_conv=None, cython_py2c_conv=None, typestring=None):
         """Parameters
         ----------
@@ -300,7 +300,7 @@ class TypeSystem(object):
         template_types : dict, optional
             Template types are types whose instantiations are based on meta-types.
             this dict maps their names to meta-type names in order.
-        refined_types : dict, optional 
+        refined_types : dict, optional
             This is a mapping from refinement type names to the parent types.
             The parent types may either be base types, compound types, template
             types, or other refined types!
@@ -313,13 +313,13 @@ class TypeSystem(object):
         stlcontainers : str, optional
             The name of the xdress C++ standard library containers wrapper module.
         argument_kinds : dict, optional
-            Templates types have arguments. This is a mapping from type name to a 
+            Templates types have arguments. This is a mapping from type name to a
             tuple of utils.Arg kind flags.  The order in the tuple matches the value
-            in template_types. This is only vaid for concrete types, ie 
+            in template_types. This is only vaid for concrete types, ie
             ('vector', 'int', 0) and not just 'vector'.
         variable_namespace : dict, optional
-            Templates arguments may be variables. These variables may live in a 
-            namespace which is required for specifiying the type.  This is a 
+            Templates arguments may be variables. These variables may live in a
+            namespace which is required for specifiying the type.  This is a
             dictionary mapping variable names to thier namespace.
         type_aliases : dict, optional
             Aliases that may be used to substitute one type name for another.
@@ -345,14 +345,14 @@ class TypeSystem(object):
             A sequence of tuples representing imports that are needed for Cython
             to represent Python types.
         cython_functionnames : dict, optional
-            Cython alternate name fragments used for mangling function and 
+            Cython alternate name fragments used for mangling function and
             variable names.  These should try to adhere to a lowercase_and_underscore
-            convention.  These may contain template argument namess as part of a 
+            convention.  These may contain template argument namess as part of a
             format string, ie ``{'map': 'map_{key_type}_{value_type}'}``.
         cython_classnames : dict, optional
-            Cython alternate name fragments used for mangling class names.  
-            These should try to adhere to a CapCase convention.  These may contain 
-            template argument namess as part of a format string, 
+            Cython alternate name fragments used for mangling class names.
+            These should try to adhere to a CapCase convention.  These may contain
+            template argument namess as part of a format string,
             ie ``{'map': 'Map{key_type}{value_type}'}``.
         cython_c2py_conv : dict, optional
             Cython convertors from C/C++ types to the representative Python types.
@@ -363,9 +363,9 @@ class TypeSystem(object):
             An type that is used to format types to strings in conversion routines.
 
         """
-        self.base_types = base_types if base_types is not None else set(['char', 
-            'uchar', 'str', 'int16', 'int32', 'int64', 'int128', 'uint16', 'uint32', 
-            'uint64', 'uint128', 'float32', 'float64', 'float128', 'complex128', 
+        self.base_types = base_types if base_types is not None else set(['char',
+            'uchar', 'str', 'int16', 'int32', 'int64', 'int128', 'uint16', 'uint32',
+            'uint64', 'uint128', 'float32', 'float64', 'float128', 'complex128',
             'void', 'bool', 'type', 'file', 'exception'])
         self.template_types = template_types if template_types is not None else {
             'map': ('key_type', 'value_type'),
@@ -382,7 +382,7 @@ class TypeSystem(object):
         self.refined_types = refined_types if refined_types is not None else {
             'nucid': 'int32',
             'nucname': 'str',
-            ('enum', ('name', 'str'), 
+            ('enum', ('name', 'str'),
                      ('aliases', ('dict', 'str', 'int32', 0))): 'int32',
             ('function', ('arguments', ('list', ('pair', 'str', 'type'))),
                          ('returns', 'type')): 'void',
@@ -512,7 +512,7 @@ class TypeSystem(object):
             'float128': 'long double',
             'complex128': '{extra_types}complex_t',
             'bool': 'bool',
-            'void': 'void', 
+            'void': 'void',
             'file': 'FILE',
             'exception': '{extra_types}exception',
             'map': 'std::map',
@@ -698,7 +698,7 @@ class TypeSystem(object):
             'set': (('libcpp.set', 'set', 'cpp_set'),),
             'vector': (('libcpp.vector', 'vector', 'cpp_vector'),),
             'nucid': (('pyne', 'cpp_nucname'),),
-            'nucname': (('pyne', 'cpp_nucname'), 
+            'nucname': (('pyne', 'cpp_nucname'),
                         ('libcpp.string', 'string', 'std_string')),
             'function': cython_cimports_functionish,
             'function_pointer': cython_cimports_functionish,
@@ -858,14 +858,14 @@ class TypeSystem(object):
                 rtnprox += '_'
             argdecls = indent(argdecls)
             argbodys = indent(argbodys)
-            rtndecl, rtnbody, rtnrtn, _ = ts.cython_c2py(rtncall, t[2][2], 
+            rtndecl, rtnbody, rtnrtn, _ = ts.cython_c2py(rtncall, t[2][2],
                 cached=False, proxy_name=rtnprox, existing_name=rtncall)
             if rtndecl is None and rtnbody is None:
                 rtnprox = rtnname
             rtndecls = [rtndecl]
             returns_void = (t[2][2] == 'void')
             if not returns_void:
-                 rtndecls.append("cdef {0} {1}".format(ts.cython_ctype(t[2][2]), 
+                rtndecls.append("cdef {0} {1}".format(ts.cython_ctype(t[2][2]),
                                                        rtncall))
             rtndecl = indent(rtndecls)
             rtnbody = indent(rtnbody)
@@ -881,7 +881,7 @@ class TypeSystem(object):
             s += '{rtnbody}\n'
             s = s.format(arglist=", ".join(argnames), argdecls=argdecls,
                          cvartypeptr=ts.cython_ctype(t_).format(type_name='cvartype'),
-                         argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox, 
+                         argbodys=argbodys, rtndecl=rtndecl, rtnprox=rtnprox,
                          rtncall=rtncall, carglist=", ".join(argrtns), rtnbody=rtnbody)
             caches = 'if {cache_name} is None:\n' + indent(s)
             if not returns_void:
@@ -1012,7 +1012,7 @@ class TypeSystem(object):
             TypeMatcher((('enum', MatchAny, MatchAny), '*')): ('int({var}[0])',),
             TypeMatcher((('int32', ('enum', MatchAny, MatchAny)), '*')): \
                                                                 ('int({var}[0])',),
-            # Strip const when going c -> py 
+            # Strip const when going c -> py
             TypeMatcher((MatchAny, 'const')): (
                 lambda t, ts: ts.cython_c2py_getitem(t[0])),
             TypeMatcher(((MatchAny, 'const'), '&')) : (
@@ -1048,7 +1048,7 @@ class TypeSystem(object):
             argrtns = []
             for n, argt in t[1][2]:
                 argnames.append(n)
-                decl, body, rtn, _ = ts.cython_c2py(n, argt, proxy_name="c_" + n, 
+                decl, body, rtn, _ = ts.cython_c2py(n, argt, proxy_name="c_" + n,
                                                     cached=False)
                 argdecls.append(decl)
                 #argdecls.append("cdef {0} {1}".format(cython_pytype(argt), "c_" + n))
@@ -1067,7 +1067,7 @@ class TypeSystem(object):
             argbodys = indent(argbodys)
             #rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtnprox)
             #rtndecl, rtnbody, rtnrtn = cython_py2c(rtnname, t[2][2], proxy_name=rtncall)
-            rtndecl, rtnbody, rtnrtn = ts.cython_py2c(rtncall, t[2][2], 
+            rtndecl, rtnbody, rtnrtn = ts.cython_py2c(rtncall, t[2][2],
                                                       proxy_name=rtnprox)
             if rtndecl is None and rtnbody is None:
                 rtnprox = rtnname
@@ -1087,9 +1087,9 @@ class TypeSystem(object):
                   '    return {rtnrtn}\n')
             arglist = ", ".join(["{0} {1}".format(*x) for x in zip(argcts, argnames)])
             pyarglist=", ".join(argrtns)
-            s = s.format(rtnct=rtnct, arglist=arglist, argdecls=argdecls, 
-                         rtndecl=rtndecl, argbodys=argbodys, rtnprox=rtnprox, 
-                         pyarglist=pyarglist, rtnbody=rtnbody, rtnrtn=rtnrtn, 
+            s = s.format(rtnct=rtnct, arglist=arglist, argdecls=argdecls,
+                         rtndecl=rtndecl, argbodys=argbodys, rtnprox=rtnprox,
+                         pyarglist=pyarglist, rtnbody=rtnbody, rtnrtn=rtnrtn,
                          rtncall=rtncall)
             return s, False
 
@@ -1102,7 +1102,7 @@ class TypeSystem(object):
             (('char', '*'), '*'): ('cdef char * {var}_bytes_\n'
                                    '{var}_bytes = {var}[0].encode()\n'
                                    '{var}_bytes_ = {var}_bytes\n'
-                                   '{proxy_name} = &{var}_bytes_', 
+                                   '{proxy_name} = &{var}_bytes_',
                                    '{proxy_name}'),
             'uchar': ('{var}_bytes = {var}.encode()', '(<unsigned char *> {var}_bytes)[0]'),
             ('uchar', '*'): ('{var}_bytes = {var}.encode()', '<unsigned char *> {var}_bytes'),
@@ -1191,11 +1191,11 @@ class TypeSystem(object):
     @classmethod
     def empty(cls):
         """This is a class method which returns an empty type system."""
-        x = cls(base_types=set(), template_types={}, refined_types={}, humannames={}, 
-                type_aliases={}, cpp_types={}, numpy_types={}, from_pytypes={}, 
-                cython_ctypes={}, cython_cytypes={}, cython_pytypes={}, 
-                cython_cimports={}, cython_cyimports={}, cython_pyimports={}, 
-                cython_functionnames={}, cython_classnames={}, cython_c2py_conv={}, 
+        x = cls(base_types=set(), template_types={}, refined_types={}, humannames={},
+                type_aliases={}, cpp_types={}, numpy_types={}, from_pytypes={},
+                cython_ctypes={}, cython_cytypes={}, cython_pytypes={},
+                cython_cimports={}, cython_cyimports={}, cython_pyimports={},
+                cython_functionnames={}, cython_classnames={}, cython_c2py_conv={},
                 cython_py2c_conv={})
         del x.extra_types
         del x.dtypes
@@ -1212,7 +1212,7 @@ class TypeSystem(object):
         filename : str
             Path to file.
         format : str, optional
-            The file format to save the type system as.  If this is not provided, 
+            The file format to save the type system as.  If this is not provided,
             it is infered from the filenme.  Options are:
 
             * pickle ('.pkl')
@@ -1243,7 +1243,7 @@ class TypeSystem(object):
         filename : str
             Path to file.
         format : str, optional
-            The file format to save the type system as.  If this is not provided, 
+            The file format to save the type system as.  If this is not provided,
             it is infered from the filenme.  Options are:
 
             * pickle ('.pkl')
@@ -1264,15 +1264,15 @@ class TypeSystem(object):
                 f.write(pickle.dumps(data, pickle.HIGHEST_PROTOCOL))
 
     def update(self, *args, **kwargs):
-        """Updates the type system in-place. Only updates the data attributes 
-        named in 'datafields'.  This may be called with any of the following 
+        """Updates the type system in-place. Only updates the data attributes
+        named in 'datafields'.  This may be called with any of the following
         signatures::
 
             ts.update(<TypeSystem>)
             ts.update(<dict-like>)
             ts.update(key1=value1, key2=value2, ...)
 
-        Valid keyword arguments are the same here as for the type system 
+        Valid keyword arguments are the same here as for the type system
         constructor.  See this documentation for more detail.
         """
         datafields = self.datafields
@@ -1401,7 +1401,7 @@ class TypeSystem(object):
             resotype = self.canon(depval), (tname,) + \
                         tuple([self.canon(k) for k in depkey[1:] if k in typemap]) + \
                         tuple([(k[0], self.canon(k[1]), instval) \
-                            for k, instval in zip(depkey[1:], tinst[1:]) 
+                            for k, instval in zip(depkey[1:], tinst[1:])
                             if k not in typemap])
             for k in typemap:
                 del self.type_aliases[k]
@@ -1522,7 +1522,7 @@ class TypeSystem(object):
         """Given a type t, returns the corresponding C++ type declaration."""
         t = self.canon(t)
         if isinstance(t, basestring):
-            if  t in self.base_types:
+            if t in self.base_types:
                 return self.cpp_types[t]
         # must be tuple below this line
         tlen = len(t)
@@ -1585,9 +1585,9 @@ class TypeSystem(object):
     @memoize_method
     def cpp_funcname(self, name, argkinds=None):
         """This returns a name for a function based on its name, rather than
-        its type.  The name may be either a string or a tuple of the form 
-        ('name', template_arg1, template_arg2, ...). The argkinds argument here 
-        refers only to the template arguments, not the function signature default 
+        its type.  The name may be either a string or a tuple of the form
+        ('name', template_arg1, template_arg2, ...). The argkinds argument here
+        refers only to the template arguments, not the function signature default
         arguments. This is not meant to replace cpp_type(), but complement it.
         """
         if isinstance(name, basestring):
@@ -1651,7 +1651,7 @@ class TypeSystem(object):
             return [self.cython_nptype(u, depth=depth) for u in t[1:-1]]
         elif 3 == tlen and self.istemplate(t):
             return self.cython_nptype(t[1])
-        else:  #elif 3 <= tlen:
+        else:  # elif 3 <= tlen:
             return 'np.NPY_OBJECT'
 
     #########################   Cython Functions   ############################
@@ -1759,7 +1759,7 @@ class TypeSystem(object):
                 else:
                     return self.cython_cytype(t[0])
             else:
-                return self._cython_cytype_add_predicate(self.cython_cytype(t[0]), 
+                return self._cython_cytype_add_predicate(self.cython_cytype(t[0]),
                                                          t[-1])
         elif 3 <= tlen:
             if t in self.cython_cytypes:
@@ -1909,9 +1909,9 @@ class TypeSystem(object):
         interpretations based on the length and values:
 
         * ``(module-name,)`` becomes ``import {module-name}``
-        * ``(module-name, var-or-mod)`` becomes 
+        * ``(module-name, var-or-mod)`` becomes
           ``from {module-name} import {var-or-mod}``
-        * ``(module-name, var-or-mod, alias)`` becomes 
+        * ``(module-name, var-or-mod, alias)`` becomes
           ``from {module-name} import {var-or-mod} as {alias}``
         * ``(module-name, 'as', alias)`` becomes ``import {module-name} as {alias}``
 
@@ -1974,23 +1974,23 @@ class TypeSystem(object):
         elif isinstance(lit, basestring):
             cy_lit = repr(lit)
         return cy_lit
-    
+
 
     @memoize_method
     def cython_funcname(self, name, argkinds=None):
         """This returns a name for a function based on its name, rather than
-        its type.  The name may be either a string or a tuple of the form 
-        ('name', template_arg1, template_arg2, ...). The argkinds argument here 
-        refers only to the template arguments, not the function signature default 
-        arguments. This is not meant to replace cython_functionname(), but 
+        its type.  The name may be either a string or a tuple of the form
+        ('name', template_arg1, template_arg2, ...). The argkinds argument here
+        refers only to the template arguments, not the function signature default
+        arguments. This is not meant to replace cython_functionname(), but
         complement it.
         """
         if isinstance(name, basestring):
             return name
         if argkinds is None:
             argkinds = [(Arg.NONE, None)] * (len(name) - 1)
-        fname = name[0] 
-        cfs = [] 
+        fname = name[0]
+        cfs = []
         for x, (argkind, argvalue) in zip(name[1:], argkinds):
             if argkind is Arg.TYPE:
                 cf = self.cython_functionname(x)[1]
@@ -2005,7 +2005,7 @@ class TypeSystem(object):
                     cf = self.cython_functionname(x)[1]  # guess type
                 except TypeError:
                     cf = x  # guess variable
-            cfs.append(cf) 
+            cfs.append(cf)
         fname += '' if 0 == len(cfs) else "_" + "_".join(cfs)
         return fname
 
@@ -2080,8 +2080,8 @@ class TypeSystem(object):
         return c2pyt
 
     @memoize_method
-    def cython_c2py(self, name, t, view=True, cached=True, inst_name=None, 
-                    proxy_name=None, cache_name=None, cache_prefix='self', 
+    def cython_c2py(self, name, t, view=True, cached=True, inst_name=None,
+                    proxy_name=None, cache_name=None, cache_prefix='self',
                     existing_name=None):
         """Given a varibale name and type, returns cython code (declaration, body,
         and return statements) to convert the variable from C/C++ to Python."""
@@ -2102,7 +2102,7 @@ class TypeSystem(object):
         proxy_name = "{0}_proxy".format(name) if proxy_name is None else proxy_name
         iscached = False
         tstr = self.typestr(t, self)
-        template_kw = dict(var=var, cache_name=cache_name, proxy_name=proxy_name, 
+        template_kw = dict(var=var, cache_name=cache_name, proxy_name=proxy_name,
                            t=tstr)
 #        if callable(c2pyt):
 #            import pdb; pdb.set_trace()
@@ -2221,13 +2221,13 @@ class TypeSystem(object):
 
     def register_class(self, name=None, template_args=None, cython_c_type=None,
                        cython_cimport=None, cython_cy_type=None, cython_py_type=None,
-                       cython_template_class_name=None, 
-                       cython_template_function_name=None, cython_cyimport=None, 
-                       cython_pyimport=None, cython_c2py=None, 
-                       cython_py2c=None, cpp_type=None, human_name=None, 
+                       cython_template_class_name=None,
+                       cython_template_function_name=None, cython_cyimport=None,
+                       cython_pyimport=None, cython_c2py=None,
+                       cython_py2c=None, cpp_type=None, human_name=None,
                        from_pytype=None):
-        """Classes are user specified types.  This function will add a class to 
-        the type system so that it may be used normally with the rest of the 
+        """Classes are user specified types.  This function will add a class to
+        the type system so that it may be used normally with the rest of the
         type system.
 
         """
@@ -2283,7 +2283,7 @@ class TypeSystem(object):
             self.cython_functionnames[name] = cython_template_function_name
 
     def deregister_class(self, name):
-        """This function will remove a previously registered class from 
+        """This function will remove a previously registered class from
         the type system.
         """
         isbase = name in base_types
@@ -2310,9 +2310,9 @@ class TypeSystem(object):
 
         self.clearmemo()
 
-    def register_classname(self, classname, package, pxd_base, cpppxd_base, 
+    def register_classname(self, classname, package, pxd_base, cpppxd_base,
                            cpp_classname=None, make_dtypes=True):
-        """Registers a class with the type system from only its name, 
+        """Registers a class with the type system from only its name,
         and relevant header file information.
 
         Parameters
@@ -2327,7 +2327,7 @@ class TypeSystem(object):
         cpp_classname : str or tuple, optional
             Name of class in C++, equiv. to apiname.srcname. Defaults to classname.
         make_dtypes : bool, optional
-            Flag for registering dtypes for this class simeltaneously with 
+            Flag for registering dtypes for this class simeltaneously with
             registering the class itself.
         """
         # target classname
@@ -2376,9 +2376,9 @@ class TypeSystem(object):
             template_args=template_args,
             cython_c_type=cpppxd_base + '.' + cpp_baseclassname, # cpp_fccomp.FCComp
             cython_cimport=class_cimport,
-            cython_cy_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
-            cython_py_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp   
-            from_pytype=[pxd_base + '.' + baseclassname],      # fccomp.FCComp   
+            cython_cy_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp
+            cython_py_type=pxd_base + '.' + baseclassname,      # fccomp.FCComp
+            from_pytype=[pxd_base + '.' + baseclassname],      # fccomp.FCComp
             cpp_type=cpp_baseclassname,
             human_name=templateclassname,
             cython_template_class_name=templateclassname,
@@ -2493,10 +2493,10 @@ class TypeSystem(object):
             )
         self.register_class(**kwclassdblptr)
 
-    def register_refinement(self, name, refinementof, cython_cimport=None, 
-                            cython_cyimport=None, cython_pyimport=None, 
+    def register_refinement(self, name, refinementof, cython_cimport=None,
+                            cython_cyimport=None, cython_pyimport=None,
                             cython_c2py=None, cython_py2c=None):
-        """This function will add a refinement to the type system so that it 
+        """This function will add a refinement to the type system so that it
         may be used normally with the rest of the type system.
         """
         self.refined_types[name] = refinementof
@@ -2522,7 +2522,7 @@ class TypeSystem(object):
             self.cython_py2c_conv[name] = cython_py2c
 
     def deregister_refinement(self, name):
-        """This function will remove a previously registered refinement from 
+        """This function will remove a previously registered refinement from
         the type system.
         """
         self.refined_types.pop(name, None)
@@ -2564,7 +2564,7 @@ class TypeSystem(object):
         self.cython_pyimports.pop(t, None)
         self.clearmemo()
 
-    def register_numpy_dtype(self, t, cython_cimport=None, cython_cyimport=None, 
+    def register_numpy_dtype(self, t, cython_cimport=None, cython_cyimport=None,
                              cython_pyimport=None):
         """This function will add a type to the system as numpy dtype that lives in
         the dtypes module.
@@ -2628,7 +2628,7 @@ class TypeSystem(object):
             t = self.canon(t)
             for n, _ in t[1][2][2]:
                 self.register_variable_namespace(n, namespace)
-        
+
 
     #################### Type system helpers ###################################
 
@@ -2984,7 +2984,7 @@ class _LazyConverterDict(MutableMapping):
 #################### Type string for formatting ################################
 
 class typestr(object):
-    """This is class whose attributes are properties that expose various 
+    """This is class whose attributes are properties that expose various
     string representations of a type.  This is useful for the Python string
     formatting mini-language where attributes of an object may be accessed.
     For example:
@@ -3010,7 +3010,7 @@ class typestr(object):
 
     @property
     def type(self):
-        """This is a repr string of the raw type (self.t), mostly useful for 
+        """This is a repr string of the raw type (self.t), mostly useful for
         comments."""
         if self._type is None:
             self._type = repr(self.t)
@@ -3200,7 +3200,7 @@ class typestr(object):
         """
         if self._cython_npctype_nopred is None:
             npt_nopred = self.ts.cython_nptype(self.t_nopred)
-            npct_nopred = self.cython_ctype(npt_nopred)            
+            npct_nopred = self.cython_ctype(npt_nopred)
             self._cython_npctype_nopred = npct_nopred
         return self._cython_npctype_nopred
 
@@ -3212,7 +3212,7 @@ class typestr(object):
         """
         if self._cython_npcytype_nopred is None:
             npt_nopred = self.ts.cython_nptype(self.t_nopred)
-            npcyt_nopred = self.cython_cytype(npt_nopred)            
+            npcyt_nopred = self.cython_cytype(npt_nopred)
             self._cython_npcytype_nopred = npcyt_nopred
         return self._cython_npcytype_nopred
 
@@ -3224,7 +3224,7 @@ class typestr(object):
         """
         if self._cython_nppytype_nopred is None:
             npt_nopred = self.ts.cython_nptype(self.t_nopred)
-            nppyt_nopred = self.cython_pytype(npt_nopred)            
+            nppyt_nopred = self.cython_pytype(npt_nopred)
             self._cython_nppytype_nopred = nppyt_nopred
         return self._cython_nppytype_nopred
 
