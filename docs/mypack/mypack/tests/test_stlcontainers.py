@@ -19,23 +19,7 @@ from collections import Container, Mapping
 from mypack import stlcontainers
 
 
-# VectorStr
-def test_vector_str():
-    a = np.array(['Aha', 'Take', 'Me', 'On'], dtype=stlcontainers.xd_str)
-    #for x, y in zip(a, np.array(['Aha', 'Take', 'Me', 'On'], dtype=stlcontainers.xd_str)):
-    #    assert_equal(x, y)
-    a[:] = ['On', 'Me', 'Take', 'Aha']
-    #for x, y in zip(a, np.array(['On', 'Me', 'Take', 'Aha'], dtype=stlcontainers.xd_str)):
-    #    assert_equal(x, y)
-    a = np.array(['Aha', 'Me', 'Aha', 'Me'] + ['Take', 'On', 'Take', 'On'], dtype=stlcontainers.xd_str)
-    #for x, y in zip(a, np.array(['Aha', 'Me', 'Aha', 'Me'] + ['Take', 'On', 'Take', 'On'], dtype=stlcontainers.xd_str)):
-    #    assert_equal(x, y)
-    b =  np.array((['Aha', 'Me', 'Aha', 'Me'] + ['Take', 'On', 'Take', 'On'])[::2], dtype=stlcontainers.xd_str)
-    #for x, y in zip(a[::2], b):
-    #    assert_equal(x, y)
-    a[:2] = b[-2:]
-    print(a)
-
+# Vector Str
 
 
 # SetUInt

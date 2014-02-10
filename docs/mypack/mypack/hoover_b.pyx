@@ -9,19 +9,19 @@
 """
 """
 cimport cpp_hoover_b
+cimport dtypes
 cimport hoover
 cimport hoover_b
-cimport stlcontainers
 from mypack cimport cpp_hoover
 from mypack cimport cpp_hoover_b
 
+import dtypes
 import hoover
-import stlcontainers
 
 
 
 cdef class B(hoover.A):
-    """no docstring for {'sidecars': (), 'tarbase': 'hoover_b', 'tarname': 'B', 'language': 'c++', 'srcname': 'B', 'incfiles': ('hoover.h',), 'srcfiles': ('src/hoover.h', 'src/hoover.cpp')}, please file a bug report!"""
+    """no docstring for {'tarbase': 'hoover_b', 'tarname': 'B', 'language': 'c++', 'srcname': 'B', 'sidecars': (), 'incfiles': ('hoover.h',), 'srcfiles': ('src/hoover.h', 'src/hoover.cpp')}, please file a bug report!"""
 
 
 
@@ -33,8 +33,8 @@ cdef class B(hoover.A):
         # cached property defaults
 
 
-    def __init__(self):
-        """B(self)
+    def __init__(self, ):
+        """B(self, )
         """
         self._inst = new cpp_hoover_b.B()
     

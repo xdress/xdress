@@ -11,6 +11,8 @@ mypack
     hoover.pyx
     hoover_b.pxd
     hoover_b.pyx
+    dtypes.pxd
+    dtypes.pyx
     stlcontainers.pxd
     stlcontainers.pyx
     tests/index

@@ -29,6 +29,8 @@ cdef extern from "hoover.h" namespace "hoover":
 # function signatures
 cdef extern from "hoover.h" namespace "hoover":
 
+    void do_nothing_ab() except +
+    void do_nothing_ab(cpp_hoover.A) except +
     void do_nothing_ab(cpp_hoover.A, B) except +
 
 

@@ -8,8 +8,8 @@
 ################################################
 
 
+cimport dtypes
 cimport hoover
-cimport stlcontainers
 from mypack cimport cpp_hoover_b
 
 
