@@ -191,7 +191,8 @@ class XDressPlugin(Plugin):
 
     defaultrc = {'skiptypes': NotSpecified,
                  'skipmethods': NotSpecified,
-                 'includemethods': NotSpecified}
+                 'includemethods': NotSpecified,
+                 'skipattrs': NotSpecified}
 
     rcdocs = {
         'skiptypes': 'The types to filter out from being wrapped',
@@ -259,6 +260,26 @@ class XDressPlugin(Plugin):
                             # Remove that method
                             del rc.env[m_key][k_key]['methods'][del_key]
 
+    def skip_attrs(self, rc):
+        if rc.skipattrs is NotSpecified:
+            return
+        print("descfilter: removing 'skipattrs' from desc dictionary")
+        skip_classes = rc.skipattrs.keys()
+        for m_key, mod in rc.env.items():
+            for k_key, kls_desc in mod.items():
+                if isclassdesc(kls_desc):
+                    if kls_desc['name']['tarname'] in skip_classes:
+                        skippers = rc.skipattrs[k_key]
+                        a_nms = rc.env[m_key][k_key]['attrs']
+                        for m in skippers:
+                            if m in a_nms:
+                                del rc.env[m_key][k_key]['attrs'][m]
+                            else:
+                                msg = 'descfilter: Could not find attr {0} '
+                                msg += 'in {1}. Moving on to next attr'
+                                print(msg.format(m, k_key))
+
+
     def include_methods(self, rc):
         if rc.includemethods is NotSpecified:
             return
@@ -279,4 +300,5 @@ class XDressPlugin(Plugin):
     def execute(self, rc):
         self.skip_types(rc)
         self.skip_methods(rc)
+        self.skip_attrs(rc)
         self.include_methods(rc)
