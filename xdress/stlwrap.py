@@ -161,6 +161,7 @@ class Set{clsname}(_Set{clsname}, collections.Set):
     """Wrapper class for C++ standard library sets of type <{humname}>.
     Provides set like interface on the Python level.
 
+
     Parameters
     ----------
     new_set : bool or set-like
@@ -570,6 +571,7 @@ from libcpp.string cimport string as std_string
 from libcpp.utility cimport pair
 from libcpp.map cimport map as cpp_map
 from libcpp.set cimport set as cpp_set
+from libcpp cimport bool as cpp_bool
 from libcpp.vector cimport vector as cpp_vector
 from cpython.version cimport PY_MAJOR_VERSION
 
@@ -636,6 +638,7 @@ from libcpp.utility cimport pair
 from libcpp.map cimport map as cpp_map
 from libcpp.set cimport set as cpp_set
 from libcpp.vector cimport vector as cpp_vector
+from libcpp cimport bool as cpp_bool
 from libc cimport stdio
 from cpython.version cimport PY_MAJOR_VERSION
 from cpython.ref cimport PyTypeObject, Py_INCREF, Py_XDECREF
