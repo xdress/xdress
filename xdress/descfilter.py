@@ -27,7 +27,10 @@ two things in the xdressrc file for your project.
    b. ``skipmethods`` dictionary. The keys for this dictionary
       are the class names and the values are a list of method names that
       should be excluded from the wrapper.
-   c. ``includemethods`` dict. This is the complement of the
+   c. ``skipattrs`` dictionary. The keys for this dictionary are
+      the class names and the values are a list of class attributes
+      that should be excluded from the wrapper.
+   d. ``includemethods`` dict. This is the complement of the
       ``skipmethods`` dict. The keys are class names and the values are
       list of methods that should be included in the wrapper. All
       other methods are filtered out.
@@ -192,12 +195,15 @@ class XDressPlugin(Plugin):
     defaultrc = {'skiptypes': NotSpecified,
                  'skipmethods': NotSpecified,
                  'includemethods': NotSpecified,
-                 'skipattrs': NotSpecified}
+                 'skipattrs': NotSpecified,
+                 'skipauto': NotSpecified}
 
     rcdocs = {
         'skiptypes': 'The types to filter out from being wrapped',
         'skipmethods': 'Method names to filter out from being wrapped',
-        'includemethods': 'Method names to be wrapped (dict, keys are class names)'
+        'skipattrs': 'Method names to filter out from being wrapped',
+        'includemethods': 'Method names to be wrapped (dict, keys are class names)',
+        'skipauto': 'Try and skip anything that uses an unknown type',
         }
 
     def setup(self, rc):
@@ -297,8 +303,53 @@ class XDressPlugin(Plugin):
                             new_meths[mm] = rc.env[m_key][k_key]['methods'][mm]
                         rc.env[m_key][k_key]['methods'] = new_meths
 
+    def skip_auto(self, rc):
+        if rc.skipauto is NotSpecified:
+            return
+        ts  = rc.ts
+
+        for src_name, cls_dict in rc.env.items():
+            for cls_name, cls_desc in cls_dict.items():
+                if isclassdesc(cls_desc):
+
+                    attr_blacklist = []
+                    for a_name, a_type in cls_desc['attrs'].items():
+                        try:
+                            ts.canon(a_type)
+                        except TypeError:
+                            print('descfilter: removing attribute {0} from class {1} '
+                                  'since it uses unknown type {2}'.format(
+                                    a_name, cls_name, a_type))
+                            attr_blacklist.append(a_name)
+                    for a in attr_blacklist:
+                        del cls_desc['attrs'][a]
+
+                    method_blacklist = []
+                    for m_sig, m_attr in cls_desc['methods'].items():
+                        m_name = m_sig[0]
+                        r_type = m_attr['return']
+                        try:
+                            if r_type is not None:
+                                arg_type = r_type
+                                ts.canon(r_type)
+                                pass
+                            for _, arg_type in m_sig[1:]:
+                                ts.canon(arg_type)
+                        except TypeError:
+                            print('descfilter: removing method {0} from class {1} '
+                                  'since it uses unknown type {2}'.format(
+                                    m_name, cls_name, arg_type))
+                            method_blacklist.append(m_sig)
+
+                    for m in method_blacklist:
+                        del cls_desc['methods'][m]
+
+
+
+
     def execute(self, rc):
         self.skip_types(rc)
         self.skip_methods(rc)
         self.skip_attrs(rc)
+        self.skip_auto(rc)
         self.include_methods(rc)
