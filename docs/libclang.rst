@@ -59,5 +59,6 @@ command in the output library build directory::
 
 That command can be run fairly early in the build process because libLLVMSupport
 is one of the first libraries which gets build. Here are the two possible results:
- * libstdc++: `llvm::install_fatal_error_handler(void (*)(void*, std::string const&, bool), void*)`
- * libc++: `llvm::install_fatal_error_handler(void (*)(void*, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, bool), void*)`
+
+* libstdc++: `llvm::install_fatal_error_handler(void (*)(void*, std::string const&, bool), void*)`
+* libc++: `llvm::install_fatal_error_handler(void (*)(void*, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, bool), void*)`

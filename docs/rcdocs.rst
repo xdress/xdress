@@ -104,6 +104,10 @@ xdress.descfilter
 =================
 :includemethods: Method names to be wrapped (dict, keys are class names),
     *default:* NotSpecified.
+:skipattrs: Method names to filter out from being wrapped, *default:*
+    NotSpecified.
+:skipauto: Try and skip anything that uses an unknown type, *default:*
+    NotSpecified.
 :skipmethods: Method names to filter out from being wrapped, *default:*
     NotSpecified.
 :skiptypes: The types to filter out from being wrapped, *default:* NotSpecified.
