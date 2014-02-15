@@ -40,7 +40,7 @@ to grab and install the code::
 
 
 The source code repository for xdress may be found at the 
-`GitHub project site <http://github.com/scopatz/xdress>`_.
+`GitHub project site <http://github.com/xdress/xdress>`_.
 You may simply clone the development branch using git::
 
     git clone git://github.com/xdress/xdress.git
@@ -58,6 +58,7 @@ XDress currently has the following external dependencies,
 
 *Run Time:*
 
+    #. `Clang/LLVM <http://llvm.org/releases/>`_, optional for C/C++
     #. `pycparser <https://bitbucket.org/eliben/pycparser>`_, optional for C
     #. `GCC-XML <http://www.gccxml.org/HTML/Index.html>`_, optional for C++
     #. `dOxygen <http://www.doxygen.org/>`_, optional for docstrings

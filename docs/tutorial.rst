@@ -244,7 +244,7 @@ Code Listings
 =============
 The following are code listings of the files generated above, since they are too
 large to in-line into the tutorial text.  You may also find `this example implemented
-in the xdress repo <https://github.com/scopatz/xdress/tree/master/docs/mypack>`_
+in the xdress repo <https://github.com/xdress/xdress/tree/master/docs/mypack>`_
 
 
 .. toctree::
