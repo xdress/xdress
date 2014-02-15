@@ -21,6 +21,7 @@ Contents
 
     tutorial
     advtut
+    libclang
     libref/index
     rcdocs
     previous/index
