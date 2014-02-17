@@ -34,6 +34,8 @@ two things in the xdressrc file for your project.
       ``skipmethods`` dict. The keys are class names and the values are
       list of methods that should be included in the wrapper. All
       other methods are filtered out.
+   e. ``skipauto`` boolean.  If this is ``True`` then methods and attributes
+      with any types that are unknown will be filtered out.
 
 .. warning::
 
@@ -222,6 +224,7 @@ class XDressPlugin(Plugin):
                 print("descfilter: skipping these types: {0}".format(rc.skiptypes))
 
     def skip_types(self, rc):
+        """ Remove unwanted types from type descriptions """
         if rc.skiptypes is NotSpecified:
             return
         print("descfilter: removing unwanted types from desc dictionary")
@@ -243,6 +246,7 @@ class XDressPlugin(Plugin):
                         modify_desc(skips, desc)
 
     def skip_methods(self, rc):
+        """ Remove unwanted methods from classes """
         if rc.skipmethods is NotSpecified:
             return
         print("descfilter: removing 'skipmethods' from desc dictionary")
@@ -267,6 +271,7 @@ class XDressPlugin(Plugin):
                             del rc.env[m_key][k_key]['methods'][del_key]
 
     def skip_attrs(self, rc):
+        """ Remove unwanted attributes from classes """
         if rc.skipattrs is NotSpecified:
             return
         print("descfilter: removing 'skipattrs' from desc dictionary")
@@ -287,6 +292,7 @@ class XDressPlugin(Plugin):
 
 
     def include_methods(self, rc):
+        """ Alter a class description to include only a subset of methods """
         if rc.includemethods is NotSpecified:
             return
         print("descfilter: removing all but 'includemethods' from desc")
@@ -304,6 +310,7 @@ class XDressPlugin(Plugin):
                         rc.env[m_key][k_key]['methods'] = new_meths
 
     def skip_auto(self, rc):
+        """ Automatically remove any methods or attributes that use unknown types """
         if rc.skipauto is NotSpecified:
             return
         ts  = rc.ts
@@ -343,9 +350,6 @@ class XDressPlugin(Plugin):
 
                     for m in method_blacklist:
                         del cls_desc['methods'][m]
-
-
-
 
     def execute(self, rc):
         self.skip_types(rc)
