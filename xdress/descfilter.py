@@ -163,7 +163,7 @@ def modify_desc(skips, desc):
         _deleted = False
         # Check return types
         for tm in skips:
-            if tm.flatmatches(m_ret):
+            if m_ret and tm.flatmatches(m_ret['return']):
                 del desc['methods'][m_key]
                 _deleted = True
                 break
@@ -322,7 +322,9 @@ class XDressPlugin(Plugin):
                     attr_blacklist = []
                     for a_name, a_type in cls_desc['attrs'].items():
                         try:
+                            print(a_name, a_type)
                             ts.canon(a_type)
+
                         except TypeError:
                             print('descfilter: removing attribute {0} from class {1} '
                                   'since it uses unknown type {2}'.format(
@@ -331,12 +333,15 @@ class XDressPlugin(Plugin):
                     for a in attr_blacklist:
                         del cls_desc['attrs'][a]
 
+                    import pprint
+                    pprint.pprint(cls_desc)
+
                     method_blacklist = []
                     for m_sig, m_attr in cls_desc['methods'].items():
                         m_name = m_sig[0]
-                        r_type = m_attr['return']
                         try:
-                            if r_type is not None:
+                            if m_attr is not None:
+                                r_type = m_attr['return']
                                 arg_type = r_type
                                 ts.canon(r_type)
                                 pass
