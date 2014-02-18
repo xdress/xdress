@@ -1958,11 +1958,11 @@ class PycparserVarDescriber(PycparserBaseDescriber):
             for child_name, child in self._root.children():
                 if getattr(child, 'name', None) == self.name:
                     if isinstance(child, pycparser.c_ast.FuncDef):
-                        raise TypeError(_type_error_msg.format(self.name, 'function',
-                                                            'PycparserFuncDescriber'))
+                        raise TypeError(self._type_error_msg.format(
+                            self.name, 'function', 'PycparserFuncDescriber'))
                     if isinstance(child, pycparser.c_ast.Struct):
-                        raise TypeError(_type_error_msg.format(self.name, 'struct',
-                                                            'PycparserClassDescriber'))
+                        raise TypeError(self._type_error_msg.format(
+                            self.name, 'struct', 'PycparserClassDescriber'))
                     self.desc['type'] = self.type(child)
                     break
         else:
