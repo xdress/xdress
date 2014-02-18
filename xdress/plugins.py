@@ -2,12 +2,12 @@
 
 :author: Anthony Scopatz <scopatz@gmail.com>
 
-The purpose of xdress is to be as modular and extensible as possible, allowing for 
-developers to build and execute their own tools as needed.  As such, xdress has 
-a very nimble plugin interface that easily handles run control, adding arguments to 
+The purpose of xdress is to be as modular and extensible as possible, allowing for
+developers to build and execute their own tools as needed.  As such, xdress has
+a very nimble plugin interface that easily handles run control, adding arguments to
 the command line interface, setting up & validating the run control, command
-execution, and teardown.  In fact, the entire xdress execution is based on this 
-plugin architecture.  You can be certain that this is well supported feature and 
+execution, and teardown.  In fact, the entire xdress execution is based on this
+plugin architecture.  You can be certain that this is well supported feature and
 not some hack'd add on.
 
 Writing Plugins
@@ -27,10 +27,10 @@ Or you can add it on the command line::
 
     ~ $ xdress --plugins xdress.stlwrap xdress.autoall xdress.cythongen mypack.mymod
 
-Note that in both of the above cases we retain normal functionality by including 
+Note that in both of the above cases we retain normal functionality by including
 the default plugins that come with xdress.
 
-The ``XDressPlugin`` variable must be callable with no arguments and return a 
+The ``XDressPlugin`` variable must be callable with no arguments and return a
 variable with certain attributes.  Normally this is done as a class but through
 the magic of duck typing it doesn't have to be.  The ``Plugin`` class is provided
 as a base class which implements a minimal, zero-work interface.  This is useful
@@ -43,53 +43,53 @@ Interface
     The names in this list will be loaded and executed in order prior to this plugin.
     If multiple plugins require the same upstream plugin, the upstream on will only
     be run once.
-:defaultrc: This is a dictionary or run control instance that maps run control 
-    parameters to their default values if they are otherwise not specified.  To 
+:defaultrc: This is a dictionary or run control instance that maps run control
+    parameters to their default values if they are otherwise not specified.  To
     make a parameter have to be given by the user, set the value to the singleton
-    ``xdress.utils.NotSpecified``.  Parameters with the same name in different 
+    ``xdress.utils.NotSpecified``.  Parameters with the same name in different
     plugins will clobber each other, with the last plugin's value being ultimately
-    assigned.  The exception to this is if a later plugin's parameter value is 
+    assigned.  The exception to this is if a later plugin's parameter value is
     ``NotSpecified`` then the previous plugin value will be retained.  See the
     ``RunControl`` class for more details.  Generally it is not advised for two
-    plugins to share run control parameter names unless you *really* know what 
+    plugins to share run control parameter names unless you *really* know what
     you are doing.
 :rcupdaters: This may be a dict, another mapping, a function which returns a mapping.
     The keys are the string names of the run control parameters.  The values
-    are callables which indicate how to update or merge two rc parameters with 
-    this key. The callable should take two instances and return a copy that 
-    represents the merger, e.g. ``lambda old, new: old + new``.  One useful example 
+    are callables which indicate how to update or merge two rc parameters with
+    this key. The callable should take two instances and return a copy that
+    represents the merger, e.g. ``lambda old, new: old + new``.  One useful example
     is for paths.  Normally you want new paths to prepend old ones::
 
         rcupdaters = {'includes': lambda old, new: list(new) + list(old)}
 
-    If a callable is not supplied for an rc parameter then the the default 
+    If a callable is not supplied for an rc parameter then the the default
     behaviour is to simply override the old value with the new one.
 :rcdocs: This may be a dict, another mapping, a function which returns a mapping.
     The keys are the string names of the run control parameters.  The values
     are docstrings for the rc parameters.
-:update_argparser(parser):  This is method that takes an argparse.ArgumentParser() 
-    instance and modifies it in-place.  This allows for run control parameters to be 
-    exposed as command line arguments and options.  Default arguments in 
-    ``parser.add_argument()`` values should not be given, or should only be set to 
-    ``Not Specified``.  This is to prevent collisions with the run controller.  
-    Default values should instead be given in the plugin's ``defaultrc``.  Thus 
-    argument names or the ``dest`` keyword argument should match the keys in 
+:update_argparser(parser):  This is method that takes an argparse.ArgumentParser()
+    instance and modifies it in-place.  This allows for run control parameters to be
+    exposed as command line arguments and options.  Default arguments in
+    ``parser.add_argument()`` values should not be given, or should only be set to
+    ``Not Specified``.  This is to prevent collisions with the run controller.
+    Default values should instead be given in the plugin's ``defaultrc``.  Thus
+    argument names or the ``dest`` keyword argument should match the keys in
     ``defaultrc``.
-:setup(rc): Performs all setup tasks needed for this plugin.  This may include 
-    validation and munging of the run control object (rc) as well as creating 
-    directories and files in the OS environment.  If needed, the rc should be 
+:setup(rc): Performs all setup tasks needed for this plugin.  This may include
+    validation and munging of the run control object (rc) as well as creating
+    directories and files in the OS environment.  If needed, the rc should be
     modified in-place so that changes propagate to other plugins and further calls
     on this plugin. This should return None.
-:execute(rc): Performs the heavy lifting of the plugin, which may require a run 
-    controller.If needed, the rc should be modified in-place so that changes 
-    propagate to other plugins and further calls on this plugin. This should 
-    return None. 
+:execute(rc): Performs the heavy lifting of the plugin, which may require a run
+    controller.If needed, the rc should be modified in-place so that changes
+    propagate to other plugins and further calls on this plugin. This should
+    return None.
 :teardown(rc): Performs any cleanup tasks needed by the plugin, including removing
-    temporary files.  If needed, the rc should be modified in-place so that changes 
-    propagate to other plugins and further calls on this plugin. This should 
-    return None. 
+    temporary files.  If needed, the rc should be modified in-place so that changes
+    propagate to other plugins and further calls on this plugin. This should
+    return None.
 :report_debug(rc):  Generates and returns a message to report in the ``debug.txt``
-    file in the event that execute() fails and additional debugging information is 
+    file in the event that execute() fails and additional debugging information is
     requested.  This message is a string.
 
 
@@ -110,7 +110,7 @@ Here is simple, if morbid, plugin example::
             'answer': 'Joan of Arc',
             }
 
-        rcupdaters = {'choices': lambda old, new: list(new) + list(old)}        
+        rcupdaters = {'choices': lambda old, new: list(new) + list(old)}
 
         rcdocs = {'choices': "Possible answers.",
                   'answer': "The correct answer"}
@@ -136,7 +136,7 @@ Here is simple, if morbid, plugin example::
 
         def report_debug(self, rc):
             return "the possible choices were " + str(rc.choices)
-    
+
 
 Plugins API
 ===========
@@ -159,28 +159,28 @@ class Plugin(object):
     """
 
     requires = ()
-    """This is a sequence of strings, or a function which returns such, that 
+    """This is a sequence of strings, or a function which returns such, that
     lists the module names of other plugins that this plugin requires.
     """
 
     defaultrc = {}
     """This may be a dict, RunControl instance, or other mapping or a function
-    which returns any of these.  The keys are string names of the run control 
+    which returns any of these.  The keys are string names of the run control
     parameters and the values are the associated default values.
     """
 
     rcupdaters = {}
     """This may be a dict, another mapping, a function which returns a mapping.
     The keys are the string names of the run control parameters.  The values
-    are callables which indicate how to update or merge two rc parameters with 
-    this key. The callable should take two instances and return a copy that 
-    represents the merger, e.g. ``lambda old, new: old + new``.  One useful example 
+    are callables which indicate how to update or merge two rc parameters with
+    this key. The callable should take two instances and return a copy that
+    represents the merger, e.g. ``lambda old, new: old + new``.  One useful example
     is for paths.  Normally you want new paths to prepend old ones::
 
         rcupdaters = {'includes': lambda old, new: list(new) + list(old)}
 
-    If a callable is not supplied for an rc parameter then the the default 
-    behaviour is to simply override the old value with the new one.  
+    If a callable is not supplied for an rc parameter then the the default
+    behaviour is to simply override the old value with the new one.
     """
 
     rcdocs = {}
@@ -194,26 +194,26 @@ class Plugin(object):
         pass
 
     def update_argparser(self, parser):
-        """This method takes an argparse.ArgumentParser() instance and modifies 
-        it in-place.  This allows for run control parameters to be modified from 
+        """This method takes an argparse.ArgumentParser() instance and modifies
+        it in-place.  This allows for run control parameters to be modified from
         as command line arguments.
 
         Parameters
         ----------
         parser : argparse.ArgumentParser
             The parser to be updated.  Arguments defaults should not be given, or
-            if given should only be ``xdress.utils.Not Specified``.  This is to 
-            prevent collisions with the run controller.  Default values should 
+            if given should only be ``xdress.utils.Not Specified``.  This is to
+            prevent collisions with the run controller.  Default values should
             instead be given in this class's ``defaultrc`` attribute or method.
-            Argument names or the ``dest`` keyword argument should match the keys 
+            Argument names or the ``dest`` keyword argument should match the keys
             in ``defaultrc``.
 
         """
         pass
 
     def setup(self, rc):
-        """Performs all setup tasks needed for this plugin.  This may include 
-        validation and munging of the run control object as well as creating 
+        """Performs all setup tasks needed for this plugin.  This may include
+        validation and munging of the run control object as well as creating
         the portions of the OS environment.
 
         Parameters
@@ -246,7 +246,7 @@ class Plugin(object):
     def report_debug(self, rc):
         """A message to report in the event that execute() fails and additional
         debugging information is requested.
-        
+
         Parameters
         ----------
         rc : xdress.utils.RunControl
@@ -254,7 +254,7 @@ class Plugin(object):
         Returns
         -------
         message : str or None
-            A debugging message to report.  If None is returned, this plugin is 
+            A debugging message to report.  If None is returned, this plugin is
             skipped in the debug output.
 
         """
@@ -271,7 +271,7 @@ class Plugins(object):
     3. ``setup()``
     4. ``execute()``
     5. ``teardown()``
-       
+
     """
 
     def __init__(self, modnames, loaddeps=True):
@@ -281,7 +281,7 @@ class Plugins(object):
             The module names where the plugins live.  Plugins must have the name
             'XDressPlugin' in the these modules.
         loaddeps: bool, optional
-            Flag for automatically loading dependencies, should only be False in 
+            Flag for automatically loading dependencies, should only be False in
             a limited set of circumstances.
 
         """
@@ -323,7 +323,7 @@ class Plugins(object):
         def showwarning(message, category, filename, lineno, file=None, line=None):
             if self.rc.debug:
                 debugmsg = "{0}: '{1}' from {2}:{3}"
-                debugmsg = debugmsg.format(category.__name__, message, 
+                debugmsg = debugmsg.format(category.__name__, message,
                                            filename, lineno)
                 self.warnings.append(debugmsg)
             printmsg = "WARNING: {0}: {1}"
@@ -332,8 +332,8 @@ class Plugins(object):
         warnings.showwarning = showwarning
 
     def merge_rcs(self):
-        """Finds all of the default run controllers and returns a new and 
-        full default RunControl() instance.  This has also merged all of 
+        """Finds all of the default run controllers and returns a new and
+        full default RunControl() instance.  This has also merged all of
         the rc updaters in the process."""
         rc = RunControl()
         rcdocs = self.rcdocs
@@ -393,7 +393,7 @@ class Plugins(object):
                 warnmsg = u'\n{0}xdress issued the following warnings:\n\n{1}\n\n'
                 warnmsg = warnmsg.format(sep, "\n".join(self.warnings))
                 msg += warnmsg
-            msg += '\n{0}Run control run-time contents:\n\n{1}\n\n'.format(sep, 
+            msg += '\n{0}Run control run-time contents:\n\n{1}\n\n'.format(sep,
                                                                     rc._pformat())
             for plugin in self.plugins:
                 plugin_msg = plugin.report_debug(rc) or ''
@@ -404,10 +404,10 @@ class Plugins(object):
                 f.write(msg)
             raise
         else:
-            sys.exit(str(err))
+            sys.exit('ERROR: ' + str(err))
 
 def summarize_rcdocs(modnames, headersep="=", maxdflt=2000):
-    """For a list of plugin module names, return a rST string that 
+    """For a list of plugin module names, return a rST string that
     summarizes the docstrings for all run control parameters.
     """
     nods = "No docstring provided."
