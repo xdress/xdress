@@ -27,10 +27,15 @@ two things in the xdressrc file for your project.
    b. ``skipmethods`` dictionary. The keys for this dictionary
       are the class names and the values are a list of method names that
       should be excluded from the wrapper.
-   c. ``includemethods`` dict. This is the complement of the
+   c. ``skipattrs`` dictionary. The keys for this dictionary are
+      the class names and the values are a list of class attributes
+      that should be excluded from the wrapper.
+   d. ``includemethods`` dict. This is the complement of the
       ``skipmethods`` dict. The keys are class names and the values are
       list of methods that should be included in the wrapper. All
       other methods are filtered out.
+   e. ``skipauto`` boolean.  If this is ``True`` then methods and attributes
+      with any types that are unknown will be filtered out.
 
 .. warning::
 
@@ -158,7 +163,7 @@ def modify_desc(skips, desc):
         _deleted = False
         # Check return types
         for tm in skips:
-            if tm.flatmatches(m_ret):
+            if m_ret and tm.flatmatches(m_ret['return']):
                 del desc['methods'][m_key]
                 _deleted = True
                 break
@@ -191,12 +196,16 @@ class XDressPlugin(Plugin):
 
     defaultrc = {'skiptypes': NotSpecified,
                  'skipmethods': NotSpecified,
-                 'includemethods': NotSpecified}
+                 'includemethods': NotSpecified,
+                 'skipattrs': NotSpecified,
+                 'skipauto': NotSpecified}
 
     rcdocs = {
         'skiptypes': 'The types to filter out from being wrapped',
         'skipmethods': 'Method names to filter out from being wrapped',
-        'includemethods': 'Method names to be wrapped (dict, keys are class names)'
+        'skipattrs': 'Method names to filter out from being wrapped',
+        'includemethods': 'Method names to be wrapped (dict, keys are class names)',
+        'skipauto': 'Try and skip anything that uses an unknown type',
         }
 
     def setup(self, rc):
@@ -215,6 +224,7 @@ class XDressPlugin(Plugin):
                 print("descfilter: skipping these types: {0}".format(rc.skiptypes))
 
     def skip_types(self, rc):
+        """ Remove unwanted types from type descriptions """
         if rc.skiptypes is NotSpecified:
             return
         print("descfilter: removing unwanted types from desc dictionary")
@@ -236,6 +246,7 @@ class XDressPlugin(Plugin):
                         modify_desc(skips, desc)
 
     def skip_methods(self, rc):
+        """ Remove unwanted methods from classes """
         if rc.skipmethods is NotSpecified:
             return
         print("descfilter: removing 'skipmethods' from desc dictionary")
@@ -259,7 +270,29 @@ class XDressPlugin(Plugin):
                             # Remove that method
                             del rc.env[m_key][k_key]['methods'][del_key]
 
+    def skip_attrs(self, rc):
+        """ Remove unwanted attributes from classes """
+        if rc.skipattrs is NotSpecified:
+            return
+        print("descfilter: removing 'skipattrs' from desc dictionary")
+        skip_classes = rc.skipattrs.keys()
+        for m_key, mod in rc.env.items():
+            for k_key, kls_desc in mod.items():
+                if isclassdesc(kls_desc):
+                    if kls_desc['name']['tarname'] in skip_classes:
+                        skippers = rc.skipattrs[k_key]
+                        a_nms = rc.env[m_key][k_key]['attrs']
+                        for m in skippers:
+                            if m in a_nms:
+                                del rc.env[m_key][k_key]['attrs'][m]
+                            else:
+                                msg = 'descfilter: Could not find attr {0} '
+                                msg += 'in {1}. Moving on to next attr'
+                                print(msg.format(m, k_key))
+
+
     def include_methods(self, rc):
+        """ Alter a class description to include only a subset of methods """
         if rc.includemethods is NotSpecified:
             return
         print("descfilter: removing all but 'includemethods' from desc")
@@ -276,7 +309,56 @@ class XDressPlugin(Plugin):
                             new_meths[mm] = rc.env[m_key][k_key]['methods'][mm]
                         rc.env[m_key][k_key]['methods'] = new_meths
 
+    def skip_auto(self, rc):
+        """ Automatically remove any methods or attributes that use unknown types """
+        if rc.skipauto is NotSpecified:
+            return
+        ts  = rc.ts
+
+        for src_name, cls_dict in rc.env.items():
+            for cls_name, cls_desc in cls_dict.items():
+                if isclassdesc(cls_desc):
+
+                    attr_blacklist = []
+                    for a_name, a_type in cls_desc['attrs'].items():
+                        try:
+                            print(a_name, a_type)
+                            ts.canon(a_type)
+
+                        except TypeError:
+                            print('descfilter: removing attribute {0} from class {1} '
+                                  'since it uses unknown type {2}'.format(
+                                    a_name, cls_name, a_type))
+                            attr_blacklist.append(a_name)
+                    for a in attr_blacklist:
+                        del cls_desc['attrs'][a]
+
+                    import pprint
+                    pprint.pprint(cls_desc)
+
+                    method_blacklist = []
+                    for m_sig, m_attr in cls_desc['methods'].items():
+                        m_name = m_sig[0]
+                        try:
+                            if m_attr is not None:
+                                r_type = m_attr['return']
+                                arg_type = r_type
+                                ts.canon(r_type)
+                                pass
+                            for _, arg_type in m_sig[1:]:
+                                ts.canon(arg_type)
+                        except TypeError:
+                            print('descfilter: removing method {0} from class {1} '
+                                  'since it uses unknown type {2}'.format(
+                                    m_name, cls_name, arg_type))
+                            method_blacklist.append(m_sig)
+
+                    for m in method_blacklist:
+                        del cls_desc['methods'][m]
+
     def execute(self, rc):
         self.skip_types(rc)
         self.skip_methods(rc)
+        self.skip_attrs(rc)
+        self.skip_auto(rc)
         self.include_methods(rc)

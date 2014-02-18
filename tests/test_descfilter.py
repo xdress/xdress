@@ -4,8 +4,10 @@ from copy import deepcopy
 import pprint
 from nose.tools import assert_equal
 from tools import unit
-from xdress.typesystem import TypeMatcher
+from xdress.typesystem import TypeMatcher, TypeSystem
 from xdress import descfilter as df
+from xdress.utils import RunControl, DEFAULT_RC_FILE, DEFAULT_PLUGINS
+from xdress.plugins import Plugins
 
 car_class = {
     'name': 'Car',
@@ -21,9 +23,12 @@ car_class = {
         ('~Car',): None,
         ('navigate', ('where', 'str'),
                      ('howFast', 'float32'),
-                     ('when', 'Date')): ('vector', 'uint32'),
-        ('traffic', ('coord', (('vector', 'int32', 'const'), '&'))): 'str',
-        ('isValid',): 'bool',
+                     ('when', 'Date')): {
+                         'return': ('vector', 'uint32')},
+        ('traffic', ('coord', (('vector', 'int32', 'const'), '&'))): {
+            'return': 'str'},
+        ('isValid',): {
+            'return': 'bool'},
         }
     }
 
@@ -43,10 +48,14 @@ plane_class = {
         ('~Plane',): None,
         ('navigate', ('where', 'str'),
                      ('howFast', 'float32'),
-                     ('when', 'Date')): ('vector', 'uint32'),
-        ('land', ('coord', (('vector', 'int32', 'const'), '&'))): 'str',
-        ('dogfight', ('who', 'Chopper'), ('why', 'str')): 'bool',
-        ('isOnFire',): 'bool',
+                     ('when', 'Date')): {
+                         'return': ('vector', 'uint32')},
+        ('land', ('coord', (('vector', 'int32', 'const'), '&'))): {
+            'return': 'str'},
+        ('dogfight', ('who', 'Chopper'), ('why', 'str')): {
+            'return': 'bool'},
+        ('isOnFire',): {
+            'return': 'bool'},
         }
     }
 
@@ -67,7 +76,7 @@ def test_typefilter_list():
     'methods': {
         ('Car',): None,
         ('~Car',): None,
-        ('isValid',): 'bool'}
+        ('isValid',): {'return': 'bool'}}
         }
 
     print('********\nCar class stuff (actual then expected):\n')
@@ -101,8 +110,10 @@ def test_typefilter_dict():
         'methods': {
             ('Car',): None,
             ('~Car',): None,
-            ('traffic', ('coord', (('vector', 'int32', 'const'), '&'))): 'str',
-            ('isValid',): 'bool'}
+            ('traffic', ('coord', (('vector', 'int32', 'const'), '&'))): {
+                'return': 'str'},
+            ('isValid',): {
+                'return': 'bool'}}
     }
 
     exp_plane = {
@@ -118,8 +129,10 @@ def test_typefilter_dict():
             ('Plane',): None,
             ('Plane', ('homeAirport', 'str')): None,
             ('~Plane',): None,
-            ('land', ('coord', (('vector', 'int32', 'const'), '&'))): 'str',
-            ('isOnFire',): 'bool'}
+            ('land', ('coord', (('vector', 'int32', 'const'), '&'))): {
+                'return': 'str'},
+            ('isOnFire',): {
+                'return': 'bool'}}
     }
 
     print('********\nCar class stuff (actual then expected):\n')
@@ -131,3 +144,44 @@ def test_typefilter_dict():
 
     assert_equal(car_class_copy, exp_car)
     assert_equal(plane_class_copy, exp_plane)
+
+
+@unit
+def test_skipauto():
+    plug = df.XDressPlugin()
+    plugins = DEFAULT_PLUGINS + plug.requires + ('xdress.descfilter',)
+    rc = RunControl(rc=DEFAULT_RC_FILE, plugins=plugins)
+    rc._update(plug.defaultrc)
+    rc.skipauto = True
+    rc.ts = TypeSystem()
+    rc.env = {'plane.cpp': {'Plane': plane_class}}
+
+    plug.setup(rc)
+    plug.execute(rc)
+    plug.teardown(rc)
+
+    exp_plane = {
+        'name': 'Plane',
+        'namespace': 'util',
+        'parents': [],
+        'attrs': {
+            'homeAirport': 'str',
+            'maxrpm': 'float64',
+            'manufacturer': 'str',
+            'maxspeed': 'float32',
+            'position': ('vector', 'float64')},
+        'methods': {
+            ('Plane',): None,
+            ('Plane', ('homeAirport', 'str')): None,
+            ('~Plane',): None,
+            ('land', ('coord', (('vector', 'int32', 'const'), '&'))): {
+                'return': 'str'},
+            ('isOnFire',): {
+                'return': 'bool'}}
+    }
+
+    plane = rc.env['plane.cpp']['Plane']
+    print('********\nplane class stuff (actual then expected):\n')
+    pprint.pprint(plane)
+    pprint.pprint(exp_plane)
+    assert_equal(plane, exp_plane)
