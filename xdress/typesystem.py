@@ -2286,7 +2286,7 @@ class TypeSystem(object):
         """This function will remove a previously registered class from
         the type system.
         """
-        isbase = name in base_types
+        isbase = name in self.base_types
         if not isbase and name not in self.template_types:
             _raise_type_error(name)
         if isbase:

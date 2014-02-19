@@ -314,7 +314,6 @@ def funccpppxd(desc, exceptions=True, ts=None):
     cpppxd = _cpppxd_func_template.format(**d)
     extra = desc['extra']
     if 'srcpxd_filename' not in extra:
-        ext = _lang_exts[name.language]
         extra['srcpxd_filename'] = '{0}_{1}.pxd'.format(d['name']['tarbase'])
     return cimport_tups, cpppxd
 
@@ -1017,10 +1016,11 @@ def _gen_argfill(args, defaults):
         elif kind is Arg.VAR:
             afillval = "{0}={1}".format(name, default)
         elif kind is Arg.TYPE:
-            raise ValueError("default argument value cannot be a type: {0}".format(a))
+            raise ValueError("default argument value cannot be a type: "
+                             "{0}".format(name))
         else:
             raise ValueError("default argument value cannot be determined: "
-                             "{0}".format(a))
+                             "{0}".format(name))
         afill.append(afillval)
     return ", ".join(afill), names
 
