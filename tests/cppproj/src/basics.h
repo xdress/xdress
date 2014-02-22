@@ -35,6 +35,12 @@ typedef enum PersonID {
   LESLIE,
 } PersonID;
 
+// unions
+typedef union Union0 {
+    int i_val;
+    float f_val;
+} Union0;
+
 // structs
 typedef struct struct0 {
   char nuc_name[6];

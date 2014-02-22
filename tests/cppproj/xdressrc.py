@@ -109,6 +109,7 @@ functions = [
 
 classes = [
     #apiname('struct0', 'basics', 'pybasics', 'My_Struct_0'),  FIXME This needs more work
+    apiname('Union0', **_inbasics),
     apiname('VoidFPStruct', **_inbasics),
     apiname('A', **_inbasics),
     apiname('B', **_inbasics),
