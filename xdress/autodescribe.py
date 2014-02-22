@@ -1534,6 +1534,10 @@ def clang_describe_type(typ, loc):
                     clang_describe_type(typ.get_result(), loc))
         elif kind == TypeKind.ENUM:
             return clang_describe_enum(typ.get_declaration())
+        elif kind == TypeKind.CONSTANTARRAY:
+            array_size = typ.get_array_size()
+            element_type = typ.get_array_element_type()
+            desc = (clang_describe_type(element_type, loc), array_size)
         else:
             raise NotImplementedError('type kind {0}: {1} at {2}'
                 .format(typ.kind, typ.spelling, clang_str_location(loc)))
