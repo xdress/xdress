@@ -1254,7 +1254,7 @@ def clang_find_class(tu, name, ts, namespace=None, filename=None, onlyin=None):
         kinds = CursorKind.CLASS_TEMPLATE,
     else:
         basename = name
-        kinds = CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL
+        kinds = CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL, CursorKind.UNION_DECL
     decls = clang_find_decls(tu, basename, kinds=kinds, onlyin=onlyin, namespace=namespace)
     decls = frozenset(c.get_definition() or c for c in decls) # Use definitions if available
     if len(decls)==1:
@@ -1374,6 +1374,8 @@ def clang_describe_class(cls):
         construct = 'class'
     elif cls.kind == CursorKind.STRUCT_DECL:
         construct = 'struct'
+    elif cls.kind == CursorKind.UNION_DECL:
+        construct = 'union'
     else:
         raise ValueError('bad class kind {0}'.format(cls.kind.name))
     typ = cls.spelling

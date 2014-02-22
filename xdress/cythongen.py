@@ -1076,7 +1076,7 @@ def _gen_default_constructor(desc, attrs, ts, doc=None, srcpxd_filename=None):
     ct = ts.cython_ctype(desc['type'])
     if desc['construct'] == 'class':
         fcall = 'self._inst = new {0}()'.format(ct)
-    elif desc['construct'] == 'struct':
+    elif desc['construct'] in ('struct', 'union'):
         fcall = ('self._inst = malloc(sizeof({0}))\n'
                  '(<{0} *> self._inst)[0] = {0}()').format(ct)
     else:
@@ -1109,7 +1109,7 @@ def _gen_constructor(name, name_mangled, classname, args, defaults, ts,
                     "{0}.{1}".format(srcpxd_filename.rsplit('.', 1)[0], classname)
     if construct == 'class':
         fcall = 'self._inst = new {0}({1})'.format(classname, argvals)
-    elif construct == 'struct':
+    elif construct in ('struct', 'union'):
         fcall = ('self._inst = malloc(sizeof({0}))\n'
                  '(<{0} *> self._inst)[0] = {0}({1})').format(classname, argvals)
     else:
