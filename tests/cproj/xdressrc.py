@@ -40,6 +40,7 @@ functions = [
 
 classes = [
 #    apiname('struct0', _fromsrcdir('basics*'), 'pybasics', 'My_Struct_0'),  #FIXME This needs more work
+    apiname('SharedSpace', tarbase='pybasics', **_inbasics),
     apiname('ThreeNums', tarbase='pybasics', **_inbasics),
     apiname('*', **_indiscovery),
     ]

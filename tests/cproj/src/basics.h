@@ -47,4 +47,11 @@ typedef struct ThreeNums
 
 double call_threenums_op_from_c(ThreeNums x); 
 
+// unions
+typedef union SharedSpace
+{
+    int i_val;
+    float f_val;
+} SharedSpace;
+
 #endif
