@@ -87,6 +87,7 @@ exp_toaster_desc = {
         'nslices': 'uint32',
         'toastiness': 'str',
         'rate': 'float32',
+        'array': ('char', 10),
         'fp': ('function_pointer', (('_0', 'float32'),), 'int32'),
         'vec': ('vector', 'char', 0),
         },
