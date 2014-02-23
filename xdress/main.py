@@ -221,6 +221,7 @@ def main():
     plugins.setup()
     plugins.execute()
     plugins.teardown()
+    plugins.exit()
 
 if __name__ == '__main__':
     main()

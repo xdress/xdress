@@ -271,6 +271,7 @@ class Plugins(object):
     3. ``setup()``
     4. ``execute()``
     5. ``teardown()``
+    6. ``exit()``
 
     """
 
@@ -387,8 +388,10 @@ class Plugins(object):
         if rc.debug:
             import traceback
             sep = nyansep + '\n\n'
-            msg = u'{0}xdress failed with the following error:\n\n'.format(sep)
-            msg += traceback.format_exc()
+            msg = u''
+            if err != 0:
+                msg += u'{0}xdress failed with the following error:\n\n'.format(sep)
+                msg += traceback.format_exc()
             if len(self.warnings) > 0:
                 warnmsg = u'\n{0}xdress issued the following warnings:\n\n{1}\n\n'
                 warnmsg = warnmsg.format(sep, "\n".join(self.warnings))
@@ -402,9 +405,13 @@ class Plugins(object):
                     msg += plugin_msg
             with io.open(os.path.join(rc.builddir, 'debug.txt'), 'a+') as f:
                 f.write(msg)
-            raise
+            if err != 0:
+                raise
         else:
-            sys.exit('ERROR: ' + str(err))
+            if err == 0:
+                sys.exit()
+            else:
+                sys.exit('ERROR: ' + str(err))
 
 def summarize_rcdocs(modnames, headersep="=", maxdflt=2000):
     """For a list of plugin module names, return a rST string that
