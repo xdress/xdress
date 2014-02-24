@@ -290,7 +290,6 @@ class XDressPlugin(Plugin):
                                 msg += 'in {1}. Moving on to next attr'
                                 print(msg.format(m, k_key))
 
-
     def include_methods(self, rc):
         """ Alter a class description to include only a subset of methods """
         if rc.includemethods is NotSpecified:
@@ -313,7 +312,7 @@ class XDressPlugin(Plugin):
         """ Automatically remove any methods or attributes that use unknown types """
         if rc.skipauto is NotSpecified:
             return
-        ts  = rc.ts
+        ts = rc.ts
 
         for src_name, cls_dict in rc.env.items():
             for cls_name, cls_desc in cls_dict.items():
@@ -322,7 +321,6 @@ class XDressPlugin(Plugin):
                     attr_blacklist = []
                     for a_name, a_type in cls_desc['attrs'].items():
                         try:
-                            print(a_name, a_type)
                             ts.canon(a_type)
 
                         except TypeError:
@@ -332,9 +330,6 @@ class XDressPlugin(Plugin):
                             attr_blacklist.append(a_name)
                     for a in attr_blacklist:
                         del cls_desc['attrs'][a]
-
-                    import pprint
-                    pprint.pprint(cls_desc)
 
                     method_blacklist = []
                     for m_sig, m_attr in cls_desc['methods'].items():
