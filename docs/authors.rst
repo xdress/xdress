@@ -11,11 +11,16 @@ at `PyCon 2013 <https://us.pycon.org/2013/>`_.
 
 XDress has had the following contributors:
 
-- Anthony Scopatz
-- Spencer Lyon 
-- Matt McCormick
+- `Anthony Scopatz <http://scopatz.com/>`_
+- Geoffrey Irving
+- James Casbon
+- Kevin Tew
+- Spencer Lyon
 - John Wiggins
+- Matt McCormick
 - Brad Buran
-- Gerald Dalley 
-- Alexander Eisenhuth 
-
+- Chris Harris
+- Gerald Dalley
+- Micky Latowicki
+- Mike C. Fletcher
+- Robert Schwarz 
