@@ -45,7 +45,7 @@ in the short term. We hope to integrate these changes upstream.  Clang
 versions 3.2 - 3.4 are supported.
 
 Independent NumPy Dtypes
------------------------
+-------------------------
 In previous versions of xdress, to create a dtype of type T the user needed to 
 declare the desire for a wrapper of an STL vector of type T. These two desires have
 now been separated.  It is now possible to create a dtype via the ``dtypes`` run
@@ -53,7 +53,7 @@ control parameter.  STL vectors are still wrapped via dtypes.  See the dtypes mo
 for more information.
 
 Shiny New Test Suite
---------------------
+----------------------
 The xdress test suite has been completely revamped to include both unit and 
 integration tests which are run for all available parsers.  The integration tests
 are accomplished though two fake projects - cproj and cppproj - on which the xdress 
@@ -68,7 +68,7 @@ the wrapping of dependencies or externally supplied libraries as needed. The run
 control parameter ``sourcedir`` has been deprecated.
 
 Global Run Control Files
------------------------
+-------------------------
 It is sometimes useful to be able to set system-wide run control parameters.
 XDress will now search the following files in order of increasing precedence.
 
