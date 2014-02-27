@@ -11,6 +11,7 @@ from libcpp.utility cimport pair
 from libcpp.map cimport map as cpp_map
 from libcpp.set cimport set as cpp_set
 from libcpp.vector cimport vector as cpp_vector
+from libcpp cimport bool as cpp_bool
 from libc cimport stdio
 from cpython.version cimport PY_MAJOR_VERSION
 from cpython.ref cimport PyTypeObject, Py_INCREF, Py_XDECREF

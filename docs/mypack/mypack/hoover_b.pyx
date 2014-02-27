@@ -21,7 +21,7 @@ import hoover
 
 
 cdef class B(hoover.A):
-    """no docstring for {'tarbase': 'hoover_b', 'tarname': 'B', 'language': 'c++', 'srcname': 'B', 'sidecars': (), 'incfiles': ('hoover.h',), 'srcfiles': ('src/hoover.h', 'src/hoover.cpp')}, please file a bug report!"""
+    """no docstring for {'sidecars': (), 'tarbase': 'hoover_b', 'tarname': 'B', 'language': 'c++', 'srcname': 'B', 'incfiles': ('hoover.h',), 'srcfiles': ('src/hoover.h', 'src/hoover.cpp')}, please file a bug report!"""
 
 
 
