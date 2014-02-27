@@ -152,6 +152,7 @@ exp_merge_desc = {
         'nslices': 'uint32',
         'toastiness': 'str',
         'rate': 'float32',
+        'array': ('char', 10),
         },
     'methods': {
         ('Toaster', ('slices', 'int32', 7)): None,
@@ -200,6 +201,7 @@ full_merge_desc = {
         'nslices': 'uint32',
         'toastiness': 'str',
         'rate': 'float32',
+        'array': ('char', 10),
         },
     'methods': {
         ('Toaster', ('slices', 'int32', 7)): None,
