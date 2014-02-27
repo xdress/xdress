@@ -18,7 +18,7 @@ import stlcontainers
 
 
 cdef class A:
-    """no docstring for {'tarbase': 'hoover', 'tarname': 'A', 'language': 'c++', 'srcname': 'A', 'sidecars': (), 'incfiles': ('hoover.h',), 'srcfiles': ('src/hoover.h', 'src/hoover.cpp')}, please file a bug report!"""
+    """no docstring for {'sidecars': (), 'tarbase': 'hoover', 'tarname': 'A', 'language': 'c++', 'srcname': 'A', 'incfiles': ('hoover.h',), 'srcfiles': ('src/hoover.h', 'src/hoover.cpp')}, please file a bug report!"""
 
 
 

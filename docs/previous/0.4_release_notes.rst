@@ -1,0 +1,123 @@
+========================
+XDress 0.4 Release Notes
+========================
+XDress is a numpy-aware automatic wrapper generator for C/C++ written in pure Python. 
+Currently, xdress may generate Python bindings (via Cython) for C++ classes, 
+functions, and certain variable types. It also contains idiomatic wrappers for 
+C++ standard library containers (sets, vectors, maps). In the future, other tools 
+and bindings will be supported.
+
+The main enabling feature of xdress is a dynamic type system that was designed with
+the purpose of API generation in mind.
+
+Release highlights:
+
+  - Clang support! All kudos to Geoffrey Irving!
+  - NumPy dtypes may be created independently of C++ STL vectors
+  - A complete test suite refactor
+  - Arbitrary source code locations
+  - Global run control files
+  - A plethora of useful bug fixes
+
+This version of xdress is *not* 100% backwards compatible with previous versions
+of xdress. We apologize in the name of progress.  It represents ans impressive 
+245 files changed, 44917 aggregate line insertions (+), and 7893 deletions (-).
+
+Please visit the website for more information: http://xdress.org/
+
+Ask questions on the mailing list: https://groups.google.com/forum/#!forum/xdress
+
+Download the code from GitHub: http://github.com/xdress/xdress
+
+XDress is free & open source (BSD 2-clause license) and requires Python 2.7+, 
+NumPy 1.5+, Cython 0.19+, and optionally Clang, GCC-XML, pycparser, dOxygen, or lxml.
+
+New Features
+============
+
+Clang Support
+-------------
+Through the herculean efforts of Geoffrey Irving xdress finally has full, first-class
+Clang/LLVM support! This is major advancement as it allows xdress to wrap more modern
+versions of C++ than GCC-XML can handle. Because of deficiencies in the existing 
+libclang and Python bindings it was necessary for us to fork libclang for xdress 
+in the short term. We hope to integrate these changes upstream.  Clang 
+versions 3.2 - 3.4 are supported.
+
+Independent NumPy Dtypes
+-------------------------
+In previous versions of xdress, to create a dtype of type T the user needed to 
+declare the desire for a wrapper of an STL vector of type T. These two desires have
+now been separated.  It is now possible to create a dtype via the ``dtypes`` run
+control parameter.  STL vectors are still wrapped via dtypes.  See the dtypes module 
+for more information.
+
+Shiny New Test Suite
+----------------------
+The xdress test suite has been completely revamped to include both unit and 
+integration tests which are run for all available parsers.  The integration tests
+are accomplished though two fake projects - cproj and cppproj - on which the xdress 
+CLI is run.  These tests are now fully platform independent, unlike the previous
+BASH-based test suite.
+
+Source Paths
+------------
+Source file paths are now given by either their absolute or relative path. This 
+allows source code to be located anywhere on the user's file system and enable 
+the wrapping of dependencies or externally supplied libraries as needed. The run
+control parameter ``sourcedir`` has been deprecated.
+
+Global Run Control Files
+-------------------------
+It is sometimes useful to be able to set system-wide run control parameters.
+XDress will now search the following files in order of increasing precedence.
+
+* ``$HOME/.xdressrc``
+* ``$HOME/.xdressrc.py``
+* ``$HOME/.config/xdressrc``
+* ``$HOME/.config/xdressrc.py``
+
+``$HOME`` is the user's home directory.  Settings in the project run control file 
+take precedence over the values here. 
+
+Major Bug Fixes
+===============
+
+* Debug file now always written when in debug mode.
+
+* STL sets of custom types now allowed.
+
+* Template parameters now allowed to be enum values.
+
+* Allow classes with no default constructor.
+
+Join in the Fun!
+================
+If you are interested in using xdress on your project (and need help), contributing 
+back to xdress, starting up a development team, or writing your own code generation
+plugin tool, please let us know. Participation is very welcome!
+
+Authors
+=======
+- `Anthony Scopatz <http://scopatz.com/>`_
+- Geoffrey Irving *
+- James Casbon *
+- Kevin Tew *
+- Spencer Lyon
+- John Wiggins
+- Matt McCormick 
+- Brad Buran
+- Chris Harris * 
+- Gerald Dalley *
+- Micky Latowicki *
+- Mike C. Fletcher * 
+- Robert Schwarz *
+
+An * indicates a first time contributor.
+
+Links
+=====
+
+1. Homepage - http://xdress.org/
+2. Mailing List - https://groups.google.com/forum/#!forum/xdress
+3. GitHub Organization - https://github.com/xdress

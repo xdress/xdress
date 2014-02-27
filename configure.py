@@ -159,7 +159,8 @@ def setup():
         "package_data": pack_data,
         "ext_modules": modules,
         "scripts": scripts,
-        "description": "Goes all J. Edgar Hoover on your code.",
+        "description": ("Cython-based, NumPy-aware automatic wrapper generation for "
+                        "C / C++."),
         "long_description": long_desc,
         "download_url": ("https://github.com/scopatz/xdress/"
                          "zipball/{0}.{1}").format(*xdress.version.xdress_version[:2]),
