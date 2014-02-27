@@ -37,8 +37,8 @@ def report_versions():
 # XDress
 #
 
-xdress_version = '0.4'
-xdress_version_info = version_info(0, 4, 0, '')
+xdress_version = '0.5-dev'
+xdress_version_info = version_info(0, 5, 0, 'dev')
 
 #
 # pycparser
