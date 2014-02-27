@@ -779,9 +779,8 @@ class GccxmlBaseDescriber(object):
         """visits an array type and maps it to a '*' refinement type."""
         self._pprint(node)
         baset = self.type(node.attrib['type'])
-        # FIXME something involving the min, max, and/or size
-        # attribs needs to also go here.
-        t = self._add_predicate(baset, '*')
+        size = int(node.attrib['size']) / 8
+        t = self._add_predicate(baset, size)
         return t
 
     def visit_functiontype(self, node):

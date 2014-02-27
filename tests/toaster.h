@@ -41,6 +41,7 @@ public:
   std::string toastiness;
   unsigned int nslices;
   float rate;
+  char array[10];
   int (*fp)(float);
   std::vector<char> vec;
 
