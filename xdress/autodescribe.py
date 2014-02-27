@@ -936,6 +936,9 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
             if node is None:
                 query = "Struct[@name='{0}']".format(self.ts.gccxml_type(self.name))
                 node = self._root.find(query)
+            if node is None:
+                query = "Union[@name='{0}']".format(self.ts.gccxml_type(self.name))
+                node = self._root.find(query)
             if node is None and not isinstance(self.name, basestring):
                 # Must be a template with some wacky argument values
                 node = self._find_class_node()
@@ -2020,7 +2023,6 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
 class PycparserClassDescriber(PycparserBaseDescriber):
 
     _funckey = 'methods'
-    _constructvalue = 'struct'
 
     def __init__(self, name, root, onlyin=None, ts=None, verbose=False):
         """Parameters
@@ -2048,7 +2050,6 @@ class PycparserClassDescriber(PycparserBaseDescriber):
         self.desc['attrs'] = {}
         self.desc[self._funckey] = {}
         self.desc['parents'] = []
-        self.desc['construct'] = self._constructvalue
         self.desc['type'] = ts.canon(name)
 
     def visit(self, node=None):
@@ -2062,17 +2063,23 @@ class PycparserClassDescriber(PycparserBaseDescriber):
             top-level struct (class) node is found and visited.
 
         """
+        construct_typemap = {
+            pycparser.c_ast.Struct: 'struct',
+            pycparser.c_ast.Union: 'union',
+        }
+        construct_types = tuple(construct_typemap.keys())
         if node is None:
             self.load_basetypes()
             for child_name, child in self._root.children():
                 if isinstance(child, pycparser.c_ast.Typedef) and \
                    isinstance(child.type, pycparser.c_ast.TypeDecl) and \
-                   isinstance(child.type.type, pycparser.c_ast.Struct):
+                   isinstance(child.type.type, construct_types):
                     child = child.type.type
-                if not isinstance(child, pycparser.c_ast.Struct):
+                if not isinstance(child, construct_types):
                     continue
                 if child.name != self.name:
                     continue
+                self.desc['construct'] = construct_typemap[type(child)]
                 self.visit_members(child)
         else:
             super(PycparserClassDescriber, self).visit(node)
