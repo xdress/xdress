@@ -16,6 +16,12 @@ The abstract representation of a C++ class is known as a **description** (abbr.
 This structure makes heavy use of the type system to declare the types of all needed
 parameters.
 
+**NOTE**: Unions are wrapped as classes. From Python they will behave much like
+wrapped structs, with the addition of union memory-sharing. Also note that assigning
+a union object instance to some value will not behave anything like it does in C/C++
+(ie: getting the value from the union which matches the type of the l-value in
+the expression).
+
 The Name Key
 ------------
 The *name* key is a dictionary that represents the API name of the element
