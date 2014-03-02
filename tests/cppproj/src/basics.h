@@ -196,6 +196,8 @@ void call_with_void_fp_struct(VoidFPStruct x);
 //int func4(PersonID id);
 int func4(int id); 
 
+std::set<int> setfunc(int a, int b, int c);
+
 // templated functions
 template <class T>
 bool cmp_by_row(TClass0<T> a, TClass0<T> b) {return true;};

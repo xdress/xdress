@@ -35,6 +35,10 @@ def test_func3():
     exp = -1
     obs = basics.func3("Waka Jawaka", ["Vows are apoken"], 42)
     assert_equal(exp, obs)
+
+def test_setfunc():
+    pyset = basics.setfunc(1,2,3)
+    assert_equal(pyset, set((1,2,3)))
     
 def test_voided():
     assert_true(basics.voided() is None)

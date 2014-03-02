@@ -27,6 +27,14 @@ int func3(char * val, char ** arr, int arr_len) {
   return -1;
 };
 
+std::set<int> setfunc(int a, int b, int c) {
+  std::set<int> ret;
+  ret.insert(a);
+  ret.insert(b);
+  ret.insert(c);
+  return ret;
+}
+
 void call_with_void_fp_struct(VoidFPStruct x) {
   x.op(10);
 };

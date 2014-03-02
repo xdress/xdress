@@ -92,6 +92,7 @@ functions = [
     apiname('func2', **_inbasics),
     apiname('func3', **_inbasics),
     apiname('func4', tarbase='pybasics', **_inbasics),
+    apiname('setfunc', **_inbasics),
     apiname(('findmin', 'int32', 'float32',), **_inbasics), 
     apiname(('findmin', 'float64', 'float32',), **_inbasics), 
     {'srcname': ('findmin', 'int', 'int',), 

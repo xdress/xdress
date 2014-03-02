@@ -1047,7 +1047,7 @@ def _gen_function(name, name_mangled, args, rtn, defaults, ts, doc=None,
     argvals = ', '.join(argrtns[n] for n in names)
     fcall = '{0}.{1}({2})'.format(inst_name, name, argvals)
     if hasrtn:
-        fcdecl, fcbody, fcrtn, fccached = ts.cython_c2py('rtnval', rtn, cached=False)
+        fcdecl, fcbody, fcrtn, fccached = ts.cython_c2py('rtnval', rtn, cached=False, view=False)
         decls += indent("cdef {0} {1}".format(rtype, 'rtnval'), join=False)
         if 'const ' in rtype_orig:
             func_call = indent('rtnval = <{0}> {1}'.format(rtype, fcall), join=False)

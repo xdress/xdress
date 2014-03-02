@@ -960,7 +960,7 @@ class TypeSystem(object):
                     )),
             'vector': (
                 ('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
-                 '{proxy_name} = np.PyArray_SimpleNewFromData(1, {var}_shape, {t.cython_nptypes[0]}, &{var}[0])\n'
+                 '{proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {t.cython_nptypes[0]}, &{var}[0])\n'
                  '{proxy_name} = np.PyArray_Copy({proxy_name})\n'),
                 ('{proxy_name}_shape[0] = <np.npy_intp> {var}.size()\n'
                  '{proxy_name} = np.PyArray_SimpleNewFromData(1, {proxy_name}_shape, {t.cython_nptypes[0]}, &{var}[0])\n'),
@@ -2107,8 +2107,13 @@ class TypeSystem(object):
 #        if callable(c2pyt):
 #            import pdb; pdb.set_trace()
         if 1 == len(c2pyt) or ind == 0:
-            decl = body = None
-            rtn = c2pyt[0].format(**template_kw)
+            if "{proxy_name}" in c2pyt[0]:
+                decl = None
+                body = c2pyt[0].format(**template_kw)
+                rtn = proxy_name
+            else:
+                decl = body = None
+                rtn = c2pyt[0].format(**template_kw)
         elif ind == 1:
             decl = "cdef {0} {1}".format(tstr.cython_cytype, proxy_name)
             body = c2pyt[1].format(**template_kw)
@@ -2359,7 +2364,9 @@ class TypeSystem(object):
                 template_args = tuple(template_args)
 
         # register regular class
-        class_c2py = ('{t.cython_pytype}({var})',
+        class_c2py = ( # '{t.cython_pytype}({var})',
+                      ('{proxy_name} = {t.cython_pytype}()\n'
+                       '(<{t.cython_ctype_nopred} *> {proxy_name}._inst)[0] = {var}'),
                       ('{proxy_name} = {t.cython_pytype}()\n'
                        '(<{t.cython_ctype_nopred} *> {proxy_name}._inst)[0] = {var}'),
                       ('if {cache_name} is None:\n'
