@@ -16,6 +16,12 @@ The abstract representation of a C++ class is known as a **description** (abbr.
 This structure makes heavy use of the type system to declare the types of all needed
 parameters.
 
+**NOTE**: Unions are wrapped as classes. From Python they will behave much like
+wrapped structs, with the addition of union memory-sharing. Also note that assigning
+a union object instance to some value will not behave anything like it does in C/C++
+(ie: getting the value from the union which matches the type of the l-value in
+the expression).
+
 The Name Key
 ------------
 The *name* key is a dictionary that represents the API name of the element
@@ -935,6 +941,9 @@ class GccxmlClassDescriber(GccxmlBaseDescriber):
             if node is None:
                 query = "Struct[@name='{0}']".format(self.ts.gccxml_type(self.name))
                 node = self._root.find(query)
+            if node is None:
+                query = "Union[@name='{0}']".format(self.ts.gccxml_type(self.name))
+                node = self._root.find(query)
             if node is None and not isinstance(self.name, basestring):
                 # Must be a template with some wacky argument values
                 node = self._find_class_node()
@@ -1253,7 +1262,7 @@ def clang_find_class(tu, name, ts, namespace=None, filename=None, onlyin=None):
         kinds = CursorKind.CLASS_TEMPLATE,
     else:
         basename = name
-        kinds = CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL
+        kinds = CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL, CursorKind.UNION_DECL
     decls = clang_find_decls(tu, basename, kinds=kinds, onlyin=onlyin, namespace=namespace)
     decls = frozenset(c.get_definition() or c for c in decls) # Use definitions if available
     if len(decls)==1:
@@ -1373,6 +1382,8 @@ def clang_describe_class(cls):
         construct = 'class'
     elif cls.kind == CursorKind.STRUCT_DECL:
         construct = 'struct'
+    elif cls.kind == CursorKind.UNION_DECL:
+        construct = 'union'
     else:
         raise ValueError('bad class kind {0}'.format(cls.kind.name))
     typ = cls.spelling
@@ -2021,7 +2032,6 @@ class PycparserFuncDescriber(PycparserBaseDescriber):
 class PycparserClassDescriber(PycparserBaseDescriber):
 
     _funckey = 'methods'
-    _constructvalue = 'struct'
 
     def __init__(self, name, root, onlyin=None, ts=None, verbose=False):
         """Parameters
@@ -2049,7 +2059,6 @@ class PycparserClassDescriber(PycparserBaseDescriber):
         self.desc['attrs'] = {}
         self.desc[self._funckey] = {}
         self.desc['parents'] = []
-        self.desc['construct'] = self._constructvalue
         self.desc['type'] = ts.canon(name)
 
     def visit(self, node=None):
@@ -2063,17 +2072,23 @@ class PycparserClassDescriber(PycparserBaseDescriber):
             top-level struct (class) node is found and visited.
 
         """
+        construct_typemap = {
+            pycparser.c_ast.Struct: 'struct',
+            pycparser.c_ast.Union: 'union',
+        }
+        construct_types = tuple(construct_typemap.keys())
         if node is None:
             self.load_basetypes()
             for child_name, child in self._root.children():
                 if isinstance(child, pycparser.c_ast.Typedef) and \
                    isinstance(child.type, pycparser.c_ast.TypeDecl) and \
-                   isinstance(child.type.type, pycparser.c_ast.Struct):
+                   isinstance(child.type.type, construct_types):
                     child = child.type.type
-                if not isinstance(child, pycparser.c_ast.Struct):
+                if not isinstance(child, construct_types):
                     continue
                 if child.name != self.name:
                     continue
+                self.desc['construct'] = construct_typemap[type(child)]
                 self.visit_members(child)
         else:
             super(PycparserClassDescriber, self).visit(node)

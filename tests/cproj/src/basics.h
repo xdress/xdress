@@ -6,7 +6,7 @@
 //standard libraries
 
 // misc
-extern char GET_LUCKY [31];
+extern char GET_LUCKY [32];
 void voided ();
 extern int verbosity;
 
@@ -46,5 +46,12 @@ typedef struct ThreeNums
 } ThreeNums;
 
 double call_threenums_op_from_c(ThreeNums x); 
+
+// unions
+typedef union SharedSpace
+{
+    int i_val;
+    float f_val;
+} SharedSpace;
 
 #endif

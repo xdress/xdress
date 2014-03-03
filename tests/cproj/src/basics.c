@@ -1,6 +1,6 @@
 #include "basics.h"
 
-char GET_LUCKY [31] = "She's up all night til the sun.";
+char GET_LUCKY [32] = "She's up all night til the sun.";
 void voided() {};
 int verbosity = 0;
 

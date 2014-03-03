@@ -359,6 +359,7 @@ def classcpppxd(desc, exceptions=True, ts=None):
 
     """
     ts = ts or TypeSystem()
+    src_lang = desc['name']['language']
     pars = ', '.join([ts.cython_ctype(p) for p in desc['parents']])
     d = {'parents': '('+pars+')' if pars else '',
          'header_filename': desc['name']['incfiles'][0],}
@@ -370,11 +371,14 @@ def classcpppxd(desc, exceptions=True, ts=None):
     else:
         d['name'] = ts.cython_classname(name)[1]
         d['alias'] = ' ' + _format_alias(desc, ts)
-    #construct_kinds = {'struct': 'struct', 'class': 'cppclass'}
-    #d['construct_kind'] = construct_kinds[desc.get('construct', 'class')]
-    lang = desc['name']['language']
-    construct_kinds = {'c': 'struct', 'c++': 'cppclass'}
-    d['construct_kind'] = construct_kinds[lang]
+
+    construct_kinds = {'union': 'union'}
+    if src_lang == 'c++':
+        construct_kinds.update({'struct': 'cppclass', 'class': 'cppclass'})
+        d['construct_kind'] = construct_kinds[desc.get('construct', 'class')]
+    else:  # C
+        construct_kinds.update({'struct': 'struct'})
+        d['construct_kind'] = construct_kinds[desc.get('construct', 'struct')]
     inc = set(['c'])
 
     cimport_tups = set()
@@ -414,7 +418,7 @@ def classcpppxd(desc, exceptions=True, ts=None):
         argfill = ", ".join([ts.cython_ctype(a[1]) for a in margs])
         for a in margs:
             ts.cython_cimport_tuples(a[1], cimport_tups, inc)
-        estr = _exception_str(exceptions, desc['name']['language'], mrtn, ts)
+        estr = _exception_str(exceptions, src_lang, mrtn, ts)
         if mname == mcppname == mcyname:
             line = "{0}({1}) {2}".format(mname, argfill, estr)
         else:
@@ -434,7 +438,7 @@ def classcpppxd(desc, exceptions=True, ts=None):
             if line not in mlines:
                 mlines.append(line)
     d['methods_block'] = indent(mlines, 8)
-    d['constructors_block'] = indent(clines, 8)
+    d['constructors_block'] = indent(clines, 8) if src_lang == 'c++' else ''
 
     d['extra'] = desc.get('extra', {}).get('cpppxd', '')
     cpppxd = _cpppxd_class_template.format(**d)
@@ -1069,6 +1073,7 @@ def _gen_function(name, name_mangled, args, rtn, defaults, ts, doc=None,
     return lines
 
 def _gen_default_constructor(desc, attrs, ts, doc=None, srcpxd_filename=None):
+    src_lang = desc['name']['language']
     args = ['self'] + [a + "=None" for a, _ in attrs] + ['*args', '**kwargs']
     argfill = ", ".join(args)
     lines  = ['def __init__({0}):'.format(argfill)]
@@ -1076,11 +1081,14 @@ def _gen_default_constructor(desc, attrs, ts, doc=None, srcpxd_filename=None):
     ct = ts.cython_ctype(desc['type'])
     if desc['construct'] == 'class':
         fcall = 'self._inst = new {0}()'.format(ct)
-    elif desc['construct'] == 'struct':
-        fcall = ('self._inst = malloc(sizeof({0}))\n'
-                 '(<{0} *> self._inst)[0] = {0}()').format(ct)
+    elif desc['construct'] in ('struct', 'union'):
+        construct_template = 'self._inst = malloc(sizeof({0}))\n'
+        if src_lang == 'c++' and desc['construct'] == 'struct':
+            # Only call the default constructor when it makes sense.
+            construct_template += '(<{0} *> self._inst)[0] = {0}()'
+        fcall = construct_template.format(ct)
     else:
-        raise ValueError('construct must be either "class" or "struct".')
+        raise ValueError('construct must be either "class", "struct" or "union".')
     lines.extend(indent(fcall, join=False))
     for a, _ in attrs:
         lines.append(indent("if {0} is not None:".format(a)))
@@ -1090,7 +1098,7 @@ def _gen_default_constructor(desc, attrs, ts, doc=None, srcpxd_filename=None):
 
 def _gen_constructor(name, name_mangled, classname, args, defaults, ts,
                      doc=None, srcpxd_filename=None, inst_name="self._inst",
-                     construct="class"):
+                     construct="class", src_lang='c++'):
     argfill, names = _gen_argfill(args, defaults)
     lines  = ['def {0}(self, {1}):'.format(name_mangled, argfill)]
     lines += [] if doc is None else indent('\"\"\"{0}\"\"\"'.format(doc), join=False)
@@ -1109,11 +1117,14 @@ def _gen_constructor(name, name_mangled, classname, args, defaults, ts,
                     "{0}.{1}".format(srcpxd_filename.rsplit('.', 1)[0], classname)
     if construct == 'class':
         fcall = 'self._inst = new {0}({1})'.format(classname, argvals)
-    elif construct == 'struct':
-        fcall = ('self._inst = malloc(sizeof({0}))\n'
-                 '(<{0} *> self._inst)[0] = {0}({1})').format(classname, argvals)
+    elif construct in ('struct', 'union'):
+        construct_template = 'self._inst = malloc(sizeof({0}))\n'
+        if src_lang == 'c++' and construct == 'struct':
+            # Only call the default constructor when it makes sense.
+            construct_template += '(<{0} *> self._inst)[0] = {0}({1})'
+        fcall = construct_template.format(classname, argvals)
     else:
-        raise ValueError('construct must be either "class" or "struct".')
+        raise ValueError('construct must be either "class", "struct", or "union".')
     func_call = indent(fcall, join=False)
     lines += decls
     lines += argbodies
@@ -1279,6 +1290,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
     ts = ts or TypeSystem()
     if classes is None:
         classes = {desc['name']['tarname']: desc}
+    src_lang = desc['name']['language']
     nodocmsg = "no docstring for {0}, please file a bug report!"
     pars = ', '.join([ts.cython_cytype(p) for p in desc['parents']])
     d = {'parents': '('+pars+')' if pars else '',
@@ -1374,12 +1386,13 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
             mdoc = desc.get('docstrings', {}).get('methods', {}).get(mname, '')
             mdoc = _doc_add_sig(mdoc, mcyname, margs, mdefs)
             construct = desc['construct']
-            if construct == 'struct':
+            if construct in ('struct', 'union'):
                 cimport_tups.add(('libc.stdlib', 'malloc'))
             clines += _gen_constructor(mcyname, mname_mangled, d['name'], margs,
                         mdefs, ts, doc=mdoc,
                         srcpxd_filename=desc['srcpxd_filename'],
-                        inst_name=minst_name, construct=construct)
+                        inst_name=minst_name, construct=construct,
+                        src_lang=src_lang)
             if 1 < methcounts[mname] and currcounts[mname] == methcounts[mname]:
                 # write dispatcher
                 nm = {}
