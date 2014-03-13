@@ -84,8 +84,10 @@ few places to look:
 
 * `xdress/tests/cproj <https://github.com/xdress/xdress/tree/master/tests/cproj>`_: 
   This is a fully functioning sample C project which uses xdress locally.
+  THIS PROJECT IS FOR TESTING PURPOSES ONLY!
 * `xdress/tests/cppproj <https://github.com/xdress/xdress/tree/master/tests/cppproj>`_: 
   This is a fully functioning sample C++ project which uses xdress locally.
+  THIS PROJECT IS FOR TESTING PURPOSES ONLY!
 * `PyNE <http://pynesim.org/>`_: This uses xdress to generate STL container wrappers.
 * `Bright <http://bright-dev.github.com/>`_: This uses xdress to automatically
   wrap a suite of interacting C++ class.  This was the motivating use case for the
