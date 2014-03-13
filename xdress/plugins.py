@@ -403,7 +403,7 @@ class Plugins(object):
                 if 0 < len(plugin_msg):
                     msg += sep
                     msg += plugin_msg
-            with io.open(os.path.join(rc.builddir, 'debug.txt'), 'a+') as f:
+            with io.open(os.path.join(rc.builddir, 'debug.txt'), 'wt') as f:
                 f.write(msg)
             if err != 0:
                 raise
