@@ -135,7 +135,7 @@ living in the ``src/`` directory.
 .. literalinclude:: mypack/src/hoover.cpp
    :language: cpp
 
-To tell xdress that we what to wrap the A & B classes and the do nothing function,
+To tell xdress that we want to wrap the A & B classes and the do nothing function,
 we simply need to tell xdress that they live in hoover.  We do this by adding to the
 ``classes`` and ``functions`` lists in the run control file.
 
