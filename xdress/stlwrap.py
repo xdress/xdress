@@ -779,8 +779,8 @@ class XDressPlugin(Plugin):
         fname = os.path.join(rc.packagedir, rc.stlcontainers_module)
         ensuredirs(fname)
         testname = 'test_' + rc.stlcontainers_module
-        testroot = rc.testroot or rc.packagedir
-        testname = os.path.join(testroot, 'tests', testname)
+        testdir = rc.testdir or rc.packagedir
+        testname = os.path.join(testdir, 'tests', testname)
         ensuredirs(testname)
         genfiles(rc.stlcontainers, fname=fname, testname=testname, package=rc.package, 
                  ts=rc.ts, verbose=rc.verbose)

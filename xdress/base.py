@@ -34,7 +34,7 @@ class XDressPlugin(Plugin):
         dumpdesc=False,
         package=NotSpecified,
         packagedir=NotSpecified,
-        testroot=NotSpecified,
+        testdir=NotSpecified,
         sourcedir=NotSpecified,
         builddir='build',
         bash_completion=True,
@@ -55,7 +55,7 @@ class XDressPlugin(Plugin):
         'dumpdesc': "Print the description cache",
         'package': "The Python package name for the generated wrappers", 
         'packagedir': "Path to package directory, same as 'package' if not specified",
-        'testroot': "Path to root directory for tests (tests are placed in root/tests), same as 'package' if not specified",
+        'testdir': "Path to root directory for tests (tests are placed in root/tests), same as 'package' if not specified",
         'sourcedir': "Path to source directory (deprecated)",
         'builddir': "Path to build directory",
         'bash_completion': ("Flag for enabling / disabling BASH completion. "
@@ -80,8 +80,8 @@ class XDressPlugin(Plugin):
                             help=self.rcdocs["package"])
         parser.add_argument('--packagedir', action='store', dest='packagedir',
                             help=self.rcdocs["packagedir"])
-        parser.add_argument('--testroot', action='store', dest='testroot',
-                            help=self.rcdocs["testroot"])
+        parser.add_argument('--testdir', action='store', dest='testdir',
+                            help=self.rcdocs["testdir"])
         parser.add_argument('--sourcedir', action='store', dest='sourcedir',
                             help=self.rcdocs["sourcedir"])
         parser.add_argument('--builddir', action='store', dest='builddir',
@@ -110,12 +110,12 @@ class XDressPlugin(Plugin):
             sys.exit(msg.format(rc.rc))
         if rc.packagedir is NotSpecified:
             rc.packagedir = rc.package.replace('.', os.path.sep)
-        if rc.testroot is NotSpecified:
-            rc.testroot = rc.test.replace('.', os.path.sep)
+        if rc.testdir is NotSpecified:
+            rc.testdir = rc.test.replace('.', os.path.sep)
         if not os.path.isdir(rc.packagedir):
             os.makedirs(rc.packagedir)
-        if not os.path.isdir(rc.testroot):
-            os.makedirs(rc.testroot)
+        if not os.path.isdir(rc.testdir):
+            os.makedirs(rc.testdir)
         if rc.sourcedir is not NotSpecified:
             warn("run control parameter 'sourcedir' has been removed in favor "
                  "of new apiname semantics", DeprecationWarning)
