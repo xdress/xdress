@@ -693,7 +693,8 @@ class XDressPlugin(Plugin):
         fname = os.path.join(rc.packagedir, rc.dtypes_module)
         ensuredirs(fname)
         testname = 'test_' + rc.dtypes_module
-        testname = os.path.join(rc.packagedir, 'tests', testname)
+        testroot = rc.testroot or rc.packagedir
+        testname = os.path.join(testroot, 'tests', testname)
         ensuredirs(testname)
         genfiles(rc.dtypes, fname=fname, testname=testname, package=rc.package, 
                  ts=rc.ts, verbose=rc.verbose)
