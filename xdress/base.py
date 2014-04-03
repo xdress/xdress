@@ -111,7 +111,7 @@ class XDressPlugin(Plugin):
         if rc.packagedir is NotSpecified:
             rc.packagedir = rc.package.replace('.', os.path.sep)
         if rc.testdir is NotSpecified:
-            rc.testdir = rc.test.replace('.', os.path.sep)
+            rc.testdir = rc.package.replace('.', os.path.sep)
         if not os.path.isdir(rc.packagedir):
             os.makedirs(rc.packagedir)
         if not os.path.isdir(rc.testdir):
