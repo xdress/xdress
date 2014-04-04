@@ -653,7 +653,9 @@ class XDressPlugin(astparsers.ParserPlugin):
                 if var.srcname == '*':
                     for srcfile in var.srcfiles:
                         for x in allfiles[srcfile][0]:
-                            newvars.append(var._replace(srcname=x, tarname=x))
+                            newvar = var._replace(srcname=x, tarname=x)
+                            if newvar not in newvars:
+                                newvars.append(newvar)
                 else:
                     newvars.append(var)
             rc.variables = newvars
@@ -663,7 +665,9 @@ class XDressPlugin(astparsers.ParserPlugin):
                 if fnc.srcname == '*':
                     for srcfile in fnc.srcfiles:
                         for x in allfiles[srcfile][1]:
-                            newfncs.append(fnc._replace(srcname=x, tarname=x))
+                            newfnc = fnc._replace(srcname=x, tarname=x)
+                            if newfnc not in newfncs:
+                                newfncs.append(newfnc)
                 else:
                     newfncs.append(fnc)
             rc.functions = newfncs
@@ -673,7 +677,9 @@ class XDressPlugin(astparsers.ParserPlugin):
                 if cls.srcname == '*':
                     for srcfile in cls.srcfiles:
                         for x in allfiles[srcfile][2]:
-                            newclss.append(cls._replace(srcname=x, tarname=x))
+                            newcls = cls._replace(srcname=x, tarname=x)
+                            if newcls not in newclss:
+                                newclss.append(newcls)
                 else:
                     newclss.append(cls)
             rc.classes = newclss
