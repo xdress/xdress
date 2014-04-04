@@ -31,7 +31,7 @@ elements out of this array via the wrapper class that was created with cythongen
 For exmaple::
 
     import numpy as np
-    from france.stlcontainer import xd_joan
+    from france.dtypes import xd_joan
 
     x = np.zeros(10, dtype=xd_joan)
 
