@@ -655,7 +655,7 @@ class XDressPlugin(astparsers.ParserPlugin):
                         for x in allfiles[srcfile][0]:
                             newvar = var._replace(srcname=x, tarname=x)
                             if newvar not in newvars:
-                                newvars.append(newvars)
+                                newvars.append(newvar)
                 else:
                     newvars.append(var)
             rc.variables = newvars
