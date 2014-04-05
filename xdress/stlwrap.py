@@ -236,6 +236,286 @@ def gentest_set(t, ts):
                            stlcontainers=ts.stlcontainers)
 
 #
+# Pairs
+#
+_pyxpair = '''# Pair({tclsname}, {uclsname})
+cdef class _PairIter{tclsname}{uclsname}(object):
+    cdef void init(self, cpp_pair[{tctype}, {uctype}] * pair_ptr):
+        cdef cpp_pair[{tctype}, {uctype}].iterator * itn = <cpp_pair[{tctype}, {uctype}].iterator *> malloc(sizeof(pair_ptr.begin()))
+        itn[0] = pair_ptr.begin()
+        self.iter_now = itn
+
+        cdef cpp_pair[{tctype}, {uctype}].iterator * ite = <cpp_pair[{tctype}, {uctype}].iterator *> malloc(sizeof(pair_ptr.end()))
+        ite[0] = pair_ptr.end()
+        self.iter_end = ite
+
+    def __dealloc__(self):
+        free(self.iter_now)
+        free(self.iter_end)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        cdef cpp_pair[{tctype}, {uctype}].iterator inow = deref(self.iter_now)
+        cdef cpp_pair[{tctype}, {uctype}].iterator iend = deref(self.iter_end)
+{tc2pydecl.indent8}
+        if inow != iend:
+{tc2pybody.indent12}
+            pyval = {tc2pyrtn}
+        else:
+            raise StopIteration
+
+        inc(deref(self.iter_now))
+        return pyval
+
+cdef class _Pair{tclsname}{uclsname}:
+    def __cinit__(self, new_pair=True, bint free_pair=True):
+        cdef pair[{tctype}, {uctype}] item
+        cdef cpp_pair[{tctype}, {uctype}] * pair_ptr
+{tpy2cdecl.indent8}
+{upy2cdecl.indent8}
+
+        # Decide how to init pair, if at all
+        if isinstance(new_pair, _Pair{tclsname}{uclsname}):
+            self.pair_ptr = (<_Pair{tclsname}{uclsname}> new_pair).pair_ptr
+        elif isinstance(new_pair, np.generic) and np.PyArray_DescrFromScalar(new_pair).type_num == {pair_cython_nptype}:
+            # scalars are copies, sadly not views, so we need to re-copy
+            if self.pair_ptr == NULL:
+                self.pair_ptr = new cpp_pair[{tctype}, {uctype}]()
+            np.PyArray_ScalarAsCtype(new_pair, &pair_ptr)
+            self.pair_ptr[0] = pair_ptr[0]
+        elif hasattr(new_pair, 'items'):
+            self.pair_ptr = new cpp_pair[{tctype}, {uctype}]()
+            for key, value in new_pair.items():
+{tpy2cbody.indent16}
+{upy2cbody.indent16}
+                item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
+                self.pair_ptr.insert(item)
+        elif hasattr(new_pair, '__len__'):
+            self.pair_ptr = new cpp_pair[{tctype}, {uctype}]()
+            for key, value in new_pair:
+{tpy2cbody.indent16}
+{upy2cbody.indent16}
+                item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
+                self.pair_ptr.insert(item)
+        elif bool(new_pair):
+            self.pair_ptr = new cpp_pair[{tctype}, {uctype}]()
+
+        # Store free_pair
+        self._free_pair = free_pair
+
+    def __dealloc__(self):
+        if self._free_pair:
+            del self.pair_ptr
+
+    def __contains__(self, key):
+        cdef {tctype} k
+{tpy2cdecl.indent8}
+        if {tisnotinst}:
+            return False
+{tpy2cbody.indent8}
+        k = {tpy2crtn}
+
+        if 0 < self.pair_ptr.count(k):
+            return True
+        else:
+            return False
+
+    def __len__(self):
+        return self.pair_ptr.size()
+
+    def __iter__(self):
+        cdef _PairIter{tclsname}{uclsname} mi = _PairIter{tclsname}{uclsname}()
+        mi.init(self.pair_ptr)
+        return mi
+
+    def __getitem__(self, key):
+        cdef {tctype} k
+        cdef {uctype} v
+{tpy2cdecl.indent8}
+{uc2pydecl.indent8}
+        if {tisnotinst}:
+            raise TypeError("Only {thumname} keys are valid.")
+{tpy2cbody.indent8}
+        k = {tpy2crtn}
+
+        if 0 < self.pair_ptr.count(k):
+            v = deref(self.pair_ptr)[k]
+{uc2pybody.indent12}
+            return {uc2pyrtn}
+        else:
+            raise KeyError
+
+    def __setitem__(self, key, value):
+{tpy2cdecl.indent8}
+{upy2cdecl.indent8}
+        cdef pair[{tctype}, {uctype}] item
+{tpy2cbody.indent8}
+{upy2cbody.indent8}
+        item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
+        if 0 < self.pair_ptr.count({tpy2crtn}):
+            self.pair_ptr.erase({tpy2crtn})
+        self.pair_ptr.insert(item)
+
+    def __delitem__(self, key):
+        cdef {tctype} k
+{tpy2cdecl.indent8}
+        if key in self:
+{tpy2cbody.indent12}
+            k = {tpy2crtn}
+            self.pair_ptr.erase(k)
+
+
+class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}, collections.MutablePairping):
+    """Wrapper class for C++ standard library pairs of type <{thumname}, {uhumname}>.
+    Provides dictionary like interface on the Python level.
+
+    Parameters
+    ----------
+    new_pair : bool or dict-like
+        Boolean on whether to make a new pair or not, or dict-like object
+        with keys and values which are castable to the appropriate type.
+    free_pair : bool
+        Flag for whether the pointer to the C++ pair should be deallocated
+        when the wrapper is dereferenced.
+    """
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        return "{{" + ", ".join(["{{0}}: {{1}}".format(repr(key), repr(value)) for key, value in self.items()]) + "}}"
+
+'''
+def genpyx_pair(t, u, ts):
+    """Returns the pyx snippet for a pair of type <t, u>."""
+    t = ts.canon(t)
+    u = ts.canon(u)
+    kw = dict(tclsname=ts.cython_classname(t)[1], uclsname=ts.cython_classname(u)[1],
+              thumname=ts.humanname(t)[1], uhumname=ts.humanname(u)[1],
+              tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),
+              tpytype=ts.cython_pytype(t), upytype=ts.cython_pytype(u),
+              tcytype=ts.cython_cytype(t), ucytype=ts.cython_cytype(u),)
+    tisnotinst = ["not isinstance(key, {0})".format(x) for x in ts.from_pytypes[t]]
+    kw['tisnotinst'] = " and ".join(tisnotinst)
+    tc2pykeys = ['tc2pydecl', 'tc2pybody', 'tc2pyrtn']
+    tc2py = ts.cython_c2py('inow_first', t, existing_name="deref(inow).first", 
+                           cached=False)
+    kw.update([(k, indentstr(v or '')) for k, v in zip(tc2pykeys, tc2py)])
+    uc2pykeys = ['uc2pydecl', 'uc2pybody', 'uc2pyrtn']
+    uc2py = ts.cython_c2py("v", u, cached=False, 
+                           existing_name="deref(self.pair_ptr)[k]")
+    kw.update([(k, indentstr(v or '')) for k, v in zip(uc2pykeys, uc2py)])
+    tpy2ckeys = ['tpy2cdecl', 'tpy2cbody', 'tpy2crtn']
+    tpy2c = ts.cython_py2c("key", t)
+    kw.update([(k, indentstr(v or '')) for k, v in zip(tpy2ckeys, tpy2c)])
+    upy2ckeys = ['upy2cdecl', 'upy2cbody', 'upy2crtn']
+    upy2c = ts.cython_py2c("value", u)
+    kw.update([(k, indentstr(v or '')) for k, v in zip(upy2ckeys, upy2c)])
+    kw['pair_cython_nptype'] = ts.cython_nptype(('pair', t, u, 0))
+    return _pyxpair.format(**kw)
+
+
+_pxdpair = """# Pair{tclsname}{uclsname}
+cdef class _PairIter{tclsname}{uclsname}(object):
+    cdef cpp_pair[{tctype}, {uctype}].iterator * iter_now
+    cdef cpp_pair[{tctype}, {uctype}].iterator * iter_end
+    cdef void init(_PairIter{tclsname}{uclsname}, cpp_pair[{tctype}, {uctype}] *)
+
+cdef class _Pair{tclsname}{uclsname}:
+    cdef cpp_pair[{tctype}, {uctype}] * pair_ptr
+    cdef public bint _free_pair
+
+
+"""
+def genpxd_pair(t, u, ts):
+    """Returns the pxd snippet for a set of type t."""
+    t = ts.canon(t)
+    u = ts.canon(u)
+    return _pxdpair.format(tclsname=ts.cython_classname(t)[1], 
+                          uclsname=ts.cython_classname(u)[1],
+                          thumname=ts.humanname(t)[1], uhumname=ts.humanname(u)[1],
+                          tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),)
+
+
+_testpair = """# Pair{tclsname}{uclsname}
+def test_pair_{tfncname}_{ufncname}():
+    m = {stlcontainers}.Pair{tclsname}{uclsname}()
+    uispair = isinstance({5}, Pairping) 
+    m[{0}] = {4}
+    m[{1}] = {5}
+    import pprint
+    pprint.pprint(m)
+    assert_equal(len(m), 2)
+    if uispair:
+        for key, value in m[{1}].items():
+            print(key, value, {5}[key])
+            if isinstance(value, np.ndarray):
+                assert{array}_equal(value, {5}[key])
+            else:
+                assert_equal(value, {5}[key])
+    else:
+        assert{array}_equal(m[{1}], {5})
+
+    m = {stlcontainers}.Pair{tclsname}{uclsname}({{{2}: {6}, {3}: {7}}})
+    assert_equal(len(m), 2)
+    if uispair:
+        for key, value in m[{2}].items():
+            if isinstance(value, np.ndarray):
+                print(key, value, {6}[key])
+                assert{array}_equal(value, {6}[key])
+            else:
+                assert_equal(value, {6}[key])
+    else:
+        assert{array}_equal(m[{2}], {6})
+
+    n = {stlcontainers}.Pair{tclsname}{uclsname}(m, False)
+    assert_equal(len(n), 2)
+    if uispair:
+        for key, value in m[{2}].items():
+            if isinstance(value, np.ndarray):
+                assert{array}_equal(value, {6}[key])
+            else:
+                assert_equal(value, {6}[key])
+    else:
+        assert{array}_equal(m[{2}], {6})
+
+    # points to the same underlying pair
+    n[{1}] = {5}
+    if uispair:
+        for key, value in m[{1}].items():
+            if isinstance(value, np.ndarray):
+                assert{array}_equal(value, {5}[key])
+            else:
+                assert_equal(value, {5}[key])
+    else:
+        assert{array}_equal(m[{1}], {5})
+
+"""
+def gentest_pair(t, u, ts):
+    """Returns the test snippet for a pair of type t."""
+    t = ts.canon(t)
+    u = ts.canon(u)
+    if t not in testvals or u not in testvals:
+        return ""
+    ulowt = u
+    ulowu = u
+    while ulowu[-1] == 0:
+        ulowt, ulowu = ulowu[-3:-1]
+    a = '_array' if ulowt == 'vector' else ''
+    a += '_almost' if ulowu not in ['str', 'char'] else ''
+    if a != '' and "NPY_" not in ts.cython_nptype(ulowu):
+        return ""
+    return _testpair.format(*[repr(i) for i in testvals[t] + testvals[u][::-1]], 
+                           tclsname=ts.cython_classname(t)[1], 
+                           uclsname=ts.cython_classname(u)[1],
+                           tfncname=ts.cython_functionname(t)[1], 
+                           ufncname=ts.cython_functionname(u)[1], 
+                           array=a, stlcontainers=ts.stlcontainers)
+
+
+#
 # Maps
 #
 _pyxmap = '''# Map({tclsname}, {uclsname})

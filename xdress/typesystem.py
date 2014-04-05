@@ -661,7 +661,7 @@ class TypeSystem(object):
             'void': 'object',
             'map': '{stlcontainers}Map{key_type}{value_type}',
             'dict': 'dict',
-            'pair': '{stlcontainers}Pair{value_type}',
+            'pair': '{stlcontainers}Pair{key_type}{value_type}',
             'set': '{stlcontainers}Set{value_type}',
             'vector': 'np.ndarray',
             }, self)
@@ -1444,9 +1444,12 @@ class TypeSystem(object):
                 templen = len(self.template_types[t0])
                 last_val = 0 if tlen == 1 + templen else t[-1]
                 filledt = [t0]
+                print("tt", t[1:1+templen])
                 for tt in t[1:1+templen]:
+                    
                     if isinstance(tt, Number):  # includes bool!
-                        filledt.append(tt)
+                        #filledt.append(tt)
+                        val = tt
                     elif isinstance(tt, basestring):
                         try:
                             canontt = self.canon(tt)
@@ -1454,15 +1457,22 @@ class TypeSystem(object):
                             canontt = tt
                         except:
                             raise
-                        filledt.append(canontt)
+                        #filledt.append(canontt)
+                        val = canontt
                     elif isinstance(tt, Sequence):
                         if len(tt) == 2 and tt[0] in Arg:
-                            filledt.append(self.canon(tt[1]))
+                            #filledt.append(self.canon(tt[1]))
+                            val = self.canon(tt[1])
                         else:
-                            filledt.append(self.canon(tt))
+                            #filledt.append(self.canon(tt))
+                            val = self.canon(tt)
                     else:
                         _raise_type_error(tt)
+                    filledt.append(val)
+                    print("val", val)
+                print("last_val", last_val)
                 filledt.append(last_val)
+                print("tuple", tuple(filledt))
                 return tuple(filledt)
             else:
                 return (self.canon(t0), last_val)
