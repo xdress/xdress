@@ -633,7 +633,7 @@ class TypeSystem(object):
             'exception': '{extra_types}exception',
             'map': '{stlcontainers}_Map{key_type}{value_type}',
             'dict': 'dict',
-            'pair': '{stlcontainers}_Pair{value_type}',
+            'pair': '{stlcontainers}_Pair{key_type}{value_type}',
             'set': '{stlcontainers}_Set{value_type}',
             'vector': 'np.ndarray',
             'function': 'object',
