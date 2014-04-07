@@ -265,6 +265,11 @@ cdef class _Pair{tclsname}{uclsname}:
         if self._free_pair:
             del self.pair_ptr
 
+    def __getitem__(self, i):
+        return self.pair_ptr[i]
+
+    def __setitem__(self, i, value):
+        self.pair_ptr[i] = value
 
 class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}):
     """Wrapper class for C++ standard library pairs of type <{thumname}, {uhumname}>.
@@ -334,56 +339,19 @@ def genpxd_pair(t, u, ts):
 
 _testpair = """# Pair{tclsname}{uclsname}
 def test_pair_{tfncname}_{ufncname}():
-    m = {stlcontainers}.Pair{tclsname}{uclsname}()
-    uispair = isinstance({5}, Mapping) 
-    m[{0}] = {4}
-    m[{1}] = {5}
+    p = {stlcontainers}.Pair{tclsname}{uclsname}()
+    p[0] = {4}
+    p[1] = {5}
     import pprint
-    pprint.pprint(m)
-    assert_equal(len(m), 2)
-    if uispair:
-        for key, value in m[{1}].items():
-            print(key, value, {5}[key])
-            if isinstance(value, np.ndarray):
-                assert{array}_equal(value, {5}[key])
-            else:
-                assert_equal(value, {5}[key])
-    else:
-        assert{array}_equal(m[{1}], {5})
-
-    m = {stlcontainers}.Pair{tclsname}{uclsname}({{{2}: {6}, {3}: {7}}})
-    assert_equal(len(m), 2)
-    if uispair:
-        for key, value in m[{2}].items():
-            if isinstance(value, np.ndarray):
-                print(key, value, {6}[key])
-                assert{array}_equal(value, {6}[key])
-            else:
-                assert_equal(value, {6}[key])
-    else:
-        assert{array}_equal(m[{2}], {6})
-
-    n = {stlcontainers}.Pair{tclsname}{uclsname}(m, False)
-    assert_equal(len(n), 2)
-    if uispair:
-        for key, value in m[{2}].items():
-            if isinstance(value, np.ndarray):
-                assert{array}_equal(value, {6}[key])
-            else:
-                assert_equal(value, {6}[key])
-    else:
-        assert{array}_equal(m[{2}], {6})
-
-    # points to the same underlying pair
-    n[{1}] = {5}
-    if uispair:
-        for key, value in m[{1}].items():
-            if isinstance(value, np.ndarray):
-                assert{array}_equal(value, {5}[key])
-            else:
-                assert_equal(value, {5}[key])
-    else:
-        assert{array}_equal(m[{1}], {5})
+    pprint.pprint(p)
+    assert_equal(len(p), 2)
+    o = {stlcontainers}.Pair{tclsname}{uclsname}(p, False)
+    assert_equal(len(o), 2)
+    # points to the same underlying value
+    o[0] = {5}
+    assert_equal(p[0], o[0])
+    assert_equal(p[1], o[1])
+    assert_equal(p, o)
 
 """
 def gentest_pair(t, u, ts):
