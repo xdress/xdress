@@ -11,6 +11,7 @@ plugins = ('xdress.autoall', 'xdress.pep8names', 'xdress.cythongen',
 extra_types = 'cppproj_extra_types'  # non-default value
 
 dtypes = [
+    # ('pair', 'float64'),
     ('map', 'str', 'int'),
     ('set', 'int'),
     'float32',
@@ -19,6 +20,7 @@ dtypes = [
     ]
 
 stlcontainers = [
+    ('pair', 'float64', 'float64'),
     ('vector', 'float64'),
     ('vector', 'str'),
     ('vector', 'int32'),

@@ -255,21 +255,7 @@ cdef class _Pair{tclsname}{uclsname}:
                 self.pair_ptr = new cpp_pair[{tctype}, {uctype}]()
             np.PyArray_ScalarAsCtype(new_pair, &pair_ptr)
             self.pair_ptr[0] = pair_ptr[0]
-        elif hasattr(new_pair, 'items'):
-            self.pair_ptr = new cpp_pair[{tctype}, {uctype}]()
-            for key, value in new_pair.items():
-{tpy2cbody.indent16}
-{upy2cbody.indent16}
-                item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
-                self.pair_ptr.insert(item)
-        elif hasattr(new_pair, '__len__'):
-            self.pair_ptr = new cpp_pair[{tctype}, {uctype}]()
-            for key, value in new_pair:
-{tpy2cbody.indent16}
-{upy2cbody.indent16}
-                item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
-                self.pair_ptr.insert(item)
-        elif bool(new_pair):
+        else:
             self.pair_ptr = new cpp_pair[{tctype}, {uctype}]()
 
         # Store free_pair
@@ -279,62 +265,10 @@ cdef class _Pair{tclsname}{uclsname}:
         if self._free_pair:
             del self.pair_ptr
 
-    def __contains__(self, key):
-        cdef {tctype} k
-{tpy2cdecl.indent8}
-        if {tisnotinst}:
-            return False
-{tpy2cbody.indent8}
-        k = {tpy2crtn}
-
-        if 0 < self.pair_ptr.count(k):
-            return True
-        else:
-            return False
-
-    def __len__(self):
-        return self.pair_ptr.size()
-
-    def __getitem__(self, key):
-        cdef {tctype} k
-        cdef {uctype} v
-{tpy2cdecl.indent8}
-{uc2pydecl.indent8}
-        if {tisnotinst}:
-            raise TypeError("Only {thumname} keys are valid.")
-{tpy2cbody.indent8}
-        k = {tpy2crtn}
-
-        if 0 < self.pair_ptr.count(k):
-            v = deref(self.pair_ptr)[k]
-{uc2pybody.indent12}
-            return {uc2pyrtn}
-        else:
-            raise KeyError
-
-    def __setitem__(self, key, value):
-{tpy2cdecl.indent8}
-{upy2cdecl.indent8}
-        cdef pair[{tctype}, {uctype}] item
-{tpy2cbody.indent8}
-{upy2cbody.indent8}
-        item = pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
-        if 0 < self.pair_ptr.count({tpy2crtn}):
-            self.pair_ptr.erase({tpy2crtn})
-        self.pair_ptr.insert(item)
-
-    def __delitem__(self, key):
-        cdef {tctype} k
-{tpy2cdecl.indent8}
-        if key in self:
-{tpy2cbody.indent12}
-            k = {tpy2crtn}
-            self.pair_ptr.erase(k)
-
 
 class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}, collections.MutablePairping):
     """Wrapper class for C++ standard library pairs of type <{thumname}, {uhumname}>.
-    Provides dictionary like interface on the Python level.
+    Provides tuple interface on the Python level.
 
     Parameters
     ----------
@@ -350,7 +284,7 @@ class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}, collections.MutablePai
         return self.__repr__()
 
     def __repr__(self):
-        return "{{" + ", ".join(["{{0}}: {{1}}".format(repr(key), repr(value)) for key, value in self.items()]) + "}}"
+        return "{{" + ", ".join("{{0}}: {{1}}".format(repr(self.pair_ptr[0]), repr(self.pair_ptr[1]))) + "}}"
 
 '''
 def genpyx_pair(t, u, ts):
@@ -387,7 +321,6 @@ cdef class _Pair{tclsname}{uclsname}:
     cdef cpp_pair[{tctype}, {uctype}] * pair_ptr
     cdef public bint _free_pair
 
-
 """
 def genpxd_pair(t, u, ts):
     """Returns the pxd snippet for a set of type t."""
@@ -402,7 +335,7 @@ def genpxd_pair(t, u, ts):
 _testpair = """# Pair{tclsname}{uclsname}
 def test_pair_{tfncname}_{ufncname}():
     m = {stlcontainers}.Pair{tclsname}{uclsname}()
-    uispair = isinstance({5}, Pairping) 
+    uispair = isinstance({5}, Mapping) 
     m[{0}] = {4}
     m[{1}] = {5}
     import pprint
@@ -861,6 +794,7 @@ def genpyx(template, header=None, ts=None):
         pyx = pyx.format(extra_types=ts.extra_types, cimports=cimports, 
                          imports=imports)
         for t in template:
+            print("pyxfuncs args:", *t[1:])
             pyx += pyxfuncs[t[0]](*t[1:], ts=ts) + "\n\n" 
     return pyx
 

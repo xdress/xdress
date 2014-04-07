@@ -564,6 +564,7 @@ class TypeSystem(object):
             'complex128': ['complex', 'float'],
             'file': ['file'],
             ('file', '*'): ['file'],
+            'pair': ['tuple'],
             'set': ['collections.Set', 'list', 'basestring', 'tuple'],
             'map': ['collections.Mapping', 'list', 'tuple'],
             'vector': ['list', 'tuple', 'np.ndarray'],
