@@ -239,36 +239,6 @@ def gentest_set(t, ts):
 # Pairs
 #
 _pyxpair = '''# Pair({tclsname}, {uclsname})
-cdef class _PairIter{tclsname}{uclsname}(object):
-    cdef void init(self, cpp_pair[{tctype}, {uctype}] * pair_ptr):
-        cdef cpp_pair[{tctype}, {uctype}].iterator * itn = <cpp_pair[{tctype}, {uctype}].iterator *> malloc(sizeof(pair_ptr.begin()))
-        itn[0] = pair_ptr.begin()
-        self.iter_now = itn
-
-        cdef cpp_pair[{tctype}, {uctype}].iterator * ite = <cpp_pair[{tctype}, {uctype}].iterator *> malloc(sizeof(pair_ptr.end()))
-        ite[0] = pair_ptr.end()
-        self.iter_end = ite
-
-    def __dealloc__(self):
-        free(self.iter_now)
-        free(self.iter_end)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        cdef cpp_pair[{tctype}, {uctype}].iterator inow = deref(self.iter_now)
-        cdef cpp_pair[{tctype}, {uctype}].iterator iend = deref(self.iter_end)
-{tc2pydecl.indent8}
-        if inow != iend:
-{tc2pybody.indent12}
-            pyval = {tc2pyrtn}
-        else:
-            raise StopIteration
-
-        inc(deref(self.iter_now))
-        return pyval
-
 cdef class _Pair{tclsname}{uclsname}:
     def __cinit__(self, new_pair=True, bint free_pair=True):
         cdef pair[{tctype}, {uctype}] item
@@ -324,11 +294,6 @@ cdef class _Pair{tclsname}{uclsname}:
 
     def __len__(self):
         return self.pair_ptr.size()
-
-    def __iter__(self):
-        cdef _PairIter{tclsname}{uclsname} mi = _PairIter{tclsname}{uclsname}()
-        mi.init(self.pair_ptr)
-        return mi
 
     def __getitem__(self, key):
         cdef {tctype} k
@@ -418,11 +383,6 @@ def genpyx_pair(t, u, ts):
 
 
 _pxdpair = """# Pair{tclsname}{uclsname}
-cdef class _PairIter{tclsname}{uclsname}(object):
-    cdef cpp_pair[{tctype}, {uctype}].iterator * iter_now
-    cdef cpp_pair[{tctype}, {uctype}].iterator * iter_end
-    cdef void init(_PairIter{tclsname}{uclsname}, cpp_pair[{tctype}, {uctype}] *)
-
 cdef class _Pair{tclsname}{uclsname}:
     cdef cpp_pair[{tctype}, {uctype}] * pair_ptr
     cdef public bint _free_pair
