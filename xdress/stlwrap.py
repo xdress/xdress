@@ -240,7 +240,7 @@ def gentest_set(t, ts):
 #
 _pyxpair = '''# Pair({tclsname}, {uclsname})
 cdef class _Pair{tclsname}{uclsname}:
-    def __cinit__(self, new_pair=True, bint free_pair=True):
+    def __cinit__(self, t = None, u = None, new_pair=True, bint free_pair=True):
         cdef pair[{tctype}, {uctype}] item
         cdef pair[{tctype}, {uctype}] * pair_ptr
 {tpy2cdecl.indent8}
@@ -257,6 +257,10 @@ cdef class _Pair{tclsname}{uclsname}:
             self.pair_ptr[0] = pair_ptr[0]
         else:
             self.pair_ptr = new pair[{tctype}, {uctype}]()
+
+        if t is not None and u is not None:
+            self.pair_ptr[0] = t
+            self.pair_ptr[1] = u
 
         # Store free_pair
         self._free_pair = free_pair
