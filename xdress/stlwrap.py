@@ -242,7 +242,7 @@ _pyxpair = '''# Pair({tclsname}, {uclsname})
 cdef class _Pair{tclsname}{uclsname}:
     def __cinit__(self, new_pair=True, bint free_pair=True):
         cdef pair[{tctype}, {uctype}] item
-        cdef cpp_pair[{tctype}, {uctype}] * pair_ptr
+        cdef pair[{tctype}, {uctype}] * pair_ptr
 {tpy2cdecl.indent8}
 {upy2cdecl.indent8}
 
@@ -252,11 +252,11 @@ cdef class _Pair{tclsname}{uclsname}:
         elif isinstance(new_pair, np.generic) and np.PyArray_DescrFromScalar(new_pair).type_num == {pair_cython_nptype}:
             # scalars are copies, sadly not views, so we need to re-copy
             if self.pair_ptr == NULL:
-                self.pair_ptr = new cpp_pair[{tctype}, {uctype}]()
+                self.pair_ptr = new pair[{tctype}, {uctype}]()
             np.PyArray_ScalarAsCtype(new_pair, &pair_ptr)
             self.pair_ptr[0] = pair_ptr[0]
         else:
-            self.pair_ptr = new cpp_pair[{tctype}, {uctype}]()
+            self.pair_ptr = new pair[{tctype}, {uctype}]()
 
         # Store free_pair
         self._free_pair = free_pair
@@ -266,7 +266,7 @@ cdef class _Pair{tclsname}{uclsname}:
             del self.pair_ptr
 
 
-class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}, collections.MutablePairping):
+class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}):
     """Wrapper class for C++ standard library pairs of type <{thumname}, {uhumname}>.
     Provides tuple interface on the Python level.
 
@@ -318,7 +318,7 @@ def genpyx_pair(t, u, ts):
 
 _pxdpair = """# Pair{tclsname}{uclsname}
 cdef class _Pair{tclsname}{uclsname}:
-    cdef cpp_pair[{tctype}, {uctype}] * pair_ptr
+    cdef pair[{tctype}, {uctype}] * pair_ptr
     cdef public bint _free_pair
 
 """
