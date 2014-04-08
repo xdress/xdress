@@ -240,25 +240,18 @@ def gentest_set(t, ts):
 #
 _pyxpair = '''# Pair({tclsname}, {uclsname})
 cdef class _Pair{tclsname}{uclsname}:
-    def __cinit__(self, first = None, second = None, new_pair=True, bint free_pair=True):
+    def __cinit__(self, first = None, second = None, bint free_pair=True):
         cdef pair[{tctype}, {uctype}] item
         cdef pair[{tctype}, {uctype}] * pair_ptr
 {tpy2cdecl.indent8}
 {upy2cdecl.indent8}
 
-        # Decide how to init pair, if at all
-        if isinstance(new_pair, _Pair{tclsname}{uclsname}):
-            self.pair_ptr = (<_Pair{tclsname}{uclsname}> new_pair).pair_ptr
-        elif isinstance(new_pair, np.generic) and np.PyArray_DescrFromScalar(new_pair).type_num == {pair_cython_nptype}:
-            # scalars are copies, sadly not views, so we need to re-copy
-            if self.pair_ptr == NULL:
-                self.pair_ptr = new pair[{tctype}, {uctype}]()
-            np.PyArray_ScalarAsCtype(new_pair, &pair_ptr)
-            self.pair_ptr[0] = pair_ptr[0]
-        else:
-            self.pair_ptr = new pair[{tctype}, {uctype}]()
+        self.pair_ptr = new pair[{tctype}, {uctype}]()
 
-        if first is not None and second is not None:
+        if isinstance(first, _Pair{tclsname}{uclsname}):
+            self.pair_ptr = (<_Pair{tclsname}{uclsname}> first).pair_ptr
+            free_pair = False
+        elif first is not None and second is not None:
             self.pair_ptr[0].first = first
             self.pair_ptr[0].second = second
         elif first is not None or second is not None:
@@ -305,7 +298,7 @@ class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}):
         return self.__repr__()
 
     def __repr__(self):
-        return "{{" + ", ".join("{{0}}: {{1}}".format(repr(self.__getitem__(0)), repr(self.__getitem__(1)))) + "}}"
+        return "Pair({{0}}, {{1}})".format(repr(self.__getitem__(0)), repr(self.__getitem__(1)))
 
 '''
 def genpyx_pair(t, u, ts):
@@ -360,9 +353,12 @@ def test_pair_{tfncname}_{ufncname}():
     p[1] = {5}
     import pprint
     pprint.pprint(p)
+    pprint.pprint(p[0])
+    pprint.pprint(p[1])
     o = {stlcontainers}.Pair{tclsname}{uclsname}(p)
-    # points to the same underlying value
-    o[0] = {5}
+    pprint.pprint(o)
+    pprint.pprint(o[0])
+    pprint.pprint(o[1])
     assert_equal(p[0], o[0])
     assert_equal(p[1], o[1])
     assert_equal(p, o)
