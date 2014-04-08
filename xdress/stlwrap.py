@@ -248,10 +248,7 @@ cdef class _Pair{tclsname}{uclsname}:
 
         self.pair_ptr = new pair[{tctype}, {uctype}]()
 
-        if isinstance(first, _Pair{tclsname}{uclsname}):
-            self.pair_ptr = (<_Pair{tclsname}{uclsname}> first).pair_ptr
-            free_pair = False
-        elif first is not None and second is not None:
+        if first is not None and second is not None:
             self.pair_ptr[0].first = first
             self.pair_ptr[0].second = second
         elif first is not None or second is not None:
@@ -259,6 +256,9 @@ cdef class _Pair{tclsname}{uclsname}:
         
         # Store free_pair
         self._free_pair = free_pair
+
+    def __copy__(self):
+        return _Pair{tclsname}{uclsname}(self.pair_ptr[0].first, self.pair_ptr[0].second)
 
     def __dealloc__(self):
         if self._free_pair:
@@ -355,13 +355,16 @@ def test_pair_{tfncname}_{ufncname}():
     pprint.pprint(p)
     pprint.pprint(p[0])
     pprint.pprint(p[1])
-    o = {stlcontainers}.Pair{tclsname}{uclsname}(p)
-    pprint.pprint(o)
-    pprint.pprint(o[0])
-    pprint.pprint(o[1])
-    assert_equal(p[0], o[0])
-    assert_equal(p[1], o[1])
-    assert_equal(p, o)
+    q = p
+    pprint.pprint(q)
+    pprint.pprint(q[0])
+    pprint.pprint(q[1])
+    assert_equal(p, q)
+    
+    import copy
+    r = copy.copy(p)
+    assert_equal(p[0], r[0])
+    assert_equal(p[1], r[1])
 
 """
 def gentest_pair(t, u, ts):
