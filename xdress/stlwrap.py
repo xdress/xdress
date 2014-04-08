@@ -381,12 +381,6 @@ def gentest_pair(t, u, ts):
     a += '_almost' if ulowu not in ['str', 'char'] else ''
     if a != '' and "NPY_" not in ts.cython_nptype(ulowu):
         return ""
-    print(_testpair.format(*[repr(i) for i in testvals[t] + testvals[u][::-1]], 
-                           tclsname=ts.cython_classname(t)[1], 
-                           uclsname=ts.cython_classname(u)[1],
-                           tfncname=ts.cython_functionname(t)[1], 
-                           ufncname=ts.cython_functionname(u)[1], 
-                           array=a, stlcontainers=ts.stlcontainers))
     return _testpair.format(*[repr(i) for i in testvals[t] + testvals[u][::-1]], 
                            tclsname=ts.cython_classname(t)[1], 
                            uclsname=ts.cython_classname(u)[1],
@@ -781,7 +775,6 @@ def genpyx(template, header=None, ts=None):
         pyx = pyx.format(extra_types=ts.extra_types, cimports=cimports, 
                          imports=imports)
         for t in template:
-            print("pyxfuncs args:", *t[1:])
             pyx += pyxfuncs[t[0]](*t[1:], ts=ts) + "\n\n" 
     return pyx
 
