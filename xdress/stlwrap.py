@@ -240,7 +240,7 @@ def gentest_set(t, ts):
 #
 _pyxpair = '''# Pair({tclsname}, {uclsname})
 cdef class _Pair{tclsname}{uclsname}:
-    def __cinit__(self, t = None, u = None, new_pair=True, bint free_pair=True):
+    def __cinit__(self, first = None, second = None, new_pair=True, bint free_pair=True):
         cdef pair[{tctype}, {uctype}] item
         cdef pair[{tctype}, {uctype}] * pair_ptr
 {tpy2cdecl.indent8}
@@ -258,10 +258,12 @@ cdef class _Pair{tclsname}{uclsname}:
         else:
             self.pair_ptr = new pair[{tctype}, {uctype}]()
 
-        if t is not None and u is not None:
-            self.pair_ptr[0] = t
-            self.pair_ptr[1] = u
-
+        if first is not None and second is not None:
+            self.pair_ptr[0].first = first
+            self.pair_ptr[0].second = second
+        elif first is not None or second is not None:
+            raise TypeError("Constructor requires either both first and second defined or neither.")
+        
         # Store free_pair
         self._free_pair = free_pair
 
@@ -270,10 +272,20 @@ cdef class _Pair{tclsname}{uclsname}:
             del self.pair_ptr
 
     def __getitem__(self, i):
-        return self.pair_ptr[i]
+        if i == 0:
+            return self.pair_ptr[0].first
+        elif i == 1:
+            return self.pair_ptr[0].second
+        else:
+            raise IndexError("Index must be either 0 or 1 for pairs.")
 
     def __setitem__(self, i, value):
-        self.pair_ptr[i] = value
+        if i == 0:
+            self.pair_ptr[0].first = value
+        elif i == 1:
+            self.pair_ptr[0].second = value
+        else:
+            raise IndexError("Index must be either 0 or 1 for pairs.")
 
 class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}):
     """Wrapper class for C++ standard library pairs of type <{thumname}, {uhumname}>.
@@ -293,7 +305,7 @@ class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}):
         return self.__repr__()
 
     def __repr__(self):
-        return "{{" + ", ".join("{{0}}: {{1}}".format(repr(self.pair_ptr[0]), repr(self.pair_ptr[1]))) + "}}"
+        return "{{" + ", ".join("{{0}}: {{1}}".format(repr(self.__getitem__(0)), repr(self.__getitem__(1)))) + "}}"
 
 '''
 def genpyx_pair(t, u, ts):
@@ -348,9 +360,7 @@ def test_pair_{tfncname}_{ufncname}():
     p[1] = {5}
     import pprint
     pprint.pprint(p)
-    assert_equal(len(p), 2)
-    o = {stlcontainers}.Pair{tclsname}{uclsname}(p, False)
-    assert_equal(len(o), 2)
+    o = {stlcontainers}.Pair{tclsname}{uclsname}(p)
     # points to the same underlying value
     o[0] = {5}
     assert_equal(p[0], o[0])
@@ -372,6 +382,12 @@ def gentest_pair(t, u, ts):
     a += '_almost' if ulowu not in ['str', 'char'] else ''
     if a != '' and "NPY_" not in ts.cython_nptype(ulowu):
         return ""
+    print(_testpair.format(*[repr(i) for i in testvals[t] + testvals[u][::-1]], 
+                           tclsname=ts.cython_classname(t)[1], 
+                           uclsname=ts.cython_classname(u)[1],
+                           tfncname=ts.cython_functionname(t)[1], 
+                           ufncname=ts.cython_functionname(u)[1], 
+                           array=a, stlcontainers=ts.stlcontainers))
     return _testpair.format(*[repr(i) for i in testvals[t] + testvals[u][::-1]], 
                            tclsname=ts.cython_classname(t)[1], 
                            uclsname=ts.cython_classname(u)[1],
