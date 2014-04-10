@@ -20,6 +20,7 @@ dtypes = [
 
 stlcontainers = [
     ('pair', 'float64', 'float64'),
+    ('pair', 'int', 'float64'),
     ('vector', 'float64'),
     ('vector', 'str'),
     ('vector', 'int32'),

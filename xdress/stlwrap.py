@@ -254,6 +254,10 @@ cdef class _Pair{tclsname}{uclsname}:
         elif first is not None or second is not None:
             raise TypeError("Constructor requires either both first and second defined or neither.")
         
+        # c++-like members
+        self.first = self.pair_ptr[0].first
+        self.second = self.pair_ptr[0].second
+
         # Store free_pair
         self._free_pair = free_pair
 
@@ -279,6 +283,10 @@ cdef class _Pair{tclsname}{uclsname}:
             self.pair_ptr[0].second = value
         else:
             raise IndexError("Index must be either 0 or 1 for pairs.")
+
+    def __iter__(self):
+        yield self.first
+        yield self.second
 
 class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}):
     """Wrapper class for C++ standard library pairs of type <{thumname}, {uhumname}>.
@@ -363,8 +371,8 @@ def test_pair_{tfncname}_{ufncname}():
     
     import copy
     r = copy.copy(p)
-    assert_equal(p[0], r[0])
-    assert_equal(p[1], r[1])
+    assert_equal(p.first, r.first)
+    assert_equal(p.second, r.second)
 
 """
 def gentest_pair(t, u, ts):
