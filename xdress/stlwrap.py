@@ -240,20 +240,22 @@ def gentest_set(t, ts):
 #
 _pyxpair = '''# Pair({tclsname}, {uclsname})
 cdef class _Pair{tclsname}{uclsname}:
-    def __cinit__(self, first = None, second = None, bint free_pair=True):
+    def __cinit__(self, first_val = None, second_val = None, bint free_pair=True):
         cdef pair[{tctype}, {uctype}] item
         cdef pair[{tctype}, {uctype}] * pair_ptr
+        cdef {tctype} first
+        cdef {uctype} second
 {tpy2cdecl.indent8}
 {upy2cdecl.indent8}
 
         self.pair_ptr = new pair[{tctype}, {uctype}]()
 
-        if first is not None and second is not None:
-            self.pair_ptr[0].first = first
-            self.pair_ptr[0].second = second
-        elif first is not None or second is not None:
+        if first_val is not None and second_val is not None:
+            self.pair_ptr[0].first = first_val
+            self.pair_ptr[0].second = second_val
+        elif first_val is not None or second_val is not None:
             raise TypeError("Constructor requires either both first and second defined or neither.")
-        
+
         # c++-like members
         self.first = self.pair_ptr[0].first
         self.second = self.pair_ptr[0].second
@@ -301,6 +303,10 @@ class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}):
         Flag for whether the pointer to the C++ pair should be deallocated
         when the wrapper is dereferenced.
     """
+    ## pair somehow needs to be able to reference the base class' first and second members
+    ## via super or some other mechanism, and I'm not sure how this should works.. 
+    #def __init__(self, first_val = None, second_val = None, bint free_pair=True):
+    #    return _Pair{tclsname}{uclsname}.__cinit__(self, first_val, second_val, free_pair)
 
     def __str__(self):
         return self.__repr__()
@@ -342,7 +348,8 @@ _pxdpair = """# Pair{tclsname}{uclsname}
 cdef class _Pair{tclsname}{uclsname}:
     cdef pair[{tctype}, {uctype}] * pair_ptr
     cdef public bint _free_pair
-
+    cdef {tctype} first
+    cdef {uctype} second
 """
 def genpxd_pair(t, u, ts):
     """Returns the pxd snippet for a set of type t."""
