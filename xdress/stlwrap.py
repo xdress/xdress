@@ -243,8 +243,6 @@ cdef class _Pair{tclsname}{uclsname}:
     def __cinit__(self, first_val = None, second_val = None, bint free_pair=True):
         cdef pair[{tctype}, {uctype}] item
         cdef pair[{tctype}, {uctype}] * pair_ptr
-        cdef {tctype} first
-        cdef {uctype} second
 {tpy2cdecl.indent8}
 {upy2cdecl.indent8}
 
@@ -256,12 +254,21 @@ cdef class _Pair{tclsname}{uclsname}:
         elif first_val is not None or second_val is not None:
             raise TypeError("Constructor requires either both first and second defined or neither.")
 
-        # c++-like members
-        self.first = self.pair_ptr[0].first
-        self.second = self.pair_ptr[0].second
-
         # Store free_pair
         self._free_pair = free_pair
+
+    # c++-like members
+    property first:
+        def __get__(self):
+            return self.pair_ptr[0].first 
+        def __set__(self, val):
+            self.pair_ptr[0].first = val
+
+    property second:
+        def __get__(self):
+            return self.pair_ptr[0].second 
+        def __set__(self, val):
+            self.pair_ptr[0].second = val
 
     def __copy__(self):
         return _Pair{tclsname}{uclsname}(self.pair_ptr[0].first, self.pair_ptr[0].second)
@@ -348,8 +355,8 @@ _pxdpair = """# Pair{tclsname}{uclsname}
 cdef class _Pair{tclsname}{uclsname}:
     cdef pair[{tctype}, {uctype}] * pair_ptr
     cdef public bint _free_pair
-    cdef {tctype} first
-    cdef {uctype} second
+#    cdef public {tctype} first
+#    cdef public {uctype} second
 """
 def genpxd_pair(t, u, ts):
     """Returns the pxd snippet for a set of type t."""
@@ -366,18 +373,22 @@ def test_pair_{tfncname}_{ufncname}():
     p = {stlcontainers}.Pair{tclsname}{uclsname}()
     p[0] = {4}
     p[1] = {5}
+    assert_equal(p[0], p.first)
+    assert_equal(p[1], p.second)
     import pprint
     pprint.pprint(p)
     pprint.pprint(p[0])
     pprint.pprint(p[1])
     q = p
-    pprint.pprint(q)
-    pprint.pprint(q[0])
-    pprint.pprint(q[1])
     assert_equal(p, q)
     
     import copy
     r = copy.copy(p)
+    pprint.pprint(r)
+    pprint.pprint(r[0])
+    pprint.pprint(r.first)
+    pprint.pprint(r[1])
+    pprint.pprint(r.second)
     assert_equal(p.first, r.first)
     assert_equal(p.second, r.second)
 
