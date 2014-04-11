@@ -371,7 +371,7 @@ def genpxd_pair(t, u, ts):
 _testpair = """# Pair{tclsname}{uclsname}
 def test_pair_{tfncname}_{ufncname}():
     p = {stlcontainers}.Pair{tclsname}{uclsname}()
-    p[0] = {4}
+    p[0] = {3}
     p[1] = {5}
     assert_equal(p[0], p.first)
     assert_equal(p[1], p.second)
