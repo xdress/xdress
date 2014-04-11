@@ -355,8 +355,6 @@ _pxdpair = """# Pair{tclsname}{uclsname}
 cdef class _Pair{tclsname}{uclsname}:
     cdef pair[{tctype}, {uctype}] * pair_ptr
     cdef public bint _free_pair
-#    cdef public {tctype} first
-#    cdef public {uctype} second
 """
 def genpxd_pair(t, u, ts):
     """Returns the pxd snippet for a set of type t."""
