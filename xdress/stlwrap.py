@@ -240,17 +240,20 @@ def gentest_set(t, ts):
 #
 _pyxpair = '''# Pair({tclsname}, {uclsname})
 cdef class _Pair{tclsname}{uclsname}:
-    def __cinit__(self, first_val = None, second_val = None, bint free_pair=True):
-        cdef pair[{tctype}, {uctype}] item
-        cdef pair[{tctype}, {uctype}] * pair_ptr
+    def __cinit__(self, key = None, value = None, bint free_pair=True):
 {tpy2cdecl.indent8}
 {upy2cdecl.indent8}
 
-        self.pair_ptr = new pair[{tctype}, {uctype}]()
+        cdef pair[{tctype}, {uctype}] item
+        cdef pair[{tctype}, {uctype}] * pair_ptr
 
+{tpy2cbody.indent8}
+{upy2cbody.indent8}
+
+        first_val = key
+        second_val = value
         if first_val is not None and second_val is not None:
-            self.pair_ptr[0].first = first_val
-            self.pair_ptr[0].second = second_val
+            self.pair_ptr = new pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
         elif first_val is not None or second_val is not None:
             raise TypeError("Constructor requires either both first and second defined or neither.")
 
@@ -260,18 +263,30 @@ cdef class _Pair{tclsname}{uclsname}:
     # c++-like members
     property first:
         def __get__(self):
-            return self.pair_ptr[0].first 
+{tpy2cdecl.indent12}
+            key = self.pair_ptr[0].first
+{tpy2cbody.indent12}
+            return {tpy2crtn}
         def __set__(self, val):
-            self.pair_ptr[0].first = val
+{tpy2cdecl.indent12}
+            key = val
+{tpy2cbody.indent12}
+            self.pair_ptr[0].first = {tpy2crtn}
 
     property second:
         def __get__(self):
-            return self.pair_ptr[0].second 
+{upy2cdecl.indent12}
+            value = self.pair_ptr[0].second
+{upy2cbody.indent12}
+            return {upy2crtn}
         def __set__(self, val):
-            self.pair_ptr[0].second = val
+{upy2cdecl.indent12}
+            value = val
+{upy2cbody.indent12}
+            self.pair_ptr[0].second = {upy2crtn}
 
     def __copy__(self):
-        return _Pair{tclsname}{uclsname}(self.pair_ptr[0].first, self.pair_ptr[0].second)
+        return _Pair{tclsname}{uclsname}(self.first.__get__(), self.second.__get__())
 
     def __dealloc__(self):
         if self._free_pair:
@@ -279,23 +294,23 @@ cdef class _Pair{tclsname}{uclsname}:
 
     def __getitem__(self, i):
         if i == 0:
-            return self.pair_ptr[0].first
+            return self.first.__get__()
         elif i == 1:
-            return self.pair_ptr[0].second
+            return self.second.__get__()
         else:
             raise IndexError("Index must be either 0 or 1 for pairs.")
 
     def __setitem__(self, i, value):
         if i == 0:
-            self.pair_ptr[0].first = value
+            self.first.__set__(value)
         elif i == 1:
-            self.pair_ptr[0].second = value
+            self.second.__set__(value)
         else:
             raise IndexError("Index must be either 0 or 1 for pairs.")
 
     def __iter__(self):
-        yield self.first
-        yield self.second
+        yield self.first.__get__()
+        yield self.second.__get__()
 
 class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}):
     """Wrapper class for C++ standard library pairs of type <{thumname}, {uhumname}>.

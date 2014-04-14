@@ -120,8 +120,7 @@ template <class T> class TClass2 : public TClass0<T> {
   public:
     TClass2( bool default_Arg = true) {}
     T bob;
-    std::pair<int, std::vector<int> > pvec;
-    std::pair<int, int> sue;
+    std::pair<int, std::vector<int> > sue_vec;
     std::pair<int, std::string> sue_str;
 };
 

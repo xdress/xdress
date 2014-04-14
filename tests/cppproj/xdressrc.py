@@ -16,14 +16,15 @@ dtypes = [
     'float32',
     ('vector', 'int32'),
     'ThreeNums',
+    ('pair', 'int', 'ThreeNums'),
+    ('pair', 'ThreeNums', 'int'),
     ]
 
 stlcontainers = [
-    ('pair', 'float64', 'float64'),
     ('pair', 'int', ('vector', 'int')),
-    ('pair', 'int', 'float64'),
-    ('pair', 'int', 'int'),
     ('pair', 'int', 'str'),
+    ('pair', 'int', 'ThreeNums'),
+    ('pair', 'ThreeNums', 'int'),
     ('vector', 'float64'),
     ('vector', 'str'),
     ('vector', 'int32'),
