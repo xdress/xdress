@@ -240,19 +240,14 @@ def gentest_set(t, ts):
 #
 _pyxpair = '''# Pair({tclsname}, {uclsname})
 cdef class _Pair{tclsname}{uclsname}:
-    def __cinit__(self, key = None, value = None, bint free_pair=True):
+    def __cinit__(self, first_val = None, second_val = None, bint free_pair=True):
 {tpy2cdecl.indent8}
 {upy2cdecl.indent8}
-
-        cdef pair[{tctype}, {uctype}] item
         cdef pair[{tctype}, {uctype}] * pair_ptr
 
-{tpy2cbody.indent8}
-{upy2cbody.indent8}
-
-        first_val = key
-        second_val = value
         if first_val is not None and second_val is not None:
+{tpy2cbody.indent12}
+{upy2cbody.indent12}
             self.pair_ptr = new pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
         elif first_val is not None or second_val is not None:
             raise TypeError("Constructor requires either both first and second defined or neither.")
@@ -263,25 +258,21 @@ cdef class _Pair{tclsname}{uclsname}:
     # c++-like members
     property first:
         def __get__(self):
+{tc2pydecl.indent12}
+{tc2pybody.indent12}
+            return {tc2pyrtn}
+        def __set__(self, first_val):
 {tpy2cdecl.indent12}
-            key = self.pair_ptr[0].first
-{tpy2cbody.indent12}
-            return {tpy2crtn}
-        def __set__(self, val):
-{tpy2cdecl.indent12}
-            key = val
 {tpy2cbody.indent12}
             self.pair_ptr[0].first = {tpy2crtn}
 
     property second:
         def __get__(self):
+{uc2pydecl.indent12}
+{uc2pybody.indent12}
+            return {uc2pyrtn}
+        def __set__(self, second_val):
 {upy2cdecl.indent12}
-            value = self.pair_ptr[0].second
-{upy2cbody.indent12}
-            return {upy2crtn}
-        def __set__(self, val):
-{upy2cdecl.indent12}
-            value = val
 {upy2cbody.indent12}
             self.pair_ptr[0].second = {upy2crtn}
 
@@ -349,18 +340,18 @@ def genpyx_pair(t, u, ts):
     tisnotinst = ["not isinstance(key, {0})".format(x) for x in ts.from_pytypes[t]]
     kw['tisnotinst'] = " and ".join(tisnotinst)
     tc2pykeys = ['tc2pydecl', 'tc2pybody', 'tc2pyrtn']
-    tc2py = ts.cython_c2py('inow_first', t, existing_name="deref(inow).first", 
+    tc2py = ts.cython_c2py('first', t, existing_name="self.pair_ptr[0].first", 
                            cached=False)
     kw.update([(k, indentstr(v or '')) for k, v in zip(tc2pykeys, tc2py)])
     uc2pykeys = ['uc2pydecl', 'uc2pybody', 'uc2pyrtn']
-    uc2py = ts.cython_c2py("v", u, cached=False, 
-                           existing_name="deref(self.pair_ptr)[k]")
+    uc2py = ts.cython_c2py("second", u, cached=False, 
+                           existing_name="self.pair_ptr[0].second")
     kw.update([(k, indentstr(v or '')) for k, v in zip(uc2pykeys, uc2py)])
     tpy2ckeys = ['tpy2cdecl', 'tpy2cbody', 'tpy2crtn']
-    tpy2c = ts.cython_py2c("key", t)
+    tpy2c = ts.cython_py2c("first_val", t)
     kw.update([(k, indentstr(v or '')) for k, v in zip(tpy2ckeys, tpy2c)])
     upy2ckeys = ['upy2cdecl', 'upy2cbody', 'upy2crtn']
-    upy2c = ts.cython_py2c("value", u)
+    upy2c = ts.cython_py2c("second_val", u)
     kw.update([(k, indentstr(v or '')) for k, v in zip(upy2ckeys, upy2c)])
     kw['pair_cython_nptype'] = ts.cython_nptype(('pair', t, u, 0))
     return _pyxpair.format(**kw)
