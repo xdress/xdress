@@ -282,7 +282,7 @@ cdef class _Pair{tclsname}{uclsname}:
         return _Pair{tclsname}{uclsname}(self.first, self.second)
 
     def __dealloc__(self):
-        if self._free_pair:
+        if self._free_pair and self.pair_ptr is not NULL:
             del self.pair_ptr
 
     def __getitem__(self, i):
