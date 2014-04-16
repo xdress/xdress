@@ -251,6 +251,8 @@ cdef class _Pair{tclsname}{uclsname}:
             self.pair_ptr = new pair[{tctype}, {uctype}]({tpy2crtn}, {upy2crtn})
         elif first_val is not None or second_val is not None:
             raise TypeError("Constructor requires either both first and second defined or neither.")
+        else:
+            self.pair_ptr = new pair[{tctype}, {uctype}]()
 
         # Store free_pair
         self._free_pair = free_pair
@@ -277,7 +279,7 @@ cdef class _Pair{tclsname}{uclsname}:
             self.pair_ptr[0].second = {upy2crtn}
 
     def __copy__(self):
-        return _Pair{tclsname}{uclsname}(self.first.__get__(), self.second.__get__())
+        return _Pair{tclsname}{uclsname}(self.first, self.second)
 
     def __dealloc__(self):
         if self._free_pair:
@@ -285,23 +287,23 @@ cdef class _Pair{tclsname}{uclsname}:
 
     def __getitem__(self, i):
         if i == 0:
-            return self.first.__get__()
+            return self.first
         elif i == 1:
-            return self.second.__get__()
+            return self.second
         else:
             raise IndexError("Index must be either 0 or 1 for pairs.")
 
     def __setitem__(self, i, value):
         if i == 0:
-            self.first.__set__(value)
+            self.first = value
         elif i == 1:
-            self.second.__set__(value)
+            self.second = value
         else:
             raise IndexError("Index must be either 0 or 1 for pairs.")
 
     def __iter__(self):
-        yield self.first.__get__()
-        yield self.second.__get__()
+        yield self.first
+        yield self.second
 
 class Pair{tclsname}{uclsname}(_Pair{tclsname}{uclsname}):
     """Wrapper class for C++ standard library pairs of type <{thumname}, {uhumname}>.
@@ -374,17 +376,18 @@ def genpxd_pair(t, u, ts):
 
 _testpair = """# Pair{tclsname}{uclsname}
 def test_pair_{tfncname}_{ufncname}():
+    from numpy.testing import assert_array_equal
     p = {stlcontainers}.Pair{tclsname}{uclsname}()
     p[0] = {3}
     p[1] = {5}
-    assert_equal(p[0], p.first)
-    assert_equal(p[1], p.second)
+    assert_array_equal(p[0], p.first)
+    assert_array_equal(p[1], p.second)
     import pprint
     pprint.pprint(p)
     pprint.pprint(p[0])
     pprint.pprint(p[1])
     q = p
-    assert_equal(p, q)
+    assert_array_equal(p, q)
     
     import copy
     r = copy.copy(p)
@@ -393,8 +396,8 @@ def test_pair_{tfncname}_{ufncname}():
     pprint.pprint(r.first)
     pprint.pprint(r[1])
     pprint.pprint(r.second)
-    assert_equal(p.first, r.first)
-    assert_equal(p.second, r.second)
+    assert_array_equal(p.first, r.first)
+    assert_array_equal(p.second, r.second)
 
 """
 def gentest_pair(t, u, ts):

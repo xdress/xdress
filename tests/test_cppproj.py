@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import nose
 import os
 import sys
 import glob
@@ -82,7 +83,7 @@ def test_all():
         if not PARSERS_AVAILABLE[parser]:
             yield skip_then_continue, parser + " unavailable"
             continue
-        cleanfs(GENERATED_PATHS)
+        # cleanfs(GENERATED_PATHS)
         rtn = 1
         holdsrtn = [rtn]  # needed because nose does not send() to test generator
         fill = dict(defaults)
@@ -108,3 +109,6 @@ def test_all():
                     yield test
     else:
         cleanfs(GENERATED_PATHS)
+
+if __name__ == "__main__":
+    nose.runmodule()
