@@ -1427,7 +1427,7 @@ def classpyx(desc, classes=None, ts=None, max_callbacks=8):
         cimport_tups.add(('libc.stdlib', 'malloc'))
     if not desc['parents']:
         clines += ["def __dealloc__(self):"]
-        clines += indent("if self._free_inst:", join=False)
+        clines += indent("if self._free_inst and self._inst is not NULL:", join=False)
         clines += indent(indent("free(self._inst)", join=False), join=False)
         cimport_tups.add(('libc.stdlib', 'free'))
 
