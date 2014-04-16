@@ -198,7 +198,12 @@ def gccxml_parse(filename, includes=(), defines=('XDRESS',), undefines=(),
         f = io.open(xmlname, 'w+b')
         subprocess.call(cmd)
     f.seek(0)
-    root = etree.parse(f)
+    try:
+        root = etree.parse(f)
+    except etree.XMLSyntaxError:
+        raise etree.XMLSyntaxError("failed to parse GCC-XML results, this likely "
+                                   "means that the C/C++ code is not valid. please "
+                                   "see the top most build error.")
     f.close()
     return root
 
