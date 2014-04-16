@@ -2085,7 +2085,7 @@ class TypeSystem(object):
     def cython_c2py(self, name, t, view=True, cached=True, inst_name=None,
                     proxy_name=None, cache_name=None, cache_prefix='self',
                     existing_name=None):
-        """Given a varibale name and type, returns cython code (declaration, body,
+        """Given a variable name and type, returns cython code (declaration, body,
         and return statements) to convert the variable from C/C++ to Python."""
         t = self.canon(t)
         c2pyt = self.cython_c2py_getitem(t)
