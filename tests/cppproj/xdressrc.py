@@ -87,6 +87,7 @@ variables = [
 
 functions = [
     apiname('voided', **_inbasics),
+    apiname('pairs_be_crazy', tarbase='pybasics', **_inbasics),
     apiname('call_with_void_fp_struct', **_inbasics), 
     {'srcname': 'func0', 
      'tarname': 'a_better_name',

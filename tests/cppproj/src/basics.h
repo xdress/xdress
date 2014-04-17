@@ -105,15 +105,6 @@ class TClass0 {
   template <class U> int whatstheanswer(U u){return 42;};
 };
 
-class SomeCrazyPairValue {
- public:
-  std::string what_is_this_naming_convention;
-//  explicit SomeCrazyPairValue() : what_is_this_naming_convention("java?") {};
-   SomeCrazyPairValue() {what_is_this_naming_convention = "java?";};
-   //~SomeCrazyPairValue() {delete &what_is_this_naming_convention;};
-   //~SomeCrazyPairValue() {};
-};
-
 template <class T> class TClass2 : public TClass0<T> {
   public:
     TClass2( bool default_Arg = true) {}
@@ -130,7 +121,6 @@ class NoDefault {
 class NoDefaultChild : public NoDefault {
  public:
   NoDefaultChild(int a) : NoDefault(a) {};
-  std::pair<int, SomeCrazyPairValue> sue_cray_cray;
 };
 
 template <class T>
@@ -279,6 +269,19 @@ Untemplated unt = Untemplated();
 int untrtn = unt.templated_method<float>(65.0);
 
 template <cppproj::PersonID> class EnumArg {};
+
+
+class SomeCrazyPairValue {
+ public:
+  std::string what_is_this_naming_convention;
+//  explicit SomeCrazyPairValue() : what_is_this_naming_convention("java?") {};
+   SomeCrazyPairValue() {what_is_this_naming_convention = "java?";};
+   //~SomeCrazyPairValue() {delete &what_is_this_naming_convention;};
+   //~SomeCrazyPairValue() {};
+};
+
+void pairs_be_crazy(std::pair<int, SomeCrazyPairValue> sue_cray_cray) {};
+
 
 #ifdef XDRESS
 std::vector<double> _temp0;
