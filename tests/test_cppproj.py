@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import nose
 import os
 import sys
 import glob
@@ -108,3 +109,6 @@ def test_all():
                     yield test
     else:
         cleanfs(GENERATED_PATHS)
+
+if __name__ == "__main__":
+    nose.runmodule()

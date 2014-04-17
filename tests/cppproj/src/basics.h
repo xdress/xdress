@@ -83,16 +83,6 @@ class C : public B {
 };
 
 
-class NoDefault {
- public:
-  NoDefault( int a ) {};
-};
-
-class NoDefaultChild : public NoDefault {
- public:
-  NoDefaultChild(int a) : NoDefault(a) {};
-};
-
 // templated classes
 template <class T>
 class TClass0 {
@@ -115,11 +105,32 @@ class TClass0 {
   template <class U> int whatstheanswer(U u){return 42;};
 };
 
+class SomeCrazyPairValue {
+ public:
+  std::string what_is_this_naming_convention;
+//  explicit SomeCrazyPairValue() : what_is_this_naming_convention("java?") {};
+   SomeCrazyPairValue() {what_is_this_naming_convention = "java?";};
+   //~SomeCrazyPairValue() {delete &what_is_this_naming_convention;};
+   //~SomeCrazyPairValue() {};
+};
 
 template <class T> class TClass2 : public TClass0<T> {
   public:
     TClass2( bool default_Arg = true) {}
     T bob;
+    std::pair<int, std::vector<int> > sue_vec;
+    std::pair<int, std::string> sue_str;
+};
+
+class NoDefault {
+ public:
+  NoDefault( int a ) {};
+};
+
+class NoDefaultChild : public NoDefault {
+ public:
+  NoDefaultChild(int a) : NoDefault(a) {};
+  std::pair<int, SomeCrazyPairValue> sue_cray_cray;
 };
 
 template <class T>

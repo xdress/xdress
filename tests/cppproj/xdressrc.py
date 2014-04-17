@@ -19,6 +19,10 @@ dtypes = [
     ]
 
 stlcontainers = [
+    ('pair', 'int', ('vector', 'int')),
+    ('pair', 'int', 'str'),
+    ('pair', 'int', 'SomeCrazyPairValue'),
+    ('pair', 'ThreeNums', 'int'),
     ('vector', 'float64'),
     ('vector', 'str'),
     ('vector', 'int32'),
@@ -115,6 +119,8 @@ classes = [
     apiname('A', **_inbasics),
     apiname('B', **_inbasics),
     apiname('C', **_inbasics),
+    apiname('SomeCrazyPairValue', tarbase='pybasics', **_inbasics),
+    # apiname('SomeCrazyPairValue', **_inbasics),
     apiname(('TClass1', 'int32'), **_inbasics), 
     apiname(('TClass1', 'float64'), **_inbasics), 
     {'srcname': ('TClass1', 'float32'), 

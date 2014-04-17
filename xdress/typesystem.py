@@ -564,6 +564,7 @@ class TypeSystem(object):
             'complex128': ['complex', 'float'],
             'file': ['file'],
             ('file', '*'): ['file'],
+            'pair': ['tuple'],
             'set': ['collections.Set', 'list', 'basestring', 'tuple'],
             'map': ['collections.Mapping', 'list', 'tuple'],
             'vector': ['list', 'tuple', 'np.ndarray'],
@@ -633,7 +634,7 @@ class TypeSystem(object):
             'exception': '{extra_types}exception',
             'map': '{stlcontainers}_Map{key_type}{value_type}',
             'dict': 'dict',
-            'pair': '{stlcontainers}_Pair{value_type}',
+            'pair': '{stlcontainers}_Pair{key_type}{value_type}',
             'set': '{stlcontainers}_Set{value_type}',
             'vector': 'np.ndarray',
             'function': 'object',
@@ -661,7 +662,7 @@ class TypeSystem(object):
             'void': 'object',
             'map': '{stlcontainers}Map{key_type}{value_type}',
             'dict': 'dict',
-            'pair': '{stlcontainers}Pair{value_type}',
+            'pair': '{stlcontainers}Pair{key_type}{value_type}',
             'set': '{stlcontainers}Set{value_type}',
             'vector': 'np.ndarray',
             }, self)
@@ -1445,6 +1446,7 @@ class TypeSystem(object):
                 last_val = 0 if tlen == 1 + templen else t[-1]
                 filledt = [t0]
                 for tt in t[1:1+templen]:
+                    
                     if isinstance(tt, Number):  # includes bool!
                         filledt.append(tt)
                     elif isinstance(tt, basestring):
@@ -2083,7 +2085,7 @@ class TypeSystem(object):
     def cython_c2py(self, name, t, view=True, cached=True, inst_name=None,
                     proxy_name=None, cache_name=None, cache_prefix='self',
                     existing_name=None):
-        """Given a varibale name and type, returns cython code (declaration, body,
+        """Given a variable name and type, returns cython code (declaration, body,
         and return statements) to convert the variable from C/C++ to Python."""
         t = self.canon(t)
         c2pyt = self.cython_c2py_getitem(t)
