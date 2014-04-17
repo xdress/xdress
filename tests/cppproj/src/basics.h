@@ -274,10 +274,7 @@ template <cppproj::PersonID> class EnumArg {};
 class SomeCrazyPairValue {
  public:
   std::string what_is_this_naming_convention;
-//  explicit SomeCrazyPairValue() : what_is_this_naming_convention("java?") {};
    SomeCrazyPairValue() {what_is_this_naming_convention = "java?";};
-   //~SomeCrazyPairValue() {delete &what_is_this_naming_convention;};
-   //~SomeCrazyPairValue() {};
 };
 
 void pairs_be_crazy(std::pair<int, SomeCrazyPairValue> sue_cray_cray) {};
