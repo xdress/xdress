@@ -46,7 +46,8 @@ def check_cmd(args, cwd, holdsrtn, suppress=True):
     rtn = subprocess.call(args, shell=True, cwd=cwd, stdout=f, stderr=f)
     if rtn != 0 and suppress:
         f.seek(0)
-        print("STDOUT + STDERR:\n\n" + f.read().decode())
+        print("STDOUT + STDERR:\n")
+        print(f.read())
     if suppress:
         f.close()
     holdsrtn[0] = rtn
