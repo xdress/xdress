@@ -24,4 +24,10 @@ template<class T> static inline T* XDRESS_CONST_CAST(const T* x) {
 }
 #endif
 
+#if CLANG_VERSION_GE(3,5)
+#define getResultType           getReturnType
+#define getResultLoc            getReturnLoc
+#define getResultTypeSourceInfo getReturnTypeSourceInfo
+#endif
+
 #endif // XDRESS_CLANG_H

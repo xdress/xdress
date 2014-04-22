@@ -214,7 +214,9 @@ CXCursor cxcursor::MakeCXCursor(const Stmt *S, const Decl *Parent,
   case Stmt::AsTypeExprClass:
   case Stmt::AtomicExprClass:
   case Stmt::BinaryConditionalOperatorClass:
+#if !CLANG_VERSION_GE(3,5)
   case Stmt::BinaryTypeTraitExprClass:
+#endif
   case Stmt::TypeTraitExprClass:
   case Stmt::CXXBindTemporaryExprClass:
   case Stmt::CXXDefaultArgExprClass:
@@ -243,7 +245,9 @@ CXCursor cxcursor::MakeCXCursor(const Stmt *S, const Decl *Parent,
   case Stmt::ConvertVectorExprClass:
 #endif
   case Stmt::UnaryExprOrTypeTraitExprClass:
+#if !CLANG_VERSION_GE(3,5)
   case Stmt::UnaryTypeTraitExprClass:
+#endif
   case Stmt::VAArgExprClass:
   case Stmt::ObjCArrayLiteralClass:
   case Stmt::ObjCDictionaryLiteralClass:

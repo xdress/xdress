@@ -15,6 +15,15 @@
 #define LLVM_CLANG_LIBCLANG_RECURSIVEASTVISITOR_H
 
 #include "xdress-clang.h"
+#if CLANG_VERSION_GE(3,5)
+#include "clang/AST/RecursiveASTVisitor.h"
+namespace clang {
+namespace cxindex {
+using clang::RecursiveASTVisitor;
+}
+}
+#else
+
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclFriend.h"
@@ -2439,4 +2448,5 @@ bool RecursiveASTVisitor<Derived>::VisitOMPSharedClause(OMPSharedClause *C) {
 } // end namespace cxindex
 } // end namespace clang
 
+#endif // !CLANG_VERSION_GE(3,5)
 #endif // LLVM_CLANG_LIBCLANG_RECURSIVEASTVISITOR_H

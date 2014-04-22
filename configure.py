@@ -118,16 +118,24 @@ def setup():
         try:
             llvm_cppflags = (   os.environ.get('LLVM_CPPFLAGS')
                              or subprocess.check_output([llvm_config,'--cppflags'])).split()
-            llvm_ldflags  = (   os.environ.get('LLVM_LDFLAGS')
-                             or subprocess.check_output([llvm_config,'--ldflags','--libs'])).split()
+            try:
+                llvm_ldflags = os.environ['LLVM_LDFLAGS'].split()
+            except KeyError:
+                llvm_ldflags = subprocess.check_output([llvm_config,'--ldflags','--libs']).split()
+                try:
+                    llvm_ldflags.extend(subprocess.check_output([llvm_config,'--system-libs']).split())
+                except subprocess.CalledProcessError:
+                    pass
+            version = subprocess.check_output([llvm_config,'--version'])
         except OSError as e:
             raise OSError("Failed to run llvm-config program '%s': %s" % (llvm_config, e))
+        version = tuple(version.strip().split('.'))
         clang_dir = os.path.join(dir_name, 'xdress', 'clang')
         clang_src_dir = os.path.join(clang_dir, 'src')
         clang_libs = (   os.environ.get('CLANG_LIBS')
                       or '''clangTooling clangFrontend clangDriver clangSerialization clangCodeGen
-                            clangParse clangSema clangStaticAnalyzerFrontend clangStaticAnalyzerCheckers
-                            clangStaticAnalyzerCore clangAnalysis clangARCMigrate clangEdit
+                            clangParse clangSema clangStaticAnalyzerFrontend clangARCMigrate
+                            clangStaticAnalyzerCheckers clangStaticAnalyzerCore clangAnalysis clangEdit
                             clangRewriteCore clangAST clangLex clangBasic''').split()
         # If the user sets CFLAGS, make sure we still have our own include path first
         if 'CFLAGS' in os.environ:
@@ -140,7 +148,7 @@ def setup():
                              sources=glob.glob(os.path.join(clang_src_dir, '*.cpp')),
                              define_macros=[('XDRESS', 1)],
                              include_dirs=[clang_dir],
-                             extra_compile_args=llvm_cppflags+['-fno-rtti'],
+                             extra_compile_args=llvm_cppflags+['-fno-rtti']+['-std=c++11']*(version>(3,4)),
                              extra_link_args=llvm_ldflags,
                              libraries=clang_libs,
                              language='c++')]

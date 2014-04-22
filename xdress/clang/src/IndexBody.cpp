@@ -163,6 +163,12 @@ public:
     return true;
   }
 
+#if CLANG_VERSION_GE(3,5)
+  bool TraverseLambdaCapture(LambdaExpr* S, LambdaExpr::capture_iterator C) {
+    return TraverseLambdaCapture(*C);
+  }
+#endif
+
 };
 
 } // anonymous namespace

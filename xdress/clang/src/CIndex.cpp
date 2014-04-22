@@ -1600,8 +1600,13 @@ bool CursorVisitor::VisitFunctionTypeLoc(FunctionTypeLoc TL,
   if (!SkipResultType && Visit(TL.getResultLoc()))
     return true;
 
+#if CLANG_VERSION_GE(3,5)
+  for (unsigned I = 0, N = TL.getNumParams(); I != N; ++I)
+    if (Decl *D = TL.getParam(I))
+#else
   for (unsigned I = 0, N = TL.getNumArgs(); I != N; ++I)
     if (Decl *D = TL.getArg(I))
+#endif
       if (Visit(MakeCXCursor(D, TU, RegionOfInterest)))
         return true;
 
@@ -1620,6 +1625,12 @@ bool CursorVisitor::VisitArrayTypeLoc(ArrayTypeLoc TL) {
 
 #if CLANG_VERSION_GE(3,4)
 bool CursorVisitor::VisitDecayedTypeLoc(DecayedTypeLoc TL) {
+  return Visit(TL.getOriginalLoc());
+}
+#endif
+
+#if CLANG_VERSION_GE(3,5)
+bool CursorVisitor::VisitAdjustedTypeLoc(AdjustedTypeLoc TL) {
   return Visit(TL.getOriginalLoc());
 }
 #endif
@@ -1917,8 +1928,10 @@ public:
   void VisitStmt(const Stmt *S);
   void VisitSwitchStmt(const SwitchStmt *S);
   void VisitWhileStmt(const WhileStmt *W);
+#if !CLANG_VERSION_GE(3,5)
   void VisitUnaryTypeTraitExpr(const UnaryTypeTraitExpr *E);
   void VisitBinaryTypeTraitExpr(const BinaryTypeTraitExpr *E);
+#endif
   void VisitTypeTraitExpr(const TypeTraitExpr *E);
   void VisitArrayTypeTraitExpr(const ArrayTypeTraitExpr *E);
   void VisitExpressionTraitExpr(const ExpressionTraitExpr *E);
@@ -2006,6 +2019,12 @@ public:
   void Visit##Class(const Class *C);
 #include "clang/Basic/OpenMPKinds.def"
 };
+
+#if CLANG_VERSION_GE(3,5)
+void OMPClauseEnqueue::VisitOMPIfClause(const OMPIfClause *C) {
+  Visitor->AddStmt(C->getCondition());
+}
+#endif
 
 void OMPClauseEnqueue::VisitOMPDefaultClause(const OMPDefaultClause *C) { }
 
@@ -2269,6 +2288,7 @@ void EnqueueVisitor::VisitWhileStmt(const WhileStmt *W) {
   AddDecl(W->getConditionVariable());
 }
 
+#if !CLANG_VERSION_GE(3,5)
 void EnqueueVisitor::VisitUnaryTypeTraitExpr(const UnaryTypeTraitExpr *E) {
   AddTypeLoc(E->getQueriedTypeSourceInfo());
 }
@@ -2277,6 +2297,7 @@ void EnqueueVisitor::VisitBinaryTypeTraitExpr(const BinaryTypeTraitExpr *E) {
   AddTypeLoc(E->getRhsTypeSourceInfo());
   AddTypeLoc(E->getLhsTypeSourceInfo());
 }
+#endif
 
 void EnqueueVisitor::VisitTypeTraitExpr(const TypeTraitExpr *E) {
   for (unsigned I = E->getNumArgs(); I > 0; --I)
@@ -2539,8 +2560,13 @@ bool CursorVisitor::RunVisitorWorkList(VisitorWorkList &WL) {
 #endif
             if (E->hasExplicitParameters()) {
               // Visit parameters.
+#if CLANG_VERSION_GE(3,5)
+              for (unsigned I = 0, N = Proto.getNumParams(); I != N; ++I)
+                if (Visit(MakeCXCursor(Proto.getParam(I), TU)))
+#else
               for (unsigned I = 0, N = Proto.getNumArgs(); I != N; ++I)
                 if (Visit(MakeCXCursor(Proto.getArg(I), TU)))
+#endif
                   return true;
             } else {
               // Visit result type.
@@ -2712,7 +2738,11 @@ CXTranslationUnit clang_createTranslationUnit(CXIndex CIdx,
   IntrusiveRefCntPtr<DiagnosticsEngine> Diags;
   ASTUnit *TU = ASTUnit::LoadFromASTFile(ast_filename, Diags, FileSystemOpts,
                                   CXXIdx->getOnlyLocalDecls(),
+#if CLANG_VERSION_GE(3,5)
+                                  None,
+#else
                                   0, 0,
+#endif
                                   /*CaptureDiagnostics=*/true,
                                   /*AllowPCHWithCompilerErrors=*/true,
                                   /*UserFilesAreVolatile=*/true);
@@ -2772,7 +2802,7 @@ static void clang_parseTranslationUnit_Impl(void *UserData) {
   // FIXME: Add a flag for modules.
   TranslationUnitKind TUKind
     = (options & CXTranslationUnit_Incomplete)? TU_Prefix : TU_Complete;
-  bool CacheCodeCompetionResults
+  bool CacheCodeCompletionResults
     = options & CXTranslationUnit_CacheCompletionResults;
   bool IncludeBriefCommentsInCodeCompletion
     = options & CXTranslationUnit_IncludeBriefCommentsInCodeCompletion;
@@ -2851,6 +2881,16 @@ static void clang_parseTranslationUnit_Impl(void *UserData) {
   
   unsigned NumErrors = Diags->getClient()->getNumErrors();
   OwningPtr<ASTUnit> ErrUnit;
+#if CLANG_VERSION_GE(3,5)
+  std::unique_ptr<ASTUnit> Unit(ASTUnit::LoadFromCommandLine(
+      Args->data(), Args->data() + Args->size(), Diags,
+      CXXIdx->getClangResourcesPath(), CXXIdx->getOnlyLocalDecls(),
+      /*CaptureDiagnostics=*/true, *RemappedFiles.get(),
+      /*RemappedFilesKeepOriginalName=*/true, PrecompilePreamble, TUKind,
+      CacheCodeCompletionResults, IncludeBriefCommentsInCodeCompletion,
+      /*AllowPCHWithCompilerErrors=*/true, SkipFunctionBodies,
+      /*UserFilesAreVolatile=*/true, ForSerialization, &ErrUnit));
+#else
   OwningPtr<ASTUnit> Unit(
     ASTUnit::LoadFromCommandLine(Args->size() ? &(*Args)[0] : 0 
                                  /* vector::data() not portable */,
@@ -2864,13 +2904,14 @@ static void clang_parseTranslationUnit_Impl(void *UserData) {
                                  /*RemappedFilesKeepOriginalName=*/true,
                                  PrecompilePreamble,
                                  TUKind,
-                                 CacheCodeCompetionResults,
+                                 CacheCodeCompletionResults,
                                  IncludeBriefCommentsInCodeCompletion,
                                  /*AllowPCHWithCompilerErrors=*/true,
                                  SkipFunctionBodies,
                                  /*UserFilesAreVolatile=*/true,
                                  ForSerialization,
                                  &ErrUnit));
+#endif
 
   if (NumErrors != Diags->getClient()->getNumErrors()) {
     // Make sure to check that 'Unit' is non-NULL.
@@ -2878,8 +2919,13 @@ static void clang_parseTranslationUnit_Impl(void *UserData) {
       printDiagsToStderr(Unit ? Unit.get() : ErrUnit.get());
   }
 
+#if CLANG_VERSION_GE(3,5)
+  PTUI->result = MakeCXTranslationUnit(CXXIdx, Unit.release());
+#else
   PTUI->result = MakeCXTranslationUnit(CXXIdx, Unit.take());
+#endif
 }
+
 CXTranslationUnit clang_parseTranslationUnit(CXIndex CIdx,
                                              const char *source_filename,
                                          const char * const *command_line_args,
@@ -3071,8 +3117,12 @@ static void clang_reparseTranslationUnit_Impl(void *UserData) {
                                             Buffer));
   }
   
+#if CLANG_VERSION_GE(3,5)
+  if (!CXXUnit->Reparse(*RemappedFiles.get()))
+#else
   if (!CXXUnit->Reparse(RemappedFiles->size() ? &(*RemappedFiles)[0] : 0,
                         RemappedFiles->size()))
+#endif
     RTUI->result = 0;
 }
 
