@@ -21,6 +21,11 @@ if sys.version_info[0] >= 3:
         return old_spawn_posix(list(map(decode, cmd)), search_path, verbose, dry_run)
     distutils.spawn._spawn_posix = hack_spawn_posix
 
+try:
+    from subprocess import DEVNULL
+except ImportError:
+    DEVNULL = open(os.devnull,'wb')
+
 INFO = {
     'version': xdress.version.xdress_version,
 }
@@ -114,6 +119,7 @@ def setup():
                 print('Disabling clang since llvm-config not found: tried %s'%', '.join(options))
                 print('To override, set the LLVM_CONFIG environment variable.')
                 llvm_config = None
+    version = 0,
     if llvm_config is not None:
         try:
             llvm_cppflags = (   os.environ.get('LLVM_CPPFLAGS')
@@ -123,7 +129,7 @@ def setup():
             except KeyError:
                 llvm_ldflags = subprocess.check_output([llvm_config,'--ldflags','--libs']).split()
                 try:
-                    llvm_ldflags.extend(subprocess.check_output([llvm_config,'--system-libs']).split())
+                    llvm_ldflags.extend(subprocess.check_output([llvm_config,'--system-libs'],stderr=DEVNULL).split())
                 except subprocess.CalledProcessError:
                     pass
             version = subprocess.check_output([llvm_config,'--version'])
