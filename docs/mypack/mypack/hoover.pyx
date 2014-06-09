@@ -37,7 +37,7 @@ cdef class A:
     
     
     def __dealloc__(self):
-        if self._free_inst:
+        if self._free_inst and self._inst is not NULL:
             free(self._inst)
 
     # attributes

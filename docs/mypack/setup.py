@@ -1,9 +1,13 @@
 import os
+import sys
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
 import numpy as np
+
+if not os.path.exists('mypack/mypack_extra_types.h'):
+    sys.exit("please run xdress first!")
 
 incdirs = [os.path.join(os.getcwd(), 'src'), np.get_include()]
 
