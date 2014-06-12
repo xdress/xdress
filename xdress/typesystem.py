@@ -937,7 +937,7 @@ class TypeSystem(object):
             'dict': ('dict({var})',),
             'pair': ('{t.cython_pytype}({var})',
                      ('{proxy_name} = {t.cython_pytype}(False, False)\n'
-                      '{proxy_name}.pair_ptr = &{var}\n'),
+                      '{proxy_name}.pair_ptr = <{t.cython_ctype}*> &{var}\n'),
                      ('if {cache_name} is None:\n'
                       '    {proxy_name} = {t.cython_pytype}(False, False)\n'
                       '    {proxy_name}.pair_ptr = &{var}\n'
