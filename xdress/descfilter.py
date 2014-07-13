@@ -260,8 +260,10 @@ class XDressPlugin(Plugin):
                         for m in skippers:
                             # Find method key
                             try:
-                                del_key = filter(lambda x: x[0].startswith(m),
-                                                 m_nms)[0]
+                                f = lambda x: x[0].startswith(m) \
+                                              if isinstance(x[0], basestring) \
+                                              else x[0][0].startswith(m)
+                                del_key = filter(f, m_nms)[0]
                             except IndexError:
                                 msg = 'descfilter: Could not find method {0} '
                                 msg += 'in {1}. Moving on to next method'

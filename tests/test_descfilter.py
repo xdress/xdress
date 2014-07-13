@@ -28,8 +28,8 @@ car_class = {
                          'return': ('vector', 'uint32')},
         ('traffic', ('coord', (('vector', 'int32', 'const'), '&'))): {
             'return': 'str'},
-        ('isValid',): {
-            'return': 'bool'},
+        ('isValid',): {'return': 'bool'},
+        (('a_template_name', 'int32'),): {'return': 'bool'},
         }
     }
 
@@ -77,6 +77,7 @@ def test_typefilter_list():
     'methods': {
         ('Car',): None,
         ('~Car',): None,
+        (('a_template_name', 'int32'),): {'return': 'bool'},
         ('isValid',): {'return': 'bool'}}
         }
 
@@ -113,8 +114,8 @@ def test_typefilter_dict():
             ('~Car',): None,
             ('traffic', ('coord', (('vector', 'int32', 'const'), '&'))): {
                 'return': 'str'},
-            ('isValid',): {
-                'return': 'bool'}}
+            (('a_template_name', 'int32'),): {'return': 'bool'},
+            ('isValid',): {'return': 'bool'}}
     }
 
     exp_plane = {
