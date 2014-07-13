@@ -88,11 +88,11 @@ import re
 import os
 import subprocess
 import sys
-from collections import OrderedDict
 from textwrap import TextWrapper
+
 from .plugins import Plugin
+from .type_matching import TypeMatcher, MatchAny
 from .utils import newoverwrite, parse_template
-from .typesystem import TypeMatcher, MatchAny
 
 # XML conditional imports
 try:
@@ -998,7 +998,7 @@ class XDressPlugin(Plugin):
         # Run doxygen
         subprocess.call(['doxygen', rc.doxyfile_name])
 
-    def _process_dox(self, xml_dir):
+    def _process_dox(self, rc, xml_dir):
         """Process the dOxygen files."""
         classes, funcs = parse_index_xml(os.path.join(xml_dir, 'index.xml'))
         tm_classes = {}
@@ -1040,7 +1040,7 @@ class XDressPlugin(Plugin):
         # Go for the classes!
         for c in rc.classes:
             self._run_dox(rc, c.srcfiles)
-            funcs, classes, tm_classes = self._process_dox(xml_dir)
+            funcs, classes, tm_classes = self._process_dox(rc, xml_dir)
             kls = c.srcname
             kls_mod = c.tarbase
 
