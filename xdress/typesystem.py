@@ -267,9 +267,9 @@ try:
 except ImportError:
     import pickle
 
-from .lazy_containers import (_LazyConfigDict, _LazyConverterDict,
+from .type.containers import (_LazyConfigDict, _LazyConverterDict,
                               _LazyImportDict)
-from .typesystem_defaults import get_defaults
+from .type.defaults import get_defaults
 from .utils import Arg, memoize_method, infer_format
 
 if sys.version_info[0] >= 3:
