@@ -92,9 +92,9 @@ def setup():
         scripts = [os.path.join(scripts_dir, f)
                    for f in os.listdir(scripts_dir)
                    if not f.endswith('.bat')]
-    packages = ['xdress', 'xdress.clang', 'xdress._enum']
+    packages = ['xdress', 'xdress.clang', 'xdress._enum', 'xdress.types']
     pack_dir = {'xdress': 'xdress', 'xdress.clang': 'xdress/clang', 
-                'xdress._enum': 'xdress/_enum'}
+                'xdress._enum': 'xdress/_enum', 'xdress.types': 'xdress/types'}
     pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp'], 
                  'xdress._enum': ['LICENSE', 'README']}
 
