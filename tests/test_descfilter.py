@@ -6,8 +6,8 @@ from nose.tools import assert_equal
 from tools import unit
 from xdress import descfilter as df
 from xdress.plugins import Plugins
-from xdress.type.matching import TypeMatcher
-from xdress.type.system import TypeSystem
+from xdress.types.matching import TypeMatcher
+from xdress.types.system import TypeSystem
 from xdress.utils import RunControl, DEFAULT_RC_FILE, DEFAULT_PLUGINS
 
 car_class = {

@@ -129,7 +129,7 @@ from __future__ import print_function
 import sys
 import collections
 from .utils import isclassdesc, NotSpecified
-from .type.matching import TypeMatcher
+from .types.matching import TypeMatcher
 from .plugins import Plugin
 
 if sys.version_info[0] >= 3:
@@ -143,7 +143,7 @@ def modify_desc(skips, desc):
     skips : dict or list
         The attribute rc.skiptypes from the run controller managing
         the desc dictionary. This is filled with
-        xdress.type.system.TypeMatcher objects and should have been
+        xdress.types.system.TypeMatcher objects and should have been
         populated as such by xdress.descfilter.setup
 
     desc : dictionary

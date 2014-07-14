@@ -13,7 +13,7 @@ import sys
 import pprint
 
 from .plugins import Plugin
-from .type.system import TypeSystem
+from .types.system import TypeSystem
 from .utils import newoverwrite, newcopyover, ensuredirs, indent, indentstr, \
     RunControl, NotSpecified
 

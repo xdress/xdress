@@ -1,6 +1,6 @@
 from nose.tools import assert_equal
 
-from xdress.type.matching import TypeMatcher, MatchAny, matches
+from xdress.types.matching import TypeMatcher, MatchAny, matches
 
 from tools import unit
 
