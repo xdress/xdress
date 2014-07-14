@@ -143,7 +143,7 @@ def modify_desc(skips, desc):
     skips : dict or list
         The attribute rc.skiptypes from the run controller managing
         the desc dictionary. This is filled with
-        xdress.typesystem.TypeMatcher objects and should have been
+        xdress.type.system.TypeMatcher objects and should have been
         populated as such by xdress.descfilter.setup
 
     desc : dictionary

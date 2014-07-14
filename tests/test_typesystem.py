@@ -2,7 +2,7 @@ from __future__ import print_function
 import pprint
 import os
 
-from xdress.typesystem import TypeSystem
+from xdress.type.system import TypeSystem
 from xdress.utils import Arg
 
 from nose.tools import assert_equal, with_setup

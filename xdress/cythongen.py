@@ -22,7 +22,7 @@ from numbers import Number
 
 from .plugins import Plugin
 from .type.matching import TypeMatcher, MatchAny
-from .typesystem import TypeSystem
+from .type.system import TypeSystem
 from .utils import indent, expand_default_args, isclassdesc, isfuncdesc, \
     isvardesc, newoverwrite, sortedbytype, _lang_exts, Arg
 from .version import cython_version, cython_version_info

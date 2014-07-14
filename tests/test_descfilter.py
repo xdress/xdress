@@ -4,11 +4,11 @@ from copy import deepcopy
 import pprint
 from nose.tools import assert_equal
 from tools import unit
-from xdress.type.matching import TypeMatcher
-from xdress.typesystem import TypeSystem
 from xdress import descfilter as df
-from xdress.utils import RunControl, DEFAULT_RC_FILE, DEFAULT_PLUGINS
 from xdress.plugins import Plugins
+from xdress.type.matching import TypeMatcher
+from xdress.type.system import TypeSystem
+from xdress.utils import RunControl, DEFAULT_RC_FILE, DEFAULT_PLUGINS
 
 car_class = {
     'name': 'Car',
