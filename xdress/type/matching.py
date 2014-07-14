@@ -1,4 +1,4 @@
-from .utils import flatten
+from xdress.utils import flatten
 
 
 class MatchAny(object):

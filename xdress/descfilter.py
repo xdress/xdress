@@ -129,7 +129,7 @@ from __future__ import print_function
 import sys
 import collections
 from .utils import isclassdesc, NotSpecified
-from .type_matching import TypeMatcher
+from .type.matching import TypeMatcher
 from .plugins import Plugin
 
 if sys.version_info[0] >= 3:

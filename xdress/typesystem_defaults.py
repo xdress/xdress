@@ -1,4 +1,4 @@
-from .type_matching import TypeMatcher, MatchAny
+from .type.matching import TypeMatcher, MatchAny
 from .utils import Arg, indent
 
 CYTHON_PY2C_CONV_VECTOR_REF = ((
