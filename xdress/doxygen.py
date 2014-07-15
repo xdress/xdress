@@ -91,7 +91,7 @@ import sys
 from textwrap import TextWrapper
 
 from .plugins import Plugin
-from .type_matching import TypeMatcher, MatchAny
+from .types.matching import TypeMatcher, MatchAny
 from .utils import newoverwrite, parse_template
 
 # XML conditional imports

@@ -1,7 +1,7 @@
 from collections import Sequence, MutableMapping
 from pprint import pformat
 
-from .type_matching import TypeMatcher
+from .matching import TypeMatcher
 
 _ensuremod = lambda x: x if x is not None and 0 < len(x) else ''
 _ensuremoddot = lambda x: x + '.' if x is not None and 0 < len(x) else ''

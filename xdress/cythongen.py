@@ -20,11 +20,11 @@ import math
 import warnings
 from numbers import Number
 
+from .plugins import Plugin
+from .types.matching import TypeMatcher, MatchAny
+from .types.system import TypeSystem
 from .utils import indent, expand_default_args, isclassdesc, isfuncdesc, \
     isvardesc, newoverwrite, sortedbytype, _lang_exts, Arg
-from .plugins import Plugin
-from .type_matching import TypeMatcher, MatchAny
-from .typesystem import TypeSystem
 from .version import cython_version, cython_version_info
 
 if sys.version_info[0] >= 3:

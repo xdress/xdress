@@ -1,5 +1,6 @@
-from .type_matching import TypeMatcher, MatchAny
-from .utils import Arg, indent
+from xdress.utils import Arg, indent
+from .matching import TypeMatcher, MatchAny
+
 
 CYTHON_PY2C_CONV_VECTOR_REF = ((
         '# {var} is a {t.type}\n'

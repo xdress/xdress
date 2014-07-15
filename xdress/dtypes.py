@@ -12,10 +12,10 @@ import os
 import sys
 import pprint
 
+from .plugins import Plugin
+from .types.system import TypeSystem
 from .utils import newoverwrite, newcopyover, ensuredirs, indent, indentstr, \
     RunControl, NotSpecified
-from .plugins import Plugin
-from .typesystem import TypeSystem
 
 if sys.version_info[0] >= 3: 
     basestring = str

@@ -267,10 +267,10 @@ try:
 except ImportError:
     import pickle
 
-from .lazy_containers import (_LazyConfigDict, _LazyConverterDict,
+from xdress.utils import Arg, memoize_method, infer_format
+from .containers import (_LazyConfigDict, _LazyConverterDict,
                               _LazyImportDict)
-from .typesystem_defaults import get_defaults
-from .utils import Arg, memoize_method, infer_format
+from .defaults import get_defaults
 
 if sys.version_info[0] >= 3:
     basestring = str

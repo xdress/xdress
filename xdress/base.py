@@ -15,7 +15,7 @@ from warnings import warn
 from .utils import RunControl, NotSpecified, writenewonly, DescriptionCache, \
     DEFAULT_RC_FILE, DEFAULT_PLUGINS, nyansep, indent
 from .plugins import Plugin
-from .typesystem import TypeSystem
+from .types.system import TypeSystem
 from .version import report_versions
 
 if sys.version_info[0] >= 3:
