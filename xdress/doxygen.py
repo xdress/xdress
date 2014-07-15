@@ -176,8 +176,8 @@ def class_docstr(class_dict, desc_funcs=False):
 
     """
     class_name = class_dict['kls_name'].split('::')[-1]
-    cls_msg = class_dict['public-func'][class_name]['detaileddescription']
-
+    cls_msg = class_dict.get('public-func', {}).get(class_name, {})\
+                        .get('detaileddescription', '')
     msg = wrap_68.fill(cls_msg)
 
     # Get a list of the methods and variables to list here.
@@ -223,7 +223,8 @@ def class_docstr(class_dict, desc_funcs=False):
     methods.sort()
 
     # Move the destructor from the bottom to be second.
-    methods.insert(1, methods.pop())
+    if len(methods) > 0:
+        methods.insert(1, methods.pop())
 
     for i in methods:
         desc = funcs[i]['briefdescription']
