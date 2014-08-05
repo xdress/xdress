@@ -1379,7 +1379,7 @@ class TypeSystem(object):
 
     @memoize_method
     def cython_py2c(self, name, t, inst_name=None, proxy_name=None):
-        """Given a varibale name and type, returns cython code (declaration, body,
+        """Given a variable name and type, returns cython code (declaration, body,
         and return statement) to convert the variable from Python to C/C++."""
         t = self.canon(t)
         if isinstance(t, basestring) or 0 == t[-1] or self.isrefinement(t[-1]):
