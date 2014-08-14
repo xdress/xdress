@@ -178,7 +178,11 @@ def class_docstr(class_dict, desc_funcs=False):
     class_name = class_dict['kls_name'].split('::')[-1]
     cls_msg = class_dict.get('public-func', {}).get(class_name, {})\
                         .get('detaileddescription', '')
-    msg = wrap_68.fill(cls_msg)
+    
+    if cls_msg is None:
+         msg = ""
+    else:
+        msg = wrap_68.fill(cls_msg)
 
     # Get a list of the methods and variables to list here.
     methods = list(set(class_dict['members']['methods']))
@@ -283,7 +287,11 @@ def func_docstr(func_dict, is_method=False):
 
     detailed_desc = func_dict['detaileddescription']
     brief_desc = func_dict['briefdescription']
-    desc = '\n\n'.join([brief_desc, detailed_desc]).strip()
+
+    if detailed_desc is None or brief_desc is None:
+        desc = "\n\n"
+    else:
+        desc = '\n\n'.join([brief_desc, detailed_desc]).strip()
 
     args = func_dict['args']
     if args is None:
