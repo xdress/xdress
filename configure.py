@@ -135,7 +135,7 @@ def setup():
             version = subprocess.check_output([llvm_config,'--version'])
         except OSError as e:
             raise OSError("Failed to run llvm-config program '%s': %s" % (llvm_config, e))
-        version = tuple(int(part) for part in version.strip().split('.'))
+        version = tuple(int(part) for part in version.decode().strip().split('.'))
         clang_dir = os.path.join(dir_name, 'xdress', 'clang')
         clang_src_dir = os.path.join(clang_dir, 'src')
         clang_libs = (   os.environ.get('CLANG_LIBS')
