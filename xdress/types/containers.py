@@ -1,5 +1,9 @@
 from collections import Sequence, MutableMapping
 from pprint import pformat
+import sys
+
+if sys.version_info[0] > 2:
+    basestring = str
 
 from .matching import TypeMatcher
 

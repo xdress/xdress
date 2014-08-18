@@ -47,7 +47,8 @@ def check_cmd(args, cwd, holdsrtn, suppress=True):
     if rtn != 0 and suppress:
         f.seek(0)
         print("STDOUT + STDERR:\n")
-        print(f.read())
+        s = f.read()
+        print(s.decode())
     if suppress:
         f.close()
     holdsrtn[0] = rtn

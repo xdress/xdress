@@ -1,5 +1,9 @@
+import sys
+
 from xdress.utils import flatten
 
+if sys.version_info[0] > 2:
+    basestring = str
 
 class MatchAny(object):
     """A singleton helper class for matching any portion of a type."""

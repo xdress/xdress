@@ -1,12 +1,16 @@
 from __future__ import print_function
 import pprint
 import os
+import sys
 
 from xdress.types.system import TypeSystem
 from xdress.utils import Arg
 
 from nose.tools import assert_equal, with_setup
 from tools import unit
+
+if sys.version_info[0] > 2:
+    basestring = str
 
 # default typesystem
 ts = TypeSystem()

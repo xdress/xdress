@@ -1,6 +1,10 @@
+import sys
+
 from xdress.utils import Arg, indent
 from .matching import TypeMatcher, MatchAny
 
+if sys.version_info[0] > 2:
+    basestring = str
 
 CYTHON_PY2C_CONV_VECTOR_REF = ((
         '# {var} is a {t.type}\n'
