@@ -67,9 +67,10 @@ class A {
 
 class B : public A {
  public:
-  B() {};
+  B();
   ~B() {};
   int b;
+  std::vector<std::vector<int> > clist;
   virtual void call() {b=1;};
   void from_a(A x) {b = x.a;};
 };
