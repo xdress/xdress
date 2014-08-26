@@ -383,20 +383,9 @@ def test_pair_{tfncname}_{ufncname}():
     p[1] = {5}
     assert_array_equal(p[0], p.first)
     assert_array_equal(p[1], p.second)
-    import pprint
-    pprint.pprint(p)
-    pprint.pprint(p[0])
-    pprint.pprint(p[1])
-    q = p
-    assert_array_equal(p, q)
     
     import copy
     r = copy.copy(p)
-    pprint.pprint(r)
-    pprint.pprint(r[0])
-    pprint.pprint(r.first)
-    pprint.pprint(r[1])
-    pprint.pprint(r.second)
     assert_array_equal(p.first, r.first)
     assert_array_equal(p.second, r.second)
 
