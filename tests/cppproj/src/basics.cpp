@@ -2,6 +2,17 @@
 
 namespace cppproj {
 
+  B::B() {
+    for(int i = 0; i < 3; ++i){
+      std::vector<int> tmp1;
+      for(int j = 0; j < 5; ++j){
+        tmp1.push_back(j*i);
+      }
+      clist.push_back(tmp1);
+      tmp1.clear();
+    }
+  }
+
 std::string GET_LUCKY = "She's up all night til the sun.";
 void voided() {};
 int verbosity  = 0;
