@@ -4,10 +4,11 @@ from copy import deepcopy
 import pprint
 from nose.tools import assert_equal
 from tools import unit
-from xdress.typesystem import TypeMatcher, TypeSystem
 from xdress import descfilter as df
-from xdress.utils import RunControl, DEFAULT_RC_FILE, DEFAULT_PLUGINS
 from xdress.plugins import Plugins
+from xdress.types.matching import TypeMatcher
+from xdress.types.system import TypeSystem
+from xdress.utils import RunControl, DEFAULT_RC_FILE, DEFAULT_PLUGINS
 
 car_class = {
     'name': 'Car',
@@ -27,8 +28,8 @@ car_class = {
                          'return': ('vector', 'uint32')},
         ('traffic', ('coord', (('vector', 'int32', 'const'), '&'))): {
             'return': 'str'},
-        ('isValid',): {
-            'return': 'bool'},
+        ('isValid',): {'return': 'bool'},
+        (('a_template_name', 'int32'),): {'return': 'bool'},
         }
     }
 
@@ -76,6 +77,7 @@ def test_typefilter_list():
     'methods': {
         ('Car',): None,
         ('~Car',): None,
+        (('a_template_name', 'int32'),): {'return': 'bool'},
         ('isValid',): {'return': 'bool'}}
         }
 
@@ -112,8 +114,8 @@ def test_typefilter_dict():
             ('~Car',): None,
             ('traffic', ('coord', (('vector', 'int32', 'const'), '&'))): {
                 'return': 'str'},
-            ('isValid',): {
-                'return': 'bool'}}
+            (('a_template_name', 'int32'),): {'return': 'bool'},
+            ('isValid',): {'return': 'bool'}}
     }
 
     exp_plane = {

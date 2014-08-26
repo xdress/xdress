@@ -13,10 +13,10 @@ import os
 import sys
 import pprint
 
+from .plugins import Plugin
+from .types.system import TypeSystem
 from .utils import newoverwrite, newcopyover, ensuredirs, indent, indentstr, \
     RunControl, NotSpecified
-from .plugins import Plugin
-from .typesystem import TypeSystem
 
 if sys.version_info[0] >= 3: 
     basestring = str
@@ -339,7 +339,8 @@ def genpyx_pair(t, u, ts):
               tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),
               tpytype=ts.cython_pytype(t), upytype=ts.cython_pytype(u),
               tcytype=ts.cython_cytype(t), ucytype=ts.cython_cytype(u),)
-    tisnotinst = ["not isinstance(key, {0})".format(x) for x in ts.from_pytypes[t]]
+    from_pytypes = ts.from_pytypes[t] if t in ts.from_pytypes else [kw['tpytype']]
+    tisnotinst = ["not isinstance(key, {0})".format(x) for x in from_pytypes]
     kw['tisnotinst'] = " and ".join(tisnotinst)
     tc2pykeys = ['tc2pydecl', 'tc2pybody', 'tc2pyrtn']
     tc2py = ts.cython_c2py('first', t, existing_name="self.pair_ptr[0].first", 
@@ -584,7 +585,8 @@ def genpyx_map(t, u, ts):
               tctype=ts.cython_ctype(t), uctype=ts.cython_ctype(u),
               tpytype=ts.cython_pytype(t), upytype=ts.cython_pytype(u),
               tcytype=ts.cython_cytype(t), ucytype=ts.cython_cytype(u),)
-    tisnotinst = ["not isinstance(key, {0})".format(x) for x in ts.from_pytypes[t]]
+    from_pytypes = ts.from_pytypes[t] if t in ts.from_pytypes else [kw['tpytype']]
+    tisnotinst = ["not isinstance(key, {0})".format(x) for x in from_pytypes]
     kw['tisnotinst'] = " and ".join(tisnotinst)
     tc2pykeys = ['tc2pydecl', 'tc2pybody', 'tc2pyrtn']
     tc2py = ts.cython_c2py('inow_first', t, existing_name="deref(inow).first", 

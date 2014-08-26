@@ -129,7 +129,7 @@ from __future__ import print_function
 import sys
 import collections
 from .utils import isclassdesc, NotSpecified
-from .typesystem import TypeMatcher
+from .types.matching import TypeMatcher
 from .plugins import Plugin
 
 if sys.version_info[0] >= 3:
@@ -143,7 +143,7 @@ def modify_desc(skips, desc):
     skips : dict or list
         The attribute rc.skiptypes from the run controller managing
         the desc dictionary. This is filled with
-        xdress.typesystem.TypeMatcher objects and should have been
+        xdress.types.system.TypeMatcher objects and should have been
         populated as such by xdress.descfilter.setup
 
     desc : dictionary
@@ -260,8 +260,10 @@ class XDressPlugin(Plugin):
                         for m in skippers:
                             # Find method key
                             try:
-                                del_key = filter(lambda x: x[0].startswith(m),
-                                                 m_nms)[0]
+                                f = lambda x: x[0].startswith(m) \
+                                              if isinstance(x[0], basestring) \
+                                              else x[0][0].startswith(m)
+                                del_key = filter(f, m_nms)[0]
                             except IndexError:
                                 msg = 'descfilter: Could not find method {0} '
                                 msg += 'in {1}. Moving on to next method'

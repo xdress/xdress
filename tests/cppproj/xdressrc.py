@@ -21,6 +21,7 @@ dtypes = [
 stlcontainers = [
     ('pair', 'int', ('vector', 'int')),
     ('pair', 'int', 'str'),
+    ('pair', 'int', 'int'),
     ('pair', 'int', 'SomeCrazyPairValue'),
     ('pair', 'ThreeNums', 'int'),
     ('vector', 'float64'),
@@ -47,6 +48,7 @@ stlcontainers = [
     ('map', 'int', 'float'),
     ('map', 'uint', 'float'),
     ('map', 'int', 'complex'),
+    ('map', ('pair', 'int', 'int'), 'float'),
     ('map', 'int', ('set', 'int')),
     ('map', 'int', ('set', 'str')),
     ('map', 'int', ('set', 'uint')),

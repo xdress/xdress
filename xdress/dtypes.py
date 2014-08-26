@@ -12,10 +12,10 @@ import os
 import sys
 import pprint
 
+from .plugins import Plugin
+from .types.system import TypeSystem
 from .utils import newoverwrite, newcopyover, ensuredirs, indent, indentstr, \
     RunControl, NotSpecified
-from .plugins import Plugin
-from .typesystem import TypeSystem
 
 if sys.version_info[0] >= 3: 
     basestring = str
@@ -222,7 +222,7 @@ cdef PyMemberDef pyxd_{fncname}_type_members[1]
 pyxd_{fncname}_type_members[0] = PyMemberDef(NULL, 0, 0, 0, NULL)
 
 cdef PyGetSetDef pyxd_{fncname}_type_getset[1]
-pyxd_{fncname}_type_getset[0] = PyGetSetDef(NULL)
+pyxd_{fncname}_type_getset[0] = PyGetSetDef(NULL, NULL, NULL, NULL, NULL)
 
 cdef bint pyxd_{fncname}_is_ready
 cdef type PyXD_{clsname} = type("xd_{fncname}", ((<object> PyArray_API[10]),), {{}})
@@ -465,8 +465,15 @@ cdef extern from "Python.h":
     cdef long Py_TPFLAGS_CHECKTYPES
     cdef long Py_TPFLAGS_HEAPTYPE
 
+    ctypedef PyObject*(* getter)(PyObject *, void *)
+    ctypedef int(* setter)(PyObject *, PyObject *, void *)
+
     ctypedef struct PyGetSetDef:
         char * name
+        getter get
+        setter set
+        char * doc
+        void * closure
 
     ctypedef struct PyTypeObject:
         char * tp_name

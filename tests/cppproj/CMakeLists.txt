@@ -1,5 +1,11 @@
 # Defines the CMake commands/policies
-cmake_minimum_required( VERSION 2.8.5 )
+if(APPLE)
+    # OS X RPATH needs 2.8.12
+    cmake_minimum_required( VERSION 2.8.12 )
+    set(CMAKE_MACOSX_RPATH 1)
+else(APPLE)
+    cmake_minimum_required( VERSION 2.8.5 )
+endif(APPLE)
 
 # Set the project name
 project( cppproj )
@@ -31,8 +37,12 @@ set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 if(APPLE)
-    # I think that this is the right thing to do for MacOSX 10.5+ --Anthony
-    set(CMAKE_INSTALL_RPATH "@rpath/lib")
+    # This is the right thing to do for MacOSX 10.5+ --John
+    # Set the install name of *.dylib files to @rpath/libname.dylib
+    set(CMAKE_INSTALL_NAME_DIR "@rpath")
+    # Set the RPATH for all *.so files to @loader_path/lib (and then put the
+    # *.dylib files in a lib directory)
+    set(CMAKE_INSTALL_RPATH "@loader_path/lib")
 elseif(WIN32)
     if(MSVC)
         # ??? Who knows what to do here?! --Anthony

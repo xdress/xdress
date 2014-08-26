@@ -260,7 +260,7 @@ from .utils import exec_file, RunControl, NotSpecified, Arg, merge_descriptions,
     find_source, FORBIDDEN_NAMES, find_filenames, warn_forbidden_name, apiname, \
     ensure_apiname, c_literal, extra_filenames, newoverwrite, _lang_exts
 from . import astparsers
-from .typesystem import TypeSystem
+from .types.system import TypeSystem
 
 try:
     from . import clang

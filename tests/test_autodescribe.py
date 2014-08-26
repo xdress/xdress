@@ -1,7 +1,7 @@
 from __future__ import print_function
 import os
 
-from xdress.typesystem import TypeSystem
+from xdress.types.system import TypeSystem
 from xdress import cythongen as cg
 from xdress import autodescribe as ad
 from xdress.astparsers import PARSERS_AVAILABLE

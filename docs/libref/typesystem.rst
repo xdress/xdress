@@ -4,7 +4,7 @@
 Type System
 ******************
 
-.. automodule:: xdress.typesystem
+.. automodule:: xdress.types.system
     :members:
 
 

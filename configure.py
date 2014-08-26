@@ -92,9 +92,9 @@ def setup():
         scripts = [os.path.join(scripts_dir, f)
                    for f in os.listdir(scripts_dir)
                    if not f.endswith('.bat')]
-    packages = ['xdress', 'xdress.clang', 'xdress._enum']
+    packages = ['xdress', 'xdress.clang', 'xdress._enum', 'xdress.types']
     pack_dir = {'xdress': 'xdress', 'xdress.clang': 'xdress/clang', 
-                'xdress._enum': 'xdress/_enum'}
+                'xdress._enum': 'xdress/_enum', 'xdress.types': 'xdress/types'}
     pack_data = {'xdress': ['*.pxd', '*.pyx', '*.h', '*.cpp'], 
                  'xdress._enum': ['LICENSE', 'README']}
 
@@ -135,7 +135,7 @@ def setup():
             version = subprocess.check_output([llvm_config,'--version'])
         except OSError as e:
             raise OSError("Failed to run llvm-config program '%s': %s" % (llvm_config, e))
-        version = tuple(version.strip().split('.'))
+        version = tuple(int(part) for part in version.decode().strip().split('.'))
         clang_dir = os.path.join(dir_name, 'xdress', 'clang')
         clang_src_dir = os.path.join(clang_dir, 'src')
         clang_libs = (   os.environ.get('CLANG_LIBS')
@@ -193,7 +193,7 @@ def setup():
             "Topic :: Software Development :: Compilers",
             "Topic :: Utilities",
         ],
-        "data_files": [("", ['license', 'configure.py']),],
+        #"data_files": [("", ['license', 'configure.py']),],
     }
     # changing dirs for virtualenv
     cwd = os.getcwd()

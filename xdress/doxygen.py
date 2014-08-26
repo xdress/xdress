@@ -88,11 +88,11 @@ import re
 import os
 import subprocess
 import sys
-from collections import OrderedDict
 from textwrap import TextWrapper
+
 from .plugins import Plugin
+from .types.matching import TypeMatcher, MatchAny
 from .utils import newoverwrite, parse_template
-from .typesystem import TypeMatcher, MatchAny
 
 # XML conditional imports
 try:
@@ -176,9 +176,13 @@ def class_docstr(class_dict, desc_funcs=False):
 
     """
     class_name = class_dict['kls_name'].split('::')[-1]
-    cls_msg = class_dict['public-func'][class_name]['detaileddescription']
-
-    msg = wrap_68.fill(cls_msg)
+    cls_msg = class_dict.get('public-func', {}).get(class_name, {})\
+                        .get('detaileddescription', '')
+    
+    if cls_msg is None:
+         msg = ""
+    else:
+        msg = wrap_68.fill(cls_msg)
 
     # Get a list of the methods and variables to list here.
     methods = list(set(class_dict['members']['methods']))
@@ -223,7 +227,8 @@ def class_docstr(class_dict, desc_funcs=False):
     methods.sort()
 
     # Move the destructor from the bottom to be second.
-    methods.insert(1, methods.pop())
+    if len(methods) > 0:
+        methods.insert(1, methods.pop())
 
     for i in methods:
         desc = funcs[i]['briefdescription']
@@ -282,7 +287,11 @@ def func_docstr(func_dict, is_method=False):
 
     detailed_desc = func_dict['detaileddescription']
     brief_desc = func_dict['briefdescription']
-    desc = '\n\n'.join([brief_desc, detailed_desc]).strip()
+
+    if detailed_desc is None or brief_desc is None:
+        desc = "\n\n"
+    else:
+        desc = '\n\n'.join([brief_desc, detailed_desc]).strip()
 
     args = func_dict['args']
     if args is None:
@@ -998,7 +1007,7 @@ class XDressPlugin(Plugin):
         # Run doxygen
         subprocess.call(['doxygen', rc.doxyfile_name])
 
-    def _process_dox(self, xml_dir):
+    def _process_dox(self, rc, xml_dir):
         """Process the dOxygen files."""
         classes, funcs = parse_index_xml(os.path.join(xml_dir, 'index.xml'))
         tm_classes = {}
@@ -1040,7 +1049,7 @@ class XDressPlugin(Plugin):
         # Go for the classes!
         for c in rc.classes:
             self._run_dox(rc, c.srcfiles)
-            funcs, classes, tm_classes = self._process_dox(xml_dir)
+            funcs, classes, tm_classes = self._process_dox(rc, xml_dir)
             kls = c.srcname
             kls_mod = c.tarbase
 

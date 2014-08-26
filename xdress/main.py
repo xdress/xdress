@@ -124,7 +124,7 @@ used to declare additional attr and method APIs.
 .. code-block:: python
 
     # Start by adding refinement type hooks for 'sepeff_t', which is a type of map
-    from xdress.typesystem import TypeSystem
+    from xdress.types.system import TypeSystem
     ts = TypeSystem.empty()
     ts.register_refinement('sepeff_t', ('map', 'int32', 'float64'),
         cython_cyimport='bright.typeconverters', 
@@ -174,10 +174,10 @@ try:
 except ImportError:
     argcomplete = None
 
+from .plugins import Plugins
 from .utils import NotSpecified, RunControl, DEFAULT_RC_FILE, DEFAULT_PLUGINS, \
     exec_file, parse_global_rc
 
-from .plugins import Plugins
 
 if sys.version_info[0] >= 3:
     basestring = str

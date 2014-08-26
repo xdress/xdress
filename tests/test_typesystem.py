@@ -1,12 +1,16 @@
 from __future__ import print_function
 import pprint
 import os
+import sys
 
-from xdress.typesystem import MatchAny, TypeSystem, TypeMatcher, matches
+from xdress.types.system import TypeSystem
 from xdress.utils import Arg
 
 from nose.tools import assert_equal, with_setup
 from tools import unit
+
+if sys.version_info[0] > 2:
+    basestring = str
 
 # default typesystem
 ts = TypeSystem()
@@ -514,37 +518,6 @@ def test_cython_py2c():
     )
     for (name, t, inst_name), exp in cases:
         yield check_cython_py2c, name, t, inst_name, exp  # Check that the case works,
-
-p1 = ('float64', MatchAny)
-
-type_matcher_cases = [
-    [p1, ('float64', 0), True],
-    [p1, ('float64', '*'), True],
-    [p1, ('float64', '&'), True],
-    [p1, ('float64', 'const'), True],
-    [p1, 'float64', False],
-    [p1, ('f8', 0), False],
-    [p1, (('float64', 'const'), '&'), False],
-    ]
-
-def check_typematcher(pattern, t, exp):
-    tm = TypeMatcher(pattern)
-    obs = tm.matches(t)
-    assert_equal(exp, obs)
-
-@unit
-def test_typematcher():
-    for pattern, t, exp in type_matcher_cases:
-        yield check_typematcher, pattern, t, exp
-
-def check_matches(pattern, t, exp):
-    obs = matches(pattern, t)
-    assert_equal(exp, obs)
-
-@unit
-def test_matches():
-    for pattern, t, exp in type_matcher_cases:
-        yield check_matches, pattern, t, exp
 
 def check_strip_predicates(t, exp):
     obs = ts.strip_predicates(t)

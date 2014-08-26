@@ -18,14 +18,13 @@ import os
 import sys
 import math
 import warnings
-from copy import deepcopy
-from pprint import pprint
 from numbers import Number
 
-from .utils import indent, indentstr, expand_default_args, isclassdesc, isfuncdesc, \
-    isvardesc, newoverwrite, sortedbytype, _lang_exts, Arg
 from .plugins import Plugin
-from .typesystem import TypeSystem, TypeMatcher, MatchAny
+from .types.matching import TypeMatcher, MatchAny
+from .types.system import TypeSystem
+from .utils import indent, expand_default_args, isclassdesc, isfuncdesc, \
+    isvardesc, newoverwrite, sortedbytype, _lang_exts, Arg
 from .version import cython_version, cython_version_info
 
 if sys.version_info[0] >= 3:
