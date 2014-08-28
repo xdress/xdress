@@ -256,7 +256,7 @@ c_xd_{fncname}_descr.typeobj = <PyTypeObject *> PyXD_{clsname} # typeobj
 c_xd_{fncname}_descr.kind = 'x'  # kind, for xdress
 c_xd_{fncname}_descr.type = 'x'  # type
 c_xd_{fncname}_descr.byteorder = '='  # byteorder
-c_xd_{fncname}_descr.flags = 0    # flags
+c_xd_{fncname}_descr.flags = NPY_USE_GETITEM  # flags
 c_xd_{fncname}_descr.type_num = 0    # type_num, assigned at registration
 c_xd_{fncname}_descr.elsize = sizeof({ctype})  # elsize, 
 c_xd_{fncname}_descr.alignment = 8  # alignment
@@ -570,6 +570,9 @@ cdef extern from "numpy/arrayobject.h":
         PyObject * fields
         PyObject * names
         PyArray_ArrFuncs * f
+
+    # description flags - #defined in C :(    
+    cdef int NPY_USE_GETITEM
 
     cdef int PyArray_RegisterDataType(PyArray_Descr *)
 

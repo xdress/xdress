@@ -106,6 +106,7 @@ def test_all():
         for testfile in dirtests(TESTDIR):
             with clean_import(testfile, [TESTDIR, instproj, instsite]) as testmod:
                 for test in modtests(testmod):
+                    print(test)
                     yield test
     else:
         cleanfs(GENERATED_PATHS)

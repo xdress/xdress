@@ -23,14 +23,14 @@ def test_dtype_set_int():
     a[:2] = b[-2:]
 
     x = np.array([set([16, 42])], dtype=dt.xd_set_int)
-    s = stlc.SetInt(x[0])
+    s = x[0]
     s.add(10)
     x[0] = s
 
 # dtype map<str, int>
 def test_dtype_map_str_int():
     x = np.array([{"hello": 42}], dtype=dt.xd_map_str_int)
-    m = stlc.MapStrInt(x[0])
+    m = x[0]
     m['world'] = 10 
     x[0] = m
 
