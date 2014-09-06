@@ -109,7 +109,7 @@ def test_b():
     assert_equal(y.b, 11)
     y.b = 43
     assert_equal(y.b, 43)
-    assert_equal(y.clist.item(2)[4], 8)
+    assert_equal(y.clist[2][4], 8)
     y.call()
     assert_equal(y.b, 1)
     y.from_a(x)
