@@ -104,22 +104,19 @@ Testing
 XDress has two major test types: unit tests which test library functionality and
 integration tests which test the command line tool, the parsers, compilers, etc.
 The unit tests are generally fast while the integration are slower.  From the
-`tests/` directory you may use nose to run the tests together or individually::
-
-    # Go into the tests dir
-    $ cd tests
+tope level of the repository you may use nose to run the tests together or individually::
 
     # Run just the unit tests
-    tests $ nosetests -a unit
+    $ nosetests -a unit
 
     # Run just the integration tests
-    tests $ nosetests -a integration
+    $ nosetests -a integration
 
     # Run all of the tests together
-    tests $ nosetests
+    $ nosetests
 
-Note that the integration tests require CMake in order to build the sample
-projects.
+Note that the integration tests require `CMake <http://cmake.org>`_ in order to build
+the sample projects.
 
 ==========
 Contact Us
