@@ -1,11 +1,11 @@
 XDress
 ==================================
 XDress is an automatic wrapper generator for C/C++ written in pure Python. Currently,
-xdress may generate Python bindings (via Cython) for C++ classes & functions 
-and in-memory wrappers for C++ standard library containers (sets, vectors, maps).  
-In the future, other tools and bindings will be supported.  
+xdress may generate Python bindings (via Cython) for C++ classes & functions
+and in-memory wrappers for C++ standard library containers (sets, vectors, maps).
+In the future, other tools and bindings will be supported.
 
-The main enabling feature of xdress is a dynamic type system that was designed with 
+The main enabling feature of xdress is a dynamic type system that was designed with
 the purpose of API generation in mind.
 
 `Go here for the latest version of the docs! <http://xdress.org/latest>`_
@@ -40,13 +40,13 @@ to grab and install the code::
     $ easy_install xdress
 
 
-The source code repository for xdress may be found at the 
+The source code repository for xdress may be found at the
 `GitHub project site <http://github.com/xdress/xdress>`_.
 You may simply clone the development branch using git::
 
     git clone git://github.com/xdress/xdress.git
 
-Also, if you wish to have the optional BASH completion, please add the 
+Also, if you wish to have the optional BASH completion, please add the
 following lines to your ``~/.bashrc`` file::
 
     # Enable completion for xdress
@@ -79,7 +79,7 @@ XDress currently has the following external dependencies,
 To install the dependencies on Ubuntu 14.04 use the following command::
 
     $ apt-get install -y gccxml cython python-numpy python-pycparser python-nose cmake python-lxml llvm-dev libedit-dev libclang-3.5-dev
-    $ apt-get remove -y llvm-3.4 
+    $ apt-get remove -y llvm-3.4
 
 ===============
 Examples of Use
@@ -87,10 +87,10 @@ Examples of Use
 To see examples of xdress in action (and sample run control files), here are a
 few places to look:
 
-* `xdress/tests/cproj <https://github.com/xdress/xdress/tree/master/tests/cproj>`_: 
+* `xdress/tests/cproj <https://github.com/xdress/xdress/tree/master/tests/cproj>`_:
   This is a fully functioning sample C project which uses xdress locally.
   THIS PROJECT IS FOR TESTING PURPOSES ONLY!
-* `xdress/tests/cppproj <https://github.com/xdress/xdress/tree/master/tests/cppproj>`_: 
+* `xdress/tests/cppproj <https://github.com/xdress/xdress/tree/master/tests/cppproj>`_:
   This is a fully functioning sample C++ project which uses xdress locally.
   THIS PROJECT IS FOR TESTING PURPOSES ONLY!
 * `PyNE <http://pynesim.org/>`_: This uses xdress to generate STL container wrappers.
@@ -101,40 +101,37 @@ few places to look:
 =======
 Testing
 =======
-XDress has two major test types: unit tests which test library functionality and 
-integration tests which test the command line tool, the parsers, compilers, etc.  
-The unit tests are generally fast while the integration are slower.  From the 
-`tests/` directory you may use nose to run the tests together or individually::
-
-    # Go into the tests dir
-    $ cd tests
+XDress has two major test types: unit tests which test library functionality and
+integration tests which test the command line tool, the parsers, compilers, etc.
+The unit tests are generally fast while the integration are slower.  From the
+tope level of the repository you may use nose to run the tests together or individually::
 
     # Run just the unit tests
-    tests $ nosetests -a unit
+    $ nosetests -a unit
 
     # Run just the integration tests
-    tests $ nosetests -a integration
+    $ nosetests -a integration
 
     # Run all of the tests together
-    tests $ nosetests
+    $ nosetests
 
-Note that the integration tests require CMake in order to build the sample
-projects.
+Note that the integration tests require `CMake <http://cmake.org>`_ in order to build
+the sample projects.
 
 ==========
 Contact Us
 ==========
 If you have questions or comments, please sign up for the the mailing list
 at https://groups.google.com/forum/#!forum/xdress and send an email to
-xdress@googlegroups.com. Alternatively, please contact the authors directly or 
+xdress@googlegroups.com. Alternatively, please contact the authors directly or
 open an issue on GitHub.
 
 ============
 Contributing
 ============
-We highly encourage contributions to xdress!  If you would like to contribute, 
-it is as easy as forking the repository on GitHub, making your changes, and 
-issuing a pull request.  If you have any questions about this process don't 
+We highly encourage contributions to xdress!  If you would like to contribute,
+it is as easy as forking the repository on GitHub, making your changes, and
+issuing a pull request.  If you have any questions about this process don't
 hesitate to ask the mailing list (xdress@googlegroups.com).
 
 =============
