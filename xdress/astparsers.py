@@ -357,7 +357,8 @@ def pick_parser(file_or_lang, parsers):
         ps = parsers[lang]
         ps = [p for p in ps if PARSERS_AVAILABLE[p.lower()]]
         if len(ps) == 0:
-            msg = "{0} parsers not available: {1}"
+            msg = ("{0} parsers not available: {1} these can be specified on the command "
+            "line with the optional '-p' argument.")
             msg = msg.format(lang.capitalize(), ", ".join(parsers))
             raise RuntimeError(msg)
         parser = ps[0].lower()

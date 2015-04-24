@@ -55,6 +55,9 @@ This has the following usage::
       -U UNDEFINES [UNDEFINES ...], --undefines UNDEFINES [UNDEFINES ...]
                             Unset additional macro definitions
       -p PARSERS            Parser(s) name, list, or dict
+                            Options include 
+                                c:  ['pycparser', 'clang', 'gccxml']
+                                c++:['clang', 'gccxml', 'pycparser']
       --clear-parser-cache-period CLEAR_PARSER_CACHE_PERIOD
                             Number of parser calls to perform before clearing the
                             internal cache. This prevents nasty memory overflow
