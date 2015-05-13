@@ -448,7 +448,10 @@ class ParserPlugin(Plugin):
                       "or apiname format"),
         'classes': ("A list of class names in sequence, mapping, "
                     "or apiname format"),
-        'parsers': "Parser(s) name, list, or dict",
+        'parsers': ("Parser(s) name, list, or dict, \n"
+                   "Options include \n"
+                   "     c: ['pycparser', 'clang', 'gccxml'] \n"
+                   "     c++:['clang', 'gccxml', 'pycparser']"),
         'clear_parser_cache_period': ("Number of parser calls to perform before "
                                       "clearing the internal cache.  This prevents "
                                       "nasty memory overflow issues."),
