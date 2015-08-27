@@ -167,7 +167,7 @@ def setup():
         "description": 'xdress',
         "author": 'Anthony Scopatz',
         "author_email": 'xdress@googlegroups.com',
-        "url": 'http://xdress.org/',
+        "url": 'http://xdress.xyz/',
         "packages": packages,
         "package_dir": pack_dir,
         "package_data": pack_data,

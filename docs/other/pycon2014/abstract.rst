@@ -82,11 +82,11 @@ PyCon 2014 Abstract
 * Neat Concepts for Future Work
 * Questions
 
-:additional notes:  The main website is http://xdress.org/
+:additional notes:  The main website is http://xdress.xyz/
 
     An earlier version of this talk which used an earlier version of xdress 
     was presented to SciPy 2013.  See this page for the slides and the video. 
-    http://xdress.org/other/scipy2013/index.html
+    http://xdress.xyz/other/scipy2013/index.html
 
 :additional requirements: none
 

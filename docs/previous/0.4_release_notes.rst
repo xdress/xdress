@@ -23,7 +23,7 @@ This version of xdress is *not* 100% backwards compatible with previous versions
 of xdress. We apologize in the name of progress.  It represents ans impressive 
 245 files changed, 44917 aggregate line insertions (+), and 7893 deletions (-).
 
-Please visit the website for more information: http://xdress.org/
+Please visit the website for more information: http://xdress.xyz/
 
 Ask questions on the mailing list: https://groups.google.com/forum/#!forum/xdress
 
@@ -118,6 +118,6 @@ An * indicates a first time contributor.
 Links
 =====
 
-1. Homepage - http://xdress.org/
+1. Homepage - http://xdress.xyz/
 2. Mailing List - https://groups.google.com/forum/#!forum/xdress
 3. GitHub Organization - https://github.com/xdress
