@@ -20,7 +20,7 @@ Release highlights:
         - function pointer support
   - Easy to use and implement plugin architecture.
 
-Please visit the website for more information: http://xdress.org/
+Please visit the website for more information: http://xdress.xyz/
 
 Ask questions on the mailing list: xdress@googlegroups.com
 
@@ -126,7 +126,7 @@ An * indicates a first time contributor.
 Links
 =====
 
-1. Homepage - http://xdress.org/
+1. Homepage - http://xdress.xyz/
 2. Mailing List - xdress@googlegroups.com
 3. GitHub Organization - https://github.com/xdress
 4. Pycparser - https://pypi.python.org/pypi/pycparser
