@@ -8,7 +8,7 @@ In the future, other tools and bindings will be supported.
 The main enabling feature of xdress is a dynamic type system that was designed with
 the purpose of API generation in mind.
 
-`Go here for the latest version of the docs! <http://xdress.xyz/latest>`_
+`Go here for the latest version of the docs! <https://xdress.github.io/latest>`_
 
 :ref:`Go here for previous versions of the code & documentation. <previous_versions>`
 
@@ -138,7 +138,7 @@ hesitate to ask the mailing list (xdress@googlegroups.com).
 Helpful Links
 =============
 
-* `Documentation <http://xdress.xyz>`_
+* `Documentation <http://xdress.github.io/>`_
 * `Mailing list website <https://groups.google.com/forum/#!forum/xdress>`_
 * `Mailing list address <mailto:xdress@googlegroups.com>`_
 * :ref:`genindex`
